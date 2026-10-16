@@ -29,6 +29,7 @@ import {
   workspace,
 } from '../services/workspace';
 import { ResearchView } from '../features/research/ResearchView';
+import { ResearchDirectory } from '../features/research/ResearchDirectory';
 import { LibraryView } from '../features/library/LibraryView';
 import { PdfReader } from '../features/reader/PdfReader';
 import { ImportPDFButton } from '../features/reader/ImportPDFButton';
@@ -38,6 +39,7 @@ import { BoardView } from '../features/board/BoardView';
 import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
 import { getAIConfig } from '../services/ai';
+import { ResourceTabs } from './ResourceTabs';
 import { BackupControls } from '../features/settings/BackupControls';
 
 const collections: { id: CollectionId; name: string; icon: typeof Inbox }[] = [
@@ -232,7 +234,7 @@ export function App() {
     );
   return (
     <div
-      className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''}`}
+      className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''} ${session.panel.open && session.panel.mode === 'ai' ? 'ai-panel-open' : ''}`}
       style={{ '--panel-width': `${data.panelWidth}px` } as React.CSSProperties}
     >
       {narrow && navigationOpen && (
@@ -302,25 +304,28 @@ export function App() {
           ))}
         </nav>
         <div className="sidebar-divider" />
-        <div className="sidebar-section-label">当前研究</div>
-        <label className="research-switcher">
-          <span className="research-dot" />
-          <select
-            aria-label="切换研究"
-            value={research?.id ?? ''}
-            onChange={(event) => actions.switchResearch(event.target.value)}
-          >
-            <option value="" disabled>
-              全局资料浏览
-            </option>
-            {Object.values(data.researches).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
+        <div className="sidebar-section-label">研究项目</div>
+        <div className="research-project-row">
+          <label className="research-switcher" title={research?.title ?? '切换研究'}>
+            <span className="research-dot" />
+            <select
+              aria-label="切换研究"
+              value={research?.id ?? ''}
+              onChange={(event) => actions.switchResearch(event.target.value)}
+            >
+              <option value="" disabled>
+                全局资料浏览
               </option>
-            ))}
-          </select>
-          <ChevronDown size={13} />
-        </label>
+              {Object.values(data.researches).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.title}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={13} />
+          </label>
+          {research && <ResearchDirectory researchId={research.id} settings />}
+        </div>
         {research && (
           <div className="research-nav">
             <button
@@ -382,13 +387,13 @@ export function App() {
                 >
                   <Pin size={12} />
                 </button>
-                <button
+                {ref.kind !== 'research' && <button
                   className="icon-button close"
                   aria-label={`关闭 ${resourceTitle(data, ref)}`}
                   onClick={() => actions.closeResource(ref)}
                 >
                   <X size={12} />
-                </button>
+                </button>}
               </div>
             ))}
         </div>
@@ -487,6 +492,14 @@ export function App() {
             </button>
           </div>
         )}
+        <ResourceTabs items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
+          title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)}
+          onClose={ref => actions.closeResource(ref)} onPin={ref => actions.pinResource(ref)}
+          onMove={(from, to) => actions.updateData(next => {
+            const items = next.sessions[scopeKey(next.scope)].openItems;
+            if (from < 0 || to < 0 || from >= items.length || to >= items.length) return;
+            items.splice(to, 0, items.splice(from, 1)[0]);
+          })} />
         <main aria-label="主工作区" className="main-workspace">
           <ErrorBoundary key={`${active.kind}:${active.id}`}>
             {active.kind === 'collection' ? (
@@ -521,10 +534,10 @@ export function App() {
               if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
                 actions.updateData((data) => {
                   data.panelWidth = Math.max(
-                    320,
+                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
                     Math.min(
                       520,
-                      data.panelWidth + (event.key === 'ArrowLeft' ? 20 : -20),
+                      Math.max(data.panelWidth, session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320) + (event.key === 'ArrowLeft' ? 20 : -20),
                     ),
                   );
                 });
@@ -536,7 +549,7 @@ export function App() {
               if (event.buttons === 1)
                 actions.updateData((data) => {
                   data.panelWidth = Math.max(
-                    320,
+                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
                     Math.min(520, window.innerWidth - event.clientX),
                   );
                 });

@@ -1,0 +1,2 @@
+{"electronVersion":"44.8.0","file":"/Users/amos/Library/Caches/electron/0b1dfe8edb6413a5548f3f263a6041b2edbc8a090672c13442a3752ee61a5c26/electron-v44.8.0-darwin-arm64.zip","actual":"ccd9ba800d39d403375211d8f8da528469ebae3213cce4ec72b42e4dcc847513","expected":"ccd9ba800d39d403375211d8f8da528469ebae3213cce4ec72b42e4dcc847513","match":true}
+{"packaged":true,"result":[{"platform":"darwin","arch":"arm64","packagedPath":"/tmp/read-paper-project-package-20261017-final/Papertrail-darwin-arm64"}]}

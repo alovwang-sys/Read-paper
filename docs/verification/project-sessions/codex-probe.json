@@ -1,0 +1,146 @@
+{
+  "checkedAt": "2026-10-16T16:36:01.486Z",
+  "version": "0.162.1",
+  "cwd": "/private/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/read-paper-codex-project-vzeabh",
+  "genuineNativeProbe": true,
+  "scope": "Only a new synthetic project and thread; at most two short model turns. No existing user threads, paid data tools or authentication contents read.",
+  "steps": [
+    {
+      "step": "A created persistent thread",
+      "id": "01a14592-1e8a-75b0-9e64-c53f7bef6a44",
+      "cwd": "/private/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/read-paper-codex-project-vzeabh",
+      "status": {
+        "type": "idle"
+      }
+    },
+    {
+      "step": "metadata after first attempt",
+      "status": {
+        "type": "notLoaded"
+      },
+      "cwd": "/private/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/read-paper-codex-project-vzeabh"
+    },
+    {
+      "step": "A resumes own synthetic thread",
+      "id": "01a14592-1e8a-75b0-9e64-c53f7bef6a44",
+      "status": {
+        "type": "idle"
+      }
+    },
+    {
+      "step": "second short model turn accepted",
+      "id": "01a14594-5d29-7722-b66b-ec10d9438e81"
+    },
+    {
+      "step": "A read while A second turn active",
+      "status": {
+        "type": "idle"
+      },
+      "cwd": "/private/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/read-paper-codex-project-vzeabh"
+    },
+    {
+      "step": "B read while A second turn active",
+      "status": {
+        "type": "notLoaded"
+      },
+      "cwd": "/private/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/read-paper-codex-project-vzeabh"
+    },
+    {
+      "step": "B exact project discovery",
+      "ids": [
+        "01a14592-1e8a-75b0-9e64-c53f7bef6a44"
+      ],
+      "statuses": [
+        {
+          "type": "notLoaded"
+        }
+      ],
+      "nextCursor": null
+    },
+    {
+      "step": "final thread/read",
+      "result": {
+        "id": "01a14592-1e8a-75b0-9e64-c53f7bef6a44",
+        "status": {
+          "type": "notLoaded"
+        }
+      }
+    },
+    {
+      "step": "final thread/turns/list",
+      "result": {
+        "nextCursor": null,
+        "turns": [
+          {
+            "id": "01a14594-5d29-7722-b66b-ec10d9438e81",
+            "status": "interrupted",
+            "items": [
+              {
+                "id": "01a14594-5d51-7c03-9858-ea40d6717dd6",
+                "type": "userMessage"
+              }
+            ]
+          },
+          {
+            "id": "01a14592-1f31-7690-bdb2-304cdf284089",
+            "status": "interrupted",
+            "items": [
+              {
+                "id": "01a14592-5f7a-7ab2-96f1-1252ff458be4",
+                "type": "userMessage"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "step": "final thread/resume",
+      "result": {
+        "id": "01a14592-1e8a-75b0-9e64-c53f7bef6a44",
+        "status": {
+          "type": "idle"
+        }
+      }
+    },
+    {
+      "step": "lock probe A loads synthetic idle thread",
+      "id": "01a14592-1e8a-75b0-9e64-c53f7bef6a44",
+      "status": {
+        "type": "idle"
+      }
+    },
+    {
+      "step": "lock probe B metadata while A loaded",
+      "status": {
+        "type": "notLoaded"
+      }
+    },
+    {
+      "step": "lock probe B resume while A loaded",
+      "accepted": false,
+      "code": "protocol_error"
+    }
+  ],
+  "initialize": {
+    "userAgent": "Codex Desktop/0.162.1 (Mac OS 27.0.0; arm64) dumb (read_paper; 0.1.0)"
+  },
+  "model": "gpt-6.1-sol",
+  "threadId": "01a14592-1e8a-75b0-9e64-c53f7bef6a44",
+  "nativeRecordPath": "/Users/amos/.codex/sessions/2026/10/17/rollout-2026-10-17T00-36-06-01a14592-1e8a-75b0-9e64-c53f7bef6a44.jsonl",
+  "firstAttempt": {
+    "message": "Synthetic pause not requested within 60 seconds"
+  },
+  "secondAttemptAt": "2026-10-16T16:38:30.479Z",
+  "error": {
+    "code": "protocol_error",
+    "message": "Codex 拒绝请求；请检查 CLI 版本、登录或权限配置。"
+  },
+  "protocolErrors": [],
+  "lockProbeErrors": [
+    {
+      "code": -32600,
+      "message": "thread 01a14592-1e8a-75b0-9e64-c53f7bef6a44 already has an active writer"
+    }
+  ]
+}

@@ -109,7 +109,7 @@ export function ConversationSource({
                     disabled={!available}
                     title={
                       available
-                        ? '查看创建时的原文'
+                        ? '在主区核对原文，保留相关对话'
                         : '原文件缺失或版本变化，摘录仍保留在来源详情中'
                     }
                     onClick={() => {
@@ -119,7 +119,7 @@ export function ConversationSource({
                           { kind: 'document', id: snapshot.documentId },
                           {
                             scope: data.scope,
-                            target: 'inspector',
+                            target: 'main',
                             anchor: {
                               evidenceId:
                                 evidence?.documentId === snapshot.documentId &&

@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-16T16:49:31.913Z",
+  "method": "production createCodexRuntime.run",
+  "cwd": "/private/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/read-paper-project-production-YZu8u6/research",
+  "materialCwd": "/private/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/read-paper-project-production-YZu8u6/materials",
+  "events": [
+    {
+      "type": "session"
+    },
+    {
+      "type": "session"
+    }
+  ],
+  "modelCompleted": false,
+  "nativeSessionId": "01a1459e-7466-70c2-a63a-1ce5f159097f",
+  "error": {
+    "code": "stopped",
+    "message": "生成已停止。"
+  }
+}

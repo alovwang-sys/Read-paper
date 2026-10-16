@@ -184,15 +184,22 @@ export const workspace = {
       });
     }
   },
-  updateData(change: (data: WorkspaceData) => void) {
+  updateData(change: (data: WorkspaceData) => void, options?: { nativeHistoryRef: string }) {
     if (restoring) throw new Error('正在恢复资料，请稍后再编辑。');
     if (!state.loaded || state.loadError)
       throw new Error('数据尚未成功加载，请重试加载后编辑');
     const data = structuredClone(state.data);
     change(data);
-    for (const request of Object.values(state.data.requests))
-      if (request.status !== 'generating' && data.requests[request.id] && data.requests[request.id].body !== request.body)
+    for (const request of Object.values(state.data.requests)) {
+      const next = data.requests[request.id];
+      // Native imports are a read-only display cache. Saved cards retain their own source snapshot.
+      const nativeRefresh = options?.nativeHistoryRef && request.nativeImported && next?.nativeImported
+        && request.nativeMessageId === next.nativeMessageId && request.nativeSessionId === next.nativeSessionId
+        && request.prompt === next.prompt && request.conversationId === next.conversationId
+        && data.conversations[request.conversationId]?.nativeSessionRef === options.nativeHistoryRef;
+      if (request.status !== 'generating' && next && next.body !== request.body && !nativeRefresh)
         throw new Error('原始问答不可改写，请编辑独立卡片草稿。');
+    }
     revision++;
     let journalError: string | undefined;
     try {
@@ -328,7 +335,10 @@ export const workspace = {
       const session = data.sessions[scopeKey(data.scope)];
       if (target === 'main') {
         const previous = session.history.pop();
-        if (previous) session.active = previous;
+        if (previous && (previous.kind === 'collection' || resourceExists(data, previous))) {
+          session.active = previous;
+          if (previous.kind !== 'collection' && !session.openItems.some(ref => sameRef(ref, previous))) session.openItems.push(previous);
+        }
         session.anchor = undefined;
       } else {
         session.panel.ref = session.panel.history.pop();
@@ -451,7 +461,9 @@ export const workspace = {
     const id = uid('conversation');
     workspace.updateData(data => {
       if (!data.researches[researchId]) throw new Error('研究不存在。');
-      data.conversations[id] = { id, researchId, title: '新的阅读对话', contextIds: [], requestIds: [], input: '', historyRange: 'all', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      const current = getActiveConversation(data, researchId);
+      const connectionId = current?.connectionId ?? (data.sessions[researchId].panel.aiMode === 'demo' ? 'demo' : 'model');
+      data.conversations[id] = { id, researchId, connectionId, title: '新的阅读对话', contextIds: [], requestIds: [], input: '', historyRange: 'all', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       data.sessions[researchId].activeConversationId = id;
       data.sessions[researchId].panel.aiView = 'chat';
     });
@@ -461,8 +473,10 @@ export const workspace = {
     workspace.updateData(data => {
       const conversation = data.conversations[conversationId];
       if (!conversation || conversation.researchId !== researchId) throw new Error('会话不属于该研究。');
+      conversation.connectionId ??= conversation.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1)?.mode === 'demo' ? 'demo' : 'model';
       data.sessions[researchId].activeConversationId = conversationId;
       data.sessions[researchId].panel.aiView = 'chat';
+      data.sessions[researchId].panel.aiMode = conversation.connectionId === 'demo' ? 'demo' : 'live';
     });
   },
   renameConversation(conversationId: string, title: string) {

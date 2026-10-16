@@ -360,11 +360,23 @@ h3 {
   letter-spacing: 1px;
   margin: 0 11px 10px;
 }
+.research-project-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 1px 9px;
+}
 .research-switcher {
   display: flex;
   align-items: center;
-  margin: 0 1px 13px;
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
   gap: 8px;
+  border-radius: 6px;
+}
+.research-switcher:hover {
+  background: #e7ede6;
 }
 .research-dot {
   width: 7px;
@@ -380,15 +392,18 @@ h3 {
   border: 0;
   background: none;
   appearance: none;
-  padding: 7px 0;
+  padding: 10px 0;
   color: #56645d;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 .research-switcher > svg {
   color: #a4acb0;
+  flex-shrink: 0;
+  margin-right: 5px;
 }
 .research-nav .nav-item {
   padding-left: 15px;
@@ -1359,6 +1374,21 @@ h3 {
   }
   .sidebar-collapsed .sidebar {
     display: none;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1200px) {
+  .inspector {
+    position: relative;
+    width: min(var(--panel-width), 42vw);
+    box-shadow: none;
+  }
+  .main-column {
+    width: auto;
+  }
+}
+@media (min-width: 1024px) {
+  .ai-panel-open .inspector {
+    width: min(max(var(--panel-width), 420px), calc(100vw - 560px));
   }
 }
 .navigation-backdrop {

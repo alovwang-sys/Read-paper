@@ -20,6 +20,25 @@ export type Research = {
   documentIds: string[];
   cardIds: string[];
   createdAt: string;
+  directory?: ResearchDirectory;
+};
+export type ResearchDirectory = { id: string; projectId: string; path: string; name?: string };
+export type NativeAgentId = 'codex' | 'claude' | 'opencode';
+export type NativeSessionSummary = {
+  id: string;
+  agentId: NativeAgentId;
+  title: string;
+  updatedAt: string;
+  state: 'idle' | 'busy' | 'unknown';
+  canResume: boolean;
+  reason?: string;
+  nativeSessionId?: string;
+  origin?: 'native' | 'read-paper';
+};
+export type NativeSessionSnapshot = NativeSessionSummary & {
+  messages: { id: string; role: 'user' | 'assistant'; text: string; createdAt?: string; requestId?: string; events?: AgentEvent[] }[];
+  truncated?: boolean;
+  archiveError?: string;
 };
 export type PaperDocument = {
   id: string;
@@ -72,6 +91,7 @@ export type CardProvenance = {
   context: ContextSnapshot[];
   createdAt: string;
   model?: string;
+  connectionId?: AIConnectionId;
   generationRequestIds: string[];
   incomplete?: boolean;
 };
@@ -172,6 +192,46 @@ export type AIHistoryTurn = {
   evidenceIds: string[];
   context: ContextSnapshot[];
 };
+export type AIConnectionId = 'model' | 'demo' | 'codex' | 'claude' | 'opencode';
+export type AgentSkill = { id: string; name: string; description: string; enabled: boolean; disabledReason?: string };
+export type CodexAccess = 'read-only' | 'workspace-write' | 'full-access';
+export type CodexSettings = { model?: string; mode?: 'chat' | 'plan'; effort?: string; access?: CodexAccess };
+export type CodexCapabilities = {
+  skills: AgentSkill[];
+  models: { id: string; name: string; isDefault?: boolean; reasoningEfforts?: { effort: string; description: string }[]; defaultReasoningEffort?: string }[];
+  plan: boolean;
+  accessModes?: CodexAccess[];
+};
+export type AgentInteraction = {
+  id: string;
+  kind: 'approval' | 'question';
+  title: string;
+  detail?: string;
+  command?: string;
+  questions?: { id: string; header?: string; question: string; options: { label: string; description?: string }[]; allowOther?: boolean }[];
+  status: 'pending' | 'answered' | 'denied' | 'expired';
+  answerDrafts?: Record<string, string[]>;
+};
+export type AgentReply = { decision: 'allowOnce' | 'deny' } | { answers: Record<string, string[]> };
+export type AgentEvent = {
+  kind: 'tool' | 'status' | 'permission';
+  text: string;
+  id?: string;
+  toolName?: string;
+  command?: string;
+  output?: string;
+  status?: 'running' | 'done' | 'error';
+  exitCode?: number;
+};
+export type AgentConnection = {
+  id: 'codex' | 'claude' | 'opencode';
+  name: string;
+  state: 'ready' | 'not-installed' | 'needs-auth' | 'error';
+  version?: string;
+  detail?: string;
+  installation?: { url: string; label: string; command?: string };
+  capabilities: { images: boolean; tools: boolean; resume: boolean; permissions: 'read-only' };
+};
 export type AIRequest = {
   id: string;
   researchId: string;
@@ -195,6 +255,14 @@ export type AIRequest = {
   legacy?: boolean;
   validationError?: string;
   draftId?: string;
+  connectionId?: AIConnectionId;
+  nativeSessionId?: string;
+  nativeImported?: boolean;
+  nativeMessageId?: string;
+  events?: AgentEvent[];
+  skills?: AgentSkill[];
+  codex?: CodexSettings;
+  interactions?: AgentInteraction[];
 };
 export type Conversation = {
   id: string;
@@ -208,9 +276,20 @@ export type Conversation = {
   archived?: boolean;
   historyRange?: 'all' | 'latest' | 'none';
   scrollTop?: number;
+  connectionId?: AIConnectionId;
+  nativeSessionId?: string;
+  nativeSessionRef?: string;
+  nativeState?: 'idle' | 'busy' | 'unknown';
+  nativeCanResume?: boolean;
+  nativeReason?: string;
+  nativeImported?: boolean;
+  sentContext?: ContextSnapshot[];
+  skills?: AgentSkill[];
+  codex?: CodexSettings;
 };
 export type WorkspaceData = {
   schemaVersion: 2;
+  agentWorkspaceId?: string;
   researches: Record<string, Research>;
   documents: Record<string, PaperDocument>;
   evidence: Record<string, Evidence>;

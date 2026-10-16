@@ -19,7 +19,7 @@ import { TextLayer, type PDFDocumentProxy, type RenderTask } from 'pdfjs-dist';
 import type { ResourceAnchor } from '../../domain/types';
 import { scopeKey, useWorkspace } from '../../services/workspace';
 import { loadPdfDocument } from '../../services/pdf';
-import { demoResponder, getAIConfig, submitAI } from '../../services/ai';
+import { getAIConfig, submitAI } from '../../services/ai';
 import { contentHash, putAsset } from '../../data/storage';
 import { ImportPDFButton } from './ImportPDFButton';
 import { cropRegion, regionFromPoints, rotateRegion, validRegion, type RegionRect } from './region';
@@ -512,8 +512,7 @@ export function PdfReader({
         setPendingAction(undefined);
         if (mode === 'explain' && selectedResearchId) {
           const conversation = actions.getActiveConversation(selectedResearchId);
-          const demo = actions.getState().data.sessions[selectedResearchId].panel.aiMode === 'demo';
-          await submitAI(selectedResearchId, conversation.id, explanationPrompt, demo ? demoResponder : undefined);
+          await submitAI(selectedResearchId, conversation.id, explanationPrompt);
         } else actions.notice('已加入当前对话，尚未发送；请在 AI 输入区填写问题。');
         window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('.reading-ai textarea[aria-label="向 AI 提问"]')?.focus(), 0);
       } else {

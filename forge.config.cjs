@@ -12,8 +12,9 @@ module.exports = {
     ignore: (file) => {
       const name = file.replaceAll('\\', '/');
       if (!name) return false;
+      if (/(?:^|\/)\.env[^/]*(?:\/|$)/.test(name)) return true;
       if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(name)) return true;
-      return !/^\/(?:package\.json$|dist(?:\/|$)|desktop(?:\/|$)|server\/ai\.mjs$|server$|node_modules(?:\/|$))/.test(name);
+      return !/^\/(?:package\.json$|dist(?:\/|$)|desktop(?:\/|$)|server\/(?:ai|agents|codex-runtime|claude-runtime|opencode-runtime|projects|tikhub-tools)\.mjs$|server$|node_modules(?:\/|$))/.test(name);
     },
   },
   makers: [

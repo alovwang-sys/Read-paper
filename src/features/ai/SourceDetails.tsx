@@ -79,7 +79,7 @@ export function ContextDetails({ items }: { items: ContextSnapshot[] }) {
                       { kind: 'document', id: item.documentId },
                       {
                         scope: data.scope,
-                        target: 'inspector',
+                        target: 'main',
                         anchor: {
                           evidenceId: anchorMatches
                             ? item.evidenceId

@@ -10,14 +10,17 @@ export function canWriteClipboard({ contents, mainContents, permission, details,
 }
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.pdf': 'application/pdf', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.wasm': 'application/wasm' };
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'";
+const readableAPI = new Set(['/api/ai/config', '/api/ai/agents', '/api/ai/agents/codex/capabilities']);
+const writableAPI = new Set(['/api/ai/chat', '/api/ai/agents/run', '/api/ai/agents/respond', '/api/ai/agents/stop',
+  ...['browse', 'preview', 'bind', 'status', 'list', 'read'].map(action => `/api/ai/agents/projects/${action}`)]);
 
 export function createAppProtocol({ distDirectory, desktopDirectory, getAI, fetchImpl = fetch }) {
   return async (request) => {
     const url = new URL(request.url);
     if (url.protocol !== 'papertrail:' || url.hostname !== 'app' || url.port || url.username || url.password) return new Response('Forbidden', { status: 403 });
     if (url.pathname.startsWith('/api/')) {
-      const allowed = (url.pathname === '/api/ai/config' && request.method === 'GET') || (url.pathname === '/api/ai/chat' && request.method === 'POST');
-      if (!allowed || url.search) return new Response('Not found', { status: 404 });
+      const allowed = request.method === 'GET' && readableAPI.has(url.pathname) || request.method === 'POST' && writableAPI.has(url.pathname);
+      if (!allowed || url.search || url.hash) return new Response('Not found', { status: 404 });
       const ai = getAI();
       if (!ai) return Response.json({ error: '模型连接正在更新，请稍后重试。' }, { status: 503 });
       try {

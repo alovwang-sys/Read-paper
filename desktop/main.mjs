@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, safeStorage, shell } from 'electron';
 import squirrelStartup from 'electron-squirrel-startup';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { startDesktopAI } from './local-ai.mjs';
@@ -21,6 +21,14 @@ let closing;
 let closeAllowed = false;
 let closeTimer;
 let closeDialogOpen = false;
+
+function runtimeEnvironment() {
+  const home = app.getPath('home');
+  // Finder does not load shell startup files; include common native CLI install locations privately.
+  const paths = [...(process.env.PATH || '').split(delimiter).filter(Boolean), ...(process.platform === 'darwin'
+    ? ['/opt/homebrew/bin', '/usr/local/bin', join(home, '.local/bin'), join(home, '.opencode/bin'), join(home, '.local/node/bin')] : [])];
+  return { ...process.env, ...store.environment(), HOME: process.env.HOME || home, PATH: [...new Set(paths)].join(delimiter), AI_AGENT_STATE_DIR: join(app.getPath('userData'), 'agents') };
+}
 
 async function unconfirmedClose(detail) {
   if (!mainWindow || mainWindow.isDestroyed() || closeDialogOpen) return;
@@ -104,7 +112,7 @@ else {
   await mkdir(app.getPath('userData'), { recursive: true });
   store = createSettingsStore(app.getPath('userData'), safeStorage);
   try { await store.load(); } catch (error) { dialog.showErrorBox('模型设置需要重新配置', error.message); }
-  ai = await startDesktopAI({ env: store.environment() });
+  ai = await startDesktopAI({ env: runtimeEnvironment() });
   protocol.handle('papertrail', createAppProtocol({ distDirectory: join(directory, '..', 'dist'), desktopDirectory: directory, getAI: () => ai }));
   ipcMain.handle('papertrail:open-ai-settings', event => {
     if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面打开设置。');
@@ -117,7 +125,7 @@ else {
   ipcMain.handle('papertrail:save-ai-settings', async (event, input) => {
     if (!trusted(event, settingsWindow, SETTINGS_URL)) throw new Error('不允许修改设置。');
     const summary = await store.save(input);
-    const next = await startDesktopAI({ env: store.environment() });
+    const next = await startDesktopAI({ env: runtimeEnvironment() });
     const previous = ai;
     ai = next;
     await previous?.stop();

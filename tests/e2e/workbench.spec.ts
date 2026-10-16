@@ -452,7 +452,8 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
       await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
   }
   await expect(panel(page).locator('.ai-material')).toHaveCount(2);
-  await panel(page).getByLabel('AI 运行模式').selectOption('demo');
+  await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+  await panel(page).getByRole('button', { name: '演示模式', exact: true }).click();
   // A longer deterministic reply leaves time to switch research during streaming.
   const question =
     'E2E 比较相关性与追溯性。' +
@@ -462,7 +463,7 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
     .getByRole('button', { name: '发送问题', exact: true })
     .click();
   await expect(
-    panel(page).getByText('正在回答…', { exact: true }),
+    panel(page).getByRole('button', { name: '停止生成', exact: true }),
   ).toBeVisible();
   await expect
     .poll(async () => Object.keys((await data(page)).requests).length)

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAppProtocol, canWriteClipboard, APP_URL, APP_ORIGIN } from './protocol.mjs';
@@ -37,10 +37,42 @@ test('AI代理只注入主进程token，不转发Origin/任意头且保留流式
   controller.abort();
   assert.equal(received.options.signal.aborted, true);
 });
+test('桌面原生助手与项目接口按路径和方法逐项放行，未知接口不进入本机服务', async () => {
+  const calls = [];
+  const handler = createAppProtocol({ distDirectory: '.', desktopDirectory: '.', getAI: () => ({ baseURL: 'http://127.0.0.1:1234', token: 'private-agent-token' }), fetchImpl: async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({ ready: true });
+  } });
+  const getPaths = ['/api/ai/agents', '/api/ai/agents/codex/capabilities'];
+  const postPaths = ['/api/ai/agents/run', '/api/ai/agents/respond', '/api/ai/agents/stop', ...['browse', 'preview', 'bind', 'status', 'list', 'read'].map(action => `/api/ai/agents/projects/${action}`)];
+  for (const method of ['GET', 'POST']) for (const path of method === 'GET' ? getPaths : postPaths) {
+    const response = await handler(new Request(`papertrail://app${path}`, { method, ...(method === 'POST' ? { body: '{"researchId":"fixture"}' } : {}), headers: { Origin: 'https://untrusted.example', Authorization: 'never-forward' } }));
+    assert.equal(response.status, 200, path);
+    assert.equal(calls.at(-1).url, `http://127.0.0.1:1234${path}`);
+    assert.deepEqual(calls.at(-1).options.headers, { 'X-Papertrail-Token': 'private-agent-token', ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) });
+    assert.equal((await handler(new Request(`papertrail://app${path}`, { method: method === 'POST' ? 'GET' : 'POST' }))).status, 404, `${path} wrong method`);
+    assert.equal((await handler(new Request(`papertrail://app${path}?directory=/private`, { method }))).status, 404, `${path} query`);
+  }
+  const permitted = calls.length;
+  for (const path of ['/api/ai/agents/arbitrary', '/api/ai/agents/projects/delete', '/api/ai/agents/projects/read/extra', '/api/ai/agents/probe', '/api/ai/agents/codex/capabilities/extra']) assert.equal((await handler(new Request(`papertrail://app${path}`, { method: 'POST', body: '{}' }))).status, 404, path);
+  assert.equal(calls.length, permitted);
+});
 test('安装包白名单排除.env、真实材料、测试和Git文件', () => {
   const ignore = config.packagerConfig.ignore;
-  for (const file of ['/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', '/server/ai.mjs', '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
-  for (const file of ['/.env.local', '/.git/config', '/docs/private.pdf', '/tests/fixtures/a.pdf', '/server/ai.test.mjs', '/desktop/settings.test.mjs', '/README.md', '/package-lock.json']) assert.equal(ignore(file), true, file);
+  for (const file of ['/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', ...['ai', 'agents', 'codex-runtime', 'claude-runtime', 'opencode-runtime', 'projects', 'tikhub-tools'].map(name => `/server/${name}.mjs`), '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
+  for (const file of ['/.env.local', '/desktop/.env.local', '/dist/.env', '/.git/config', '/docs/private.pdf', '/tests/fixtures/a.pdf', '/server/ai.test.mjs', '/server/private.mjs', '/desktop/settings.test.mjs', '/README.md', '/package-lock.json']) assert.equal(ignore(file), true, file);
+});
+test('生产服务的相对模块依赖都包含在安装包中', async () => {
+  const visited = new Set();
+  async function visit(url) {
+    if (visited.has(url.href)) return;
+    visited.add(url.href);
+    assert.equal(config.packagerConfig.ignore(`/server/${url.pathname.split('/').at(-1)}`), false, url.pathname);
+    const source = await readFile(url, 'utf8');
+    for (const match of source.matchAll(/\bfrom\s+['"](.\/[^'"]+)['"]/g)) await visit(new URL(match[1], url));
+  }
+  await visit(new URL('../server/ai.mjs', import.meta.url));
+  assert.equal(visited.size, 7);
 });
 test('仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝', () => {
   const contents = { getURL: () => APP_URL, isDestroyed: () => false };

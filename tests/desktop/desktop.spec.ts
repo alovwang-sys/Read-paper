@@ -185,7 +185,8 @@ test('生成过程中退出保留已收到的文字与原研究归属', async ()
     application = session.application;
     let page = session.page;
     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
-    await panel(page).getByLabel('AI 运行模式').selectOption('demo');
+    await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+    await panel(page).getByRole('button', { name: '演示模式', exact: true }).click();
     await panel(page).getByLabel('向 AI 提问').fill('退出时保留收到的文字。'.repeat(150));
     await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
     await expect(panel(page).getByText(/演示回答：/).first()).toBeVisible();
@@ -260,7 +261,8 @@ test('复制权限只授予工作台写入，设置窗口和读取均拒绝', as
     if (process.env.CI) {
       // Only touch the clipboard on disposable CI machines, never the user's clipboard.
       await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
-      await panel(page).getByLabel('AI 运行模式').selectOption('demo');
+      await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+      await panel(page).getByRole('button', { name: '演示模式', exact: true }).click();
       await panel(page).getByLabel('向 AI 提问').fill('验证复制回答');
       await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
       await panel(page).getByRole('button', { name: '复制', exact: true }).click();

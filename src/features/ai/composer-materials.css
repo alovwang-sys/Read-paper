@@ -1,0 +1,19 @@
+.composer-add-material { display: inline-flex; align-items: center; justify-content: center; width: 36px; min-height: 36px; flex-shrink: 0; border-radius: 7px; color: #52695d; }
+.composer-add-material:hover { background: #eef3ee; }
+.composer-materials-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 20px; border: 1px solid #dce5da; border-radius: 14px; color: #35503f; background: #fcfdfb; box-shadow: 0 20px 70px #24392a24; font-family: inherit; font-size: 13px; line-height: 1.65; }
+.composer-materials-dialog::backdrop { background: #23382e4a; }
+.composer-materials-dialog header, .composer-materials-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.composer-materials-dialog h2 { margin: 0; font-size: 18px; }
+.composer-materials-dialog button { min-height: 36px; border-radius: 6px; padding: 6px 9px; font: inherit; color: inherit; }
+.composer-materials-dialog button:hover:enabled { background: #eaf1e8; }
+.composer-materials-dialog > p { margin: 12px 0; color: #65786a; }
+.composer-materials-dialog > input { width: 100%; padding: 9px 10px; border: 1px solid #dce5da; border-radius: 7px; color: inherit; background: white; font: inherit; }
+.composer-material-options { max-height: 300px; overflow: auto; margin: 12px 0; }
+.composer-material-options > button { display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 12px; text-align: left; border-bottom: 1px solid #e3e9df; }
+.composer-material-options > button > span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.composer-material-options small { display: flex; align-items: center; gap: 4px; color: #287364; font-size: 12px; }
+.composer-material-options button:disabled { opacity: .65; }
+.composer-material-options > p { margin: 18px 8px; }
+.composer-materials-dialog footer { border-top: 1px solid #dfe6dc; padding-top: 14px; }
+.composer-materials-dialog footer > button { background: #287364; color: white; min-width: 72px; }
+.composer-materials-dialog :focus-visible, .composer-add-material:focus-visible { outline: 2px solid #287364; outline-offset: 2px; }

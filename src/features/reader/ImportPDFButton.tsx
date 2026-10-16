@@ -4,7 +4,7 @@ import { useWorkspace } from '../../services/workspace';
 import { importPdf } from '../../services/pdf';
 import './reader.css';
 
-export function ImportPDFButton({ compact = false }: { compact?: boolean }) {
+export function ImportPDFButton({ compact = false, onImported }: { compact?: boolean; onImported?: (documentId: string) => void }) {
   const { data } = useWorkspace();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -39,7 +39,8 @@ export function ImportPDFButton({ compact = false }: { compact?: boolean }) {
           setBusy(true);
           setError('');
           try {
-            await importPdf(file, scope);
+            const documentId = await importPdf(file, scope);
+            onImported?.(documentId);
           } catch (error) {
             setError(
               error instanceof Error

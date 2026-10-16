@@ -1,0 +1,72 @@
+{
+  "type": "交互原型 · 示例数据",
+  "testedAt": "2026-10-16T16:25:43.009Z",
+  "url": "http://127.0.0.1:5173/docs/agents/project-sessions-prototype.html",
+  "checks": [
+    {
+      "check": "layout-1440",
+      "passed": true,
+      "width": 1440,
+      "scroll": 1440,
+      "columns": "208px 812px 420px",
+      "center": 812,
+      "panel": 420,
+      "composer": 900
+    },
+    {
+      "check": "layout-1280",
+      "passed": true,
+      "width": 1280,
+      "scroll": 1280,
+      "columns": "184px 676px 420px",
+      "center": 676,
+      "panel": 420,
+      "composer": 800
+    },
+    {
+      "check": "layout-1024",
+      "passed": true,
+      "width": 1024,
+      "scroll": 1024,
+      "columns": "56px 548px 420px",
+      "center": 548,
+      "panel": 420,
+      "composer": 800
+    },
+    {
+      "check": "history-search-filter-open-native",
+      "passed": true
+    },
+    {
+      "check": "new-chat-send-agent-drafts",
+      "passed": true
+    },
+    {
+      "check": "old-conversations-and-input-preserved",
+      "passed": true
+    },
+    {
+      "check": "external-busy-readonly-send-handoff-escape-citation",
+      "passed": true
+    },
+    {
+      "check": "native-add-refresh-and-browser-reload",
+      "passed": true
+    },
+    {
+      "check": "history-empty-loading-error-retry",
+      "passed": true
+    },
+    {
+      "check": "directory-preview-cancel-save-escape-focus",
+      "passed": true
+    }
+  ],
+  "pageErrors": [],
+  "limitations": [
+    "无真实模型调用、目录授权或文件读写",
+    "无原生应用启动或真实会话同步",
+    "论文为固定排版样例，翻页仅模拟页码",
+    "仅验证代表状态，非生产端到端验收"
+  ]
+}

@@ -1,0 +1,9 @@
+.reading-ai .ai-voice-input { display: contents; }
+.reading-ai .ai-voice-button { width: 36px; height: 36px; flex-shrink: 0; }
+.reading-ai .ai-voice-button[aria-expanded="true"] { color: var(--ai-green); background: #edf5f0; }
+.reading-ai .ai-voice-hint { display: grid; grid-template-columns: minmax(0, 1fr) 24px; gap: 8px; flex: 1 0 100%; order: 10; min-width: 0; padding: 10px; border: 1px solid var(--ai-border); border-radius: 8px; background: #f6f9f7; color: var(--ai-muted); font-size: 12px; line-height: 1.65; text-align: left; }
+.reading-ai .ai-voice-hint strong { color: var(--ai-ink); font-size: 12px; font-weight: 600; }
+.reading-ai .ai-voice-hint p { margin: 3px 0; }
+.reading-ai .ai-voice-hint small { display: block; margin-top: 6px; font-size: 11px; }
+.reading-ai .ai-voice-dismiss { display: grid; place-items: center; width: 24px; height: 24px; min-height: 24px; border-radius: 5px; padding: 0; color: var(--ai-muted); }
+.reading-ai .ai-voice-dismiss:hover { color: var(--ai-ink); background: #e6eee8; }

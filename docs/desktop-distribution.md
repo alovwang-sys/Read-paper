@@ -50,7 +50,7 @@ CI 只使用 `contents: read`，checkout 不保留认证凭据；不使用 `pull
 
 推荐流程：**短期功能分支 → PR → CI 全通过 → 合并 main → 网页运行发行工作流 → 完整草稿 → 核对实际验证 → 发布 Pre-release**。版本 tag 固定来源，Release 提供面向用户的版本说明和下载附件。
 
-1. 在短期分支修改 `package.json` 的版本并同步 `package-lock.json`，经 PR 合入 `main`。当前版本为 `0.1.0`，首次发行输入 `v0.1.0`，无需重复改版本；后续修复可先运行 `npm version 0.1.1 --no-git-tag-version` 再提交。
+1. 在短期分支修改 `package.json` 的版本并同步 `package-lock.json`，经 PR 合入 `main`。当前版本为 `0.1.1`，发行输入 `v0.1.1`；后续修复先运行 `npm version <新版本> --no-git-tag-version` 再提交。
 2. 打开仓库 **Actions → Desktop release draft → Run workflow**，工作流分支选择 **main**，tag 输入 `v<package.json.version>`，然后运行。若 tag 不存在，工作流将它创建在**本次工作流启动时的 main SHA**，后续 main 前进不会改变本次来源。已有 tag 不移动、不重建；输入旧 tag 可重跑其原提交，不要求它等于最新 main。手动运行不接受功能分支作为发行源。
 3. tag 的 `v` 后必须与所指提交的 `package.json.version` 完全相同。工作流检查该提交属于 `origin/main` 历史，再对固定 SHA 重跑全部检查、浏览器 E2E、三目标打包及打包应用 E2E。`v0.1.0-beta.1` 等 tag 也可使用，但该提交中的包版本必须同为 `0.1.0-beta.1`。版本号是否带预发布后缀，与 GitHub 的 Pre-release 标记分别管理；`v0.1.0` 也可作为技术预览发布。
 4. 完整 CI 和三个平台全部成功后，由单个汇总 job 收集同一次 run 的全部安装文件，生成 `SHA256SUMS`，并创建或更新一个 **Draft + Pre-release**。汇总严格核对版本、平台和架构对应的七个 Forge 文件名，拒绝意外 ZIP / EXE；写入前通过 GitHub refs API 解引用 annotated tag 并再次核对固定 SHA，上传后复核远程 tag、完整附件集合、大小和 SHA-256。不调用 Forge 的自动发布，不由各平台各自写 Release。

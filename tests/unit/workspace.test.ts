@@ -125,6 +125,23 @@ describe('工作台共享实体与会话', () => {
     workspace.switchResearch('research-a');
     expect(workspace.getSession().active.id).toBe('paper-a');
   });
+  it('主区返回重新打开已关闭的历史资源，复用原阅读位置且标签不重复', () => {
+    const scope = { kind: 'research' as const, researchId: 'research-a' };
+    const first = { kind: 'document' as const, id: 'paper-a' };
+    const second = { kind: 'document' as const, id: 'paper-b' };
+    workspace.openResource(first, { scope, target: 'main' });
+    workspace.setReader(first.id, { pageIndex: 2, scale: 1.4 });
+    workspace.openResource(second, { scope, target: 'main' });
+    workspace.closeResource(first);
+    expect(workspace.getSession().openItems).not.toContainEqual(first);
+    workspace.back('main');
+    expect(workspace.getSession().active).toEqual(first);
+    expect(workspace.getSession().openItems.filter(ref => ref.id === first.id)).toHaveLength(1);
+    expect(workspace.getSession().readers['main:paper-a']).toEqual({ pageIndex: 2, scale: 1.4 });
+    workspace.openResource(second, { scope, target: 'main' });
+    workspace.back('main');
+    expect(workspace.getSession().openItems.filter(ref => ref.id === first.id)).toHaveLength(1);
+  });
   it('来源页索引不合法时拒绝建立证据', () => {
     expect(() =>
       workspace.createEvidence({
