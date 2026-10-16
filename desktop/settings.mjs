@@ -22,14 +22,14 @@ export function createSettingsStore(directory, encryption) {
       let nextKey = '';
       try {
         if (saved.encryptedKey) nextKey = encryption.decryptString(Buffer.from(saved.encryptedKey, 'base64'));
-        validateAISettings({ AI_BASE_URL: next.baseURL, AI_MODEL: next.model, AI_IMAGES: String(next.images), AI_API_KEY: nextKey });
-      } catch { throw new Error('无法解密或验证模型设置。请在此电脑重新配置密钥。'); }
+      } catch { throw new Error('无法解密模型密钥。请在此电脑重新配置密钥。'); }
+      validateAISettings({ AI_BASE_URL: next.baseURL, AI_MODEL: next.model, AI_IMAGES: String(next.images), AI_API_KEY: nextKey });
       settings = next;
       key = nextKey;
     },
     async save(input) {
       if (!input || typeof input !== 'object' || typeof input.baseURL !== 'string' || typeof input.model !== 'string' || typeof input.images !== 'boolean'
-        || (input.key !== undefined && (typeof input.key !== 'string' || input.key.length > 4096 || /[\r\n]/.test(input.key)))) throw new Error('模型设置格式不正确。');
+        || (input.key !== undefined && (typeof input.key !== 'string' || input.key.length > 4096))) throw new Error('模型设置格式不正确。');
       const next = { baseURL: input.baseURL.trim(), model: input.model.trim(), images: input.images };
       const nextKey = input.removeKey === true ? '' : input.key?.trim() || key;
       validateAISettings({ AI_BASE_URL: next.baseURL, AI_MODEL: next.model, AI_IMAGES: String(next.images), AI_API_KEY: nextKey });

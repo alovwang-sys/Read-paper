@@ -33,9 +33,13 @@ function settings(env) {
     throw new Error('AI_BASE_URL 必须是无认证信息与查询参数的 HTTPS 地址。');
   }
   if (!/^[a-zA-Z0-9._:/-]{1,100}$/.test(model)) throw new Error('AI_MODEL 格式不正确。');
+  const key = env.AI_API_KEY?.trim() || '';
+  if (key.length > 4096 || /[^\x21-\x7E]/.test(key)) {
+    throw new Error('API 密钥格式不正确：请只粘贴控制台密钥，不要包含说明文字、内部空白或非英文字符。');
+  }
   return {
     model, port,
-    key: env.AI_API_KEY?.trim() || '',
+    key,
     endpoint: `${base.href.replace(/\/$/, '')}/chat/completions`,
     images: env.AI_IMAGES === 'true',
     ports: new Set([port, appPort, 5173, 5174, 4173]),

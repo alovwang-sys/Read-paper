@@ -93,6 +93,30 @@ test('settings validation returns public capabilities without credentials', () =
   assert.throws(() => validateAISettings({ AI_BASE_URL: `http://${secret}.example` }), (error) => !error.message.includes(secret));
 });
 
+test('API keys reject non-visible ASCII, internal whitespace and excessive length before making a request', () => {
+  const invalidKeys = ['synthetic-中文', 'synthetic-🔑', 'synthetic-\u200bkey', 'synthetic-é', 'synthetic-\u00a0key', 'synthetic key', 'synthetic\tkey', 'synthetic\nkey', 'synthetic\rkey', 'synthetic\u0000key', 'synthetic\u007fkey', 'x'.repeat(4097)];
+  for (const key of invalidKeys) {
+    const sanitized = error => error instanceof Error && /密钥|AI_API_KEY/.test(error.message) && !error.message.includes(key);
+    assert.throws(() => validateAISettings({ AI_API_KEY: key }), sanitized);
+    assert.throws(() => createAIHandler({ env: { AI_API_KEY: key } }), sanitized);
+  }
+  assert.equal(validateAISettings({ AI_API_KEY: 'x'.repeat(4096) }).configured, true);
+  assert.equal(validateAISettings({ AI_API_KEY: ' \t\r\n ' }).configured, false);
+});
+
+test('API keys trim surrounding whitespace before forming the upstream authorization header', async () => {
+  let calls = 0;
+  await withServer({ env: { AI_API_KEY: ` \t\r\n${secret}\r\n ` }, fetchImpl: async (_url, options) => {
+    calls += 1;
+    assert.equal(options.headers.Authorization === `Bearer ${secret}`, true);
+    assert.doesNotThrow(() => new Headers(options.headers));
+    return response();
+  } }, async (port) => {
+    assert.equal((await call(port)).status, 200);
+  });
+  assert.equal(calls, 1);
+});
+
 test('optional desktop token protects both endpoints and retains caller validation', async () => {
   const localToken = 'desktop-session-private-token';
   let calls = 0;
