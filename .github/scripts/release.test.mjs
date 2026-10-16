@@ -152,7 +152,21 @@ test('an already published release is never mutated', async t => {
   assert(calls.every(([, method]) => method === 'GET'));
 });
 
-test('a single draft contains every asset and is never automatically published', async t => {
+test('a detached draft for the requested version blocks duplicate creation', async t => {
+  const { source, destination } = fixture(t);
+  prepareAssets(source, destination, 'v0.1.0');
+  const detached = { id: 7, tag_name: 'untagged-9e1df116753ed65036b0', name: 'Papertrail v0.1.0 — unsigned preview', draft: true, body: `Source commit: ${'a'.repeat(40)}`, assets: [] };
+  const writes = [];
+  const request = async (url, options) => {
+    if (options.method !== 'GET') writes.push(options.method);
+    if (url.includes('/git/ref/')) return Response.json({ object: { type: 'commit', sha: 'a'.repeat(40) } });
+    return Response.json(url.includes('per_page=') ? [detached] : detached);
+  };
+  await assert.rejects(updateDraft({ tag: 'v0.1.0', sha: 'a'.repeat(40), repository: 'owner/repo', token: 'test', directory: destination, request }), /lost its version tag/);
+  assert.deepEqual(writes, []);
+});
+
+test('a single draft preserves its tag through metadata updates and is never automatically published', async t => {
   const { source, destination } = fixture(t);
   prepareAssets(source, destination, 'v0.1.0');
   let release;
@@ -171,12 +185,15 @@ test('a single draft contains every asset and is never automatically published',
       const change = JSON.parse(options.body);
       assert(!Object.hasOwn(change, 'draft'));
       Object.assign(release, change);
+      // GitHub removes the draft's tag when PATCH omits tag_name (gh release edit preserves it).
+      if (!Object.hasOwn(change, 'tag_name')) release.tag_name = 'untagged-9e1df116753ed65036b0';
     }
     return Response.json(release);
   };
   const url = await updateDraft({ tag: 'v0.1.0', sha: 'a'.repeat(40), repository: 'owner/repo', token: 'test', directory: destination, request });
   assert.equal(release.draft, true);
   assert.equal(release.prerelease, true);
+  assert.equal(release.tag_name, 'v0.1.0');
   assert.equal(release.assets.length, 8);
   assert.match(release.body, /Unsigned preview/);
   assert.match(url, /\/releases\/tag\/v0.1.0$/);

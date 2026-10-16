@@ -150,6 +150,7 @@ export async function updateDraft({ tag, sha, repository, token, directory, requ
   let release;
   for (let page = 1; ; page++) {
     const releases = await api(`/releases?per_page=100&page=${page}`);
+    assert(!releases.some(item => item.draft && item.name === `Papertrail ${tag} — unsigned preview` && item.tag_name !== tag), `Existing preview draft for ${tag} lost its version tag; restore its release tag before retrying`);
     release = releases.find(item => item.tag_name === tag);
     if (release || releases.length < 100) break;
   }
@@ -172,7 +173,8 @@ export async function updateDraft({ tag, sha, repository, token, directory, requ
   };
   await requireDraft();
   // Never send draft:true to PATCH: a concurrent manual publish must not be reverted.
-  await api(`/releases/${release.id}`, { method: 'PATCH', body: metadata });
+  // GitHub removes a draft's tag when PATCH omits tag_name.
+  await api(`/releases/${release.id}`, { method: 'PATCH', body: { ...metadata, tag_name: tag } });
   for (const name of files) {
     const content = readFileSync(join(directory, name));
     const current = await requireDraft();
