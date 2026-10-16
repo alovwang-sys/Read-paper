@@ -1359,6 +1359,21 @@ h3 {
     display: none;
   }
 }
+@media (min-width: 1024px) and (max-width: 1200px) {
+  .inspector {
+    position: relative;
+    width: min(var(--panel-width), 42vw);
+    box-shadow: none;
+  }
+  .main-column {
+    width: auto;
+  }
+}
+@media (min-width: 1024px) {
+  .ai-panel-open .inspector {
+    width: min(max(var(--panel-width), 420px), calc(100vw - 560px));
+  }
+}
 .navigation-backdrop {
   position: fixed;
   inset: 0;

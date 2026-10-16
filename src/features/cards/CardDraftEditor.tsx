@@ -242,7 +242,7 @@ export function CardDraftEditor({
                         { kind: 'document', id: snapshot.documentId },
                         {
                           scope: data.scope,
-                          target: 'inspector',
+                          target: 'main',
                           anchor: {
                             evidenceId: evidence?.documentId === snapshot.documentId && evidence.pageIndex === snapshot.pageIndex && evidence.quote === snapshot.quote ? id : undefined,
                             pageIndex: snapshot.pageIndex,

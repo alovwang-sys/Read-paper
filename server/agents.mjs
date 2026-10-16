@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile, rename, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { createCodexRuntime } from './codex-runtime.mjs';
+import { createCodexRuntime, sanitizeAgentProgress } from './codex-runtime.mjs';
 import { createClaudeRuntime } from './claude-runtime.mjs';
 import { createOpenCodeRuntime } from './opencode-runtime.mjs';
 
@@ -15,6 +15,11 @@ const hash = (value) => createHash('sha256').update(value).digest('hex');
 const invalid = (message = 'Agent 请求格式不正确。') => failure(400, 'invalid_request', message);
 const failure = (status, code, message) => Object.assign(new Error(message), { status, code });
 const identityKeys = ['workspaceId', 'requestId', 'researchId', 'conversationId', 'connectionId'];
+const INSTALLATION = {
+  codex: { url: 'https://learn.chatgpt.com/docs/cli', label: 'Codex CLI 官方安装说明' },
+  claude: { url: 'https://code.claude.com/docs/en/quickstart', label: 'Claude Code CLI 官方安装说明' },
+  opencode: { url: 'https://opencode.ai/v2/docs/', label: 'OpenCode 2 CLI 官方安装说明' },
+};
 
 function validateIdentity(body) {
   if (!record(body) || identityKeys.some((key) => typeof body[key] !== 'string' || !IDS.test(body[key]))) throw invalid();
@@ -121,8 +126,8 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       let timer;
       try {
         const status = await Promise.race([adapters[id]?.probe() || Promise.resolve({ state: 'not-installed' }), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('检测超时，请在终端检查 CLI 登录与配置后重试。')), probeTimeoutMs); })]);
-        return { id, name: { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id], ...status, capabilities: { images: false, tools: status.state === 'ready', resume: true, permissions: 'read-only', ...status.capabilities } };
-      } catch { return { id, name: { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id], state: 'error', detail: '检测超时或 CLI 不可用；请在终端检查后重试。', capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } }; } finally { clearTimeout(timer); }
+        return { id, name: { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id], ...status, installation: INSTALLATION[id], capabilities: { images: false, tools: status.state === 'ready', resume: true, permissions: 'read-only', ...status.capabilities } };
+      } catch { return { id, name: { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id], state: 'error', detail: '检测超时或 CLI 不可用；请在终端检查后重试。', installation: INSTALLATION[id], capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } }; } finally { clearTimeout(timer); }
     }));
     return probes;
   }
@@ -231,7 +236,10 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
           if (controller.signal.aborted) return;
           if (event.type === 'session' && typeof event.nativeSessionId === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(event.nativeSessionId)) persist(event.nativeSessionId).then(() => send(event)).catch(() => controller.abort());
           else if (event.type === 'delta' && typeof event.text === 'string') send({ type: 'delta', text: event.text }).catch(() => controller.abort());
-          else if (event.type === 'progress' && ['tool', 'status', 'permission'].includes(event.kind) && typeof event.text === 'string') send({ type: 'progress', kind: event.kind, text: event.text.slice(0, 2000) }).catch(() => controller.abort());
+          else if (event.type === 'progress') {
+            const progress = sanitizeAgentProgress(event, env);
+            if (progress) send(progress).catch(() => controller.abort());
+          }
         },
       });
       runCompletion = run.catch(() => {});

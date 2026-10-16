@@ -174,13 +174,23 @@ export type AIHistoryTurn = {
   context: ContextSnapshot[];
 };
 export type AIConnectionId = 'model' | 'demo' | 'codex' | 'claude' | 'opencode';
-export type AgentEvent = { kind: 'tool' | 'status' | 'permission'; text: string };
+export type AgentEvent = {
+  kind: 'tool' | 'status' | 'permission';
+  text: string;
+  id?: string;
+  toolName?: string;
+  command?: string;
+  output?: string;
+  status?: 'running' | 'done' | 'error';
+  exitCode?: number;
+};
 export type AgentConnection = {
   id: 'codex' | 'claude' | 'opencode';
   name: string;
   state: 'ready' | 'not-installed' | 'needs-auth' | 'error';
   version?: string;
   detail?: string;
+  installation?: { url: string; label: string; command?: string };
   capabilities: { images: boolean; tools: boolean; resume: boolean; permissions: 'read-only' };
 };
 export type AIRequest = {

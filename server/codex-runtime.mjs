@@ -3,10 +3,53 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
+import { stripVTControlCharacters } from 'node:util';
 
 const PROFILE = 'read_paper_materials';
 const safeError = (message, code = 'agent_failed') => Object.assign(new Error(message), { code });
 const abortError = () => safeError('生成已停止。', 'stopped');
+const TOOL_TYPES = new Set(['commandExecution', 'mcpToolCall', 'fileChange', 'webSearch']);
+
+function toolText(value, env, limit) {
+  let text = stripVTControlCharacters(value).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+  const secrets = Object.entries(env).filter(([key, secret]) => /API_?KEY|TOKEN|PASSWORD|SECRET|CREDENTIAL|AUTHORIZATION|ACCESS_KEY/i.test(key) && typeof secret === 'string' && secret.length >= 4).map(([, secret]) => secret).sort((a, b) => b.length - a.length);
+  for (const secret of secrets) text = text.split(secret).join('[已隐藏凭据]');
+  text = text.replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g, '[已隐藏私钥]')
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [已隐藏凭据]')
+    .replace(/\b(?:sk-(?:ant-)?|gh[pousr]_|github_pat_|xox[baprs]-)[A-Za-z0-9_-]{8,}\b/g, '[已隐藏凭据]')
+    .replace(/((?:["']?)[A-Za-z0-9_-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|secret|password|authorization|auth[_-]?token)[A-Za-z0-9_-]*(?:["']?)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;}\]]+)/gi, '$1[已隐藏凭据]');
+  return text.slice(0, limit);
+}
+
+// Tool metadata is a separate trust boundary from the model's original answer text.
+export function sanitizeAgentProgress(event, env = process.env) {
+  if (!event || !['tool', 'status', 'permission'].includes(event.kind) || typeof event.text !== 'string') return undefined;
+  const result = { type: 'progress', kind: event.kind, text: toolText(event.text, env, 2000) };
+  if (typeof event.id === 'string' && event.id.length > 0 && event.id.length <= 200 && !/[\x00-\x1f\x7f]/.test(event.id)) result.id = event.id;
+  if (typeof event.toolName === 'string') result.toolName = toolText(event.toolName, env, 100);
+  if (typeof event.command === 'string') result.command = toolText(event.command, env, 2000);
+  if (['running', 'done', 'error'].includes(event.status)) result.status = event.status;
+  if (Number.isInteger(event.exitCode) && Math.abs(event.exitCode) <= 2_147_483_647) result.exitCode = event.exitCode;
+  if (typeof event.output === 'string') {
+    const sensitiveFile = /(?:^|[\\/\s"'=])(?:\.env(?:[.\w-]*)?|(?:config|auth)\.(?:toml|json|ya?ml)|credentials?(?:\.[\w-]+)?|\.npmrc|id_(?:rsa|ed25519))(?:$|[\s"';])/i.test(event.command || '');
+    const configDump = /["'](?:mcp_servers|model_providers|authTokens)["']\s*:|^\s*\[(?:mcp_servers|model_providers|plugins)(?:\.|\])/m.test(event.output);
+    result.output = sensitiveFile || configDump ? '[已隐藏配置或凭据文件输出]' : toolText(event.output, env, 12_000);
+  }
+  return result;
+}
+
+function toolProgress(item, completed, env) {
+  const failed = completed && (['failed', 'declined', 'cancelled', 'interrupted', 'error'].includes(item.status) || (Number.isInteger(item.exitCode) && item.exitCode !== 0));
+  const command = item.type === 'commandExecution' ? item.command
+    : item.type === 'fileChange' ? (item.changes || []).map((change) => change.path).filter((path) => typeof path === 'string').join('\n')
+      : item.type === 'webSearch' ? item.query : undefined;
+  return sanitizeAgentProgress({
+    kind: 'tool', id: item.id, toolName: item.type === 'mcpToolCall' && typeof item.tool === 'string' ? item.tool : item.type,
+    text: (item.type === 'commandExecution' ? '命令执行' : item.type === 'fileChange' ? '文件变更' : item.type === 'webSearch' ? '网页检索' : '工具调用') + (completed ? failed ? '失败' : '完成' : '中'),
+    command, status: completed ? failed ? 'error' : 'done' : 'running',
+    ...(completed && item.type === 'commandExecution' ? { output: item.aggregatedOutput, exitCode: item.exitCode } : {}),
+  }, env);
+}
 const ARGS = ['app-server', '--stdio', '-c', `default_permissions="${PROFILE}"`, '-c', 'approval_policy="never"',
   '-c', `permissions.${PROFILE}.filesystem={":minimal"="read",":project_roots"="read"}`,
   '-c', `permissions.${PROFILE}.network.enabled=false`, '-c', 'features.shell_snapshot=false',
@@ -162,19 +205,23 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, en
       completed.catch(() => {});
       const client = createCodexClient({ executable, spawnImpl, env, cwd, signal, rpcTimeoutMs, onFailure: (error) => fail(error),
         onNotification({ method, params }) {
+          if (signal?.aborted || currentTurn) return;
           if (params?.threadId && threadId && params.threadId !== threadId) return;
-          if (method === 'item/agentMessage/delta' && (!turnId || !params.turnId || params.turnId === turnId)) {
+          if (params?.turnId && turnId && params.turnId !== turnId) return;
+          if (method === 'turn/completed' && turnId && params?.turn?.id !== turnId) return;
+          if (method === 'item/agentMessage/delta') {
             body += params.delta || '';
             onEvent({ type: 'delta', text: params.delta || '' });
-          } else if (method === 'item/started' && ['commandExecution', 'mcpToolCall', 'fileChange', 'webSearch'].includes(params.item?.type)) {
-            onEvent({ type: 'progress', kind: 'tool', text: params.item.type === 'commandExecution' ? '正在只读检查已发送的材料' : `工具：${params.item.type}` });
+          } else if (['item/started', 'item/completed'].includes(method) && TOOL_TYPES.has(params?.item?.type)) {
+            onEvent(toolProgress(params.item, method === 'item/completed', env));
           } else if (method === 'turn/completed') {
             currentTurn = params.turn;
             if (params.turn.status === 'completed') finish();
             else fail(safeError(params.turn.status === 'interrupted' ? '生成已停止。' : 'Codex 未完成回答；已保留收到的内容。', params.turn.status === 'interrupted' ? 'stopped' : 'agent_failed'));
           } else if (method === 'error' && !params.willRetry) fail(safeError('Codex 运行失败；请检查登录、额度或本地配置。'));
         },
-        onRequest({ method }) {
+        onRequest({ method, params }) {
+          if (signal?.aborted || currentTurn || (params?.threadId && threadId && params.threadId !== threadId) || (params?.turnId && turnId && params.turnId !== turnId)) return undefined;
           onEvent({ type: 'progress', kind: 'permission', text: '当前连接仅允许只读材料；权限与交互请求已拒绝，请调整问题后重试。' });
           if (/commandExecution\/requestApproval|fileChange\/requestApproval/.test(method)) return { decision: 'decline' };
           if (/permissions\/requestApproval/.test(method)) return { permissions: {}, scope: 'turn' };

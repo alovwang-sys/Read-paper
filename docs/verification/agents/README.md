@@ -4,6 +4,10 @@
 
 ## 实现与能力
 
+按用户最新修正，使用桌面风格对话：用户消息靠右，完整 Markdown 回答靠左，工具过程折叠展示实际命令、状态、退出码及有界脱敏输出，底部固定输入。历史与累计范围设置默认收纳，摘要保留发送范围数量，800px 高度下为回答留出空间。没有嵌入厂商桌面窗口，不提供终端页签。未安装时给出官方运行组件安装入口，明确仅安装桌面应用不代表运行组件可用。
+
+AI 回答引用、发送材料、草稿论文依据和相关对话引用均在中央 PDF 定位；右侧回答、未发送输入、草稿、滚动位置保留。1024px 起并排，低于 1024px 为抽屉。
+
 输入区唯一助手切换入口；每个研究内的对话绑定助手，分别保留历史、材料、未发送输入和卡片草稿。切换期间原任务保持归属，历史能查看运行中任务并返回停止。保留模型直连与明确的演示模式，不静默降级。
 
 本机服务统一探测、编译显式材料、管理受控原生 session，输出正文与工具/权限事件。按工作区随机 ID、研究、会话和连接隔离映射；材料或历史范围缩小、仅当前材料、重试和重新生成开启新原生 session。卡片整理/修订使用独立任务，不把内部 JSON 整理混入聊天 session。知识写入仍由应用既有共享服务校验并幂等确认。
@@ -25,15 +29,17 @@
 ## 已运行检查
 
 - `npm run check`：通过。
-- `npm test`：74 项通过，覆盖新增助手切换、输入保留、迟到响应隔离、草稿来源及幂等、无效引用、停止、重试身份、done-only 续接和旧数据恢复。
-- `npm run test:server`：37 项通过，覆盖模型服务、本机 session 管理与 CLI 协议。
+- `npm test`：76 项通过，覆盖新增助手切换、输入保留、迟到响应隔离、草稿来源及幂等、无效引用、停止、重试身份、done-only 续接、工具生命周期合并、安装入口和旧数据恢复。
+- `npm run test:server`：42 项通过，覆盖模型服务、本机 session 管理、原生协议、工具元数据边界及凭据脱敏。
 - `npm run build`：通过；现有主包体积大于 500 kB 的提示保留，没有新增依赖。
-- `npm run test:e2e`：全量重跑 20/21 通过；一条旧测试依赖 HMR 前的模块单例，已改为真实页面操作配合确定性 HTTP 响应，随后 `npx playwright test tests/e2e/persistence.spec.ts -g '文本提取失败'` 单项通过。21 条路径均有通过记录，覆盖新增助手场景及原阅读、卡片、白板、结论、刷新、研究隔离、保存失败恢复。
+- `npm run test:e2e`：最终全量 29/29 通过，覆盖桌面对话与工具卡、安装入口、三尺寸四处 AI 来源中央定位、草稿/输入/滚动保留，以及阅读、卡片、白板、结论、刷新、研究隔离和保存失败恢复。
 - 独立代码审查：发现并修复历史打开 Codex 后 PDF 解释误读旧演示偏好、续接 done-only 漏存原生身份和累计材料；增加回归后无剩余阻断项。
 
 普通测试使用确定性响应与 fake process，不依赖真实凭据，不证明供应商真实可用。
 
 ## 真实验证
+
+最新桌面对话增量再次在真实浏览器提交自制材料，Codex 完成 `/bin/zsh -lc 'cat materials.md'`；真实 item ID 合并为一条工具记录，状态已完成、退出码 0、实际材料输出与回答分开可读，点击 [1] 后中央仍定位 PDF 第 3 页。
 
 Codex App Server 在本机完成 initialize、account/read、thread/start、turn/start、agentMessage 流式消息、工具事件、thread/resume 和工具运行中停止。权限哨兵验证材料目录内读取成功、目录外自建测试文件读取失败、写入失败；均为 OS 拒绝。停止测试在工具执行中触发，28 ms 后 run 结束并等待自管进程退出。没有接管用户既有 Codex 任务。
 
@@ -47,17 +53,23 @@ Claude 未登录，没有进行真实问答。OpenCode 显式智谱模型在原�
 
 | 文件 | 证据类型与场景 |
 | --- | --- |
-| [live-assistant-picker-1440.jpg](live-assistant-picker-1440.jpg) | 真实本机安装/登录状态，1440×900，主区 PDF＋助手菜单 |
-| [live-codex-tool-and-citation.jpg](live-codex-tool-and-citation.jpg) | 真实工具事件、回答与有效引用，1440×900 |
+| [live-desktop-codex-1440.jpg](live-desktop-codex-1440.jpg) | 最新真实 Codex 桌面对话、回答引用与中央 PDF，1440×900 |
+| [live-desktop-codex-tools-1440.jpg](live-desktop-codex-tools-1440.jpg) | 真实工具命令、退出码与材料输出 |
+| [desktop-chat-tools.png](desktop-chat-tools.png) | 工具卡成功/失败、输出和权限说明（模拟响应） |
+| [desktop-chat-1440.png](desktop-chat-1440.png) / [1280](desktop-chat-1280.png) / [1024](desktop-chat-1024.png) | 确定性桌面对话、完整 Markdown 与引用同屏、刷新恢复 |
+| [desktop-chat-install.png](desktop-chat-install.png) | 未安装时官方入口和仅复制命令，不自动安装（模拟状态） |
+| [reference-main-1440.png](reference-main-1440.png) / [1280](reference-main-1280.png) / [1024](reference-main-1024.png) | 四处 AI 来源入口在中央打开，保留右侧回答、草稿及输入 |
+| [live-assistant-picker-1440.jpg](live-assistant-picker-1440.jpg) | 真实本机安装/登录状态，1440×900，主区 PDF＋助手菜单（首次接入记录） |
+| [live-codex-tool-and-citation.jpg](live-codex-tool-and-citation.jpg) | 真实工具事件、回答与有效引用，1440×900（首次接入记录） |
 | [live-codex-saved-card.jpg](live-codex-saved-card.jpg) | 真实卡片确认及刷新恢复，1440×900，双来源保留 |
 | [assistant-picker-1440.png](assistant-picker-1440.png) | 确定性状态样例，1440×900，结论＋AI |
 | [assistant-picker-1280.png](assistant-picker-1280.png) | 确定性状态样例，1280×800 |
-| [assistant-picker-1024.png](assistant-picker-1024.png) | 确定性状态样例，1024×800，右侧抽屉 |
+| [assistant-picker-1024.png](assistant-picker-1024.png) | 确定性状态样例，1024×800，导航折叠、原文与右侧并排 |
 | [native-materials.png](native-materials.png) | 本轮文字材料，主区 PDF＋AI |
 | [native-context-scope.png](native-context-scope.png) | 本轮与累计范围、历史说明（模拟响应） |
 | [permission-denied.png](permission-denied.png) | 权限拒绝与保留内容（模拟错误） |
 
-已逐张打开检查。原回归刷新了 `docs/verification/screenshots/` 中4张AI相关旧截图；随机ID的Markdown下载样例未作为本次差异提交。
+已逐张打开检查。原回归同步刷新了 AI 相关旧截图；随机 ID 的 Markdown 下载样例未作为本次差异提交。
 
 ## 运行与存储
 

@@ -33,9 +33,14 @@ test('agent discovery is bounded, local-only, and accurately reports capabilitie
   assert.deepEqual(data.agents.map((item) => item.state), ['ready', 'needs-auth', 'not-installed']);
   assert.equal(data.agents[0].capabilities.permissions, 'read-only');
   assert.equal(data.agents[1].capabilities.tools, false);
+  assert.deepEqual(data.agents.map((item) => item.installation.url), ['https://learn.chatgpt.com/docs/cli', 'https://code.claude.com/docs/en/quickstart', 'https://opencode.ai/v2/docs/']);
+  assert.ok(data.agents.every((item) => typeof item.installation.label === 'string' && item.installation.label.length > 0));
   const forbidden = await fetch(`${f.url}/api/ai/agents`, { headers: { Origin: 'https://evil.test' } }); assert.equal(forbidden.status, 403);
   const timed = await fixture(t, { probe: () => new Promise(() => {}) }, { probeTimeoutMs: 10 });
-  assert.equal((await (await fetch(`${timed.url}/api/ai/agents`)).json()).agents[0].state, 'error');
+  const failed = (await (await fetch(`${timed.url}/api/ai/agents`)).json()).agents[0];
+  assert.equal(failed.state, 'error'); assert.equal(failed.installation.url, 'https://learn.chatgpt.com/docs/cli');
+  const forged = await fixture(t, { probe: async () => ({ state: 'ready', installation: { url: 'https://evil.example/install', label: 'untrusted' } }) });
+  assert.equal((await (await fetch(`${forged.url}/api/ai/agents`)).json()).agents[0].installation.url, 'https://learn.chatgpt.com/docs/cli');
 });
 
 test('streams only answer deltas, saves explicit snapshots, and resumes across service restart', async (t) => {
@@ -146,12 +151,20 @@ test('damaged session mappings fail visibly and native failures do not expose ra
   assert.doesNotMatch(JSON.stringify(await events(await secret.post(request()))), /secret-api-token/);
 });
 
-function fakeCodex({ unsafe = false, interactive = false, hang = false } = {}) {
-  const captured = []; const children = []; let native = 0;
+function fakeCodex({ unsafe = false, interactive = false, hang = false, toolOutput = 'TOOL OUTPUT MUST NOT BECOME ANSWER', toolExitCode = 0, mismatchedEvents = false, lateOnKill = false, env } = {}) {
+  const captured = []; const children = []; const sent = []; let native = 0;
   const spawnImpl = (executable, args, options) => {
     const child = new EventEmitter(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.exitCode = null; child.killed = false;
-    child.kill = () => { child.killed = true; child.exitCode = 0; child.emit('exit', 0); return true; };
-    const send = (message) => child.stdout.write(`${JSON.stringify(message)}\n`);
+    child.kill = () => {
+      child.killed = true; child.exitCode = 0; child.emit('exit', 0);
+      if (lateOnKill) {
+        send({ method: 'item/started', params: { threadId: 'native-1', turnId: 'turn1', item: { type: 'commandExecution', id: 'late-tool', command: 'LATE COMMAND AFTER ABORT', status: 'inProgress' } } });
+        send({ method: 'item/completed', params: { threadId: 'native-1', turnId: 'turn1', item: { type: 'commandExecution', id: 'late-tool', command: 'LATE COMMAND AFTER ABORT', status: 'completed', aggregatedOutput: 'LATE OUTPUT AFTER ABORT', exitCode: 0 } } });
+        send({ method: 'item/agentMessage/delta', params: { threadId: 'native-1', turnId: 'turn1', delta: 'LATE ANSWER AFTER ABORT' } });
+      }
+      return true;
+    };
+    const send = (message) => { sent.push(message); child.stdout.write(`${JSON.stringify(message)}\n`); };
     child.stdin = new Writable({ write(chunk, encoding, callback) {
       const message = JSON.parse(chunk.toString()); captured.push(message);
       if (!message.method) { callback(); return; }
@@ -167,8 +180,18 @@ function fakeCodex({ unsafe = false, interactive = false, hang = false } = {}) {
         result = { turn: { id: 'turn1' } };
         setImmediate(() => {
           if (interactive) { send({ id: 'input-request', method: 'item/tool/requestUserInput', params: { questions: [] } }); return; }
-          send({ method: 'item/started', params: { threadId: 'native-1', item: { type: 'commandExecution', command: 'cat materials.md' } } });
-          send({ method: 'item/commandExecution/outputDelta', params: { threadId: 'native-1', delta: 'TOOL OUTPUT MUST NOT BECOME ANSWER' } });
+          child.stderr.write('private-stderr-must-not-forward');
+          if (mismatchedEvents) {
+            for (const scope of [{ threadId: 'other-thread', turnId: 'turn1' }, { threadId: 'native-1', turnId: 'other-turn' }]) {
+              send({ method: 'item/started', params: { ...scope, item: { type: 'commandExecution', id: 'mismatched-tool', command: 'MISMATCHED COMMAND', status: 'inProgress' } } });
+              send({ method: 'item/completed', params: { ...scope, item: { type: 'commandExecution', id: 'mismatched-tool', command: 'MISMATCHED COMMAND', status: 'completed', aggregatedOutput: 'MISMATCHED OUTPUT', exitCode: 0 } } });
+              send({ method: 'item/agentMessage/delta', params: { ...scope, delta: 'MISMATCHED ANSWER' } });
+              send({ method: 'turn/completed', params: { threadId: scope.threadId, turn: { id: scope.turnId, status: 'interrupted' } } });
+            }
+          }
+          send({ method: 'item/started', params: { threadId: 'native-1', turnId: 'turn1', item: { type: 'commandExecution', id: 'tool1', command: 'cat materials.md', status: 'inProgress', privateConfig: 'must-not-forward-native' } } });
+          send({ method: 'item/commandExecution/outputDelta', params: { threadId: 'native-1', turnId: 'turn1', itemId: 'tool1', delta: toolOutput } });
+          send({ method: 'item/completed', params: { threadId: 'native-1', turnId: 'turn1', item: { type: 'commandExecution', id: 'tool1', command: 'cat materials.md', status: 'completed', aggregatedOutput: toolOutput, exitCode: toolExitCode, privateConfig: 'must-not-forward-native' } } });
           send({ method: 'item/agentMessage/delta', params: { threadId: 'native-1', turnId: 'turn1', delta: '中文回答' } });
           if (!hang) send({ method: 'turn/completed', params: { threadId: 'native-1', turn: { id: 'turn1', status: 'completed' } } });
         });
@@ -177,7 +200,7 @@ function fakeCodex({ unsafe = false, interactive = false, hang = false } = {}) {
     } });
     captured.push({ executable, args, options }); children.push(child); return child;
   };
-  return { captured, children, runtime: createCodexRuntime({ spawnImpl, rpcTimeoutMs: 100 }) };
+  return { captured, children, sent, runtime: createCodexRuntime({ spawnImpl, rpcTimeoutMs: 100, ...(env ? { env } : {}) }) };
 }
 
 test('Codex uses native RPC streaming/resume and a verified readonly profile, without mixing tool output', async (t) => {
@@ -186,6 +209,12 @@ test('Codex uses native RPC streaming/resume and a verified readonly profile, wi
   const result = await fake.runtime.run({ cwd, prompt: 'Question', onEvent: (event) => notifications.push(event) });
   assert.equal(result.body, '中文回答'); assert.equal(result.nativeSessionId, 'native-1');
   assert.ok(notifications.some((event) => event.kind === 'tool')); assert.ok(notifications.some((event) => event.type === 'session'));
+  const tools = notifications.filter((event) => event.kind === 'tool');
+  assert.deepEqual(tools.map((event) => [event.id, event.status]), [['tool1', 'running'], ['tool1', 'done']]);
+  assert.ok(tools.every((event) => event.toolName === 'commandExecution' && event.command === 'cat materials.md'));
+  assert.equal(tools[1].output, 'TOOL OUTPUT MUST NOT BECOME ANSWER'); assert.equal(tools[1].exitCode, 0);
+  assert.equal(notifications.filter((event) => event.type === 'delta').map((event) => event.text).join(''), '中文回答');
+  assert.doesNotMatch(JSON.stringify(notifications), /private-stderr-must-not-forward|must-not-forward-native|privateConfig/);
   await fake.runtime.run({ cwd, prompt: 'Follow up', nativeSessionId: result.nativeSessionId });
   assert.ok(fake.captured.some((entry) => entry.method === 'thread/resume' && entry.params.threadId === 'native-1'));
   const start = fake.captured.find((entry) => entry.method === 'thread/start');
@@ -206,4 +235,84 @@ test('Codex rejects unsupported sandbox and structured input, and abort kills on
   const hanging = fakeCodex({ hang: true }); const controller = new AbortController();
   const run = hanging.runtime.run({ cwd, prompt: 'Question', signal: controller.signal, onEvent(event) { if (event.type === 'delta') controller.abort(); } });
   await assert.rejects(run, /停止/); assert.ok(hanging.children.every((child) => child.killed));
+});
+
+test('Codex reports failed commands with bounded output without turning their output into answer text', async (t) => {
+  const cwd = await mkdtemp(join(tmpdir(), 'read-paper-codex-test-')); t.after(() => rm(cwd, { recursive: true, force: true }));
+  const fake = fakeCodex({ toolExitCode: 2, toolOutput: 'bounded-tool-output ' + 'x'.repeat(13_000) }); const notifications = [];
+  const result = await fake.runtime.run({ cwd, prompt: 'Question', onEvent: (event) => notifications.push(event) });
+  const tools = notifications.filter((event) => event.kind === 'tool');
+  assert.deepEqual(tools.map((event) => [event.id, event.status]), [['tool1', 'running'], ['tool1', 'error']]);
+  assert.equal(tools[1].exitCode, 2); assert.ok(tools[1].output.length <= 12_000); assert.match(tools[1].output, /bounded-tool-output/);
+  assert.equal(result.body, '中文回答');
+  assert.equal(notifications.filter((event) => event.type === 'delta').map((event) => event.text).join(''), '中文回答');
+});
+
+test('Codex ignores tool, answer and completion events from another thread or turn', async (t) => {
+  const cwd = await mkdtemp(join(tmpdir(), 'read-paper-codex-test-')); t.after(() => rm(cwd, { recursive: true, force: true }));
+  const fake = fakeCodex({ mismatchedEvents: true }); const notifications = [];
+  const result = await fake.runtime.run({ cwd, prompt: 'Question', onEvent: (event) => notifications.push(event) });
+  assert.equal(result.body, '中文回答'); assert.doesNotMatch(JSON.stringify(notifications), /MISMATCHED|mismatched-tool/);
+  assert.deepEqual(notifications.filter((event) => event.kind === 'tool').map((event) => event.id), ['tool1', 'tool1']);
+});
+
+test('Codex ignores late tool and answer notifications after abort even while its owned process exits', async (t) => {
+  const cwd = await mkdtemp(join(tmpdir(), 'read-paper-codex-test-')); t.after(() => rm(cwd, { recursive: true, force: true }));
+  const fake = fakeCodex({ hang: true, lateOnKill: true }); const controller = new AbortController(); const notifications = [];
+  await assert.rejects(fake.runtime.run({ cwd, prompt: 'Question', signal: controller.signal, onEvent(event) {
+    notifications.push(event); if (event.type === 'delta') controller.abort();
+  } }), /停止/);
+  assert.ok(fake.sent.some((event) => event.params?.item?.id === 'late-tool'), 'fake CLI delivered late notifications');
+  assert.doesNotMatch(JSON.stringify(notifications), /LATE|late-tool/); assert.ok(fake.children.every((child) => child.killed));
+});
+
+test('agent proxy whitelists bounded tool metadata and redacts secrets while preserving answer text', async (t) => {
+  const env = { AI_API_KEY: 'proxy-api-private-value', OPENAI_API_KEY: 'openai-private-value', ANTHROPIC_API_KEY: 'anthropic-private-value' };
+  const bearer = 'Bearer-token-private-value-12345'; const sk = 'sk-proj-abcdefghijklmnopqrstuvwxyz123456789';
+  const pem = 'private-pem-body-do-not-expose'; const configKey = 'json-config-api-private-value'; const configToken = 'json-config-token-private-value'; const configContent = 'hidden-config-private-value';
+  const output = ['Read 3 source files.', ...Object.values(env), `Authorization: Bearer ${bearer}`, sk, `-----BEGIN PRIVATE KEY-----\n${pem}\n-----END PRIVATE KEY-----`, JSON.stringify({ api_key: configKey, access_token: configToken })].join('\n');
+  const body = `原文保留 ${env.AI_API_KEY} and ${sk}`;
+  const runtime = { probe: async () => ({ state: 'ready' }), async run({ onEvent }) {
+    onEvent({ type: 'progress', kind: 'tool', text: `Reading materials ${env.ANTHROPIC_API_KEY}`, id: 'tool1', toolName: 'commandExecution', command: `cat materials.md # ${env.OPENAI_API_KEY}`, status: 'done', output, exitCode: 0, unknown: 'must-not-forward', credentials: { token: 'must-not-forward' }, researchId: 'forged-research' });
+    onEvent({ type: 'progress', kind: 'tool', text: 'Inspecting config', id: 'config-tool', toolName: 'commandExecution', command: 'cat ~/.codex/config.toml', status: 'done', output: JSON.stringify({ mcp_servers: { local: { env: { PASSWORD: configContent } } } }), exitCode: 0 });
+    onEvent({ type: 'progress', kind: 'tool', text: 'oversized metadata', id: 'i'.repeat(201), toolName: 't'.repeat(101), command: 'c'.repeat(2001), status: 'invented', output: 'o'.repeat(12_001), exitCode: 1.5, extra: 'must-not-forward' });
+    onEvent({ type: 'progress', kind: 'tool', text: 'invalid metadata', id: {}, toolName: 123, command: [], status: {}, output: {}, exitCode: '0' });
+    onEvent({ type: 'progress', kind: 'debug', text: 'UNSUPPORTED PROGRESS KIND' });
+    onEvent({ type: 'delta', text: body }); return { body, nativeSessionId: 'native-metadata', model: 'test-model' };
+  } };
+  const f = await fixture(t, runtime, { env }); const result = await events(await f.post(request()));
+  const tools = result.filter((event) => event.type === 'progress' && event.kind === 'tool');
+  const complete = tools.find((event) => event.id === 'tool1');
+  assert.ok(complete); assert.equal(complete.toolName, 'commandExecution'); assert.equal(complete.status, 'done'); assert.equal(complete.exitCode, 0);
+  assert.ok(typeof complete.output === 'string');
+  const metadata = JSON.stringify(tools);
+  for (const secret of [...Object.values(env), bearer, sk, pem, configKey, configToken, configContent]) assert.equal(metadata.includes(secret), false, 'tool metadata contains a secret');
+  const allowed = new Set(['type', 'kind', 'text', 'id', 'toolName', 'command', 'status', 'output', 'exitCode', 'workspaceId', 'requestId', 'researchId', 'conversationId', 'connectionId']);
+  for (const event of tools) {
+    assert.ok(Object.keys(event).every((key) => allowed.has(key))); assert.equal(event.researchId, 'research1');
+    for (const [key, limit] of [['id', 200], ['toolName', 100], ['command', 2000], ['output', 12_000]]) {
+      if (key in event) { assert.equal(typeof event[key], 'string'); assert.ok(event[key].length <= limit); }
+    }
+    if ('status' in event) assert.ok(['running', 'done', 'error'].includes(event.status));
+    if ('exitCode' in event) assert.ok(Number.isInteger(event.exitCode));
+  }
+  assert.equal(result.filter((event) => event.type === 'delta').map((event) => event.text).join(''), body);
+  assert.doesNotMatch(JSON.stringify(result), /must-not-forward|UNSUPPORTED PROGRESS KIND/);
+  assert.equal(result.at(-1).type, 'done');
+});
+
+test('agent proxy ignores tool and answer events emitted by a cancelled runtime', async (t) => {
+  let lateEvents = 0;
+  const runtime = { probe: async () => ({ state: 'ready' }), run({ signal, onEvent }) {
+    onEvent({ type: 'progress', kind: 'tool', id: 'tool-before-stop', toolName: 'commandExecution', command: 'cat materials.md', status: 'running', text: 'Reading materials' });
+    return new Promise((_resolve, reject) => signal.addEventListener('abort', () => {
+      onEvent({ type: 'progress', kind: 'tool', id: 'late-tool', toolName: 'commandExecution', command: 'LATE COMMAND', status: 'done', text: 'LATE PROGRESS', output: 'LATE TOOL OUTPUT', exitCode: 0 });
+      onEvent({ type: 'delta', text: 'LATE ANSWER' }); lateEvents += 2; reject(new Error('cancelled'));
+    }, { once: true }));
+  } };
+  const f = await fixture(t, runtime); const first = await f.post(request());
+  const identity = Object.fromEntries(['workspaceId', 'requestId', 'researchId', 'conversationId', 'connectionId'].map((key) => [key, request()[key]]));
+  assert.equal((await (await f.post(identity, '/api/ai/agents/stop')).json()).stopped, true);
+  const result = await events(first); assert.equal(lateEvents, 2);
+  assert.doesNotMatch(JSON.stringify(result), /LATE|late-tool/); assert.equal(result.at(-1).code, 'stopped');
 });

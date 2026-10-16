@@ -16,7 +16,16 @@ export async function getAgents(): Promise<AgentConnection[]> {
   if (!response.ok) throw new Error('无法连接本机助手服务，请启动 npm run ai 后重新检测。');
   const result = await response.json();
   if (!Array.isArray(result.agents)) throw new Error('助手服务返回了无效连接信息，请重启本地服务。');
-  return result.agents;
+  return result.agents.map((agent: AgentConnection) => {
+    if (!agent.installation) return agent;
+    try {
+      const url = new URL(agent.installation.url);
+      if (url.protocol === 'https:' && ['learn.chatgpt.com', 'developers.openai.com', 'code.claude.com', 'claude.com', 'opencode.ai'].includes(url.hostname) && !url.username && !url.password)
+        return agent;
+    } catch { /* Invalid links are omitted; installation never runs automatically. */ }
+    const { installation: _untrusted, ...connection } = agent;
+    return connection;
+  });
 }
 
 export function selectAgent(researchId: string, connectionId: AIConnectionId) {

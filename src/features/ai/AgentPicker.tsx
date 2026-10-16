@@ -68,7 +68,7 @@ export function AgentPicker({ current, agents, loading, error, model, configured
           <button className="icon-button" aria-label="关闭助手选择" onClick={() => { setOpen(false); trigger.current?.focus(); }}><X size={15} /></button>
         </div>
         <div className="ai-agent-options">
-          <p className="ai-agent-group">本机 Agent</p>
+          <p className="ai-agent-group">本机助手连接</p>
           {loading && <p className="ai-agent-loading" role="status">正在检查本机助手…</p>}
           {error && <p className="ai-error" role="alert">{error}</p>}
           {nativeIds.map(value => {
@@ -90,7 +90,7 @@ export function AgentPicker({ current, agents, loading, error, model, configured
             <small>预设回答，无真实模型调用</small>
           </button>
         </div>
-        <div className="ai-agent-menu-footer"><small>不自动切换助手；本机 Agent 无写入权限。</small><button className="text-button" disabled={loading} onClick={onRefresh}><RefreshCw size={12} />重新检查</button></div>
+        <div className="ai-agent-menu-footer"><small>各助手保留独立会话，按实际连接能力运行。</small><button className="text-button" disabled={loading} onClick={onRefresh}><RefreshCw size={12} />重新检查</button></div>
       </div>, panel ?? document.body)}
     </div>
   );

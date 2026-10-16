@@ -185,7 +185,17 @@ const agentResponder: AIResponder = async (request, options) => {
       workspace.updateData(data => {
         const current = data.requests[request.id];
         if (current?.status !== 'generating') return;
-        current.events = [...(current.events ?? []), { kind: event.kind, text: event.text.slice(0, 2000) }].slice(-100);
+        const progress = { kind: event.kind, text: event.text.slice(0, 2000),
+          ...(typeof event.id === 'string' ? { id: event.id.slice(0, 200) } : {}),
+          ...(typeof event.toolName === 'string' ? { toolName: event.toolName.slice(0, 200) } : {}),
+          ...(typeof event.command === 'string' ? { command: event.command.slice(0, 4000) } : {}),
+          ...(typeof event.output === 'string' ? { output: event.output.slice(0, 12000) } : {}),
+          ...(Number.isInteger(event.exitCode) ? { exitCode: event.exitCode as number } : {}),
+          ...(['running', 'done', 'error'].includes(event.status) ? { status: event.status } : {}),
+        };
+        const previous = progress.id ? current.events?.findIndex(item => item.id === progress.id) ?? -1 : -1;
+        if (previous >= 0) current.events![previous] = { ...current.events![previous], ...progress };
+        else current.events = [...(current.events ?? []), progress].slice(-100);
       });
     }
     if (event.type === 'done') { done = true; model = event.model || model; }

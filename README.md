@@ -66,6 +66,6 @@ AI 请求绑定提交时的研究、会话、材料和历史快照；迟到响�
 
 2026-10-16 AI 阅读：[文档入口](docs/ai-reading/README.md) · [产品需求](docs/ai-reading/requirements.md) · [UX 设计](docs/ai-reading/ux-design.md) · [开发计划](docs/ai-reading/development-plan.md) · [交互原型](docs/ai-reading/prototype.html)。设计原型保留为评审基线；真实实现、模型冒烟、测试与截图见 [AI 阅读验收记录](docs/verification/ai-reading/README.md)。
 
-1440×900 与 1280×800 使用三栏布局，1024px 自动折叠导航并将参考面板改为覆盖抽屉。左栏默认 240px，在 1280px 下调整为 220px；右栏默认 360px，受主区可用宽度限制。
+1440×900 与 1280×800 使用三栏布局；1024px 折叠导航并保留中央原文与右侧 AI 并列，低于 1024px 才使用覆盖抽屉。AI 来源点击在中央定位，右侧回答、输入及草稿保留。AI 使用桌面对话布局，完整回答与可展开工具活动分开显示；未安装运行组件时提供官方安装说明。
 
 测试截图保存在 `docs/verification/screenshots/`，实际下载的 Markdown 样例在 `docs/verification/e2e-research-note.md`。官方参考图仅用于结构研究，不作实现证据或产品资产。

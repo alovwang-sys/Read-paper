@@ -4,6 +4,7 @@ import {
   ArrowUp,
   Copy,
   FilePlus2,
+  ExternalLink,
   History,
   MessageSquare,
   Plus,
@@ -39,6 +40,7 @@ import { MarkdownContent } from './MarkdownContent';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationSource } from './ConversationSource';
 import { AgentPicker, agentStateLabel } from './AgentPicker';
+import { AgentActivity } from './AgentActivity';
 import {
   ContextDetails,
   RegionPreview,
@@ -383,7 +385,7 @@ export function AIPanel() {
     }
   }
   return (
-    <section className="reading-ai" aria-label="AI 阅读对话">
+    <section className="reading-ai ai-desktop-chat" aria-label="AI 阅读对话">
       <div className="ai-subhead ai-chat-head">
         <div className="ai-chat-title">
           <MessageSquare size={16} />
@@ -436,7 +438,12 @@ export function AIPanel() {
       {native && !loadingAgents && (agentError || agent?.state !== 'ready') && <div className="ai-connection" role="status">
         <p><strong>{agent ? `${connectionLabel(connectionId)} · ${agentStateLabel[agent.state]}` : '本机助手未连接'}</strong></p>
         <p>{agentError || agent?.detail || '请检查该助手的安装和登录状态，然后重新连接。'}</p>
-        <p>当前输入和对话已保留；不会自动改用其他助手。</p>
+        {agent?.state === 'not-installed' && agent.installation && <div className="ai-installation">
+          <p>这里需要 {connectionLabel(connectionId)} 的本机运行时连接组件；安装桌面应用与配置此连接是两件事。</p>
+          <a className="button ai-install-link" href={agent.installation.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} />{agent.installation.label || '打开官方安装说明'}</a>
+          {agent.installation.command && <div className="ai-install-command"><code>{agent.installation.command}</code><button className="text-button" onClick={() => void execute(async () => { await navigator.clipboard.writeText(agent.installation!.command!); actions.notice('安装命令已复制'); })}><Copy size={12} />复制安装命令</button></div>}
+        </div>}
+        <p>当前输入和对话已保留。</p>
         <button className="text-button" onClick={() => void loadAgents()}><RefreshCw size={13} />重新连接助手</button>
       </div>}
       {!native && mode === 'live' &&
@@ -532,7 +539,7 @@ export function AIPanel() {
               key={request.id}
               data-request-id={request.id}
             >
-              <div className="ai-user-message">{request.prompt}</div>
+              <div className="ai-user-message" aria-label="你的问题">{request.prompt}</div>
               {request.legacy && <p className="ai-scope-notice">旧版保存记录：回答可能曾被编辑，无法保证是原始模型输出；不纳入前序对话。</p>}
               <details className="ai-turn-range">
                 <summary>
@@ -561,12 +568,15 @@ export function AIPanel() {
                 <strong>
                   {request.mode === 'demo'
                     ? 'AI 演示'
-                    : (request.model ?? connectionLabel(request.connectionId))}
+                    : (request.connectionId && !['model', 'demo'].includes(request.connectionId) ? connectionLabel(request.connectionId) : request.model ?? 'AI 助手')}
+
                 </strong>
+                {request.model && request.connectionId && !['model', 'demo'].includes(request.connectionId) && <small className="ai-answer-model">{request.model}</small>}
                 {request.superseded && (
                   <span className="ai-badge">保留的旧版本</span>
                 )}
               </div>
+              {!!request.events?.length && <AgentActivity events={request.events} generating={request.status === 'generating'} />}
               <div
                 className="ai-answer"
                 tabIndex={0}
@@ -582,13 +592,10 @@ export function AIPanel() {
               {request.status === 'generating' && (
                 <div className="ai-generating">
                   <span />
-                  正在回答…
+                  {request.events?.at(-1)?.status === 'running' ? request.events.at(-1)?.text : '正在生成回答…'}
                 </div>
               )}
-              {!!request.events?.length && <details className="ai-agent-events" open={request.status === 'generating'}>
-                <summary>助手活动 · {request.events.length}</summary>
-                <ol>{request.events.map((event, index) => <li key={index} className={event.kind === 'permission' ? 'is-permission' : ''}><span>{event.kind === 'tool' ? '只读工具' : event.kind === 'permission' ? '权限限制' : '状态'}</span>{event.text}</li>)}</ol>
-              </details>}
+
               {request.status !== 'generating' && incomplete && (
                 <div className="ai-error" role="alert">
                   {request.error ||
@@ -624,7 +631,7 @@ export function AIPanel() {
                         disabled={!available}
                         title={
                           available
-                            ? '查看创建时的原文'
+                            ? '在中央阅读器查看原文，保留 AI 回答'
                             : '原文件缺失或版本变化，摘录仍保留在发送范围中'
                         }
                         aria-label={`引用 ${index + 1}：${snapshot?.title ?? '来源缺失'} PDF 第 ${(snapshot?.pageIndex ?? 0) + 1} 页`}
@@ -636,7 +643,7 @@ export function AIPanel() {
                               { kind: 'document', id: snapshot.documentId },
                               {
                                 scope: data.scope,
-                                target: 'inspector',
+                                target: 'main',
                                 anchor: {
                                   evidenceId:
                                     evidence?.documentId ===
@@ -850,6 +857,8 @@ export function AIPanel() {
             )}
           </div>
         </details>
+        <details className="ai-context-settings">
+          <summary>对话范围 · 前序 {selectedHistory.length} 轮{native ? ` · Agent 已发 ${conversation.sentContext?.length ?? 0} 条材料` : ''}</summary>
         <div className="ai-history-range">
           <label htmlFor={`history-${conversation.id}`}>
             前序对话 · {selectedHistory.length} 轮
@@ -893,6 +902,7 @@ export function AIPanel() {
             ))}
           </details>
         )}
+        </details>
         {scopeNotice && (
           <p className="ai-scope-notice" role="status">
             {scopeNotice}
@@ -908,6 +918,7 @@ export function AIPanel() {
             {error}
           </p>
         )}
+        <div className="ai-input-shell">
         <textarea
           ref={input}
           aria-label="向 AI 提问"
@@ -947,6 +958,7 @@ export function AIPanel() {
               <ArrowUp size={17} />
             </button>
           )}
+        </div>
         </div>
         <p className="ai-sending-note">
           ⌘ / Ctrl + Enter 发送 · {native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}

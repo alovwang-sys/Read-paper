@@ -230,7 +230,7 @@ export function App() {
     );
   return (
     <div
-      className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''}`}
+      className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''} ${session.panel.open && session.panel.mode === 'ai' ? 'ai-panel-open' : ''}`}
       style={{ '--panel-width': `${data.panelWidth}px` } as React.CSSProperties}
     >
       {narrow && navigationOpen && (
@@ -519,10 +519,10 @@ export function App() {
               if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
                 actions.updateData((data) => {
                   data.panelWidth = Math.max(
-                    320,
+                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
                     Math.min(
                       520,
-                      data.panelWidth + (event.key === 'ArrowLeft' ? 20 : -20),
+                      Math.max(data.panelWidth, session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320) + (event.key === 'ArrowLeft' ? 20 : -20),
                     ),
                   );
                 });
@@ -534,7 +534,7 @@ export function App() {
               if (event.buttons === 1)
                 actions.updateData((data) => {
                   data.panelWidth = Math.max(
-                    320,
+                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
                     Math.min(520, window.innerWidth - event.clientX),
                   );
                 });

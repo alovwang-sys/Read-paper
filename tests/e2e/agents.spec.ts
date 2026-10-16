@@ -119,7 +119,7 @@ test('生成中切换助手、后台归属、停止及权限拒绝不回退', as
   deny = true;
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
   await expect(panel(page).getByRole('alert').filter({ hasText: '权限拒绝' })).toBeVisible();
-  await panel(page).getByText('助手活动 · 1', { exact: true }).click();
+  await panel(page).getByText('执行过程 · 1', { exact: true }).click();
   await expect(panel(page).locator('.ai-agent-events')).toContainText('拒绝写入文件');
   await expect(panel(page).getByRole('button', { name: '切换 AI 助手' })).toContainText('Codex');
   await mkdir('docs/verification/agents', { recursive: true });
@@ -158,6 +158,7 @@ test('显式材料、原生累计提示与收缩前序范围', async ({ page }) 
   await panel(page).getByRole('button', { name: '移除本轮材料 1', exact: true }).click();
   await expect(panel(page).locator('.ai-scope-notice')).toContainText('前序消息仍可能包含');
   await expect(panel(page).locator('.ai-native-scope')).toContainText('1 条已发材料');
+  await panel(page).locator('.ai-context-settings > summary').click();
   await panel(page).getByLabel('前序对话范围').selectOption('none');
   await panel(page).locator('.ai-native-scope summary').click();
   await expect(panel(page).locator('.ai-native-scope')).toContainText('新的原生会话');

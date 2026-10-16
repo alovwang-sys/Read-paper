@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
-import { selectAgent } from '../../src/services/agents';
+import { getAgents, selectAgent } from '../../src/services/agents';
 import { commitCardDraft, generateCardDraft, retryAI, stopAI, submitAI } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
 
@@ -24,6 +24,30 @@ beforeEach(async () => {
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('研究与助手会话', () => {
+  it('安装入口只保留已核实的官方HTTPS站点', async () => {
+    const base = { name: 'Codex', state: 'not-installed', capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } };
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ agents: [
+      { ...base, id: 'codex', installation: { url: 'https://learn.chatgpt.com/docs/cli', label: '安装说明' } },
+      { ...base, id: 'claude', installation: { url: 'javascript:alert(1)', label: '无效链接' } },
+      { ...base, id: 'opencode', installation: { url: 'https://opencode.ai.attacker.example/install', label: '无效站点' } },
+    ] })));
+    const agents = await getAgents();
+    expect(agents[0].installation?.url).toBe('https://learn.chatgpt.com/docs/cli');
+    expect(agents[1].installation).toBeUndefined();
+    expect(agents[2].installation).toBeUndefined();
+  });
+
+  it('工具开始和完成更新同一记录，真实命令与输出不混入回答正文', async () => {
+    const conversation = selectAgent('research-a', 'codex');
+    vi.stubGlobal('fetch', vi.fn(async () => frames([
+      { type: 'progress', kind: 'tool', id: 'tool-1', toolName: 'commandExecution', command: 'cat materials.md', status: 'running', text: '读取材料' },
+      { type: 'progress', kind: 'tool', id: 'tool-1', status: 'done', output: '工具的实际输出', text: '读取完成' },
+      { type: 'delta', text: '这是原始回答。' }, { type: 'done', model: 'test-model' },
+    ])));
+    const id = await submitAI('research-a', conversation, '读材料');
+    expect(data().requests[id].events).toEqual([{ kind: 'tool', id: 'tool-1', toolName: 'commandExecution', command: 'cat materials.md', status: 'done', output: '工具的实际输出', text: '读取完成' }]);
+    expect(data().requests[id].body).toBe('这是原始回答。');
+  });
   it('切换复用各自对话与输入，首次只带显式材料，干净会话继承助手而无材料', () => {
     const original = workspace.getActiveConversation('research-a').id;
     workspace.addContext({ researchId: 'research-a', conversationId: original, evidenceIds: ['evidence-a'] });
