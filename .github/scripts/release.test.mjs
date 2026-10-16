@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { expectedAssets, prepareAssets, updateDraft, verifySource } from './release.mjs';
+import { ensureManualTag, expectedAssets, prepareAssets, updateDraft, verifySource } from './release.mjs';
 
 function temporary(t) {
   const directory = mkdtempSync(join(tmpdir(), 'papertrail-release-'));
@@ -62,6 +62,59 @@ test('three complete platform artifacts preserve names and produce checksums', t
   assert.equal(checksums.trim().split('\n').length, 7);
   assert.match(checksums, /^[a-f0-9]{64}  Papertrail-0\.1\.0-windows-x64-setup\.exe$/m);
   assert.equal(readFileSync(join(destination, 'RELEASES'), 'utf8'), 'test fixture RELEASES');
+});
+
+test('manual release creates only a matching version at its fixed main source', async t => {
+  const cwd = temporary(t);
+  const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  git('init', '-b', 'main');
+  git('config', 'user.email', 'release-test@example.invalid');
+  git('config', 'user.name', 'Release test');
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify({ version: '0.1.0' }));
+  git('add', 'package.json');
+  git('commit', '-m', 'fixture');
+  const sha = git('rev-parse', 'HEAD');
+  git('update-ref', 'refs/remotes/origin/main', sha);
+  const input = { tag: 'v0.1.0', ref: 'refs/heads/main', sha, repository: 'owner/repo', token: 'test', cwd };
+  const writes = [];
+  const request = async (url, options) => {
+    if (options.method !== 'POST') return new Response(null, { status: 404 });
+    writes.push({ url, body: JSON.parse(options.body) });
+    return Response.json({}, { status: 201 });
+  };
+  await ensureManualTag({ ...input, request });
+  assert.deepEqual(writes, [{ url: 'https://api.github.com/repos/owner/repo/git/refs', body: { ref: 'refs/tags/v0.1.0', sha } }]);
+  writes.length = 0;
+  await assert.rejects(ensureManualTag({ ...input, tag: 'v0.2.0', request }), /exactly match/);
+  await assert.rejects(ensureManualTag({ ...input, sha: 'a'.repeat(40), request }), /Checkout must match/);
+  await assert.rejects(ensureManualTag({ ...input, ref: 'refs/heads/feature', request }), /from main/);
+  await assert.rejects(ensureManualTag({ ...input, tag: 'v0.1.0;unsafe', request }), /version tag/);
+  const methods = [];
+  await assert.rejects(ensureManualTag({ ...input, request: async (_url, options) => {
+    methods.push(options.method || 'GET');
+    return new Response(null, { status: options.method === 'POST' ? 422 : 404 });
+  } }), /existing tags are never overwritten/);
+  assert.deepEqual(methods, ['GET', 'POST']);
+  git('switch', '-c', 'unmerged');
+  writeFileSync(join(cwd, 'change.txt'), 'unmerged');
+  git('add', 'change.txt');
+  git('commit', '-m', 'not on main');
+  await assert.rejects(ensureManualTag({ ...input, sha: git('rev-parse', 'HEAD'), request }));
+  assert.equal(writes.length, 0);
+});
+
+test('existing tags and permission failures cause no tag writes', async () => {
+  const input = { tag: 'v0.1.0', ref: 'refs/heads/main', sha: 'a'.repeat(40), repository: 'owner/repo', token: 'test' };
+  let writes = 0;
+  await ensureManualTag({ ...input, cwd: '/not-a-checkout', request: async (_url, options) => {
+    if (options.method) writes++;
+    return Response.json({ object: { type: 'commit', sha: 'b'.repeat(40) } });
+  } });
+  await assert.rejects(ensureManualTag({ ...input, request: async (_url, options) => {
+    if (options.method) writes++;
+    return new Response(null, { status: 403 });
+  } }), /Reading version tag failed/);
+  assert.equal(writes, 0);
 });
 
 test('missing platforms, duplicate names and unexpected files stop release preparation', t => {

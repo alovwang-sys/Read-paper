@@ -49,6 +49,28 @@ export function verifySource({ tag, event, ref, eventSha, cwd = process.cwd() })
   return { tag, sha, version };
 }
 
+export async function ensureManualTag({ tag, ref, sha, repository, token, cwd = process.cwd(), request = fetch }) {
+  assert(versionPattern.test(tag), 'Use a version tag such as v0.1.0 or v0.1.0-beta.1');
+  assert.equal(ref, 'refs/heads/main', 'Run the manual workflow from main');
+  assert(/^[a-f0-9]{40}$/.test(sha), 'Invalid source commit');
+  assert(/^[\w.-]+\/[\w.-]+$/.test(repository), 'Invalid repository');
+  assert(token, 'Missing release token');
+  const base = `https://api.github.com/repos/${repository}`;
+  const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  const existing = await request(`${base}/git/ref/tags/${encodeURIComponent(tag)}`, { headers });
+  if (existing.ok) return; // Existing versions are verified below, never moved or recreated.
+  assert.equal(existing.status, 404, `Reading version tag failed (${existing.status})`);
+  const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  assert.equal(git('rev-parse', 'HEAD'), sha, 'Checkout must match the manual workflow source');
+  git('merge-base', '--is-ancestor', sha, 'refs/remotes/origin/main');
+  assert.equal(tag, `v${JSON.parse(git('show', `${sha}:package.json`)).version}`, 'Tag must exactly match package.json version');
+  const created = await request(`${base}/git/refs`, {
+    method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ref: `refs/tags/${tag}`, sha }),
+  });
+  assert(created.ok, `Creating version tag failed (${created.status}); existing tags are never overwritten`);
+}
+
 function walkFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const path = join(directory, entry.name);
@@ -95,7 +117,7 @@ export function releaseNotes(tag, sha) {
     '- Local data does not sync between computers. Browser data is not automatically migrated into the desktop profile.\n' +
     '- Move data manually using Settings → Workspace backup and restore. The full ZIP includes source PDFs and region images, excludes API keys, and is limited to 256 MiB total / 64 MiB per asset. Markdown export is not a full backup.\n' +
     '- Automatic application updates are not enabled. AI requires the user’s own model configuration; no provider credentials are included.\n\n' +
-    'Keep this release as a draft until all three installers have passed the acceptance checklist in docs/desktop-distribution.md. ' +
+    'Technical previews must clearly list unverified platforms and installation checks. Complete the checklist in docs/desktop-distribution.md before a stable release. ' +
     'Do not publish this draft while the workflow is running.\n';
 }
 
@@ -177,6 +199,10 @@ export async function updateDraft({ tag, sha, repository, token, directory, requ
 async function main() {
   const mode = process.argv[2];
   if (mode === 'verify') {
+    if (process.env.RELEASE_EVENT === 'workflow_dispatch') {
+      await ensureManualTag({ tag: process.env.RELEASE_TAG, ref: process.env.RELEASE_REF, sha: process.env.RELEASE_EVENT_SHA, repository: process.env.GITHUB_REPOSITORY, token: process.env.GH_TOKEN });
+      execFileSync('git', ['fetch', 'origin', `refs/tags/${process.env.RELEASE_TAG}:refs/tags/${process.env.RELEASE_TAG}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+    }
     const source = verifySource({ tag: process.env.RELEASE_TAG, event: process.env.RELEASE_EVENT, ref: process.env.RELEASE_REF, eventSha: process.env.RELEASE_EVENT_SHA });
     assert(process.env.GITHUB_OUTPUT, 'Missing Actions output file');
     appendFileSync(process.env.GITHUB_OUTPUT, `tag=${source.tag}\nsha=${source.sha}\n`);
