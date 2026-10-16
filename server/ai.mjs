@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { createAgentHandler } from './agents.mjs';
 
@@ -33,13 +34,25 @@ function settings(env) {
     throw new Error('AI_BASE_URL 必须是无认证信息与查询参数的 HTTPS 地址。');
   }
   if (!/^[a-zA-Z0-9._:/-]{1,100}$/.test(model)) throw new Error('AI_MODEL 格式不正确。');
+  const key = env.AI_API_KEY?.trim() || '';
+  if (key.length > 4096 || /[^\x21-\x7E]/.test(key)) {
+    throw new Error('API 密钥格式不正确：请只粘贴控制台密钥，不要包含说明文字、内部空白或非英文字符。');
+  }
   return {
     model, port,
-    key: env.AI_API_KEY?.trim() || '',
+    key,
     endpoint: `${base.href.replace(/\/$/, '')}/chat/completions`,
     images: env.AI_IMAGES === 'true',
     ports: new Set([port, appPort, 5173, 5174, 4173]),
   };
+}
+
+function publicSettings(config) {
+  return { configured: Boolean(config.key), model: config.model, provider: '智谱', images: config.images, mode: config.key ? 'live' : 'demo', limits: LIMITS };
+}
+
+export function validateAISettings(env = process.env) {
+  return publicSettings(settings(env));
 }
 
 function localURL(value, ports) {
@@ -60,6 +73,16 @@ function checkCaller(req, config) {
     || (origin !== undefined && (!localURL(origin, config.ports) || new URL(origin).origin !== origin))
     || req.headers['sec-fetch-site'] === 'cross-site') {
     throw new AIError(403, 'forbidden_origin', 'AI 服务仅允许本机工作台访问。');
+  }
+}
+
+function checkToken(req, token) {
+  if (token === undefined) return;
+  const actual = req.headers['x-papertrail-token'];
+  const expectedBytes = Buffer.from(token);
+  const actualBytes = typeof actual === 'string' ? Buffer.from(actual) : Buffer.alloc(0);
+  if (!expectedBytes.length || actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) {
+    throw new AIError(403, 'forbidden_token', 'AI 服务访问凭证无效。');
   }
 }
 
@@ -206,10 +229,13 @@ function upstreamError(status) {
   return new AIError(502, 'upstream_error', '模型服务暂时不可用，请稍后手动重试。');
 }
 
-export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutMs = 120_000 } = {}) {
+export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutMs = 120_000, localToken, agentRuntimes } = {}) {
   const config = settings(env);
+  const agents = createAgentHandler({ env, runtimes: agentRuntimes, ports: [...config.ports] });
   const active = new Set();
-  return async function handleAI(req, res) {
+  const controllers = new Set();
+  const pending = new Set();
+  async function handleAI(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     let requestId;
@@ -217,6 +243,7 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
     let timedOut = false;
     let terminalSent = false;
     const controller = new AbortController();
+    controllers.add(controller);
     const cancel = () => { if (!res.writableEnded) controller.abort(); };
     req.on('aborted', cancel);
     res.on('close', cancel);
@@ -233,9 +260,11 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
     };
     try {
       checkCaller(req, config);
+      checkToken(req, localToken);
+      if (await agents(req, res)) return;
       if (req.url === '/api/ai/config' && req.method === 'GET') {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(JSON.stringify({ configured: Boolean(config.key), model: config.model, provider: '智谱', images: config.images, mode: config.key ? 'live' : 'demo', limits: LIMITS }));
+        res.end(JSON.stringify(publicSettings(config)));
         return;
       }
       if (req.url !== '/api/ai/chat') throw new AIError(404, 'not_found', '接口不存在。');
@@ -276,23 +305,33 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
     } finally {
       clearTimeout(timeout);
       if (requestId) active.delete(requestId);
+      controllers.delete(controller);
       req.off('aborted', cancel);
       res.off('close', cancel);
     }
+  }
+  const handler = (req, res) => {
+    const task = handleAI(req, res);
+    pending.add(task);
+    task.then(() => pending.delete(task), () => pending.delete(task));
+    return task;
   };
+  handler.stop = async () => {
+    agents.close();
+    for (const controller of controllers) controller.abort();
+    await Promise.allSettled(pending);
+  };
+  return handler;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try { process.loadEnvFile('.env.local'); } catch (error) { if (error.code !== 'ENOENT') throw new Error('无法加载 .env.local，请检查文件格式。'); }
   const handler = createAIHandler();
-  const agents = createAgentHandler();
   const port = Number(process.env.AI_PORT || 8787);
-  const server = createServer(async (req, res) => {
-    if (!await agents(req, res)) await handler(req, res);
-  });
+  const server = createServer(handler);
   server.requestTimeout = 30_000;
   server.listen(port, '127.0.0.1', () => { console.log(`本地 AI 服务已启动：http://127.0.0.1:${port}`); });
-  const close = () => { agents.close(); server.close(); };
+  const close = () => { server.close(); void handler.stop().finally(() => server.closeAllConnections()); };
   process.once('SIGTERM', close);
   process.once('SIGINT', close);
 }

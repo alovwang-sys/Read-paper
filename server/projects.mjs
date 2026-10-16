@@ -22,7 +22,7 @@ async function atomicJSON(path, value) {
   await rename(temporary, path);
 }
 
-export function createProjectStore({ stateDir, runtimes, isBusy = () => false }) {
+export function createProjectStore({ stateDir, runtimes, isBusy = () => false, queryTimeoutMs = 12_000 }) {
   const registryPath = join(stateDir, 'projects.json');
   let registry;
   let writes = Promise.resolve();
@@ -39,6 +39,16 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false })
   })();
   ready.catch(() => {});
   const save = () => { writes = writes.catch(() => {}).then(() => atomicJSON(registryPath, registry)); return writes; };
+  async function nativeQuery(adapter, method, input) {
+    const controller = new AbortController();
+    let timer;
+    try {
+      return await Promise.race([
+        adapter[method]({ ...input, signal: controller.signal }),
+        new Promise((_, reject) => { timer = setTimeout(() => { reject(fail(504, 'history_timeout', '读取原生记录超时，已保留上次内容，请稍后刷新。')); controller.abort(); }, queryTimeoutMs); }),
+      ]);
+    } finally { clearTimeout(timer); }
+  }
 
   async function canonical(path, allowNew = false, browsing = false) {
     if (typeof path !== 'string' || path.length > 4096 || path.includes('\0') || !path.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(path)) throw fail(400, 'invalid_directory', '请选择有效的绝对目录。');
@@ -115,7 +125,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false })
     const project = await binding(body), item = await session(body, project);
     const adapter = runtimes[item.agentId];
     if (!adapter?.readSession) throw fail(503, 'sessions_unsupported', '此运行时暂不支持读取原生记录。');
-    const native = await adapter.readSession({ cwd: project.path, sessionId: item.nativeId });
+    const native = await nativeQuery(adapter, 'readSession', { cwd: project.path, sessionId: item.nativeId });
     if (native.id !== item.nativeId || !Array.isArray(native.messages)) throw fail(502, 'invalid_session', '原生历史格式无效。');
     let size = 0, truncated = native.truncated === true;
     const messages = [];
@@ -200,7 +210,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false })
       await Promise.all(agents.map(async agentId => {
         try {
           if (!runtimes[agentId]?.listSessions) throw new Error('此运行时暂不支持发现项目会话。');
-          const result = await runtimes[agentId].listSessions({ cwd: project.path });
+          const result = await nativeQuery(runtimes[agentId], 'listSessions', { cwd: project.path });
           for (const item of (result.sessions || []).slice(0, 100)) {
             const ref = await remember(project, agentId, item.id);
             const { origin, managed, stopUnconfirmed } = registry.sessions[ref];

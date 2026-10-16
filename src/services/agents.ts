@@ -44,10 +44,17 @@ function projectIdentity(researchId: string) {
 }
 
 async function projectRequest<T>(researchId: string, action: string, values: object = {}): Promise<T> {
-  const payload = JSON.stringify({ ...projectIdentity(researchId), ...values });
+  const identity = projectIdentity(researchId);
+  const scope = () => {
+    const data = workspace.getState().data, directory = data.researches[researchId]?.directory;
+    return JSON.stringify([data.agentWorkspaceId, !!data.researches[researchId], directory?.id, directory?.projectId, directory?.path]);
+  };
+  const submittedScope = scope();
+  const payload = JSON.stringify({ ...identity, ...values });
   const unavailable = '无法连接研究目录服务，请启动 npm run ai 后重试。';
   const response = await fetch(`/api/ai/agents/projects/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload }).catch(() => { throw new Error(unavailable); });
   const result = await response.json().catch(() => { throw new Error(unavailable); });
+  if (scope() !== submittedScope) throw new Error('研究或工作区已恢复，已忽略较早的目录与会话读取，请重新刷新。');
   if (!response.ok) throw new Error(typeof result?.error === 'string' ? result.error : unavailable);
   return result as T;
 }
@@ -79,7 +86,7 @@ export function listProjectSessions(researchId: string): Promise<{ sessions: Nat
 }
 const historyReads = new Map<string, number>();
 async function readLatestHistory(researchId: string, sessionRef: string) {
-  const key = JSON.stringify([researchId, sessionRef]);
+  const key = JSON.stringify([workspace.getState().data.agentWorkspaceId, researchId, sessionRef]);
   const version = (historyReads.get(key) ?? 0) + 1;
   historyReads.set(key, version);
   const snapshot = await projectRequest<NativeSessionSnapshot>(researchId, 'read', { sessionRef });

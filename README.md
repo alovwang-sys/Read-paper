@@ -4,6 +4,28 @@
 
 首版使用 React、TypeScript、Vite、PDF.js。应用和 PDF 保存在浏览器的 IndexedDB；编辑与工作区会话同时保留 localStorage 恢复缓冲。人工阅读可独立运行；真实 AI 通过本机 Node 服务调用供应商，密钥不进入浏览器。示例材料全部为自制测试 PDF，不能作为真实研究成果。
 
+桌面版采用 Electron / Electron Forge，共用同一工作台。支持 macOS Apple 芯片、macOS Intel、Windows x64 安装产物；桌面应用自动运行本地 AI 服务，无需用户安装 Node.js。当前构建为未签名预览版，尚未配置开发者签名、公证和自动更新。安装与发布约定见 [桌面分发](docs/desktop-distribution.md)。
+
+## 桌面运行与打包
+
+开发与构建环境使用 Node.js 24、npm；先运行 `npm ci`。
+
+```sh
+npm run desktop:dev        # 构建并打开本机桌面应用
+npm run desktop:package    # 生成本机应用目录 out/Papertrail-<platform>-<arch>/
+npm run test:desktop       # 桌面服务、协议、密钥保存边界
+npm run test:desktop:e2e   # 启动上一步生成的真实应用并验证保存/恢复
+npm run desktop:make       # 生成本机安装产物 out/make/
+```
+
+macOS 生成 DMG 与 ZIP；Windows 生成 Setup.exe 及配套 Squirrel 文件。PR/main 的 GitHub Actions 运行检查及三目标构建，临时 artifacts 保留 14 天。推荐发行入口是仓库 **Actions → Desktop release draft → Run workflow**：选择 `main`，输入与 `package.json.version` 一致的标签（当前为 `v0.1.0`）。标签不存在时，工作流将其固定到本次启动的 main 提交；已有标签不移动，仍可重跑原版本。全部检查与三目标打包应用 E2E 通过后生成带 `SHA256SUMS` 的 **Draft + Pre-release**。草稿尚不公开；获授权的维护者或 agent 核对附件及实际验证记录后，可保留 Pre-release 标记发布公开技术预览，用户从 Releases 下载。预览说明可列出未完成的 Windows / Intel 安装器人工验收和未签名状态；全平台安装、升级及签名验收是稳定版门槛。完整网页步骤、命令行 tag 方式和四层验证见 [桌面分发](docs/desktop-distribution.md)。
+
+桌面版从“文件 → 模型连接…”或设置中的“配置模型连接”填写自己的 API 地址、模型和密钥。密钥由 Electron `safeStorage` 经系统加密后保存在固定用户数据目录 `Papertrail/ai-settings.json`，不会读取或打包工程 `.env.local`，也不返回给工作台页面。保存连接会停止旧连接上的生成；没有配置密钥时仍可人工阅读或选择演示模式。
+
+桌面资料使用固定 `papertrail://app` 来源与持久用户目录：macOS 为 `~/Library/Application Support/Papertrail`，Windows 为 `%APPDATA%/Papertrail`。升级或更换安装位置不清空该目录。关闭窗口与退出前会停止生成并等待最新修改保存；保存失败时保留窗口供重试。
+
+浏览器与桌面资料互相独立。迁移时打开“存储与设置 → 工作区备份与恢复”，导出完整 ZIP，再在目标设备导入、查看统计并确认替换。备份含原 PDF、区域图片和全部工作区资料，不含密钥；恢复前原资料与资产在同一数据库事务中保留一份副本。仅接受应用直接导出的原始 ZIP32，勿重新压缩；总内容最多 256 MiB、单项最多 64 MiB。备份不是跨设备自动同步。
+
 ## 运行
 
 需要 Node.js 22.13+ 或 24+、npm。
@@ -49,7 +71,7 @@ TikHub 已接入：本机安装启用 `tikhub` 技能并保留其 `scripts/tikhu
 3. 打开 AI，选择助手并点击“新对话”。旧临时目录的阅读会话保留只读，不自动迁移。
 4. 点击“对话记录”查找当前研究的原生记录，可按助手筛选；点击整行只读历史，确认可续接后再发送。用“刷新”或“刷新记录”读取原生端新增内容，不会重复调用模型。外部导入内容可转为人工卡片草稿，不提供原范围重试或重新生成。
 
-研究目录下 `.read-paper` 保存项目标识、请求与材料快照，以及实际读取到的原生历史可读归档。厂商原生客户端继续保存自己的会话日志；论文、区域图片、卡片和结论仍在浏览器 IndexedDB。服务端关联索引仍在 `AI_AGENT_STATE_DIR`，默认沿用本机临时目录，普通服务重启可恢复；建议配置稳定状态目录以防系统清理临时文件。复制 `.read-paper` 不能替代完整资料备份，PDF/图片资产备份与恢复尚未实现。
+研究目录下 `.read-paper` 保存项目标识、请求与材料快照，以及实际读取到的原生历史可读归档。厂商原生客户端继续保存自己的会话日志；论文、区域图片、卡片和结论仍在 IndexedDB。桌面版关联索引固定保存在应用资料目录的 `agents/`；网页本机服务使用 `AI_AGENT_STATE_DIR`，未设置时沿用临时目录，建议配置稳定位置以防系统清理。已有“工作区备份与恢复”ZIP 包含 PDF、图片和聊天显示缓存；它不包含服务端关联索引或厂商原生数据库，不能保证换电脑后继续相同原生身份。复制 `.read-paper` 也不能替代完整工作区备份。
 
 Codex 已实测目录创建、发现、读取及排他 writer 锁；生产短问答约 85 秒未出现可见回答后主动停止，尚未完成真实回复闭环或确认 Desktop 项目列表。OpenCode 已实测创建、发现及用户消息读取，真实回复未完成；Claude Code 本机未认证。外部 OpenCode/Claude Code 占用未知时只读；Codex 可凭已验证的原生 writer 锁尝试原子续接。已知忙碌禁发，停止无法确认则保持只读并允许明确新建对话。完整能力、运行版本、测试与截图见[项目会话验收记录](docs/verification/project-sessions/README.md)。
 

@@ -253,6 +253,8 @@ export const demoResponder: AIResponder = async (request, options) => {
 };
 const running = new Map<string, { controller: AbortController; flush: () => void }>();
 const pendingConversations = new Set<string>();
+let stoppingAll = false;
+let preparingRequests = 0;
 async function runChatRequest(request: AIRequest, responder: AIResponder) {
   const data = workspace.getState().data;
   if (pendingConversations.has(request.conversationId) || data.conversations[request.conversationId].requestIds.some(id => data.requests[id]?.status === 'generating' && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) throw new Error('当前会话正在回答，请停止或等待完成。');
@@ -262,8 +264,12 @@ async function runChatRequest(request: AIRequest, responder: AIResponder) {
 }
 async function runRequest(request: AIRequest, responder: AIResponder) {
   if (responder === liveResponder && request.connectionId === 'demo') responder = demoResponder;
+  if (stoppingAll) throw new Error('正在保存并关闭，请稍后。');
   request.mode = responder === demoResponder ? 'demo' : 'live';
-  await ensureAssets(request.context);
+  preparingRequests++;
+  try { await ensureAssets(request.context); }
+  finally { preparingRequests--; }
+  if (stoppingAll) throw new Error('生成已在关闭前取消。');
   if (request.draftId && !workspace.getState().data.cardDrafts[request.draftId]) throw new Error('草稿已放弃，未发送生成请求。');
   request.history = request.history?.map(turn => ({ ...turn, sentBody: remapCitationNumbers(turn.body, turn.evidenceIds, request.context.map(c => c.evidenceId)) }));
   const controller = new AbortController();
@@ -327,6 +333,15 @@ export async function respondToAgent(requestId: string, interactionId: string, r
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || '回答未送达，请重试。');
 }
+export async function stopAllAI() {
+  stoppingAll = true;
+  try {
+    for (const id of running.keys()) stopAI(id);
+    while (running.size || pendingConversations.size || preparingRequests) await new Promise(resolve => setTimeout(resolve, 20));
+    // Card-generation callers finish their error/checkpoint work after the request settles.
+    await new Promise(resolve => setTimeout(resolve, 0));
+  } finally { stoppingAll = false; }
+}
 export async function submitAI(researchId: string, conversationId: string, prompt: string, responder?: AIResponder) {
   if (!prompt.trim()) throw new Error('请输入问题');
   if (prompt.length > 4000) throw new Error('问题过长，请限制在 4,000 字以内');
@@ -339,7 +354,7 @@ export async function submitAI(researchId: string, conversationId: string, promp
   const request: AIRequest = { id: uid('request'), researchId, conversationId, connectionId, prompt: prompt.trim(), context, history, purpose: 'chat', mode: responder === demoResponder ? 'demo' : 'live', createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [] };
   if (connectionId === 'codex') { request.skills = structuredClone(conversation.skills ?? []); request.codex = structuredClone(conversation.codex ?? {}); }
   const result = await runChatRequest(request, responder);
-  workspace.updateData(next => { if (next.conversations[conversationId].input === prompt) next.conversations[conversationId].input = ''; });
+  workspace.updateData(next => { if (next.requests[result]?.status === 'done' && next.conversations[conversationId].input === prompt) next.conversations[conversationId].input = ''; });
   return result;
 }
 export async function retryAI(requestId: string, mode?: 'live' | 'demo') {

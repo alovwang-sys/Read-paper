@@ -215,3 +215,15 @@ test('tool output shares the history size budget rather than bypassing the text 
   assert.ok(result.messages[0].events.length < 200);
   assert.ok(JSON.stringify(result).length < 1_010_000);
 });
+
+test('a stalled native history query is bounded and aborts only its owned read connection', async (t) => {
+  const f = await fixture(t); await f.bind(); let aborted = 0;
+  const stalled = ({ signal }) => new Promise(() => { signal.addEventListener('abort', () => { aborted++; }, { once: true }); });
+  const store = createProjectStore({ stateDir: f.stateDir, queryTimeoutMs: 15, runtimes: { codex: { listSessions: stalled, readSession: stalled } } });
+  const result = await store.list(identity());
+  assert.deepEqual(result.sessions, []);
+  assert.match(result.errors.find(error => error.agentId === 'codex').error, /超时/);
+  const project = await store.binding(identity()); const ref = await store.remember(project, 'codex', 'stalled-native');
+  await assert.rejects(store.read({ ...identity(), sessionRef: ref }), { code: 'history_timeout' });
+  assert.equal(aborted, 2);
+});

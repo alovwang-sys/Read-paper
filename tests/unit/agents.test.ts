@@ -260,3 +260,19 @@ describe('研究与助手会话', () => {
     expect(conversation.input).toBe('恢复我的输入');
   });
 });
+
+it('原生忙碌或连接失败保留原输入，成功后才清空且不自动重发', async () => {
+  const id = selectAgent('research-a', 'codex');
+  const prompt = '原生客户端释放占用后继续这个问题';
+  workspace.updateData(next => { next.conversations[id].input = prompt; });
+  const mock = vi.fn(async () => frames([{ type: 'error', code: 'session_busy', error: '此原生会话正在其他客户端使用。' }]));
+  vi.stubGlobal('fetch', mock);
+  const failed = await submitAI('research-a', id, prompt);
+  expect(data().requests[failed].status).toBe('error');
+  expect(data().conversations[id].input).toBe(prompt);
+  expect(mock).toHaveBeenCalledTimes(1);
+  mock.mockImplementation(async () => done('明确再次提交后的回答。'));
+  await submitAI('research-a', id, prompt);
+  expect(data().conversations[id].input).toBe('');
+  expect(mock).toHaveBeenCalledTimes(2);
+});

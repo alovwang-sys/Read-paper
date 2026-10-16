@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_call:
+    inputs:
+      source_ref:
+        description: Verified commit to build for a release
+        type: string
+        default: ''
+      artifact_prefix:
+        type: string
+        default: desktop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ inputs.source_ref || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && github.event_name != 'workflow_dispatch' }}
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run test:server
+      - run: npm run test:desktop
+      - name: Test release guards
+        run: node --test .github/scripts/release.test.mjs
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Keep browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: browser-failure-${{ inputs.artifact_prefix || 'desktop' }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  desktop:
+    name: Desktop (${{ matrix.target }})
+    needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: macos-arm64
+            os: macos-15
+            arch: arm64
+          - target: macos-x64
+            os: macos-15-intel
+            arch: x64
+          - target: windows-x64
+            os: windows-2025
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: 24
+          architecture: ${{ matrix.arch }}
+          cache: npm
+      - run: npm ci
+      - name: Build unsigned installers
+        run: npm run desktop:make -- --arch=${{ matrix.arch }}
+      - name: Launch and test the packaged application
+        run: npm run test:desktop:e2e
+      - name: Keep installers after packaged smoke passes
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: ${{ inputs.artifact_prefix || 'desktop' }}-${{ matrix.target }}
+          path: out/make/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+      - name: Keep desktop failure evidence
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: desktop-failure-${{ matrix.target }}-${{ inputs.artifact_prefix || 'desktop' }}
+          path: |
+            test-results-desktop/
+            playwright-report-desktop/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  required:
+    name: Required checks
+    if: always()
+    needs: [checks, desktop]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every check and platform
+        env:
+          CHECK_RESULTS: ${{ toJSON(needs) }}
+        run: node -e "if (Object.values(JSON.parse(process.env.CHECK_RESULTS)).some(job => job.result !== 'success')) process.exit(1)"

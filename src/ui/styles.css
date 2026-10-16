@@ -1242,6 +1242,8 @@ h3 {
   border-radius: 12px;
   box-shadow: 0 18px 70px #21353226;
   padding: 25px;
+  max-height: 75vh;
+  overflow-y: auto;
 }
 .modal-heading {
   display: flex;

@@ -1,0 +1,91 @@
+name: Desktop release draft
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag matching package.json (created on main if missing, for example v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify release source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      tag: ${{ steps.source.outputs.tag }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || 'main' }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: 24
+      - name: Verify version, tag and main ancestry
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_EVENT_SHA: ${{ github.sha }}
+        run: node .github/scripts/release.mjs verify
+
+  build:
+    name: Validate and build all platforms
+    needs: verify
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      source_ref: ${{ needs.verify.outputs.sha }}
+      artifact_prefix: desktop-release
+
+  draft:
+    name: Collect installers into one draft
+    needs: [verify, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Allow repaired release tooling to retry an older, unchanged application tag.
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: desktop-release-*
+          path: ${{ runner.temp }}/installers
+      - name: Check completeness and generate SHA256SUMS
+        env:
+          RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+          ASSET_ROOT: ${{ runner.temp }}/installers
+          ASSET_DEST: ${{ runner.temp }}/release-assets
+        run: node .github/scripts/release.mjs prepare
+      - name: Create or refresh an unsigned preview draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+          RELEASE_SHA: ${{ needs.verify.outputs.sha }}
+          ASSET_DEST: ${{ runner.temp }}/release-assets
+        run: node .github/scripts/release.mjs draft

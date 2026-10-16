@@ -1,5 +1,7 @@
 # 论文研究工作台的 agent 开发任务
 
+2026-10-16 用户扩展交付范围至 macOS / Windows 安装应用。桌面切片沿用现有工作台，新增 Electron 宿主、自动本地 AI 服务与加密连接设置、退出保存、完整备份迁移和 GitHub CI / 草稿 Release 流程。代码与已运行验证分开记录于 [桌面验收](verification/desktop/README.md)；三目标 CI、真实安装与签名状态以该记录为准，不能仅因存在工作流而标记通过。后续功能继续采用短分支 + PR，桌面版本由 main 上的版本标签交付，不设长期 macOS / Windows 分支。
+
 本清单将 [产品规划](product-plan.md) 转成可分配、可集成、可验收的开发任务。首版实际使用 React / TypeScript / Vite / PDF.js，沿用以下模块边界。
 
 2026-10-15 完成首版基线；2026-10-16 实现 AI 阅读增量并接入真实模型。原基线见[首版记录](verification/README.md)，本次运行命令、结果和截图见 [AI 阅读验收记录](verification/ai-reading/README.md)。
@@ -12,7 +14,7 @@
 
 ## 下一轮 AI 阅读开发入口
 
-项目会话第一版已接入目录绑定、原生目录归属、三类助手历史发现/读取、身份去重与可读归档，并通过确定性集成检查。PS0 实机探针按能力记录，PS1 与 PS5 已实现本轮切片；PS2/PS3 的真实双向模型回复和桌面列表仍待验收，PS4 的完整资产备份恢复未实现，均不能整体标完成。详见[实施计划](agents/project-sessions-plan.md)和[验证记录](verification/project-sessions/README.md)；产品要求见[需求](agents/project-sessions-requirements.md)，交互见[UX 设计](agents/project-sessions-ux.md)。
+项目会话第一版已接入目录绑定、原生目录归属、三类助手历史发现/读取、身份去重与可读归档，并通过确定性集成检查。PS0 实机探针按能力记录，PS1 与 PS5 已实现本轮切片；PS2/PS3 的真实双向模型回复和桌面列表仍待验收，PS4 已沿用工作区 ZIP 备份，但项目目录独立恢复和厂商原生身份恢复未完成，均不能整体标完成。详见[实施计划](agents/project-sessions-plan.md)和[验证记录](verification/project-sessions/README.md)；产品要求见[需求](agents/project-sessions-requirements.md)，交互见[UX 设计](agents/project-sessions-ux.md)。
 
 R1 交付“文字选择 → 真实多轮对话 → 知识点整理 → 独立草稿编辑 → 确认卡片 → 原文与对话回查”；R2 增加图表、公式与扫描页的区域问答。R1 可以独立试用，完整框选需求在 R2 验收后交付。
 

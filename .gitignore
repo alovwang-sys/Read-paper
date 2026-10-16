@@ -4,3 +4,9 @@ test-results/
 playwright-report/
 .DS_Store
 *.local
+out/
+test-results-desktop/
+playwright-report-desktop/
+*.p12
+*.pfx
+*.mobileprovision

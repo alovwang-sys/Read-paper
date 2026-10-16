@@ -6,7 +6,9 @@
 
 用户已确认产品方向为论文阅读与研究工作台，并要求参照 Heptabase 的整体界面截图规划。本文将“agent 开发范式”按使用 coding agents 分工开发来设计；产品中的 AI 功能单独定义。
 
-首版以桌面浏览器、单用户、本地持久化为边界。实际实现采用 React / TypeScript / Vite / PDF.js，PDF 与研究数据保存在 IndexedDB，编辑恢复缓冲使用 localStorage。2026-10-16 接入用户指定的智谱 `glm-5.3-flash`，由本地 Node 服务保管凭据并代理流式请求，同时保留明确选择的演示模式。运行方式见 [README](../README.md)，最新验收见 [AI 阅读记录](verification/ai-reading/README.md)。
+首版面向桌面浏览器及 macOS / Windows 安装应用，保持单用户、本地持久化。实际实现采用 React / TypeScript / Vite / PDF.js，PDF 与研究数据保存在 IndexedDB，编辑恢复缓冲使用 localStorage。2026-10-16 接入用户指定的智谱 `glm-5.3-flash`，由本地 Node 服务保管凭据并代理流式请求，同时保留明确选择的演示模式。运行方式见 [README](../README.md)，AI 验收见 [AI 阅读记录](verification/ai-reading/README.md)。
+
+桌面交付采用 Electron / Electron Forge，与浏览器共用界面及业务服务。固定应用来源和用户数据目录，单实例运行，退出前停止生成并等待保存；失败保留工作台，未响应时提供明确的重试或强制关闭选择。模型连接由应用自动管理，用户密钥经系统加密后保存，不包含于安装包或资料备份。完整 ZIP 备份用于浏览器与桌面之间迁移；恢复前校验来源和资产，原资料与资产在同一事务中保留一份副本。当前发布流水线生成未签名安装产物及 Release 草稿，开发者签名、公证、自动更新与跨设备同步仍未实现。分发和版本管理见 [桌面分发](desktop-distribution.md)，实际结果见 [桌面验收](verification/desktop/README.md)。
 
 2026-10-16 AI 阅读已实现：选取材料后连续对话，AI 整理独立卡片草稿，用户修改确认，卡片保留论文与对话双来源；区域框选以截图作为证据，实际模型已通过图片冒烟。详细行为以 [产品需求](ai-reading/requirements.md)、[UX 设计](ai-reading/ux-design.md)和[开发计划](ai-reading/development-plan.md)为准；可点击[交互原型](ai-reading/prototype.html)仍仅用于设计评审。完整 OCR、复杂图表/公式语义可靠性、跨设备同步仍不在本轮范围。
 
@@ -14,7 +16,7 @@
 
 ## 产品主线
 
-2026-10-17 已接入项目会话第一版：研究绑定固定本机目录，原生聊天使用该目录；右侧统一发现、读取和管理三类助手记录，中央论文与引用定位沿用现有宿主。厂商保留原生历史，研究目录保存清单、每轮材料与可读归档，论文和卡片仍由浏览器共享实体管理。Codex 按已验证的原生 writer 锁尝试接续；外部 OpenCode／Claude Code 无法确认排他占用时只读。完整双向模型回复、原生桌面列表及包含 PDF 的备份恢复尚未验收，逐项见[实施记录](verification/project-sessions/README.md)。产品规则和后续范围见[需求](agents/project-sessions-requirements.md)、[UX 设计](agents/project-sessions-ux.md)与[原型](agents/project-sessions-prototype.html)。
+2026-10-17 已接入项目会话第一版：研究绑定固定本机目录，原生聊天使用该目录；右侧统一发现、读取和管理三类助手记录，中央论文与引用定位沿用现有宿主。厂商保留原生历史，研究目录保存清单、每轮材料与可读归档，论文和卡片仍由共享实体管理并沿用工作区 ZIP 备份。Codex 按已验证的原生 writer 锁尝试接续；外部 OpenCode／Claude Code 无法确认排他占用时只读。完整双向模型回复、原生桌面列表及项目目录独立恢复尚未验收，逐项见[实施记录](verification/project-sessions/README.md)。产品规则和后续范围见[需求](agents/project-sessions-requirements.md)、[UX 设计](agents/project-sessions-ux.md)与[原型](agents/project-sessions-prototype.html)。
 
 研究问题 → 导入论文 → 阅读并留下原文证据 → 用自己的话形成卡片 → 组织支持、分歧与条件 → 写出带引用的研究结论。
 

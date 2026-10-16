@@ -178,7 +178,7 @@ export function AIPanel() {
     try {
       setConfig(await getAIConfig());
     } catch {
-      setConfigError('无法连接本地 AI 服务。请启动服务后重连。');
+      setConfigError(window.papertrailDesktop ? '无法连接模型服务。请检查模型连接设置后重连。' : '无法连接本地 AI 服务。请启动服务后重连。');
     } finally {
       setLoadingConfig(false);
     }
@@ -206,6 +206,7 @@ export function AIPanel() {
   useEffect(() => {
     void loadConfig();
     void loadAgents();
+    return window.papertrailDesktop?.onAISettingsChanged(() => void loadConfig());
   }, []);
   const refreshNative = useCallback(async () => {
     if (!research || !native || nativeRefreshRunning.current) return;
@@ -507,15 +508,15 @@ export function AIPanel() {
           <div className="ai-connection">
             <p>
               {configError ||
-                '请在本地服务环境配置模型连接，然后重连。API 密钥仅保留在本地服务端。'}
+                (window.papertrailDesktop ? '请配置模型连接。API 密钥经系统加密保存在此电脑。' : '请在本地服务环境配置模型连接，然后重连。API 密钥仅保留在本地服务端。')}
             </p>
             <details>
               <summary>连接说明</summary>
               <p>
-                启动 README 中的开发服务，设置本地 AI_API_KEY、AI_BASE_URL 和
-                AI_MODEL；修改配置后重启服务。界面不会读取或保存密钥。
+                {window.papertrailDesktop ? '通过“配置模型连接”填写自己的 API 地址、模型和密钥；保存后连接自动更新。' : '启动 README 中的开发服务，设置本地 AI_API_KEY、AI_BASE_URL 和 AI_MODEL；修改配置后重启服务。界面不会读取或保存密钥。'}
               </p>
             </details>
+            {window.papertrailDesktop && <button className="text-button" onClick={() => void window.papertrailDesktop?.openAISettings()}>配置模型连接</button>}
             <button
               className="text-button"
               disabled={loadingConfig}

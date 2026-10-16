@@ -11,7 +11,7 @@
 ## 提交与 PR
 
 1. 只提交当前功能的代码、测试、配置模板和文档，检查暂存清单与密钥。`.env.local`、真实 PDF/私人材料和本地运行产物不上传；本项目自制测试资料可随测试提交。
-2. 运行实际已有命令：`npm run check`、`npm test`、`npm run test:server`、`npm run build`；涉及用户路径时运行 `npm run test:e2e`。真实模型冒烟和确定性测试分开记录，不让普通 CI 依赖付费模型或真实凭据。
+2. 运行实际已有命令：`npm run check`、`npm test`、`npm run test:server`、`npm run test:desktop`、`npm run build`；涉及用户路径时运行 `npm run test:e2e`。修改发布脚本时运行 `node --test .github/scripts/release.test.mjs`；桌面验收先 `npm run desktop:make`，再 `npm run test:desktop:e2e`。真实模型冒烟和确定性测试分开记录，不让普通 CI 依赖付费模型或真实凭据。
 3. 推送功能分支，以 `main` 为目标开 PR。标题描述最终行为，正文写清问题、结果、验证、截图位置和已知边界。未完成时使用 Draft。
 4. 独立 agent 可做代码复核；它的结论是辅助证据，不冒充 GitHub 上的人工批准。修复实际阻断问题，更新 PR。
 
@@ -24,10 +24,16 @@
 
 Squash 后新提交的编号与开发分支不同是正常行为。不能仅凭“祖先关系未合并”就认为文件丢失，也不能因此直接强推主分支；应核对 PR 的合并状态及合入内容。
 
-## 当前仓库的边界
+## CI、主分支保护与版本发布
 
-目前没有 GitHub Actions CI。本轮合并依赖已执行的本地检查、浏览器验收和 PR 记录，不把空检查列表当成 CI 成功。
+仓库已提供 `.github/workflows/ci.yml`：PR 与 `main` 提交运行类型检查、单测、服务测试、桌面边界与发布保护测试、构建、浏览器 E2E，再在 macOS arm64、macOS Intel x64、Windows x64 分别构建安装包并运行打包应用冒烟。成功产物保留 14 天；是否通过以 GitHub 上对应提交的实际 run 为准。完整矩阵汇总为 `Required checks`。
 
-后续适合增加一个只读权限的 PR CI，执行上述确定性检查，再考虑把它设为主分支必需检查。主分支保护和自动合并属于仓库设置，需单独配置；本次不擅自更改。
+工作流默认只读，不依赖真实模型密钥和代码签名凭据。第三方 Action 使用经过官方仓库核对的完整 SHA；Dependabot 每周以 PR 提交 npm / Actions 更新，不自动合并。`.github/pull_request_template.md` 提供轻量交付清单。
+
+首次 CI 真正通过后，建议维护者在 GitHub 的 main ruleset 中要求 PR 和实际显示的 `Required checks` 状态，禁止 force push 与删除主分支。单维护者无需强制“另一人批准”，也无需引入长期 `develop`、`mac`、`windows` 分支。仓库保护和自动合并属于远程设置，本次没有代为启用；不要在检查尚未出现时配置错误名称锁住维护者。
+
+推荐从仓库网页 **Actions → Desktop release draft → Run workflow** 发行：分支选择 `main`，输入 `v<package.json.version>`（当前为 `v0.1.0`）。不存在的 tag 会固定到本次工作流启动时的 main SHA；已有 tag 保留原指向，可重跑旧版本。也可由获授权维护者从已合入 main 的提交手动推送版本 tag。工作流重验来源，对固定 SHA 重跑全部 CI 和三目标打包应用 E2E，成功后才汇总完整附件及 `SHA256SUMS`，建立 **Draft + Pre-release**。已发布版本不覆盖，修复使用新版本。
+
+Draft 尚不公开；Pre-release 标记只有在发布草稿后才成为公开技术预览，供用户从 Releases 下载。获授权的维护者或 agent 应先核对附件、校验和与实际验证记录，再发布；工作流不会自动公开。未签名或 Windows / Intel 安装器人工验收未完成时，可以在说明中如实列出并发布技术预览。稳定版需完成各系统安装、升级、签名与公证验收，再取消 Pre-release 标记。四层测试、网页与命令行步骤、下载及验收清单见[桌面分发说明](desktop-distribution.md)。
 
 参考：[GitHub Flow](https://docs.github.com/en/get-started/using-github/github-flow)、[PR 合并方式](https://docs.github.com/en/pull-requests/reference/pull-request-merges)。

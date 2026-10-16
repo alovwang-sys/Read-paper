@@ -1,0 +1,426 @@
+{
+  "packagePath": "/tmp/read-paper-project-package-20261017-final/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar",
+  "allMatch": true,
+  "checks": [
+    {
+      "file": "server/projects.mjs",
+      "source": "da2ea6696b85b1b082faf0f162568b723d9e6736c516a6530e32b6e451e03abf",
+      "packaged": "da2ea6696b85b1b082faf0f162568b723d9e6736c516a6530e32b6e451e03abf",
+      "match": true
+    },
+    {
+      "file": "server/agents.mjs",
+      "source": "e33cdec6f851c6c505f6608e0735a9af6566f85961511bfafc3092f76224f1c2",
+      "packaged": "e33cdec6f851c6c505f6608e0735a9af6566f85961511bfafc3092f76224f1c2",
+      "match": true
+    },
+    {
+      "file": "server/codex-runtime.mjs",
+      "source": "f1dbcf0896111fb26494ec1290fb5ef42c6bc720d0092ef7d550fcb80b852e0a",
+      "packaged": "f1dbcf0896111fb26494ec1290fb5ef42c6bc720d0092ef7d550fcb80b852e0a",
+      "match": true
+    },
+    {
+      "file": "server/opencode-runtime.mjs",
+      "source": "6a63b209cfe80bb7b70b2a34e6577553a94eaa3ea25c332c220dc1c628841c77",
+      "packaged": "6a63b209cfe80bb7b70b2a34e6577553a94eaa3ea25c332c220dc1c628841c77",
+      "match": true
+    },
+    {
+      "file": "server/claude-runtime.mjs",
+      "source": "0210972ac6395166cdd3bb70a556e632ed58f71299fde1a20c36b931a3338692",
+      "packaged": "0210972ac6395166cdd3bb70a556e632ed58f71299fde1a20c36b931a3338692",
+      "match": true
+    },
+    {
+      "file": "desktop/main.mjs",
+      "source": "6bbf68ecaa0128a98dc2fb98897f0eda6830a9ed84c0f6eb20ea2870e2d5a1e6",
+      "packaged": "6bbf68ecaa0128a98dc2fb98897f0eda6830a9ed84c0f6eb20ea2870e2d5a1e6",
+      "match": true
+    },
+    {
+      "file": "desktop/protocol.mjs",
+      "source": "c1ff36825b537eea7786ed8ec1a17a46a1cd1d6122276889c511dcea55786d82",
+      "packaged": "c1ff36825b537eea7786ed8ec1a17a46a1cd1d6122276889c511dcea55786d82",
+      "match": true
+    },
+    {
+      "file": "dist/index.html",
+      "source": "777f0f5bfe4d90b15dd529470145c1d9ee6f9ac89fc431424a71bb94ed930e7f",
+      "packaged": "777f0f5bfe4d90b15dd529470145c1d9ee6f9ac89fc431424a71bb94ed930e7f",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2",
+      "source": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+      "packaged": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_AMS-Regular-DMm9YOAa.woff",
+      "source": "30da91e84c893f875e252689faebdc590b2871145e8adc7f9a9d4dbd8ce0b251",
+      "packaged": "30da91e84c893f875e252689faebdc590b2871145e8adc7f9a9d4dbd8ce0b251",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_AMS-Regular-DRggAlZN.ttf",
+      "source": "68534840bcfdd2bffb6f0e8deb48684dd01e7f04ea2813267577afb906de1d13",
+      "packaged": "68534840bcfdd2bffb6f0e8deb48684dd01e7f04ea2813267577afb906de1d13",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf",
+      "source": "07d8e303ce4fc12b4bb54f1004170dd190a1f3db45d400fe68060df3e0897268",
+      "packaged": "07d8e303ce4fc12b4bb54f1004170dd190a1f3db45d400fe68060df3e0897268",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff",
+      "source": "1ae6bd7475590e97e7f145a89e09ccde322f7a6bc0b91607b1c8b8ee28290fed",
+      "packaged": "1ae6bd7475590e97e7f145a89e09ccde322f7a6bc0b91607b1c8b8ee28290fed",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2",
+      "source": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+      "packaged": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff",
+      "source": "3398dd02302557a793f2863f88e02d96ce10df2abffa07c8e9fa90775116e65c",
+      "packaged": "3398dd02302557a793f2863f88e02d96ce10df2abffa07c8e9fa90775116e65c",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2",
+      "source": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+      "packaged": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf",
+      "source": "ed0b74372feefcbb9c0666b2e210da37b7e49fa7fbbf3eeb11db5f693dacfbb7",
+      "packaged": "ed0b74372feefcbb9c0666b2e210da37b7e49fa7fbbf3eeb11db5f693dacfbb7",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf",
+      "source": "9163df9c7122432e6495b4229fa9071cf9ae86a758ae5efc4924ec2e1a6dbce1",
+      "packaged": "9163df9c7122432e6495b4229fa9071cf9ae86a758ae5efc4924ec2e1a6dbce1",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff",
+      "source": "9be7ceb88004ab8ad124082246fbfcca4091e36385d4ec6ed1df67375dad50fb",
+      "packaged": "9be7ceb88004ab8ad124082246fbfcca4091e36385d4ec6ed1df67375dad50fb",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2",
+      "source": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+      "packaged": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Fraktur-Regular-CB_wures.ttf",
+      "source": "1e6f9579e90e2cac37f8f60a597c436e075c114385652b7cbeb0dec0421291b3",
+      "packaged": "1e6f9579e90e2cac37f8f60a597c436e075c114385652b7cbeb0dec0421291b3",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2",
+      "source": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+      "packaged": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff",
+      "source": "5e28753be717dac97f559f49bc10be9cf3c124ddcabda6659d11cb68febc6463",
+      "packaged": "5e28753be717dac97f559f49bc10be9cf3c124ddcabda6659d11cb68febc6463",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2",
+      "source": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+      "packaged": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Bold-Jm3AIy58.woff",
+      "source": "c76c5d696297d51b9cb1639c7da4334f0e7dec81b42b11213b5e25ef671bb822",
+      "packaged": "c76c5d696297d51b9cb1639c7da4334f0e7dec81b42b11213b5e25ef671bb822",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Bold-waoOVXN0.ttf",
+      "source": "138ac28d1663b3037e9c5f52371fa5c63d8324f4a38d22cd573e6ea3a3fd0cf8",
+      "packaged": "138ac28d1663b3037e9c5f52371fa5c63d8324f4a38d22cd573e6ea3a3fd0cf8",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2",
+      "source": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+      "packaged": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf",
+      "source": "70ee1f64a20f2048c21940ef46d0144fd215baa953ca69afd1e31e98544f708f",
+      "packaged": "70ee1f64a20f2048c21940ef46d0144fd215baa953ca69afd1e31e98544f708f",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff",
+      "source": "a6f7ec0d846ac7ad975adb8959c37ed49b94acbc4ae436db9ce9e20287e4a64c",
+      "packaged": "a6f7ec0d846ac7ad975adb8959c37ed49b94acbc4ae436db9ce9e20287e4a64c",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Italic-3WenGoN9.ttf",
+      "source": "0d85ae7cc30f23790a7f1a58c4a112fdca8aae769b6ba11429af1d98b1b6cb3a",
+      "packaged": "0d85ae7cc30f23790a7f1a58c4a112fdca8aae769b6ba11429af1d98b1b6cb3a",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Italic-BMLOBm91.woff",
+      "source": "f1d6ef86f3b11a528bd5185199bd2443ecb2b0dead96d88674b5a2c12be24bdf",
+      "packaged": "f1d6ef86f3b11a528bd5185199bd2443ecb2b0dead96d88674b5a2c12be24bdf",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2",
+      "source": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+      "packaged": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Regular-B22Nviop.woff2",
+      "source": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+      "packaged": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Regular-Dr94JaBh.woff",
+      "source": "c6368d87e8a1a3a5d337623d83d8dc4b868f242a9ad476237d6f8d1e0f168cdc",
+      "packaged": "c6368d87e8a1a3a5d337623d83d8dc4b868f242a9ad476237d6f8d1e0f168cdc",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Main-Regular-ypZvNtVU.ttf",
+      "source": "d0332f52868370fd83ae7fa46470f90c8f2eab2fcf12bc4f88080b340c95a830",
+      "packaged": "d0332f52868370fd83ae7fa46470f90c8f2eab2fcf12bc4f88080b340c95a830",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf",
+      "source": "f9377ab0271cda59af24bcffbd46a4d0c8a3572ffafdbb38de2ad5ea7b0d5ee5",
+      "packaged": "f9377ab0271cda59af24bcffbd46a4d0c8a3572ffafdbb38de2ad5ea7b0d5ee5",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2",
+      "source": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+      "packaged": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff",
+      "source": "850c0af5c2238497febaf5e461d880bf458c341f42f4f330f1b1ab5698b1998e",
+      "packaged": "850c0af5c2238497febaf5e461d880bf458c341f42f4f330f1b1ab5698b1998e",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Math-Italic-DA0__PXp.woff",
+      "source": "8a8d244581371912b8f3f5a23e2437cb2a59cd9bcaebb0346e722c05737a2571",
+      "packaged": "8a8d244581371912b8f3f5a23e2437cb2a59cd9bcaebb0346e722c05737a2571",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Math-Italic-flOr_0UB.ttf",
+      "source": "08ce98e51b04d58945a301e639e02b6998af29fdfd61a7b8afdd07bbfc479d4a",
+      "packaged": "08ce98e51b04d58945a301e639e02b6998af29fdfd61a7b8afdd07bbfc479d4a",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Math-Italic-t53AETM-.woff2",
+      "source": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+      "packaged": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf",
+      "source": "1ece03f79f95277d57dc7f6b435a74e1379b0d46104a8530286b60ff49369ea0",
+      "packaged": "1ece03f79f95277d57dc7f6b435a74e1379b0d46104a8530286b60ff49369ea0",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2",
+      "source": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+      "packaged": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff",
+      "source": "ece03cfd83e22c212cdef66feb8442d25a083beb988db3f1883f3f9738d750ba",
+      "packaged": "ece03cfd83e22c212cdef66feb8442d25a083beb988db3f1883f3f9738d750ba",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2",
+      "source": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+      "packaged": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff",
+      "source": "91ee67500cc0129aa0ace3ac5c61ff1692102f0f31d02b69347fba35dcb75bf2",
+      "packaged": "91ee67500cc0129aa0ace3ac5c61ff1692102f0f31d02b69347fba35dcb75bf2",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf",
+      "source": "3931dd81faed86ba021bb2bbdc36f5bed9a38d6b4f4077aca59b265aa1b02083",
+      "packaged": "3931dd81faed86ba021bb2bbdc36f5bed9a38d6b4f4077aca59b265aa1b02083",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf",
+      "source": "f36ea897e19f4a2e571d1e900e4e3710e438deb05a842486045ba0a3e616a4ad",
+      "packaged": "f36ea897e19f4a2e571d1e900e4e3710e438deb05a842486045ba0a3e616a4ad",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff",
+      "source": "11e4dc8a6471ff6d6ee561d53d10fde8f7489e798257ff449c5d37c197435605",
+      "packaged": "11e4dc8a6471ff6d6ee561d53d10fde8f7489e798257ff449c5d37c197435605",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2",
+      "source": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+      "packaged": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Script-Regular-C5JkGWo-.ttf",
+      "source": "1c67f068fea8bb09bf099c088b1cf64bd27516a6e07f4684344873564bb66a67",
+      "packaged": "1c67f068fea8bb09bf099c088b1cf64bd27516a6e07f4684344873564bb66a67",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2",
+      "source": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+      "packaged": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Script-Regular-D5yQViql.woff",
+      "source": "d96cdf2b3bdd4d64a8fd5f74a4c467f123a8a73931cd435889f08ffaf9bf947a",
+      "packaged": "d96cdf2b3bdd4d64a8fd5f74a4c467f123a8a73931cd435889f08ffaf9bf947a",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size1-Regular-C195tn64.woff",
+      "source": "c943cc986384f59e86bea5fd7dc50a9c4dfe567a7c05eb40d6790720dead97c9",
+      "packaged": "c943cc986384f59e86bea5fd7dc50a9c4dfe567a7c05eb40d6790720dead97c9",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf",
+      "source": "95b6d2f1a50173bfedb8c63e1d1c99b10427d0a4df4201cb44513b226951a22b",
+      "packaged": "95b6d2f1a50173bfedb8c63e1d1c99b10427d0a4df4201cb44513b226951a22b",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2",
+      "source": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+      "packaged": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf",
+      "source": "a6b2099fb555c60e3a0db3a08842ebf1d732c6eb4e4bf44913613bed4fc4e39b",
+      "packaged": "a6b2099fb555c60e3a0db3a08842ebf1d732c6eb4e4bf44913613bed4fc4e39b",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2",
+      "source": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+      "packaged": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size2-Regular-oD1tc_U0.woff",
+      "source": "2014c523c3210bcc166648c4d4cc57f05b747df07a24277bf71c51e67dc79e3d",
+      "packaged": "2014c523c3210bcc166648c4d4cc57f05b747df07a24277bf71c51e67dc79e3d",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size3-Regular-CTq5MqoE.woff",
+      "source": "6ab6b62e9b62dae2c00dd90f791bd10950be0ecc3490d7d6045f51c2e8fe0949",
+      "packaged": "6ab6b62e9b62dae2c00dd90f791bd10950be0ecc3490d7d6045f51c2e8fe0949",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf",
+      "source": "500e04d54f0d51666332c9d2089aa803be22aa878eca539e59fa53c6e522b082",
+      "packaged": "500e04d54f0d51666332c9d2089aa803be22aa878eca539e59fa53c6e522b082",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size4-Regular-BF-4gkZK.woff",
+      "source": "99f9c6750b489c9462bf04900bd3f939df9b829339daaaaa99ef5495cdddea58",
+      "packaged": "99f9c6750b489c9462bf04900bd3f939df9b829339daaaaa99ef5495cdddea58",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size4-Regular-DWFBv043.ttf",
+      "source": "c647367d1dd4e162468717d020e1fc0f1dc5c26ebfdffbe55261713bf88c5877",
+      "packaged": "c647367d1dd4e162468717d020e1fc0f1dc5c26ebfdffbe55261713bf88c5877",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2",
+      "source": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+      "packaged": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff",
+      "source": "e14fed02b1aba7ce9f5afd5844b5d0321b22351febc720e0de8b8723527609f7",
+      "packaged": "e14fed02b1aba7ce9f5afd5844b5d0321b22351febc720e0de8b8723527609f7",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2",
+      "source": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+      "packaged": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+      "match": true
+    },
+    {
+      "file": "dist/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf",
+      "source": "f01f3e87d9c6a61c0c081ceb577abd864eb00a612f7ac1620dd6915fad2ef5aa",
+      "packaged": "f01f3e87d9c6a61c0c081ceb577abd864eb00a612f7ac1620dd6915fad2ef5aa",
+      "match": true
+    },
+    {
+      "file": "dist/assets/index-DfUxIZmb.js",
+      "source": "a306e4d17210e0bba3a13c1da60065ae8375dc7444ef20f01eedb47b21fd7d0e",
+      "packaged": "a306e4d17210e0bba3a13c1da60065ae8375dc7444ef20f01eedb47b21fd7d0e",
+      "match": true
+    },
+    {
+      "file": "dist/assets/index-kEHxguQV.css",
+      "source": "f7fa2cdce2db4f5707fb278f5c5c42a89679a1b378af83a753ac69413cf365b2",
+      "packaged": "f7fa2cdce2db4f5707fb278f5c5c42a89679a1b378af83a753ac69413cf365b2",
+      "match": true
+    },
+    {
+      "file": "dist/assets/pdf.worker.min-CjEcRF4W.mjs",
+      "source": "9536359f1b8367850d485731ca1d5e45c159a7b7a0912325e539937aa21ceb18",
+      "packaged": "9536359f1b8367850d485731ca1d5e45c159a7b7a0912325e539937aa21ceb18",
+      "match": true
+    }
+  ]
+}
