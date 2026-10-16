@@ -41,6 +41,16 @@ export type Evidence = {
   pageIndex: number;
   quote: string;
   printedPage?: string;
+  kind?: 'text' | 'region';
+  region?: RegionSource;
+};
+export type RegionSource = {
+  assetId: string;
+  hash: string;
+  rect: { x: number; y: number; width: number; height: number };
+  rotation: number;
+  width: number;
+  height: number;
 };
 export type Card = {
   id: string;
@@ -48,6 +58,39 @@ export type Card = {
   body: string;
   evidenceIds: string[];
   needsReview: boolean;
+  provenance?: CardProvenance;
+};
+export type CardProvenance = {
+  researchId: string;
+  conversationId: string;
+  conversationTitle: string;
+  requestId: string;
+  prompt: string;
+  answer: string;
+  answerEvidenceIds?: string[];
+  selection: string;
+  context: ContextSnapshot[];
+  createdAt: string;
+  model?: string;
+  generationRequestIds: string[];
+  incomplete?: boolean;
+};
+export type CardDraft = {
+  id: string;
+  researchId: string;
+  conversationId: string;
+  source: CardProvenance;
+  title: string;
+  body: string;
+  evidenceIds: string[];
+  needsReview: boolean;
+  status: 'generating' | 'editing' | 'error' | 'saved';
+  error?: string;
+  revision: number;
+  instruction?: string;
+  suggestion?: { title: string; body: string; evidenceIds: string[]; baseRevision: number; requestId: string };
+  previous?: { title: string; body: string; evidenceIds: string[] };
+  cardId?: string;
 };
 export type Board = { id: string; researchId: string; title: string };
 export type BoardPlacement = {
@@ -71,6 +114,7 @@ export type Draft = {
   title: string;
   body: string;
   evidenceIds: string[];
+  cardSources?: { cardId: string; title: string; provenance: CardProvenance }[];
 };
 export type ReadingPosition = { pageIndex: number; scale: number };
 export type BoardViewport = { x: number; y: number; scale: number };
@@ -81,6 +125,11 @@ export type PanelState = {
   pinned: boolean;
   history: ResourceRef[];
   anchor?: ResourceAnchor;
+  aiView?: 'chat' | 'history' | 'draft' | 'source';
+  aiMode?: 'live' | 'demo';
+  aiDraftId?: string;
+  conversationSource?: CardProvenance;
+  sourceReturnRef?: ResourceRef;
 };
 export type ResourceAnchor = {
   evidenceId?: string;
@@ -96,6 +145,7 @@ export type Session = {
   readers: Record<string, ReadingPosition>;
   viewports: Record<string, BoardViewport>;
   anchor?: ResourceAnchor;
+  activeConversationId?: string;
 };
 export type Selection = {
   scope: WorkspaceScope;
@@ -111,6 +161,16 @@ export type ContextSnapshot = {
   title: string;
   pageIndex: number;
   quote: string;
+  kind?: 'text' | 'region';
+  region?: RegionSource;
+};
+export type AIHistoryTurn = {
+  requestId: string;
+  prompt: string;
+  body: string;
+  sentBody?: string;
+  evidenceIds: string[];
+  context: ContextSnapshot[];
 };
 export type AIRequest = {
   id: string;
@@ -119,10 +179,22 @@ export type AIRequest = {
   prompt: string;
   context: ContextSnapshot[];
   createdAt: string;
-  status: 'generating' | 'done' | 'error';
+  status: 'generating' | 'done' | 'error' | 'stopped' | 'interrupted';
   body: string;
   evidenceIds: string[];
   error?: string;
+  purpose?: 'chat' | 'card' | 'revision';
+  history?: AIHistoryTurn[];
+  model?: string;
+  mode?: 'live' | 'demo';
+  rawBody?: string;
+  result?: { title: string; body: string; evidenceIds: string[] };
+  retryOf?: string;
+  regeneratedFrom?: string;
+  superseded?: boolean;
+  legacy?: boolean;
+  validationError?: string;
+  draftId?: string;
 };
 export type Conversation = {
   id: string;
@@ -130,9 +202,15 @@ export type Conversation = {
   contextIds: string[];
   requestIds: string[];
   input?: string;
+  title?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  archived?: boolean;
+  historyRange?: 'all' | 'latest' | 'none';
+  scrollTop?: number;
 };
 export type WorkspaceData = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   researches: Record<string, Research>;
   documents: Record<string, PaperDocument>;
   evidence: Record<string, Evidence>;
@@ -143,6 +221,7 @@ export type WorkspaceData = {
   drafts: Record<string, Draft>;
   conversations: Record<string, Conversation>;
   requests: Record<string, AIRequest>;
+  cardDrafts: Record<string, CardDraft>;
   sessions: Record<string, Session>;
   scope: WorkspaceScope;
   sidebarCollapsed: boolean;

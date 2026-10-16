@@ -1,9 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { createSeed } from '../../src/data/seed';
+import type { CardProvenance } from '../../src/domain/types';
 import {
+  draftConversationSources,
   exportMarkdown,
+  insertCardReference,
   remapCitationNumbers,
 } from '../../src/features/export/exportMarkdown';
+
+function conversationSource(selection = '相关的证据才能支持可靠结论。'): CardProvenance {
+  return {
+    researchId: 'research-a',
+    conversationId: 'conversation-origin',
+    conversationTitle: '相关性讨论',
+    requestId: 'request-origin',
+    prompt: '如何理解证据相关性？',
+    answer: '完整回答中的未选内容不应默认导出。\n相关的证据才能支持可靠结论。',
+    selection,
+    context: [],
+    createdAt: '2026-10-16T02:00:00.000Z',
+    model: 'test-model',
+    generationRequestIds: ['request-card', 'request-revision'],
+  };
+}
 
 describe('Markdown 研究笔记导出', () => {
   it('包含核心问题、结论、文献、从 1 开始的 PDF 页码与摘录，并去重引用', () => {
@@ -83,5 +102,134 @@ describe('Markdown 研究笔记导出', () => {
     expect(() =>
       remapCitationNumbers('缺失来源 [1]', ['evidence-b'], ['evidence-a']),
     ).toThrow(/修复引用编号/);
+  });
+
+  it('插入时冻结双来源并关联研究，后续卡片或会话变化不会改写结论来源', () => {
+    const data = createSeed();
+    data.cards['card-a'].provenance = conversationSource();
+    data.cards['card-a'].provenance!.context = [{
+      evidenceId: 'evidence-a', documentId: 'paper-a', documentHash: 'original-hash',
+      title: '原文标题', pageIndex: 2, quote: '创建时的原文摘录',
+    }];
+    const cursor = insertCardReference(data, 'draft-b', 'card-a');
+    expect(cursor).toBe(data.drafts['draft-b'].body.length);
+    expect(data.researches['research-b'].cardIds).toContain('card-a');
+    expect(data.researches['research-b'].documentIds).toContain('paper-a');
+    expect(data.drafts['draft-b'].body).toContain('[1]');
+    data.cards['card-a'].title = '后来改过的标题';
+    data.cards['card-a'].body = '后来改过的正文';
+    data.cards['card-a'].provenance!.selection = '后来改过的来源';
+    data.cards['card-a'].provenance!.context[0].quote = '后来改过的原文摘录';
+    expect(data.drafts['draft-b'].cardSources![0].provenance.context[0].quote).toBe('创建时的原文摘录');
+    data.conversations = {};
+    data.requests = {};
+    const markdown = exportMarkdown(data, 'draft-b');
+    expect(markdown).toContain('相关性是检索收益的前提');
+    expect(markdown).toContain('> 相关的证据才能支持可靠结论。');
+    expect(markdown).toContain('用户问题：\n\n> 如何理解证据相关性？');
+    expect(markdown).toContain('请求 ID：request-origin');
+    expect(markdown).toContain('时间：2026-10-16T02:00:00.000Z');
+    expect(markdown).toContain('模型：test-model');
+    expect(markdown).toContain('request-card、request-revision');
+    expect(markdown).toContain('原答 [1] → 原文标题 · PDF 第 3 页');
+    expect(markdown).toContain('> 创建时的原文摘录');
+    expect(markdown).not.toContain('后来改过');
+    expect(markdown).not.toContain('完整回答中的未选内容');
+  });
+
+  it('同一问答的同一片段去重并保留各卡片 ID，不同知识点独立导出', () => {
+    const data = createSeed();
+    data.cards['card-a'].provenance = conversationSource();
+    data.cards['card-b'].provenance = conversationSource();
+    data.cards['card-c'].provenance = conversationSource('另一个知识点：保留可追溯的来源。');
+    for (const id of ['card-a', 'card-b', 'card-a', 'card-c']) insertCardReference(data, 'draft-b', id);
+    const sources = draftConversationSources(data.drafts['draft-b']);
+    expect(sources).toHaveLength(2);
+    expect(sources[0].cardIds).toEqual(['card-a', 'card-b']);
+    const markdown = exportMarkdown(data, 'draft-b');
+    expect(markdown.match(/### 对话来源 /g)).toHaveLength(2);
+    expect(markdown).toContain('卡片 ID：card-a、card-b');
+    expect(markdown).toContain('另一个知识点：保留可追溯的来源。');
+  });
+
+  it('仅对话卡可以引用，但不会伪造论文编号或论文关联', () => {
+    const data = createSeed();
+    data.cards['card-a'].provenance = conversationSource();
+    data.cards['card-a'].evidenceIds = [];
+    data.cards['card-a'].body = '这是一条仍需核查的解释。';
+    data.cards['card-a'].needsReview = true;
+    insertCardReference(data, 'draft-b', 'card-a');
+    expect(data.drafts['draft-b'].evidenceIds).toEqual([]);
+    expect(data.researches['research-b'].documentIds).toEqual([]);
+    const markdown = exportMarkdown(data, 'draft-b');
+    expect(markdown).toContain('本稿尚未附加原文证据');
+    expect(markdown).toContain('## 相关对话来源');
+    expect(markdown).not.toContain('[1]');
+  });
+
+  it('原答编号使用实际引用顺序，只导出引用 B 的冻结材料，不混入未引用上下文 A', () => {
+    const data = createSeed();
+    const source = conversationSource('无关材料可能增加不确定性 [1]。');
+    source.answerEvidenceIds = ['evidence-b'];
+    source.context = [
+      {
+        evidenceId: 'evidence-a', documentId: 'paper-a', documentHash: 'hash-a',
+        title: '未引用的上下文 A', pageIndex: 2, quote: 'A 的未引用摘录不应默认导出。',
+      },
+      {
+        evidenceId: 'evidence-b', documentId: 'paper-b', documentHash: 'hash-b',
+        title: '创建时的文献 B', pageIndex: 0, quote: '创建时的 B 摘录。',
+      },
+    ];
+    data.cards['card-a'].provenance = source;
+    data.cards['card-a'].evidenceIds = [];
+    data.cards['card-a'].body = '这条解释尚待核查。';
+    insertCardReference(data, 'draft-b', 'card-a');
+    data.evidence = {};
+    data.documents = {};
+    const markdown = exportMarkdown(data, 'draft-b');
+    expect(markdown).toContain('> 无关材料可能增加不确定性 [1]。');
+    expect(markdown).toContain('独立编号，不是结论的引用编号');
+    expect(markdown).toContain('原答 [1] → 创建时的文献 B · PDF 第 1 页');
+    expect(markdown).toContain('> 创建时的 B 摘录。');
+    expect(markdown).not.toContain('未引用的上下文 A');
+    expect(markdown).not.toContain('A 的未引用摘录');
+    expect(markdown).not.toContain('原答 [2]');
+  });
+
+  it('阻止失效来源卡写入，已有结论及研究关联保持完整', () => {
+    const data = createSeed();
+    delete data.evidence['evidence-a'];
+    const before = structuredClone(data);
+    expect(() => insertCardReference(data, 'draft-b', 'card-a')).toThrow(/引用/);
+    expect(data).toEqual(before);
+    data.cards['card-a'].evidenceIds = [];
+    data.cards['card-a'].provenance = conversationSource();
+    data.cards['card-a'].body = '无论文的解释却有虚构引用 [1]';
+    expect(() => insertCardReference(data, 'draft-b', 'card-a')).toThrow(/引用/);
+  });
+
+  it('区域证据无需文字摘录，导出元数据并明确未附图片和 PDF', () => {
+    const data = createSeed();
+    data.evidence['evidence-a'] = {
+      ...data.evidence['evidence-a'],
+      kind: 'region', quote: '',
+      region: {
+        assetId: 'region-image', hash: 'region-content-hash',
+        rect: { x: 0.1, y: 0.2, width: 0.4, height: 0.3 },
+        rotation: 90, width: 640, height: 480,
+      },
+    };
+    const markdown = exportMarkdown(data, 'draft-a');
+    expect(markdown).toContain('PDF 第 3 页');
+    expect(markdown).toContain('区域坐标（页面归一化）：x=0.1, y=0.2, width=0.4, height=0.3');
+    expect(markdown).toContain('旋转：90°');
+    expect(markdown).toContain('区域图片 hash：region-content-hash');
+    expect(markdown).toContain('未附带原始 PDF，未附带区域图片');
+    expect(markdown).toContain('不是可在其他设备打开的云链接');
+    data.evidence['evidence-a'].region!.rect.width = 1;
+    expect(() => exportMarkdown(data, 'draft-a')).toThrow(/引用.*区域来源/);
+    delete data.evidence['evidence-a'].region;
+    expect(() => exportMarkdown(data, 'draft-a')).toThrow(/引用.*区域来源/);
   });
 });

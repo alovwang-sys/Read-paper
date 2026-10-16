@@ -1,5 +1,30 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import type { WorkspaceData } from '../../src/domain/types';
 import { mkdir } from 'node:fs/promises';
+
+async function readData(page: Page): Promise<WorkspaceData> {
+  return page.evaluate(async () => {
+    const journal =
+      localStorage.getItem('papertrail-recovery-v2') ??
+      localStorage.getItem('papertrail-recovery-v1');
+    if (journal) return JSON.parse(journal);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const open = indexedDB.open('papertrail', 1);
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    const snapshot = await new Promise<WorkspaceData>((resolve, reject) => {
+      const read = db
+        .transaction('workspace')
+        .objectStore('workspace')
+        .get('current');
+      read.onsuccess = () => resolve(read.result);
+      read.onerror = () => reject(read.error);
+    });
+    db.close();
+    return snapshot;
+  });
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -88,6 +113,7 @@ test('不支持的存储版本加载失败后不覆盖已有数据', async ({ pa
       };
     });
     localStorage.removeItem('papertrail-recovery-v1');
+    localStorage.removeItem('papertrail-recovery-v2');
   });
   await page.reload();
   await expect(
@@ -162,13 +188,14 @@ test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆�
       workspace.getState().data.documents['paper-a'],
     );
     const firstPage = await pdf.getPage(1),
-      original = firstPage.getTextContent;
+      prototype = Object.getPrototypeOf(firstPage),
+      original = prototype.getTextContent;
     (
       window as unknown as { restoreTextExtraction: () => void }
     ).restoreTextExtraction = () => {
-      firstPage.getTextContent = original;
+      prototype.getTextContent = original;
     };
-    firstPage.getTextContent = async () => {
+    prototype.getTextContent = async () => {
       throw new Error('E2E extraction failure');
     };
   });
@@ -218,13 +245,16 @@ test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆�
   await page.screenshot({
     path: 'docs/verification/screenshots/ai-request-error.png',
   });
-  await page.getByRole('button', { name: '重试生成' }).click();
-  await expect(page.getByLabel('AI 草稿')).toHaveValue(/未调用真实模型/);
-  const body = await page.evaluate(async () => {
-    const storePath = '/src/services/workspace.ts';
-    return (await import(storePath)).workspace.getState().data.drafts['draft-a']
-      .body;
-  });
+  await page.getByLabel('AI 运行模式').selectOption('demo');
+  await page.getByRole('button', { name: '按原范围重试', exact: true }).click();
+  await expect(page.locator('.ai-answer').last()).toContainText(
+    '未调用真实模型',
+  );
+  const snapshot = await readData(page);
+  const retried = Object.values(snapshot.requests).at(-1)!;
+  expect(retried).toMatchObject({ mode: 'demo', status: 'done' });
+  expect(retried.retryOf).toBeTruthy();
+  const body = snapshot.drafts['draft-a'].body;
   expect(body).toBe(
     '检索增强的收益依赖证据相关性。无关语料可能增加不确定性，因此评估需要同时报告语料条件与来源可追踪性。',
   );

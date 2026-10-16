@@ -1,10 +1,14 @@
+export function mapCitationNumbers(body: string, transform: (number: number) => string): string {
+  return body.replace(/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`+[^`\n]*`+|\$\$[\s\S]*?\$\$|\$[^$\n]+\$)|\[(-?\d+)\]/g, (match, literal: string | undefined, number: string) => literal ?? transform(Number(number)));
+}
+
 export function remapCitationNumbers(
   body: string,
   sourceIds: string[],
   targetIds: string[],
 ): string {
-  return body.replace(/\[(-?\d+)\]/g, (_marker, number: string) => {
-    const sourceId = sourceIds[Number(number) - 1];
+  return mapCitationNumbers(body, (number) => {
+    const sourceId = sourceIds[number - 1];
     const targetIndex = targetIds.indexOf(sourceId);
     if (!sourceId || targetIndex < 0)
       throw new Error(

@@ -38,6 +38,8 @@ async function write(store: string, id: string, value: unknown) {
 export const loadWorkspace = () => read<WorkspaceData>('workspace', 'current');
 export const saveWorkspace = (data: WorkspaceData) =>
   write('workspace', 'current', data);
+export const saveMigrationBackup = (value: unknown) =>
+  write('workspace', 'before-schema-2', value);
 export const getAsset = (id: string) => read<Blob>('assets', id);
 export const putAsset = (id: string, blob: Blob) => write('assets', id, blob);
 export async function contentHash(bytes: ArrayBuffer) {

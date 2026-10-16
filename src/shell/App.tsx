@@ -37,6 +37,7 @@ import { CardEditor } from '../features/cards/CardEditor';
 import { BoardView } from '../features/board/BoardView';
 import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
+import { getAIConfig } from '../services/ai';
 
 const collections: { id: CollectionId; name: string; icon: typeof Inbox }[] = [
   { id: 'inbox', name: '收件箱', icon: Inbox },
@@ -51,6 +52,17 @@ const modes: { id: PanelMode; name: string }[] = [
   { id: 'info', name: '信息' },
   { id: 'ai', name: 'AI' },
 ];
+function ModelConnection() {
+  const [message, setMessage] = useState('正在检查模型连接…');
+  useEffect(() => {
+    let cancelled = false;
+    void getAIConfig().then(config => {
+      if (!cancelled) setMessage(config.configured ? `模型连接：${config.provider} · ${config.model}，${config.images ? '已启用文字与区域图片' : '已启用文字'}。` : '模型连接：尚未配置。可在 AI 面板明确选择演示模式。');
+    }).catch(() => { if (!cancelled) setMessage('AI 本地服务未启动。请按 README 启动后重试。'); });
+    return () => { cancelled = true; };
+  }, []);
+  return <p>{message}</p>;
+}
 function ResourceIcon({ kind, size = 16 }: { kind: string; size?: number }) {
   const Icon =
     kind === 'document'
@@ -865,7 +877,7 @@ export function App() {
                   与研究数据保存在此浏览器的本地存储中。
                 </p>
                 <p>换浏览器或清除站点数据将移除本地资料。</p>
-                <p>模型连接：未配置。AI 当前使用固定演示响应。</p>
+                <ModelConnection />
                 <p>
                   保存状态：{saveStatus}
                   {saveError && ` · ${saveError}`}

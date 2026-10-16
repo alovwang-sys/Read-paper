@@ -4,16 +4,19 @@ import {
   BookOpen,
   Download,
   FileText,
+  History,
   Plus,
   Search,
   X,
 } from 'lucide-react';
-import { useWorkspace } from '../../services/workspace';
+import { useWorkspace, validateEvidence } from '../../services/workspace';
 import {
+  draftConversationSources,
   draftSources,
   exportMarkdown,
-  remapCitationNumbers,
+  insertCardReference,
 } from '../export/exportMarkdown';
+import '../evidence/evidence.css';
 import './writing.css';
 
 export function WritingView({ draftId }: { draftId: string }) {
@@ -43,43 +46,22 @@ export function WritingView({ draftId }: { draftId: string }) {
     `${card.title} ${card.body}`.toLowerCase().includes(query.toLowerCase()),
   );
   const sources = [...new Set(draft.evidenceIds)];
+  const conversationSources = draftConversationSources(draft);
   const scope = { kind: 'research' as const, researchId: draft.researchId };
 
   function insertCard(cardId: string) {
     try {
-      const card = data.cards[cardId];
-      if (!card.evidenceIds.length)
-        throw new Error('这张卡片尚无原文证据，请先为卡片添加来源。');
-      const evidenceIds = [
-        ...new Set([...draft.evidenceIds, ...card.evidenceIds]),
-      ];
-      const body = remapCitationNumbers(
-        card.body.trim() || card.title,
-        card.evidenceIds,
-        evidenceIds,
-      );
-      const markers = [...new Set(card.evidenceIds)]
-        .map((id) => `[${evidenceIds.indexOf(id) + 1}]`)
-        .filter((marker) => !body.includes(marker))
-        .join('');
-      const text = `${body}${markers ? ` ${markers}` : ''}`;
-      actions.associateCard(draft.researchId, cardId);
       const start = editor.current?.selectionStart ?? draft.body.length;
       const end = editor.current?.selectionEnd ?? start;
-      const insertion = `${start > 0 ? '\n\n' : ''}${text}${end < draft.body.length ? '\n\n' : ''}`;
+      let cursor = start;
       actions.updateData((next) => {
-        next.drafts[draftId].evidenceIds = evidenceIds;
-        next.drafts[draftId].body =
-          draft.body.slice(0, start) + insertion + draft.body.slice(end);
+        cursor = insertCardReference(next, draftId, cardId, start, end);
       });
       setPickerOpen(false);
       setError('');
       requestAnimationFrame(() => {
         editor.current?.focus();
-        editor.current?.setSelectionRange(
-          start + insertion.length,
-          start + insertion.length,
-        );
+        editor.current?.setSelectionRange(cursor, cursor);
       });
     } catch (problem) {
       setError(
@@ -102,7 +84,7 @@ export function WritingView({ draftId }: { draftId: string }) {
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setError('');
-      actions.notice('Markdown 已导出，包含引用与摘录，未附带原始 PDF。');
+      actions.notice('Markdown 已导出，包含论文与对话来源；未附带原始 PDF 或区域图片。');
     } catch (problem) {
       setError(
         problem instanceof Error ? problem.message : '导出失败，请重试。',
@@ -189,7 +171,7 @@ export function WritingView({ draftId }: { draftId: string }) {
                 />
               </label>
               <p className="muted">
-                插入时会将卡片及证据论文加入本研究，原文证据保留在稿末。
+                插入时会将卡片及证据论文加入本研究，保存本次使用的对话来源快照。
               </p>
               <div className="writing-picker-list">
                 {cards.map((card) => (
@@ -202,7 +184,7 @@ export function WritingView({ draftId }: { draftId: string }) {
                     <strong>{card.title}</strong>
                     <span>{card.body.slice(0, 95)}</span>
                     <small>
-                      {card.evidenceIds.length} 条来源 ·{' '}
+                      {card.evidenceIds.length ? `${card.evidenceIds.length} 条论文依据` : card.provenance ? '仅对话来源' : '尚无来源'}{card.needsReview ? ' · 待核查' : ''} ·{' '}
                       {research?.cardIds.includes(card.id)
                         ? '已在研究中'
                         : '加入研究并引用'}
@@ -249,13 +231,8 @@ export function WritingView({ draftId }: { draftId: string }) {
             {sources.map((id, index) => {
               const evidence = data.evidence[id],
                 document = evidence && data.documents[evidence.documentId];
-              const valid =
-                evidence &&
-                document &&
-                Number.isInteger(evidence.pageIndex) &&
-                evidence.pageIndex >= 0 &&
-                evidence.pageIndex < document.pageCount &&
-                evidence.quote.trim();
+              let valid = false;
+              try { validateEvidence(data, [id]); valid = true; } catch { /* 保留失效来源，供用户修复。 */ }
               return (
                 <article
                   className={`writing-source ${valid ? '' : 'is-invalid'}`}
@@ -271,9 +248,10 @@ export function WritingView({ draftId }: { draftId: string }) {
                         ` · 印刷页码 ${evidence.printedPage}`}
                     </div>
                     <blockquote>
-                      {evidence?.quote || '请修复这条引用后导出。'}
+                      {evidence?.kind === 'region' && <span>区域证据 · </span>}
+                      {evidence?.quote || (valid && evidence?.kind === 'region' ? '保存的 PDF 框选区域，点击查看原文。' : '请修复这条引用后导出。')}
                     </blockquote>
-                    {valid && (
+                    {valid && evidence && document && (
                       <button
                         className="button"
                         onClick={() => {
@@ -308,8 +286,20 @@ export function WritingView({ draftId }: { draftId: string }) {
               );
             })}
           </section>
+          {!!conversationSources.length && <section className="writing-sources" aria-label="结论相关对话来源">
+            <div className="section-heading"><h3>相关对话来源</h3><span className="badge">{conversationSources.length} 条</span></div>
+            <p className="muted">以下为插入卡片时的来源快照，后续编辑卡片不会改写这些记录。</p>
+            {conversationSources.map(({ provenance, cardIds, titles }) => <article className="conversation-source" key={JSON.stringify([provenance.requestId, provenance.selection || provenance.answer])}>
+              <strong>{titles.join(' · ')}</strong>
+              <p className="muted">{provenance.conversationTitle || '阅读对话'} · {provenance.createdAt}</p>
+              <p>原始问题：{provenance.prompt}</p>
+              <blockquote>{provenance.selection || provenance.answer}</blockquote>
+              <button className="button" onClick={() => actions.openConversationSource(provenance, { kind: 'draft', id: draftId })} aria-label={`查看相关对话：${titles.join(' · ')}`}><History size={14} />查看相关对话</button>
+              <p className="muted">卡片 ID：{cardIds.join('、')}</p>
+            </article>)}
+          </section>}
           <p className="writing-export-note muted">
-            Markdown 导出包含文献信息、PDF 页码与原文摘录，不附带原始 PDF。
+            Markdown 导出包含文献信息、PDF 页码、摘录、区域说明与已用卡片的对话快照，不附带原始 PDF 或区域图片。
           </p>
         </div>
       </div>

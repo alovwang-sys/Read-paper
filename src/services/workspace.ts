@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { createSeed, emptySession } from '../data/seed';
-import { loadWorkspace, saveWorkspace } from '../data/storage';
+import { loadWorkspace, saveWorkspace, saveMigrationBackup } from '../data/storage';
+import { migrateWorkspace } from '../data/migrations';
 import type {
   BoardPlacement,
   CollectionId,
@@ -13,6 +14,9 @@ import type {
   WorkspaceScope,
   WorkspaceState,
   Selection,
+  Conversation,
+  CardProvenance,
+  RegionSource,
 } from '../domain/types';
 
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -51,7 +55,7 @@ export function validateEvidence(data: WorkspaceData, ids: string[]) {
     if (
       !evidence ||
       !doc ||
-      !evidence.quote.trim() ||
+      (evidence.kind === 'region' ? !validRegion(evidence.region) : !evidence.quote.trim()) ||
       !Number.isInteger(evidence.pageIndex) ||
       evidence.pageIndex < 0 ||
       evidence.pageIndex >= doc.pageCount
@@ -59,6 +63,19 @@ export function validateEvidence(data: WorkspaceData, ids: string[]) {
       throw new Error('引用的原文或页码缺失，请修复来源后重试。');
     return evidence;
   });
+}
+function validRegion(region?: RegionSource) {
+  if (!region?.assetId || !region.hash) return false;
+  const { x, y, width, height } = region.rect;
+  return [x, y, width, height, region.rotation, region.width, region.height].every(Number.isFinite) &&
+    x >= 0 && y >= 0 && width > 0 && height > 0 && x + width <= 1.00001 && y + height <= 1.00001 &&
+    region.width > 0 && region.height > 0 && region.rotation % 90 === 0;
+}
+export function getActiveConversation(data: WorkspaceData, researchId: string): Conversation | undefined {
+  const id = data.sessions[researchId]?.activeConversationId;
+  const active = id ? data.conversations[id] : undefined;
+  return active && !active.archived && active.researchId === researchId ? active :
+    Object.values(data.conversations).find(c => c.researchId === researchId && !c.archived);
 }
 export function linkCard(
   data: WorkspaceData,
@@ -85,43 +102,17 @@ let state: WorkspaceState = {
   saveStatus: 'saved',
 };
 let revision = 0,
+  journalRevision = 0,
   timer: ReturnType<typeof setTimeout> | undefined,
   saving = false;
-const JOURNAL = 'papertrail-recovery-v1';
+const JOURNAL = 'papertrail-recovery-v2';
+const LEGACY_JOURNAL = 'papertrail-recovery-v1';
 function emit() {
   listeners.forEach((listener) => listener());
 }
 function status(patch: Partial<WorkspaceState>) {
   state = { ...state, ...patch };
   emit();
-}
-function parseSaved(value: unknown): WorkspaceData {
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    (value as WorkspaceData).schemaVersion !== 1
-  )
-    throw new Error('存储版本不受支持，未覆盖现有数据。');
-  const data = value as WorkspaceData;
-  for (const key of [
-    'researches',
-    'documents',
-    'evidence',
-    'cards',
-    'boards',
-    'placements',
-    'edges',
-    'drafts',
-    'conversations',
-    'requests',
-    'sessions',
-  ] as const) {
-    if (!data[key] || typeof data[key] !== 'object' || Array.isArray(data[key]))
-      throw new Error('本地数据格式不完整，未覆盖现有数据。');
-  }
-  if (!data.scope || !data.sessions[scopeKey(data.scope)])
-    throw new Error('工作区会话缺失。');
-  return data;
 }
 async function persist() {
   if (saving || !state.loaded || state.loadError) return;
@@ -131,8 +122,9 @@ async function persist() {
   status({ saveStatus: 'saving', saveError: undefined });
   try {
     await saveWorkspace(snapshot);
+    if (journalRevision <= currentRevision) localStorage.removeItem(JOURNAL);
+    localStorage.removeItem(LEGACY_JOURNAL);
     if (revision === currentRevision) {
-      localStorage.removeItem(JOURNAL);
       status({ saveStatus: 'saved', saveError: undefined });
     } else status({ saveStatus: 'dirty' });
   } catch (error) {
@@ -159,21 +151,24 @@ export const workspace = {
   async load() {
     try {
       const journal = localStorage.getItem(JOURNAL);
-      const saved = journal ? JSON.parse(journal) : await loadWorkspace();
-      const data = saved ? parseSaved(saved) : createSeed();
-      for (const request of Object.values(data.requests))
-        if (request.status === 'generating') {
-          request.status = 'error';
-          request.error = '页面已重新加载，请重试请求。';
-        }
+      const oldJournal = localStorage.getItem(LEGACY_JOURNAL);
+      const database = await loadWorkspace();
+      for (const candidate of [database, journal && JSON.parse(journal), oldJournal && JSON.parse(oldJournal)]) {
+        if (candidate && typeof candidate.schemaVersion === 'number' && candidate.schemaVersion > 2) throw new Error('存储版本不受支持，未覆盖现有数据。请使用创建这些数据的新版应用。');
+      }
+      const saved = journal ? JSON.parse(journal) : database?.schemaVersion === 2 ? database : oldJournal ? JSON.parse(oldJournal) : database;
+      const migrated = saved && saved.schemaVersion === 1;
+      const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating'));
+      if (migrated) await saveMigrationBackup({ database, recovery: oldJournal });
+      const data = saved ? migrateWorkspace(saved) : createSeed();
       status({
         data,
         loaded: true,
         loadError: undefined,
         saveError: undefined,
-        saveStatus: journal ? 'dirty' : 'saved',
+        saveStatus: journal || migrated || interrupted ? 'dirty' : 'saved',
       });
-      if (journal || !saved) void persist();
+      if (journal || migrated || interrupted || !saved) void persist();
     } catch (error) {
       status({
         loaded: true,
@@ -186,10 +181,18 @@ export const workspace = {
       throw new Error('数据尚未成功加载，请重试加载后编辑');
     const data = structuredClone(state.data);
     change(data);
+    for (const request of Object.values(state.data.requests))
+      if (request.status !== 'generating' && data.requests[request.id] && data.requests[request.id].body !== request.body)
+        throw new Error('原始问答不可改写，请编辑独立卡片草稿。');
     revision++;
     let journalError: string | undefined;
     try {
-      localStorage.setItem(JOURNAL, JSON.stringify(data));
+      // shortcut: large histories rely on IndexedDB checkpoints; use incremental storage if usage outgrows one workspace record.
+      const journal = JSON.stringify(data);
+      if (journal.length <= 1_500_000) {
+        localStorage.setItem(JOURNAL, journal);
+        journalRevision = revision;
+      } else journalError = '记录较大，正在直接保存到本地数据库。请等待已保存状态后关闭页面。';
     } catch {
       journalError = '恢复缓冲不可用，请保持页面打开并重试保存。';
     }
@@ -365,6 +368,7 @@ export const workspace = {
         requestIds: [],
       };
       data.sessions[id] = emptySession({ kind: 'research', id });
+      data.sessions[id].activeConversationId = conversationId;
       data.scope = { kind: 'research', researchId: id };
     });
     return id;
@@ -386,12 +390,72 @@ export const workspace = {
     pageIndex: number;
     quote: string;
   }): string {
+    const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim());
+    if (existing) return existing.id;
     const id = uid('evidence');
     workspace.updateData((data) => {
       data.evidence[id] = { id, ...range, quote: range.quote.trim() };
       validateEvidence(data, [id]);
     });
     return id;
+  },
+  createRegionEvidence(range: { documentId: string; pageIndex: number; quote: string; region: RegionSource }): string {
+    const id = uid('evidence');
+    workspace.updateData(data => {
+      data.evidence[id] = { ...range, id, kind: 'region' };
+      validateEvidence(data, [id]);
+    });
+    return id;
+  },
+  getActiveConversation(researchId?: string): Conversation {
+    const id = researchId ?? (state.data.scope.kind === 'research' ? state.data.scope.researchId : undefined);
+    if (!id || !state.data.researches[id]) throw new Error('请先选择一个研究。');
+    const existing = getActiveConversation(state.data, id);
+    if (existing) return existing;
+    const conversationId = workspace.createConversation(id);
+    return state.data.conversations[conversationId];
+  },
+  createConversation(researchId: string): string {
+    const id = uid('conversation');
+    workspace.updateData(data => {
+      if (!data.researches[researchId]) throw new Error('研究不存在。');
+      data.conversations[id] = { id, researchId, title: '新的阅读对话', contextIds: [], requestIds: [], input: '', historyRange: 'all', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      data.sessions[researchId].activeConversationId = id;
+      data.sessions[researchId].panel.aiView = 'chat';
+    });
+    return id;
+  },
+  selectConversation(researchId: string, conversationId: string) {
+    workspace.updateData(data => {
+      const conversation = data.conversations[conversationId];
+      if (!conversation || conversation.researchId !== researchId) throw new Error('会话不属于该研究。');
+      data.sessions[researchId].activeConversationId = conversationId;
+      data.sessions[researchId].panel.aiView = 'chat';
+    });
+  },
+  renameConversation(conversationId: string, title: string) {
+    if (!title.trim()) throw new Error('会话名称不能为空。');
+    workspace.updateData(data => { data.conversations[conversationId].title = title.trim().slice(0, 120); });
+  },
+  archiveConversation(conversationId: string, archived: boolean) {
+    const conversation = state.data.conversations[conversationId];
+    if (!conversation) throw new Error('会话不存在。');
+    workspace.updateData(data => {
+      data.conversations[conversationId].archived = archived;
+      if (archived && data.sessions[conversation.researchId].activeConversationId === conversationId)
+        data.sessions[conversation.researchId].activeConversationId = Object.values(data.conversations).find(c => c.researchId === conversation.researchId && !c.archived)?.id;
+    });
+    if (archived && !getActiveConversation(state.data, conversation.researchId)) workspace.createConversation(conversation.researchId);
+  },
+  openConversationSource(source: CardProvenance, returnRef?: ResourceRef) {
+    workspace.updateData(data => {
+      const panel = data.sessions[scopeKey(data.scope)].panel;
+      panel.open = true;
+      panel.mode = 'ai';
+      panel.aiView = 'source';
+      panel.conversationSource = structuredClone(source);
+      panel.sourceReturnRef = returnRef;
+    });
   },
   createCard(
     evidenceIds: string[],
@@ -499,10 +563,11 @@ export const workspace = {
       throw new Error('请先打开一个研究，再添加 AI 上下文。');
     workspace.addContext({
       researchId: scope.researchId,
-      conversationId: `conversation-${scope.researchId}`,
+      conversationId: workspace.getActiveConversation(scope.researchId).id,
       evidenceIds: [evidence.id],
     });
     workspace.setPanel('ai');
+    workspace.updateData(data => { data.sessions[scope.researchId].panel.aiView = 'chat'; });
   },
 };
 

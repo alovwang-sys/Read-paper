@@ -2,6 +2,8 @@
 
 日期：2026-10-15（Asia/Shanghai）。分支：`codex/research-workbench`。
 
+本文保留首版基线。2026-10-16 的真实多轮 AI、区域问答、独立卡片草稿与双来源见[最新验收记录](ai-reading/README.md)。下列同名截图会随回归更新，AI 能力以最新记录为准。
+
 从原有规划文档建立可运行应用，实际实现采用 React、TypeScript、Vite、PDF.js、IndexedDB 与 localStorage 恢复缓冲。所有功能复用同一工作台、实体数据和导航服务。原官方截图仅作为结构参考，下面截图均来自本产品。
 
 ## 批次状态
@@ -61,7 +63,7 @@
 | [02-board-source-1280x800.png](screenshots/02-board-source-1280x800.png) | 分组、连线白板＋右侧原文页 |
 | [03-writing-ai-1440x900.png](screenshots/03-writing-ai-1440x900.png) | 主区结论＋右侧 AI，标题可见 |
 | [04-writing-ai-1024x800.png](screenshots/04-writing-ai-1024x800.png) | 1024px 右侧覆盖抽屉 |
-| [05-writing-ai-context-1440x900.png](screenshots/05-writing-ai-context-1440x900.png) | 两条上下文、可编辑 AI 草稿与结论引用编号 |
+| [05-writing-ai-context-1440x900.png](screenshots/05-writing-ai-context-1440x900.png) | 两条上下文、独立卡片草稿与结论引用编号 |
 | [06-two-column-selection-1440x900.png](screenshots/06-two-column-selection-1440x900.png) | 双栏 PDF 真实文本层选区 |
 | [07-scanned-pdf-1440x900.png](screenshots/07-scanned-pdf-1440x900.png) | 扫描件阅读与无文本层提示 |
 | [08-pdf-import-error-1440x900.png](screenshots/08-pdf-import-error-1440x900.png) | 导入错误及重选入口 |

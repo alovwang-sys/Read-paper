@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { PDFDocument } from 'pdf-lib';
-import type { WorkspaceData } from '../../src/domain/types';
+import type { AIRequest, WorkspaceData } from '../../src/domain/types';
 
 const screenshots = resolve('docs/verification/screenshots');
 const samples = resolve('public/samples');
@@ -13,7 +13,9 @@ const cardBody = '检索的收益需要相关证据支持，并应保留可核�
 
 async function data(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => {
-    const journal = localStorage.getItem('papertrail-recovery-v1');
+    const journal =
+      localStorage.getItem('papertrail-recovery-v2') ??
+      localStorage.getItem('papertrail-recovery-v1');
     if (journal) return JSON.parse(journal);
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('papertrail', 1);
@@ -208,7 +210,7 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   await setPdfPage(page, 3);
   await selectText(page, quote);
   await main(page)
-    .getByRole('button', { name: '创建证据卡片', exact: true })
+    .getByRole('button', { name: '创建卡片', exact: true })
     .click();
   await expect(panel(page).getByLabel('卡片正文')).toBeVisible();
   await panel(page).getByLabel('卡片标题').fill(cardTitle);
@@ -449,13 +451,18 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
     if (id === 'evidence-b')
       await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
   }
-  await expect(panel(page).locator('.context-chip')).toHaveCount(2);
-  await panel(page).getByLabel('向 AI 提问').fill('E2E 比较相关性与追溯性');
+  await expect(panel(page).locator('.ai-material')).toHaveCount(2);
+  await panel(page).getByLabel('AI 运行模式').selectOption('demo');
+  // A longer deterministic reply leaves time to switch research during streaming.
+  const question =
+    'E2E 比较相关性与追溯性。' +
+    '请比较适用条件与来源追踪，并保留两条材料的区别。'.repeat(40);
+  await panel(page).getByLabel('向 AI 提问').fill(question);
   await panel(page)
-    .getByRole('button', { name: '生成草稿', exact: true })
+    .getByRole('button', { name: '发送问题', exact: true })
     .click();
   await expect(
-    panel(page).getByText('正在生成演示草稿…', { exact: true }),
+    panel(page).getByText('正在回答…', { exact: true }),
   ).toBeVisible();
   await expect
     .poll(async () => Object.keys((await data(page)).requests).length)
@@ -479,16 +486,79 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
   expect(state.requests[request.id].researchId).toBe('research-a');
   expect(state.requests[request.id].context).toEqual(request.context);
   await page.getByLabel('切换研究').selectOption('research-a');
-  await panel(page)
-    .getByLabel('AI 草稿')
-    .fill('编辑后的比较，第一条来源是限制 [1]，第二条来源是方法 [2]。');
-  await panel(page)
-    .getByRole('button', { name: '另存卡片', exact: true })
-    .click();
-  await expect(panel(page).getByLabel('卡片正文')).toHaveValue(
-    '编辑后的比较，第一条来源是限制 [1]，第二条来源是方法 [2]。',
+  const originalAnswer = (await data(page)).requests[request.id].body;
+  await expect(panel(page).locator('.ai-answer')).toContainText(
+    '未调用真实模型',
   );
+  expect((await data(page)).sessions['research-a'].panel.aiMode).toBe('demo');
+  await panel(page)
+    .getByRole('button', { name: '整理为卡片', exact: true })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: '生成卡片草稿', exact: true })
+    .click();
+  await expect(panel(page).getByLabel('卡片正文')).toBeEnabled();
+  const draftId = (await data(page)).sessions['research-a'].panel.aiDraftId!;
+  // The fixture revision keeps both source IDs, exercising two-source renumbering.
+  await page.evaluate(async (id) => {
+    const modulePath = '/src/services/ai.ts';
+    const { reviseCardDraft } = await import(modulePath);
+    await reviseCardDraft(
+      id,
+      '同时比较限制与方法，保留两条来源。',
+      async (generation: AIRequest) => {
+        const result = {
+          title: 'E2E AI 比较卡片',
+          body: '比较草稿，限制 [1] 与方法 [2]。',
+          evidenceIds: generation.context.map(
+            (item: { evidenceId: string }) => item.evidenceId,
+          ),
+        };
+        return {
+          body: JSON.stringify(result),
+          result,
+          evidenceIds: result.evidenceIds,
+          model: 'E2E deterministic revision',
+        };
+      },
+    );
+  }, draftId);
+  await panel(page)
+    .getByRole('button', { name: '应用修改', exact: true })
+    .click();
+  const editedBody =
+    '编辑后的比较，第一条来源是限制 [1]，第二条来源是方法 [2]。';
   await panel(page).getByLabel('卡片标题').fill('E2E AI 比较卡片');
+  await panel(page).getByLabel('卡片正文').fill(editedBody);
+  await panel(page)
+    .getByRole('button', { name: '加入卡片', exact: true })
+    .click();
+  await expect(
+    panel(page).getByRole('heading', { name: '卡片已建立' }),
+  ).toBeVisible();
+  state = await data(page);
+  const generatedCard = state.cards[state.cardDrafts[draftId].cardId!];
+  expect(generatedCard.body).toBe(editedBody);
+  expect(generatedCard.evidenceIds).toEqual(['evidence-b', 'evidence-c']);
+  expect(state.requests[request.id].body).toBe(originalAnswer);
+  expect(generatedCard.provenance).toMatchObject({
+    requestId: request.id,
+    prompt: question,
+    answer: originalAnswer,
+    context: request.context,
+  });
+  expect(generatedCard.provenance?.generationRequestIds).toHaveLength(2);
+  await panel(page)
+    .getByRole('button', { name: /相关对话.*查看原始问答与整理片段/ })
+    .click();
+  await expect(
+    panel(page).getByRole('heading', { name: '相关对话', exact: true }),
+  ).toBeVisible();
+  await expect(panel(page).getByText(question, { exact: true })).toBeVisible();
+  await panel(page)
+    .getByRole('button', { name: '返回来源入口', exact: true })
+    .click();
   await openNav(page, '结论与导出');
   await main(page)
     .getByRole('button', { name: '插入卡片引用', exact: true })
@@ -506,6 +576,12 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
     'evidence-c',
   ]);
   expect(state.drafts['draft-b'].body).toBe('');
+  expect(state.drafts['draft-a'].cardSources?.[0].provenance).toEqual(
+    generatedCard.provenance,
+  );
+  await panel(page)
+    .getByRole('button', { name: '继续对话', exact: true })
+    .click();
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await screenshot(page, '05-writing-ai-context-1440x900');
 });
@@ -536,7 +612,7 @@ test('双栏与扫描边界、损坏 PDF 导入、来源及返回恢复', async 
     'A fixed retrieval budget does not guarantee relevant evidence.',
   );
   await expect(
-    main(page).getByRole('button', { name: '创建证据卡片', exact: true }),
+    main(page).getByRole('button', { name: '创建卡片', exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(() =>
@@ -629,7 +705,7 @@ test('原 PDF 资产缺失后同 hash 重导入修复，保留文档与证据身
   await setPdfPage(page, 3);
   await selectText(page, quote);
   await main(page)
-    .getByRole('button', { name: '创建证据卡片', exact: true })
+    .getByRole('button', { name: '创建卡片', exact: true })
     .click();
   await expect(panel(page).getByLabel('卡片正文')).toBeVisible();
   await saved(page);

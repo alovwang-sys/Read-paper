@@ -14,7 +14,8 @@ export function emptySession(active: Session['active']): Session {
 
 export function createSeed(): WorkspaceData {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    cardDrafts: {},
     researches: {
       'research-a': {
         id: 'research-a',

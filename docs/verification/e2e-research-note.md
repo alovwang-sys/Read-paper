@@ -21,10 +21,11 @@
 文件：adaptive-retrieval.pdf  
 文献 ID：paper-a  
 PDF 第 3 页  
-证据 ID：evidence-0be27934-f574-43ab-bc53-97cdf72a08f5
+证据 ID：evidence-a
 
 > Retrieval improves factual accuracy when the evidence corpus is relevant.
 
 ---
 
-本文件保留文献信息、PDF 页码与原文摘录；未附带原始 PDF。
+本文件保留文献信息、PDF 页码、原文摘录及可用的区域说明；未附带原始 PDF，未附带区域图片。区域图像需在保存原件的本地应用中查看。
+以上本地对象 ID 用于应用内追溯，不是可在其他设备打开的云链接。
