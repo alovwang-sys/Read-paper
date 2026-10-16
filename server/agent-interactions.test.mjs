@@ -128,3 +128,16 @@ test('adding an external-tool Skill starts a fresh thread so its native tools ar
   assert.equal(calls[1].nativeSessionId, undefined);
   assert.equal(calls[1].prompt.includes('Answer'), true);
 });
+
+test('Codex access and reasoning settings pass the request boundary unchanged while malformed values never run', async t => {
+  const inputs = [];
+  const f = await fixture(t, { async run(input) { inputs.push(input); return { nativeSessionId: 'native', body: 'Answered' }; } });
+  for (const codex of [{ access: 'danger-full-access' }, { access: true }, { effort: '' }, { effort: 'ultra\n' }, { effort: 'x'.repeat(41) }, { effort: 5 }]) {
+    assert.equal((await f.post({ ...runBody, codex })).status, 400);
+  }
+  assert.equal(inputs.length, 0);
+  const codex = { model: 'native-model', mode: 'plan', effort: 'ultra', access: 'full-access' };
+  const response = await f.post({ ...runBody, codex });
+  assert.equal(response.status, 200); await response.text();
+  assert.deepEqual(inputs[0].codex, codex);
+});

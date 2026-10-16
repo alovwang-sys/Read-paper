@@ -1,0 +1,163 @@
+{
+  "checkedDate": "2026-10-17",
+  "timezone": "Asia/Shanghai",
+  "evidenceType": "actual-native-command-exec-probe",
+  "version": {
+    "command": [
+      "codex",
+      "--version"
+    ],
+    "output": "codex-cli 0.162.1"
+  },
+  "method": {
+    "client": "server/codex-runtime.mjs#createCodexClient",
+    "transport": "Owned app-server stdio process",
+    "scope": "A freshly created synthetic system temporary directory only. All paths below are placeholders, not user paths.",
+    "fixture": {
+      "temporaryRoot": "<temporaryRoot>",
+      "project": "<temporaryRoot>/project",
+      "outsideFile": "<temporaryRoot>/outside.txt",
+      "outsideFileContents": "Synthetic sentinel text only"
+    },
+    "startupOverrides": {
+      "default_permissions": "read_paper_materials",
+      "permissions.read_paper_materials.filesystem": {
+        ":minimal": "read",
+        ":project_roots": "read"
+      },
+      "permissions.read_paper_materials.network.enabled": false
+    },
+    "preflight": [
+      {
+        "method": "initialize",
+        "params": {
+          "clientInfo": {
+            "name": "read_paper",
+            "title": "Read Paper",
+            "version": "0.1.0"
+          },
+          "capabilities": {
+            "experimentalApi": true
+          }
+        }
+      },
+      {
+        "notification": "initialized"
+      },
+      {
+        "method": "permissionProfile/list",
+        "params": {
+          "cwd": "<temporaryRoot>/project",
+          "limit": 100
+        },
+        "observed": {
+          "profile": ":danger-full-access",
+          "allowed": true
+        }
+      }
+    ],
+    "commonCommandParams": {
+      "cwd": "<temporaryRoot>/project",
+      "timeoutMs": 3000,
+      "outputBytesCap": 1024
+    }
+  },
+  "checks": [
+    {
+      "name": "Default readonly denies project writes",
+      "rpc": {
+        "method": "command/exec",
+        "params": {
+          "permissionProfile": "read_paper_materials",
+          "command": [
+            "/usr/bin/touch",
+            "<temporaryRoot>/project/readonly-probe"
+          ]
+        }
+      },
+      "observed": {
+        "exitCodeNonzero": true,
+        "writeDenied": true
+      },
+      "passed": true
+    },
+    {
+      "name": "Explicit full access permits writes inside and outside the project, within the synthetic temporary root",
+      "rpc": [
+        {
+          "method": "command/exec",
+          "params": {
+            "permissionProfile": ":danger-full-access",
+            "command": [
+              "/usr/bin/touch",
+              "<temporaryRoot>/project/full-probe"
+            ]
+          }
+        },
+        {
+          "method": "command/exec",
+          "params": {
+            "permissionProfile": ":danger-full-access",
+            "command": [
+              "/usr/bin/touch",
+              "<temporaryRoot>/outside-full-probe"
+            ]
+          }
+        }
+      ],
+      "observed": {
+        "projectWriteExitCodeZero": true,
+        "outsideProjectWriteExitCodeZero": true
+      },
+      "passed": true
+    },
+    {
+      "name": "Explicitly selecting readonly again denies subsequent project writes",
+      "rpc": {
+        "method": "command/exec",
+        "params": {
+          "permissionProfile": "read_paper_materials",
+          "command": [
+            "/usr/bin/touch",
+            "<temporaryRoot>/project/lowered-probe"
+          ]
+        }
+      },
+      "observed": {
+        "exitCodeNonzero": true,
+        "writeDenied": true
+      },
+      "passed": true
+    },
+    {
+      "name": "Explicitly selecting readonly again denies reading the synthetic file outside the project",
+      "rpc": {
+        "method": "command/exec",
+        "params": {
+          "permissionProfile": "read_paper_materials",
+          "command": [
+            "/bin/cat",
+            "<temporaryRoot>/outside.txt"
+          ]
+        }
+      },
+      "observed": {
+        "exitCodeNonzero": true,
+        "outsideProjectReadDenied": true
+      },
+      "passed": true
+    }
+  ],
+  "safetyAndLimits": {
+    "threadStartRequests": 0,
+    "threadResumeRequests": 0,
+    "modelTurnRequests": 0,
+    "realModelCalls": 0,
+    "globalCodexSettingsModified": false,
+    "userProjectFilesAccessed": false,
+    "authenticationValuesInspectedOrRecordedByProbe": false,
+    "ownedProcessClosed": true,
+    "syntheticDirectoryRemoved": true,
+    "limitation": "This proves the native command/exec permission profiles and explicit lowering. Thread resume and turn field mappings are separately verified by deterministic runtime tests. Project-writable access remains hidden because a dedicated profile protecting materials and skills has not been proven."
+  }
+}

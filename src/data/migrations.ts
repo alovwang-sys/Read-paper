@@ -39,6 +39,14 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (typeof evidence.documentId !== 'string' || typeof evidence.quote !== 'string' || !Number.isInteger(evidence.pageIndex) || evidence.pageIndex < 0) throw new Error('证据数据损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
+  for (const item of [...Object.values(data.conversations), ...Object.values(data.requests)]) {
+    const settings = item.codex;
+    if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key => !['model', 'mode', 'effort', 'access'].includes(key))
+      || settings.model !== undefined && (typeof settings.model !== 'string' || !settings.model.trim() || settings.model.length > 200)
+      || ![undefined, 'chat', 'plan'].includes(settings.mode)
+      || settings.effort !== undefined && (typeof settings.effort !== 'string' || !/^[a-z][a-z0-9_-]{0,39}$/.test(settings.effort))
+      || ![undefined, 'read-only', 'workspace-write', 'full-access'].includes(settings.access))) throw new Error('Codex 设置损坏，未覆盖现有数据。');
+  }
   for (const conversation of Object.values(data.conversations)) {
     if (!Array.isArray(conversation.contextIds) || !Array.isArray(conversation.requestIds))
       throw new Error('对话数据不完整，未覆盖现有数据。');

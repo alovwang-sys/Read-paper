@@ -23,6 +23,7 @@ async function fixture(t, respond = () => undefined) {
         const defaults = {
           initialize: {}, 'config/read': { config: { mcp_servers: { external: {} } } }, 'skills/list': { data: [] },
           'model/list': { data: [{ id: 'default', model: 'native', displayName: 'Native', isDefault: true }] }, 'collaborationMode/list': { data: [] },
+          'permissionProfile/list': { data: [{ id: 'read_paper_materials', allowed: true }, { id: ':danger-full-access', allowed: true }] },
           'command/exec': { exitCode: request.params?.command?.[0].includes('touch') || request.params?.command?.[1].endsWith('outside.txt') ? 1 : 0 },
           'thread/start': { thread: { id: 'new-thread', cwd } }, 'turn/start': { turn: { id: 'new-turn' } },
         };

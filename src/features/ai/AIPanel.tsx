@@ -44,6 +44,9 @@ import { AgentPicker, agentStateLabel } from './AgentPicker';
 import { AgentActivity } from './AgentActivity';
 import { CodexComposerTools, type CodexComposerToolsHandle } from './CodexComposerTools';
 import { AgentInteractionCard } from './AgentInteractionCard';
+import { ComposerMaterials } from './ComposerMaterials';
+import { VoiceInput } from './VoiceInput';
+import { ReportedChanges } from './ReportedChanges';
 import {
   ContextDetails,
   RegionPreview,
@@ -438,6 +441,32 @@ export function AIPanel() {
         caught instanceof Error ? caught.message : '当前材料无法发送';
     }
   }
+  const composerInput = (<textarea
+          ref={input}
+          aria-label="向 AI 提问"
+          placeholder="基于这些材料提问，或继续追问…"
+          value={prompt}
+          onChange={(event) =>
+            actions.updateData((next) => {
+              next.conversations[conversation.id].input = event.target.value;
+            })
+          }
+          onKeyDown={(event) => {
+            if (
+              (event.ctrlKey || event.metaKey) &&
+              event.key === 'Enter' &&
+              !event.nativeEvent.isComposing &&
+              event.nativeEvent.keyCode !== 229
+            ) {
+              event.preventDefault();
+              if (canSend) void send();
+            }
+          }}
+        />);
+  const composerLeading = <><ComposerMaterials key={conversation.id} researchId={research.id} conversationId={conversation.id} disabled={!!generating} /><AgentPicker current={connectionId} agents={agents} loading={loadingAgents} error={agentError} model={config?.model} configured={!!config?.configured && !configError} onSelect={switchAgent} onRefresh={() => { void loadAgents(); void loadConfig(); }} /></>;
+  const composerTrailing = <><VoiceInput key={conversation.id} inputRef={input} />{generating ? (
+    <button type="button" className="ai-composer-stop" aria-label="停止生成" title="停止当前生成" onClick={() => stopAI(generating.id)}><Square size={13} fill="currentColor" /></button>
+  ) : <button type="button" className="primary ai-send" aria-label="发送问题" disabled={!canSend} onClick={() => void send()}><ArrowUp size={17} /></button>}</>;
   return (
     <section className="reading-ai ai-desktop-chat" aria-label="AI 阅读对话">
       <div className="ai-subhead ai-chat-head">
@@ -488,7 +517,7 @@ export function AIPanel() {
                 ? `${config.model} · 真实模型`
                 : '真实模型尚未连接'}
         </span>
-        {native && agent?.state === 'ready' && <span className="ai-badge">{connectionId === 'codex' ? '默认只读 · 逐次审批' : agent.capabilities.tools ? '只读工具' : '仅对话'}</span>}
+        {native && agent?.state === 'ready' && <span className="ai-badge">{connectionId === 'codex' ? conversation.codex?.access === 'full-access' ? '完全访问' : '只读 · 逐次审批' : agent.capabilities.tools ? '只读工具' : '仅对话'}</span>}
       </div>
       {!!backgroundTasks.length && <button className="ai-background-tasks" onClick={() => { rememberScroll(); updatePanel('history'); }}><span />{backgroundTasks.length} 个任务在其他对话运行 · 查看</button>}
       {native && conversation.nativeSessionRef && <div className="ai-native-record"><span>{conversation.nativeImported ? '来自原生客户端 · 包含原有对话上下文' : '项目内原生会话'}</span><button className="text-button" disabled={refreshingNative || !!generating} onClick={() => void refreshNative()}><RefreshCw size={13} />{refreshingNative ? '读取中…' : '刷新记录'}</button></div>}
@@ -603,7 +632,7 @@ export function AIPanel() {
                   {request.nativeImported ? '来自原生记录 · 原有材料未关联' : <>{request.connectionId && request.connectionId !== 'model' && request.connectionId !== 'demo' ? `${connectionLabel(request.connectionId)} · ` : ''}发送时：{request.context.length} 条材料 ·{' '}{request.history?.length ?? 0} 轮前序对话</>}
                 </summary>
                 {request.nativeImported && <p>保留原始对话文本；附件、引用及压缩前的历史不一定包含在此记录中。原生会话可能仍使用此前上下文。</p>}
-                {request.connectionId === 'codex' && <div className="codex-request-settings"><span>{request.codex?.mode === 'plan' ? 'Plan' : 'Chat'} · {request.codex?.model || request.model || '连接默认模型'}</span>{!!request.skills?.length && <span>技能：{request.skills.map(skill => skill.name).join('、')}</span>}</div>}
+                {request.connectionId === 'codex' && <div className="codex-request-settings"><span>{request.codex?.mode === 'plan' ? 'Plan' : 'Chat'} · {request.codex?.model || request.model || '连接默认模型'}{request.codex?.effort ? ` · ${request.codex.effort}` : ''}</span><span>权限：{request.codex?.access === 'full-access' ? '完全访问' : request.codex?.access === 'workspace-write' ? '项目内写入' : '只读'}</span>{!!request.skills?.length && <span>技能：{request.skills.map(skill => skill.name).join('、')}</span>}</div>}
                 <ContextDetails items={request.context} />
                 {request.history?.map((turn, index) => (
                   <details className="ai-details" key={turn.requestId}>
@@ -984,49 +1013,14 @@ export function AIPanel() {
             {error}
           </p>
         )}
+        <ReportedChanges diff={latest?.events?.find(event => event.id === 'turn-diff' && event.toolName === 'fileChange')?.output} />
         </div>
         <div className="ai-input-shell">
-        {connectionId === 'codex' && <CodexComposerTools key={conversation.id} ref={codexTools} inputRef={input} value={prompt} skills={conversation.skills ?? []} settings={conversation.codex ?? {}} status={agent ? agentStateLabel[agent.state] : '未连接'} onInput={value => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].input = value; })} onSkills={skills => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].skills = skills; })} onSettings={codex => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].codex = codex; })} onNew={() => { rememberScroll(); actions.createConversation(research.id); input.current?.focus(); }} />}
-        <textarea
-          ref={input}
-          aria-label="向 AI 提问"
-          placeholder="基于这些材料提问，或继续追问…"
-          value={prompt}
-          onChange={(event) =>
-            actions.updateData((next) => {
-              next.conversations[conversation.id].input = event.target.value;
-            })
-          }
-          onKeyDown={(event) => {
-            if (
-              (event.ctrlKey || event.metaKey) &&
-              event.key === 'Enter' &&
-              !event.nativeEvent.isComposing &&
-              event.nativeEvent.keyCode !== 229
-            ) {
-              event.preventDefault();
-              if (canSend) void send();
-            }
-          }}
-        />
-        <div className="ai-composer-footer">
-          <AgentPicker current={connectionId} agents={agents} loading={loadingAgents} error={agentError} model={config?.model} configured={!!config?.configured && !configError} onSelect={switchAgent} onRefresh={() => { void loadAgents(); void loadConfig(); }} />
-          {generating ? (
-            <button className="button" onClick={() => stopAI(generating.id)}>
-              <Square size={13} />
-              停止生成
-            </button>
-          ) : (
-            <button
-              className="primary ai-send"
-              aria-label="发送问题"
-              disabled={!canSend}
-              onClick={() => void send()}
-            >
-              <ArrowUp size={17} />
-            </button>
-          )}
-        </div>
+          {connectionId === 'codex' ? (
+            <CodexComposerTools key={conversation.id} ref={codexTools} inputRef={input} value={prompt} skills={conversation.skills ?? []} settings={conversation.codex ?? {}} status={agent ? agentStateLabel[agent.state] : '未连接'} onInput={value => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].input = value; })} onSkills={skills => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].skills = skills; })} onSettings={codex => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].codex = codex; })} onNew={() => { rememberScroll(); actions.createConversation(research.id); input.current?.focus(); }} disabled={!!generating} projectPath={research.directory?.path} leadingControls={composerLeading} trailingControls={composerTrailing}>
+              {composerInput}
+            </CodexComposerTools>
+          ) : <>{composerInput}<div className="ai-composer-footer">{composerLeading}<div className="ai-composer-actions">{composerTrailing}</div></div></>}
         </div>
         <p className="ai-sending-note">
           ⌘ / Ctrl + Enter 发送 · {native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}

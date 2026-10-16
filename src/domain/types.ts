@@ -194,8 +194,14 @@ export type AIHistoryTurn = {
 };
 export type AIConnectionId = 'model' | 'demo' | 'codex' | 'claude' | 'opencode';
 export type AgentSkill = { id: string; name: string; description: string; enabled: boolean; disabledReason?: string };
-export type CodexSettings = { model?: string; mode?: 'chat' | 'plan' };
-export type CodexCapabilities = { skills: AgentSkill[]; models: { id: string; name: string; isDefault?: boolean }[]; plan: boolean };
+export type CodexAccess = 'read-only' | 'workspace-write' | 'full-access';
+export type CodexSettings = { model?: string; mode?: 'chat' | 'plan'; effort?: string; access?: CodexAccess };
+export type CodexCapabilities = {
+  skills: AgentSkill[];
+  models: { id: string; name: string; isDefault?: boolean; reasoningEfforts?: { effort: string; description: string }[]; defaultReasoningEffort?: string }[];
+  plan: boolean;
+  accessModes?: CodexAccess[];
+};
 export type AgentInteraction = {
   id: string;
   kind: 'approval' | 'question';

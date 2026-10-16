@@ -139,7 +139,7 @@ describe('研究与助手会话', () => {
   it('Codex 提交冻结技能和模型模式，重试沿用原快照，整理卡片不继承技能', async () => {
     const conversation = selectAgent('research-a', 'codex');
     const skill = { id: '/skills/research/SKILL.md', name: '研究核查', description: '核对研究依据', enabled: true };
-    const settings = { model: 'submitted-model', mode: 'plan' as const };
+    const settings = { model: 'submitted-model', mode: 'plan' as const, effort: 'ultra', access: 'full-access' as const };
     workspace.updateData(next => { next.conversations[conversation].skills = [skill]; next.conversations[conversation].codex = settings; });
     let release!: (response: Response) => void;
     let runs = 0;
@@ -258,6 +258,16 @@ describe('研究与助手会话', () => {
     (conversation as unknown as { connectionId: string }).connectionId = 'unknown';
     expect(() => migrateWorkspace(seed)).toThrow(/连接/);
     expect(conversation.input).toBe('恢复我的输入');
+  });
+
+  it('保存模型推理与权限选择，拒绝损坏的权限设置而不清空草稿', () => {
+    const seed = createSeed(), conversation = Object.values(seed.conversations)[0];
+    conversation.input = '仍在编辑的研究问题';
+    conversation.codex = { model: 'selected-model', effort: 'ultra', access: 'full-access', mode: 'chat' };
+    expect(migrateWorkspace(seed).conversations[conversation.id].codex).toEqual(conversation.codex);
+    (conversation.codex as { access: string }).access = 'unknown';
+    expect(() => migrateWorkspace(seed)).toThrow('Codex 设置损坏');
+    expect(conversation.input).toBe('仍在编辑的研究问题');
   });
 });
 

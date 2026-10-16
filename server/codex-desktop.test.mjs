@@ -52,6 +52,9 @@ async function fixture(t, options = {}) {
           { name: 'mcp', description: 'Requires a connector', path: `${skillDir}/mcp/SKILL.md`, enabled: true, dependencies: { tools: [{ type: 'mcp', value: 'external' }] } },
         ] }] }; break;
         case 'model/list': result = { data: options.models || [{ id: 'picker-model', model: 'native-model', displayName: 'Native model', isDefault: true, hidden: false, defaultReasoningEffort: 'medium' }], nextCursor: null }; break;
+        case 'permissionProfile/list':
+          if (options.profilesUnsupported) { send({ id: message.id, error: { code: -32601, message: 'Method not found' } }); callback(); return; }
+          result = { data: options.permissionProfiles || [{ id: 'read_paper_materials', allowed: true }, { id: ':danger-full-access', allowed: true }] }; break;
         case 'collaborationMode/list': result = { data: options.modes || [{ name: 'Plan', mode: 'plan' }, { name: 'Default', mode: 'default' }] }; break;
         case 'thread/start': case 'thread/resume': result = { thread: { id: message.params.threadId || 'thread1' }, model: 'native-model' }; break;
         case 'turn/start':
@@ -78,7 +81,8 @@ test('capabilities discover native skills/models/plan without exposing skill pat
   assert.ok(first.skills.filter((skill) => ['disabled', 'mcp'].includes(skill.name)).every((skill) => !skill.enabled && skill.disabledReason));
   assert.equal(first.skills.find((skill) => skill.name === 'plugin').enabled, true);
   assert.match(first.skills.find((skill) => skill.name === 'plugin').description, /插件及外部工具仍未接入/);
-  assert.deepEqual(first.models, [{ id: 'picker-model', name: 'Native model', isDefault: true }]);
+  assert.deepEqual(first.models, [{ id: 'picker-model', name: 'Native model', isDefault: true, defaultReasoningEffort: 'medium' }]);
+  assert.deepEqual(first.accessModes, ['read-only', 'full-access']);
   assert.equal(first.plan, true);
   assert.doesNotMatch(JSON.stringify(first), /SKILL\.md|nativeModel|sourcePath|\/skills\//);
   assert.ok(f.children.every((child) => child.killed));
@@ -270,4 +274,78 @@ test('TikHub tool requests are rejected when its Skill was not selected, includi
   await f.runtime.run({ cwd: f.cwd, prompt: 'Q', nativeSessionId: 'thread1', skillIds: [], codex: {} });
   assert.equal(replies[0].success, false);
   assert.ok(!f.captured.find(entry => entry.method === 'thread/resume').params.dynamicTools);
+});
+
+test('native reasoning effort catalog drives actual turn and Plan settings, including Ultra only when advertised', async t => {
+  const f = await fixture(t, { models: [{ id: 'picker-model', model: 'native-model', displayName: 'Native model', isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium', description: 'Balanced' }, { reasoningEffort: 'ultra', description: 'Deepest supported effort' }] }] });
+  const catalog = await f.runtime.capabilities();
+  assert.deepEqual(catalog.models[0].reasoningEfforts, [{ effort: 'medium', description: 'Balanced' }, { effort: 'ultra', description: 'Deepest supported effort' }]);
+  await f.runtime.run({ cwd: f.cwd, prompt: 'Plan', codex: { model: 'picker-model', effort: 'ultra', mode: 'plan' } });
+  const turn = f.captured.find(entry => entry.method === 'turn/start').params;
+  assert.equal(turn.effort, 'ultra'); assert.equal(turn.collaborationMode.settings.reasoning_effort, 'ultra');
+  const count = f.captured.filter(entry => entry.method === 'turn/start').length;
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Invalid effort', codex: { effort: 'unsupported' } }), { code: 'invalid_effort' });
+  assert.equal(f.captured.filter(entry => entry.method === 'turn/start').length, count);
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Invalid effort', codex: { effort: 'ultra\n' } }), { code: 'invalid_effort' });
+});
+
+test('full access is explicit and allowed by native policy; resumed next turns explicitly restore readonly defaults', async t => {
+  const f = await fixture(t);
+  await f.runtime.run({ cwd: f.cwd, prompt: 'Explicit full access', codex: { access: 'full-access', mode: 'chat' } });
+  await f.runtime.run({ cwd: f.cwd, nativeSessionId: 'thread1', prompt: 'Return to defaults', codex: { mode: 'chat' } });
+  const opened = f.captured.find(entry => entry.method === 'thread/start').params;
+  const resumed = f.captured.find(entry => entry.method === 'thread/resume').params;
+  const turns = f.captured.filter(entry => entry.method === 'turn/start').map(entry => entry.params);
+  assert.equal(opened.permissions, ':danger-full-access'); assert.equal(opened.approvalPolicy, 'never');
+  assert.match(opened.developerInstructions, /完全访问/); assert.doesNotMatch(opened.developerInstructions, /默认仅可读取/);
+  assert.equal(turns[0].permissions, ':danger-full-access'); assert.equal(turns[0].approvalPolicy, 'never');
+  assert.equal(resumed.permissions, 'read_paper_materials'); assert.equal(resumed.approvalPolicy, 'on-request');
+  assert.equal(turns[1].permissions, 'read_paper_materials'); assert.equal(turns[1].approvalPolicy, 'on-request');
+  assert.equal(opened.config['mcp_servers.external.enabled'], false);
+  assert.ok(f.captured.filter(entry => entry.executable).every(entry => !entry.args.some(arg => arg.includes('danger-full-access'))));
+});
+
+test('restricted or legacy permission catalogs never expose or fall back to broader access', async t => {
+  const restricted = await fixture(t, { permissionProfiles: [{ id: 'read_paper_materials', allowed: true }, { id: ':danger-full-access', allowed: false }, { id: ':workspace', allowed: true }] });
+  assert.deepEqual((await restricted.runtime.capabilities()).accessModes, ['read-only']);
+  for (const access of ['full-access', 'workspace-write']) await assert.rejects(restricted.runtime.run({ cwd: restricted.cwd, prompt: 'Q', codex: { access } }), { code: 'capability_unavailable' });
+  await assert.rejects(restricted.runtime.run({ cwd: restricted.cwd, prompt: 'Q', codex: { access: 'danger-full-access' } }), { code: 'invalid_access' });
+  assert.ok(!restricted.captured.some(entry => entry.method === 'thread/start'));
+  const legacy = await fixture(t, { profilesUnsupported: true });
+  assert.deepEqual((await legacy.runtime.capabilities()).accessModes, ['read-only']);
+  await legacy.runtime.run({ cwd: legacy.cwd, prompt: 'Readonly legacy', codex: {} });
+  await assert.rejects(legacy.runtime.run({ cwd: legacy.cwd, prompt: 'No broad fallback', codex: { access: 'full-access' } }), { code: 'capability_unavailable' });
+  assert.ok(legacy.captured.filter(entry => entry.method === 'thread/start').every(entry => entry.params.permissions === 'read_paper_materials'));
+});
+
+test('native turn diff updates are bounded and sanitized separately from answers, ignoring foreign and late events', async t => {
+  const events = [];
+  const patch = 'diff --git a/note.md b/note.md\n--- a/note.md\n+++ b/note.md\n@@ -1 +1 @@\n-old\n+secret-for-redaction\n';
+  const f = await fixture(t, { onTurn({ notify, finish }) {
+    notify('turn/diff/updated', { diff: '' });
+    notify('turn/diff/updated', { threadId: 'foreign-thread', diff: patch });
+    notify('turn/diff/updated', { turnId: 'foreign-turn', diff: patch });
+    notify('turn/diff/updated', { diff: patch });
+    notify('turn/diff/updated', { diff: patch + 'x'.repeat(20_000) });
+    finish(); notify('turn/diff/updated', { diff: patch.replace('note.md', 'late.md') });
+  } });
+  const result = await f.runtime.run({ cwd: f.cwd, prompt: 'Q', codex: {}, onEvent: event => events.push(event) });
+  const diffs = events.filter(event => event.id === 'turn-diff');
+  assert.equal(diffs.length, 2); assert.ok(diffs.every(event => event.toolName === 'fileChange' && event.status === 'done' && event.command === '本轮原生文件变更' && event.output.length <= 12_000));
+  assert.match(diffs[1].text, /仅显示部分/);
+  assert.match(diffs[0].output, /已隐藏凭据/); assert.doesNotMatch(JSON.stringify(diffs), /secret-for-redaction|late\.md/);
+  assert.equal(result.body, 'Original model answer');
+});
+
+test('native credential file patches are hidden while ordinary fileChange retains actual patch output', async t => {
+  const events = [];
+  const f = await fixture(t, { onTurn({ notify, finish }) {
+    notify('turn/diff/updated', { diff: 'diff --git a/.env b/.env\n--- a/.env\n+++ b/.env\n+UNUSUAL_SETTING=private-content\n' });
+    notify('item/completed', { item: { id: 'file-patch', type: 'fileChange', status: 'completed', changes: [{ path: '/materials/note.md', kind: { type: 'update' }, diff: '-old\n+new' }] } });
+    finish();
+  } });
+  await f.runtime.run({ cwd: f.cwd, prompt: 'Q', codex: {}, onEvent: event => events.push(event) });
+  assert.equal(events.find(event => event.id === 'turn-diff').output, '[已隐藏配置或凭据文件输出]');
+  assert.match(events.find(event => event.id === 'file-patch').output, /-old\n\+new/);
+  assert.doesNotMatch(JSON.stringify(events), /private-content/);
 });

@@ -1,0 +1,21 @@
+{
+  "executablePath": "/tmp/papertrail-native-composer-20261017-final/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "runLog": "/tmp/papertrail-native-composer-e2e-final-20261017.log",
+  "testResult": "1 passed (4.5s)",
+  "capabilityStatus": 200,
+  "capabilityBranch": "full-access-cancel",
+  "modelCount": 8,
+  "fullAccessConfirmationCancelled": true,
+  "fullAccessEnabled": false,
+  "materialDialogCancelled": true,
+  "systemDictationMediaRequests": 0,
+  "modelRequests": [],
+  "pageErrors": [],
+  "viewport": {
+    "width": 1024,
+    "height": 800
+  },
+  "draftRetainedAfterRestart": true,
+  "permissionAfterRestart": "read-only",
+  "note": "同一最终包的前一次单项实测记录；最后联合实测为502能力不可用分支，见desktop-composer-evidence.json。此次已检查1024控件边界并实际使用语音入口，模型/权限/材料在1024的实际点击由后续联合实测覆盖。"
+}

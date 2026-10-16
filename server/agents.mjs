@@ -39,7 +39,8 @@ function validateRun(body) {
     || (body.reset !== undefined && typeof body.reset !== 'boolean')) throw invalid();
   if (body.bindingId !== undefined && (typeof body.bindingId !== 'string' || !IDS.test(body.bindingId)) || body.sessionRef !== undefined && (typeof body.sessionRef !== 'string' || !IDS.test(body.sessionRef) || !body.bindingId)) throw invalid('研究目录或会话关联无效。');
   if (body.skillIds !== undefined && (!Array.isArray(body.skillIds) || body.skillIds.length > 4 || !body.skillIds.every(id => typeof id === 'string' && IDS.test(id)) || new Set(body.skillIds).size !== body.skillIds.length)) throw invalid('请选择最多四个有效的 Skill。');
-  if (body.codex !== undefined && (!record(body.codex) || !only(body.codex, ['model', 'mode']) || (body.codex.model !== undefined && (typeof body.codex.model !== 'string' || !body.codex.model.trim() || body.codex.model.length > 200)) || ![undefined, 'chat', 'plan'].includes(body.codex.mode))) throw invalid('Codex 设置格式不正确。');
+  if (body.codex !== undefined && (!record(body.codex) || !only(body.codex, ['model', 'mode', 'effort', 'access']) || (body.codex.model !== undefined && (typeof body.codex.model !== 'string' || !body.codex.model.trim() || body.codex.model.length > 200)) || ![undefined, 'chat', 'plan'].includes(body.codex.mode)
+    || (body.codex.effort !== undefined && (typeof body.codex.effort !== 'string' || !body.codex.effort || body.codex.effort.length > 40 || /[\x00-\x20\x7f]/.test(body.codex.effort))) || ![undefined, 'read-only', 'workspace-write', 'full-access'].includes(body.codex.access))) throw invalid('Codex 设置格式不正确。');
   if ((body.skillIds !== undefined || body.codex !== undefined) && (agentId !== 'codex' || body.purpose !== 'chat')) throw invalid('此设置仅适用于 Codex 聊天。');
   let chars = body.prompt.length;
   const text = (value, empty = false) => { if (typeof value !== 'string' || (!empty && !value.trim())) throw invalid(); chars += value.length; return value; };
@@ -125,6 +126,8 @@ const runtimeMessages = {
   'interaction_unsupported': 'Agent 请求了当前连接不支持的交互，已拒绝。',
   'invalid_skill': '所选 Codex Skill 已停用、不可用或不存在，请在技能菜单中重新选择。',
   'invalid_model': '所选 Codex 模型不可用，请在模型菜单中重新选择。',
+  'invalid_effort': '所选模型不支持此推理强度，请在模型菜单中重新选择。',
+  'invalid_access': '所选 Codex 访问权限无效，请重新选择。',
   'capability_unavailable': '当前 Codex 版本或配置不提供所选能力，请重新读取能力或升级后重试。',
   'stopped': '生成已停止。',
   'session_busy': '此原生会话正在其他客户端使用，请在原生端结束占用后再继续。',
