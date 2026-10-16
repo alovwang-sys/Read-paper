@@ -1,0 +1,895 @@
+import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Inbox,
+  Layers,
+  Menu,
+  Network,
+  PanelLeftClose,
+  PanelRightClose,
+  PanelRightOpen,
+  Pin,
+  Plus,
+  Search,
+  Settings2,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import type { CollectionId, PanelMode, ResourceRef } from '../domain/types';
+import {
+  resourceExists,
+  resourceTitle,
+  scopeKey,
+  useWorkspace,
+  workspace,
+} from '../services/workspace';
+import { ResearchView } from '../features/research/ResearchView';
+import { LibraryView } from '../features/library/LibraryView';
+import { PdfReader } from '../features/reader/PdfReader';
+import { ImportPDFButton } from '../features/reader/ImportPDFButton';
+import { EvidenceList } from '../features/evidence/EvidenceList';
+import { CardEditor } from '../features/cards/CardEditor';
+import { BoardView } from '../features/board/BoardView';
+import { WritingView } from '../features/writing/WritingView';
+import { AIPanel } from '../features/ai/AIPanel';
+import { getAIConfig } from '../services/ai';
+
+const collections: { id: CollectionId; name: string; icon: typeof Inbox }[] = [
+  { id: 'inbox', name: '收件箱', icon: Inbox },
+  { id: 'documents', name: '论文库', icon: BookOpen },
+  { id: 'researches', name: '研究空间', icon: Network },
+  { id: 'cards', name: '卡片库', icon: Layers },
+  { id: 'drafts', name: '研究产出', icon: FileText },
+];
+const modes: { id: PanelMode; name: string }[] = [
+  { id: 'evidence', name: '证据' },
+  { id: 'references', name: '参考' },
+  { id: 'info', name: '信息' },
+  { id: 'ai', name: 'AI' },
+];
+function ModelConnection() {
+  const [message, setMessage] = useState('正在检查模型连接…');
+  useEffect(() => {
+    let cancelled = false;
+    void getAIConfig().then(config => {
+      if (!cancelled) setMessage(config.configured ? `模型连接：${config.provider} · ${config.model}，${config.images ? '已启用文字与区域图片' : '已启用文字'}。` : '模型连接：尚未配置。可在 AI 面板明确选择演示模式。');
+    }).catch(() => { if (!cancelled) setMessage('AI 本地服务未启动。请按 README 启动后重试。'); });
+    return () => { cancelled = true; };
+  }, []);
+  return <p>{message}</p>;
+}
+function ResourceIcon({ kind, size = 16 }: { kind: string; size?: number }) {
+  const Icon =
+    kind === 'document'
+      ? BookOpen
+      : kind === 'board' || kind === 'research'
+        ? Network
+        : kind === 'card'
+          ? Layers
+          : FileText;
+  return <Icon size={size} />;
+}
+
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error?: string }
+> {
+  state: { error?: string } = {};
+  static getDerivedStateFromError(error: Error) {
+    return { error: error.message };
+  }
+  render() {
+    return this.state.error ? (
+      <div className="empty-state" role="alert">
+        <h3>此视图暂时无法打开</h3>
+        <p>{this.state.error}</p>
+        <button
+          className="button"
+          onClick={() => this.setState({ error: undefined })}
+        >
+          重试视图
+        </button>
+      </div>
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+export function App() {
+  const {
+    data,
+    session,
+    research,
+    loaded,
+    loadError,
+    saveStatus,
+    saveError,
+    notice,
+    actions,
+  } = useWorkspace();
+  const [narrow, setNarrow] = useState(window.innerWidth <= 1200);
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [dialog, setDialog] = useState<'new' | 'search' | 'settings' | null>(
+    null,
+  );
+  const [search, setSearch] = useState('');
+  const [title, setTitle] = useState('');
+  const [question, setQuestion] = useState('');
+  const lastFocus = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const active = session.active;
+  const activeTitle =
+    active.kind === 'collection'
+      ? collections.find((item) => item.id === active.id)!.name
+      : resourceTitle(data, active);
+  useEffect(() => {
+    void workspace.load();
+  }, []);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1200px)');
+    const change = () => {
+      setNarrow(media.matches);
+      setNavigationOpen(false);
+    };
+    media.addEventListener('change', change);
+    return () => media.removeEventListener('change', change);
+  }, []);
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault();
+        showDialog('search');
+      }
+      if (event.key === 'Escape') {
+        if (dialog) closeDialog();
+        else actions.setPanel(session.panel.mode, false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [dialog, session.panel.mode]);
+  useEffect(() => {
+    if (dialog)
+      dialogRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+  }, [dialog]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => actions.notice(), 3500);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  function showDialog(kind: typeof dialog) {
+    lastFocus.current = document.activeElement as HTMLElement;
+    setDialog(kind);
+  }
+  function closeDialog() {
+    setDialog(null);
+    lastFocus.current?.focus();
+  }
+  function open(ref: ResourceRef, target: 'main' | 'inspector' = 'main') {
+    actions.openResource(ref, { scope: data.scope, target });
+  }
+  function resourceView(ref: ResourceRef, target: 'main' | 'inspector') {
+    if (!resourceExists(data, ref))
+      return (
+        <div className="empty-state">
+          <h3>资源已缺失</h3>
+          <p>原文件或来源不在本地数据中，请重新导入或从资料库打开。</p>
+        </div>
+      );
+    if (ref.kind === 'document')
+      return (
+        <PdfReader
+          documentId={ref.id}
+          target={target}
+          anchor={target === 'main' ? session.anchor : session.panel.anchor}
+        />
+      );
+    if (ref.kind === 'card') return <CardEditor cardId={ref.id} />;
+    if (ref.kind === 'board') return <BoardView boardId={ref.id} />;
+    if (ref.kind === 'draft') return <WritingView draftId={ref.id} />;
+    return <ResearchView researchId={ref.id} />;
+  }
+  const evidenceIds =
+    active.kind === 'card' ? data.cards[active.id]?.evidenceIds : undefined;
+  const documentId = active.kind === 'document' ? active.id : undefined;
+  const allRefs: ResourceRef[] = [
+    ...Object.keys(data.documents).map((id) => ({
+      kind: 'document' as const,
+      id,
+    })),
+    ...Object.keys(data.cards).map((id) => ({ kind: 'card' as const, id })),
+    ...Object.keys(data.researches).map((id) => ({
+      kind: 'research' as const,
+      id,
+    })),
+    ...Object.keys(data.drafts).map((id) => ({ kind: 'draft' as const, id })),
+  ];
+  if (!loaded)
+    return (
+      <div className="loading-screen">
+        <BookOpen />
+        <p>正在恢复研究工作台…</p>
+      </div>
+    );
+  if (loadError)
+    return (
+      <div className="loading-screen" role="alert">
+        <BookOpen />
+        <h2>本地资料暂时无法加载</h2>
+        <p>{loadError}</p>
+        <button className="button" onClick={() => void actions.load()}>
+          重试加载
+        </button>
+      </div>
+    );
+  return (
+    <div
+      className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''}`}
+      style={{ '--panel-width': `${data.panelWidth}px` } as React.CSSProperties}
+    >
+      {narrow && navigationOpen && (
+        <button
+          className="navigation-backdrop"
+          aria-label="关闭导航抽屉"
+          onClick={() => setNavigationOpen(false)}
+        />
+      )}
+      <aside className="sidebar" aria-label="左侧导航">
+        <div className="brand">
+          <span className="brand-mark">
+            <BookOpen size={20} />
+          </span>
+          <strong>
+            Papertrail<span>研究有迹可循</span>
+          </strong>
+          <button
+            className="icon-button"
+            aria-label="收起左栏"
+            onClick={() => {
+              if (narrow) setNavigationOpen(false);
+              else
+                actions.updateData((data) => {
+                  data.sidebarCollapsed = true;
+                });
+            }}
+          >
+            <PanelLeftClose size={16} />
+          </button>
+        </div>
+        <div className="sidebar-actions">
+          <button className="new-research" onClick={() => showDialog('new')}>
+            <Plus size={16} />
+            新建研究
+          </button>
+          <button
+            className="icon-button search-trigger"
+            aria-label="全局搜索"
+            onClick={() => showDialog('search')}
+          >
+            <Search size={18} />
+          </button>
+        </div>
+        <nav className="collection-nav">
+          {collections.map(({ id, name, icon: Icon }) => (
+            <button
+              key={id}
+              className={`nav-item ${active.kind === 'collection' && active.id === id ? 'active' : ''}`}
+              onClick={() => actions.openCollection(id)}
+            >
+              <Icon size={17} />
+              {name}
+              {id === 'inbox' && (
+                <span className="nav-count">
+                  {
+                    Object.values(data.documents).filter(
+                      (doc) =>
+                        !Object.values(data.researches).some((r) =>
+                          r.documentIds.includes(doc.id),
+                        ),
+                    ).length
+                  }
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-divider" />
+        <div className="sidebar-section-label">当前研究</div>
+        <label className="research-switcher">
+          <span className="research-dot" />
+          <select
+            aria-label="切换研究"
+            value={research?.id ?? ''}
+            onChange={(event) => actions.switchResearch(event.target.value)}
+          >
+            <option value="" disabled>
+              全局资料浏览
+            </option>
+            {Object.values(data.researches).map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={13} />
+        </label>
+        {research && (
+          <div className="research-nav">
+            <button
+              className={`nav-item ${active.kind === 'research' ? 'active' : ''}`}
+              onClick={() => open({ kind: 'research', id: research.id })}
+            >
+              <Network size={16} />
+              研究概览
+            </button>
+            {Object.values(data.boards)
+              .filter((b) => b.researchId === research.id)
+              .map((b) => (
+                <button
+                  key={b.id}
+                  className={`nav-item ${active.kind === 'board' && active.id === b.id ? 'active' : ''}`}
+                  onClick={() => open({ kind: 'board', id: b.id })}
+                >
+                  <Layers size={16} />
+                  {b.title}
+                </button>
+              ))}
+            {Object.values(data.drafts)
+              .filter((d) => d.researchId === research.id)
+              .map((d) => (
+                <button
+                  key={d.id}
+                  className={`nav-item ${active.kind === 'draft' && active.id === d.id ? 'active' : ''}`}
+                  onClick={() => open({ kind: 'draft', id: d.id })}
+                >
+                  <FileText size={16} />
+                  结论与导出
+                </button>
+              ))}
+          </div>
+        )}
+        <div className="sidebar-section-label opened-label">
+          打开的资源 <span>{session.openItems.length}</span>
+        </div>
+        <div className="open-items">
+          {[...session.openItems]
+            .sort(
+              (a, b) =>
+                Number(session.pinnedIds.includes(b.id)) -
+                Number(session.pinnedIds.includes(a.id)),
+            )
+            .map((ref) => (
+              <div
+                key={`${ref.kind}:${ref.id}`}
+                className={`open-item ${active.kind !== 'collection' && active.id === ref.id ? 'active' : ''}`}
+              >
+                <button className="open-item-link" onClick={() => open(ref)}>
+                  <ResourceIcon kind={ref.kind} />
+                  <span>{resourceTitle(data, ref)}</span>
+                </button>
+                <button
+                  className={`icon-button pin ${session.pinnedIds.includes(ref.id) ? 'pinned' : ''}`}
+                  aria-label={`固定 ${resourceTitle(data, ref)}`}
+                  onClick={() => actions.pinResource(ref)}
+                >
+                  <Pin size={12} />
+                </button>
+                <button
+                  className="icon-button close"
+                  aria-label={`关闭 ${resourceTitle(data, ref)}`}
+                  onClick={() => actions.closeResource(ref)}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+        </div>
+        <div className="sidebar-footer">
+          <span
+            className={`status-dot ${saveStatus === 'error' ? 'error' : ''}`}
+          />
+          <span>
+            {saveStatus === 'saved'
+              ? '已保存到本地'
+              : saveStatus === 'saving'
+                ? '正在保存…'
+                : saveStatus === 'error'
+                  ? '保存失败'
+                  : '有未保存修改'}
+          </span>
+          <button
+            className="icon-button"
+            aria-label="存储与设置"
+            onClick={() => showDialog('settings')}
+          >
+            <Settings2 size={16} />
+          </button>
+        </div>
+      </aside>
+      <div className="main-column">
+        <header className="workspace-header">
+          <div className="breadcrumb">
+            {(data.sidebarCollapsed || narrow) && (
+              <button
+                className="icon-button"
+                aria-label="展开左栏"
+                onClick={() => {
+                  if (narrow) setNavigationOpen(true);
+                  else
+                    actions.updateData((data) => {
+                      data.sidebarCollapsed = false;
+                    });
+                }}
+              >
+                <Menu size={18} />
+              </button>
+            )}
+            <button
+              className="icon-button"
+              aria-label="主区返回"
+              disabled={!session.history.length}
+              onClick={() => actions.back('main')}
+            >
+              <ArrowLeft size={17} />
+            </button>
+            <span>{research ? research.title : '全局资料库'}</span>
+            <ChevronRight size={13} />
+            <strong>{activeTitle}</strong>
+          </div>
+          <div className="header-actions">
+            <span
+              className="save-indicator"
+              data-testid="save-status"
+              data-status={saveStatus}
+            >
+              {saveStatus === 'saved' ? (
+                <>
+                  <Check size={12} />
+                  已保存
+                </>
+              ) : saveStatus === 'saving' ? (
+                '保存中…'
+              ) : saveStatus === 'error' ? (
+                '保存失败'
+              ) : (
+                '未保存'
+              )}
+            </span>
+            {research && <ImportPDFButton compact />}
+            <button
+              className="icon-button"
+              aria-label={session.panel.open ? '收起右侧面板' : '展开右侧面板'}
+              onClick={() =>
+                actions.setPanel(session.panel.mode, !session.panel.open)
+              }
+            >
+              {session.panel.open ? (
+                <PanelRightClose size={18} />
+              ) : (
+                <PanelRightOpen size={18} />
+              )}
+            </button>
+          </div>
+        </header>
+        {saveStatus === 'error' && (
+          <div className="save-error" role="alert">
+            <span>{saveError}</span>
+            <button className="button" onClick={() => actions.retrySave()}>
+              重试保存
+            </button>
+          </div>
+        )}
+        <main aria-label="主工作区" className="main-workspace">
+          <ErrorBoundary key={`${active.kind}:${active.id}`}>
+            {active.kind === 'collection' ? (
+              <LibraryView
+                collection={active.id}
+                onNewResearch={() => showDialog('new')}
+              />
+            ) : (
+              resourceView(active, 'main')
+            )}
+          </ErrorBoundary>
+        </main>
+        <footer className="workspace-footer">
+          <span>本地工作空间</span>
+          <span>
+            {research
+              ? `${research.documentIds.length} 篇论文 · ${research.cardIds.length} 张卡片`
+              : '全局资料独立会话'}
+            <span className="footer-key">⌘ K 搜索</span>
+          </span>
+        </footer>
+      </div>
+      {session.panel.open && (
+        <aside className="inspector" aria-label="参考面板">
+          <div
+            className="resize-handle"
+            role="separator"
+            aria-label="调整右侧宽度"
+            aria-orientation="vertical"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+                actions.updateData((data) => {
+                  data.panelWidth = Math.max(
+                    320,
+                    Math.min(
+                      520,
+                      data.panelWidth + (event.key === 'ArrowLeft' ? 20 : -20),
+                    ),
+                  );
+                });
+            }}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (event.buttons === 1)
+                actions.updateData((data) => {
+                  data.panelWidth = Math.max(
+                    320,
+                    Math.min(520, window.innerWidth - event.clientX),
+                  );
+                });
+            }}
+          />
+          <div className="inspector-header">
+            <strong>
+              <Layers size={15} />
+              研究参考
+            </strong>
+            <div className="button-row">
+              <button
+                className="icon-button"
+                aria-label="右侧返回"
+                disabled={!session.panel.history.length}
+                onClick={() => actions.back('inspector')}
+              >
+                <ArrowLeft size={15} />
+              </button>
+              <button
+                className={`icon-button ${session.panel.pinned ? 'pinned' : ''}`}
+                aria-label="固定右侧参考"
+                onClick={() =>
+                  actions.updateData((data) => {
+                    const panel = data.sessions[scopeKey(data.scope)].panel;
+                    panel.pinned = !panel.pinned;
+                  })
+                }
+              >
+                <Pin size={14} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label="关闭右侧面板"
+                onClick={() => actions.setPanel(session.panel.mode, false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+          <div className="panel-tabs" role="tablist" aria-label="参考面板模式">
+            {modes.map((mode) => (
+              <button
+                key={mode.id}
+                role="tab"
+                aria-selected={session.panel.mode === mode.id}
+                onClick={() => actions.setPanel(mode.id)}
+              >
+                {mode.id === 'ai' && <Sparkles size={13} />} {mode.name}
+              </button>
+            ))}
+          </div>
+          <div className={`inspector-content mode-${session.panel.mode}`}>
+            <ErrorBoundary
+              key={`${session.panel.mode}:${session.panel.ref?.id}`}
+            >
+              {session.panel.mode === 'ai' ? (
+                <AIPanel />
+              ) : session.panel.mode === 'evidence' ? (
+                <EvidenceList
+                  documentId={documentId}
+                  evidenceIds={evidenceIds}
+                  target="inspector"
+                />
+              ) : session.panel.mode === 'info' ? (
+                <div className="info-panel">
+                  <span className="section-heading">当前资料</span>
+                  <h3>{activeTitle}</h3>
+                  {active.kind === 'document' ? (
+                    <>
+                      <label className="field">
+                        作者
+                        <input
+                          value={data.documents[active.id].authors}
+                          onChange={(event) =>
+                            actions.updateData((data) => {
+                              data.documents[active.id].authors =
+                                event.target.value;
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="field">
+                        年份
+                        <input
+                          value={data.documents[active.id].year}
+                          onChange={(event) =>
+                            actions.updateData((data) => {
+                              data.documents[active.id].year =
+                                event.target.value;
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="field">
+                        阅读状态
+                        <select
+                          value={data.documents[active.id].readingStatus}
+                          onChange={(event) =>
+                            actions.updateData((data) => {
+                              data.documents[active.id].readingStatus = event
+                                .target.value as 'unread' | 'reading' | 'read';
+                            })
+                          }
+                        >
+                          <option value="unread">待读</option>
+                          <option value="reading">在读</option>
+                          <option value="read">已读</option>
+                        </select>
+                      </label>
+                      <p>文件：{data.documents[active.id].filename}</p>
+                      <p>PDF 共 {data.documents[active.id].pageCount} 页</p>
+                      <small className="hash-info">
+                        SHA-256：
+                        {data.documents[active.id].hash || '打开文件后计算'}
+                      </small>
+                      <p className="muted">
+                        PDF 页码从第 1 页显示，印刷页码独立记录。
+                      </p>
+                    </>
+                  ) : (
+                    <p className="muted">
+                      在此核对资料信息。引用会保留原文、来源与 PDF 页码。
+                    </p>
+                  )}
+                </div>
+              ) : session.panel.ref ? (
+                <>
+                  <div className="reference-title">
+                    <span>{resourceTitle(data, session.panel.ref)}</span>
+                    <button
+                      className="text-button"
+                      onClick={() =>
+                        actions.openResource(session.panel.ref!, {
+                          scope: data.scope,
+                          target: 'main',
+                          anchor:
+                            session.panel.anchor ??
+                            (session.panel.ref?.kind === 'document'
+                              ? {
+                                  pageIndex:
+                                    session.readers[
+                                      `inspector:${session.panel.ref.id}`
+                                    ]?.pageIndex ?? 0,
+                                }
+                              : undefined),
+                        })
+                      }
+                    >
+                      在主区打开 ↗
+                    </button>
+                  </div>
+                  {resourceView(session.panel.ref, 'inspector')}
+                </>
+              ) : (
+                <div className="reference-list">
+                  <div className="panel-intro">
+                    <span className="section-heading">观点与原文</span>
+                    <p>把理解留在卡片里，让来源留在手边。</p>
+                  </div>
+                  {(research ? research.cardIds : Object.keys(data.cards)).map(
+                    (id) => (
+                      <button
+                        className="reference-card"
+                        key={id}
+                        onClick={() => open({ kind: 'card', id }, 'inspector')}
+                      >
+                        <span className="reference-card-label">
+                          观点卡片{' '}
+                          {data.cards[id]?.needsReview && <span>· 待核查</span>}
+                        </span>
+                        <strong>{data.cards[id]?.title ?? '卡片已缺失'}</strong>
+                        <p>{data.cards[id]?.body.slice(0, 90)}</p>
+                        <small>
+                          {data.cards[id]?.evidenceIds.length ?? 0} 条来源{' '}
+                          <ArrowLeft size={11} />
+                        </small>
+                      </button>
+                    ),
+                  )}
+                  {!research?.cardIds.length && research && (
+                    <div className="empty-state compact">
+                      <Layers />
+                      <p>阅读原文后，创建你的第一张观点卡片。</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </ErrorBoundary>
+          </div>
+        </aside>
+      )}
+      {notice && (
+        <div className="toast" role="status">
+          <Check size={15} />
+          {notice}
+          <button
+            className="icon-button"
+            aria-label="关闭提示"
+            onClick={() => actions.notice()}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+      {dialog && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeDialog();
+          }}
+        >
+          <div
+            className="modal"
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              dialog === 'new'
+                ? '新建研究'
+                : dialog === 'search'
+                  ? '全局搜索'
+                  : '存储与设置'
+            }
+            onKeyDown={(event) => {
+              if (event.key !== 'Tab') return;
+              const elements = Array.from(
+                event.currentTarget.querySelectorAll<HTMLElement>(
+                  'button:not(:disabled),input,textarea,select',
+                ),
+              );
+              const first = elements[0],
+                last = elements.at(-1);
+              if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last?.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first?.focus();
+              }
+            }}
+          >
+            <div className="modal-heading">
+              <h2>
+                {dialog === 'new'
+                  ? '开启一个研究问题'
+                  : dialog === 'search'
+                    ? '搜索你的资料'
+                    : '本地存储与连接'}
+              </h2>
+              <button
+                className="icon-button"
+                aria-label="关闭弹层"
+                onClick={closeDialog}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {dialog === 'new' ? (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  actions.createResearch(title, question);
+                  setTitle('');
+                  setQuestion('');
+                  closeDialog();
+                }}
+              >
+                <label className="field">
+                  研究名称
+                  <input
+                    aria-label="研究名称"
+                    required
+                    value={title}
+                    placeholder="例如：检索增强的适用条件"
+                    onChange={(event) => setTitle(event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  核心问题
+                  <textarea
+                    aria-label="新研究核心问题"
+                    value={question}
+                    placeholder="你希望通过阅读回答什么？"
+                    onChange={(event) => setQuestion(event.target.value)}
+                  />
+                </label>
+                <button className="primary" type="submit">
+                  创建研究 <ArrowLeft size={14} />
+                </button>
+              </form>
+            ) : dialog === 'search' ? (
+              <>
+                <label className="search-input">
+                  <Search size={18} />
+                  <input
+                    aria-label="搜索全部资料"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="论文、观点卡片、研究问题…"
+                  />
+                </label>
+                <div className="search-results">
+                  {allRefs
+                    .filter((ref) =>
+                      resourceTitle(data, ref)
+                        .toLowerCase()
+                        .includes(search.toLowerCase()),
+                    )
+                    .map((ref) => (
+                      <button
+                        key={`${ref.kind}:${ref.id}`}
+                        onClick={() => {
+                          const researchId =
+                            ref.kind === 'research'
+                              ? ref.id
+                              : ref.kind === 'draft'
+                                ? data.drafts[ref.id].researchId
+                                : undefined;
+                          actions.openResource(ref, {
+                            scope: researchId
+                              ? { kind: 'research', researchId }
+                              : { kind: 'library' },
+                            target: 'main',
+                          });
+                          closeDialog();
+                        }}
+                      >
+                        <ResourceIcon kind={ref.kind} />
+                        {resourceTitle(data, ref)}
+                        <ChevronRight size={14} />
+                      </button>
+                    ))}
+                </div>
+              </>
+            ) : (
+              <div className="settings-content">
+                <p>
+                  <span className="status-dot" /> PDF
+                  与研究数据保存在此浏览器的本地存储中。
+                </p>
+                <p>换浏览器或清除站点数据将移除本地资料。</p>
+                <ModelConnection />
+                <p>
+                  保存状态：{saveStatus}
+                  {saveError && ` · ${saveError}`}
+                </p>
+                <button className="button" onClick={() => actions.retrySave()}>
+                  重试本地保存
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,103 @@
+.evidence-list {
+  padding: 22px;
+}
+.evidence-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.evidence-entry {
+  padding: 17px 0 20px;
+  border-bottom: 1px solid var(--border, #e7e7e4);
+}
+.evidence-source-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted, #858985);
+}
+.evidence-entry blockquote {
+  border-left: 3px solid #becfb3;
+  margin: 13px 0;
+  padding-left: 12px;
+  color: #414a40;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.evidence-document-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #697c5c;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.evidence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 13px;
+}
+.evidence-actions .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.evidence-missing {
+  padding: 14px;
+  margin: 12px 0;
+  border: 1px solid #edcfb7;
+  border-radius: 8px;
+  color: #8d5834;
+  background: #fff8ee;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.evidence-region-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+  margin: 12px 0;
+  border: 1px solid var(--border, #e7e7e4);
+  border-radius: 5px;
+}
+.evidence-region-label {
+  color: var(--muted, #858985);
+  font-size: 12px;
+  margin: 12px 0 0;
+}
+.conversation-source {
+  border-top: 1px solid var(--border, #e7e7e4);
+  margin-top: 22px;
+  padding-top: 18px;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.conversation-source h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+.conversation-source blockquote {
+  border-left: 3px solid #becfb3;
+  margin: 12px 0;
+  padding-left: 12px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,240 @@
+.writing-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.writing-view .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.writing-toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--line, #e7e6e2);
+  background: white;
+}
+.writing-toolbar-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  font-size: 13px;
+}
+.writing-scroll {
+  flex: 1;
+  overflow: auto;
+  background: #fbfbf8;
+}
+.writing-page {
+  max-width: 790px;
+  padding: 45px 48px 60px;
+  margin: 0 auto;
+}
+.writing-eyebrow {
+  color: #758477;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  line-height: 1.8;
+}
+.writing-eyebrow span {
+  padding: 0 7px;
+}
+.writing-title {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 29px;
+  font-weight: 650;
+  letter-spacing: -0.8px;
+  color: #26382c;
+  outline: 0;
+  margin: 18px 0 24px;
+  padding: 4px 0;
+}
+.writing-title:focus {
+  box-shadow: 0 2px #a9c9af;
+}
+.writing-question {
+  display: flex;
+  gap: 12px;
+  color: #4b6653;
+  border-left: 3px solid #b7ccbb;
+  padding: 12px 16px;
+  background: #f1f5ef;
+  margin-bottom: 32px;
+  border-radius: 0 5px 5px 0;
+}
+.writing-question svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.writing-question span {
+  font-size: 11px;
+  color: #778975;
+}
+.writing-question p {
+  margin: 4px 0 0;
+  line-height: 1.7;
+  font-size: 14px;
+}
+.writing-body-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.writing-editor {
+  width: 100%;
+  resize: vertical;
+  min-height: 280px;
+  line-height: 1.95;
+  font-size: 16px;
+  color: #344239;
+  border: 0;
+  padding: 0 0 15px;
+  background: transparent;
+  outline: 0;
+  font-family: inherit;
+}
+.writing-editor:focus {
+  box-shadow: 0 2px #cbdcc9;
+}
+.writing-editor::placeholder {
+  color: #99a199;
+}
+.writing-sources {
+  border-top: 1px solid #e1e6dd;
+  margin-top: 22px;
+  padding-top: 22px;
+}
+.writing-sources h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.writing-sources > .muted {
+  font-size: 12px;
+}
+.writing-source {
+  display: flex;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid #e8ebe4;
+  font-size: 13px;
+}
+.writing-source-number {
+  color: #5e8566;
+  padding-top: 2px;
+}
+.writing-source-content {
+  flex: 1;
+  min-width: 0;
+}
+.writing-source-content strong {
+  font-size: 13px;
+  font-weight: 600;
+  display: block;
+  line-height: 1.5;
+}
+.writing-source-content > .muted {
+  font-size: 11px;
+  margin-top: 4px;
+}
+.writing-source blockquote {
+  margin: 12px 0;
+  color: #6a746b;
+  line-height: 1.7;
+  border-left: 2px solid #cdd8c8;
+  padding-left: 12px;
+}
+.writing-export-note,
+.writing-no-source {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.writing-export-note {
+  margin-top: 25px;
+}
+.writing-error,
+.writing-source.is-invalid {
+  color: #904f42;
+  background: #fff1e9;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 10px 0;
+  line-height: 1.6;
+  font-size: 13px;
+}
+.writing-picker {
+  background: white;
+  padding: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #d6e1d2;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px #30432f06;
+}
+.writing-picker > .muted {
+  font-size: 11px;
+  line-height: 1.7;
+}
+.writing-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #f5f7f3;
+  border-radius: 5px;
+  margin-top: 12px;
+}
+.writing-search input {
+  flex: 1;
+  width: 0;
+  background: transparent;
+  outline: 0;
+  border: 0;
+  font: inherit;
+}
+.writing-picker-list {
+  max-height: 240px;
+  overflow: auto;
+  display: grid;
+  gap: 7px;
+}
+.writing-picker-card {
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid #e6eae3;
+  border-radius: 5px;
+  padding: 10px;
+  color: #344439;
+  cursor: pointer;
+  font: inherit;
+}
+.writing-picker-card:hover {
+  border-color: #a8c8a8;
+  background: #f8fbf5;
+}
+.writing-picker-card span {
+  color: #778072;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.writing-picker-card small {
+  color: #799271;
+  font-size: 10px;
+}
+@media (max-width: 1100px) {
+  .writing-page {
+    padding: 30px 28px;
+  }
+  .writing-title {
+    font-size: 25px;
+  }
+}

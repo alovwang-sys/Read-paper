@@ -1,0 +1,3 @@
+%PDX-1.7
+Intentionally corrupt PDF fixture: damaged header and missing document objects.
+%%EOF

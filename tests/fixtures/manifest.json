@@ -1,0 +1,29 @@
+[
+  {
+    "filename": "adaptive-retrieval.pdf",
+    "title": "Adaptive Retrieval for Evidence-Grounded Answers",
+    "pageCount": 3,
+    "quote": "Retrieval improves factual accuracy when the evidence corpus is relevant.",
+    "quotePageIndex": 2,
+    "layout": "single-column",
+    "textLayer": true
+  },
+  {
+    "filename": "retrieval-baseline.pdf",
+    "title": "A Fixed Retrieval Baseline and Its Limits",
+    "pageCount": 2,
+    "quote": "A fixed retrieval budget does not guarantee relevant evidence.",
+    "quotePageIndex": 0,
+    "layout": "two-column",
+    "textLayer": true
+  },
+  {
+    "filename": "scanned-note.pdf",
+    "title": "Scanned Research Note: Evidence and Source Recovery",
+    "pageCount": 1,
+    "quote": null,
+    "quotePageIndex": null,
+    "layout": "raster-only",
+    "textLayer": false
+  }
+]
