@@ -4,6 +4,28 @@
 
 首版使用 React、TypeScript、Vite、PDF.js。应用和 PDF 保存在浏览器的 IndexedDB；编辑与工作区会话同时保留 localStorage 恢复缓冲。人工阅读可独立运行；真实 AI 通过本机 Node 服务调用供应商，密钥不进入浏览器。示例材料全部为自制测试 PDF，不能作为真实研究成果。
 
+桌面版采用 Electron / Electron Forge，共用同一工作台。支持 macOS Apple 芯片、macOS Intel、Windows x64 安装产物；桌面应用自动运行本地 AI 服务，无需用户安装 Node.js。当前构建为未签名预览版，尚未配置开发者签名、公证和自动更新。安装与发布约定见 [桌面分发](docs/desktop-distribution.md)。
+
+## 桌面运行与打包
+
+开发与构建环境使用 Node.js 24、npm；先运行 `npm ci`。
+
+```sh
+npm run desktop:dev        # 构建并打开本机桌面应用
+npm run desktop:package    # 生成本机应用目录 out/Papertrail-<platform>-<arch>/
+npm run test:desktop       # 桌面服务、协议、密钥保存边界
+npm run test:desktop:e2e   # 启动上一步生成的真实应用并验证保存/恢复
+npm run desktop:make       # 生成本机安装产物 out/make/
+```
+
+macOS 生成 DMG 与 ZIP；Windows 生成 Setup.exe 及配套 Squirrel 文件。完整三目标构建由 PR/main 的 GitHub Actions 完成。安装包作为 Actions artifacts 下载，不提交进 Git；合并后推送与 `package.json` 一致的版本标签，流水线在全部检查通过后生成 Release 草稿，仍需安装验收后人工发布。
+
+桌面版从“文件 → 模型连接…”或设置中的“配置模型连接”填写自己的 API 地址、模型和密钥。密钥由 Electron `safeStorage` 经系统加密后保存在固定用户数据目录 `Papertrail/ai-settings.json`，不会读取或打包工程 `.env.local`，也不返回给工作台页面。保存连接会停止旧连接上的生成；没有配置密钥时仍可人工阅读或选择演示模式。
+
+桌面资料使用固定 `papertrail://app` 来源与持久用户目录：macOS 为 `~/Library/Application Support/Papertrail`，Windows 为 `%APPDATA%/Papertrail`。升级或更换安装位置不清空该目录。关闭窗口与退出前会停止生成并等待最新修改保存；保存失败时保留窗口供重试。
+
+浏览器与桌面资料互相独立。迁移时打开“存储与设置 → 工作区备份与恢复”，导出完整 ZIP，再在目标设备导入、查看统计并确认替换。备份含原 PDF、区域图片和全部工作区资料，不含密钥；恢复前原资料与资产在同一数据库事务中保留一份副本。仅接受应用直接导出的原始 ZIP32，勿重新压缩；总内容最多 256 MiB、单项最多 64 MiB。备份不是跨设备自动同步。
+
 ## 运行
 
 需要 Node.js 22.13+ 或 24+、npm。

@@ -1,12 +1,14 @@
 # 论文阅读与研究工作台产品规划
 
-版本：规划 v0.2。更新日期：2026 年 10 月 16 日。
+版本：规划 v0.3。更新日期：2026 年 10 月 16 日。
 
 产品面向围绕一个问题持续阅读多篇论文的个人研究者，帮助用户将原始材料转化为可复用的理解，并产出可核查的研究结论。前端采用稳定的工作台结构：左侧管理入口与打开项，中间完成当前任务，右侧提供参考材料和 AI 辅助。
 
 用户已确认产品方向为论文阅读与研究工作台，并要求参照 Heptabase 的整体界面截图规划。本文将“agent 开发范式”按使用 coding agents 分工开发来设计；产品中的 AI 功能单独定义。
 
-首版以桌面浏览器、单用户、本地持久化为边界。实际实现采用 React / TypeScript / Vite / PDF.js，PDF 与研究数据保存在 IndexedDB，编辑恢复缓冲使用 localStorage。2026-10-16 接入用户指定的智谱 `glm-5.3-flash`，由本地 Node 服务保管凭据并代理流式请求，同时保留明确选择的演示模式。运行方式见 [README](../README.md)，最新验收见 [AI 阅读记录](verification/ai-reading/README.md)。
+首版面向桌面浏览器及 macOS / Windows 安装应用，保持单用户、本地持久化。实际实现采用 React / TypeScript / Vite / PDF.js，PDF 与研究数据保存在 IndexedDB，编辑恢复缓冲使用 localStorage。2026-10-16 接入用户指定的智谱 `glm-5.3-flash`，由本地 Node 服务保管凭据并代理流式请求，同时保留明确选择的演示模式。运行方式见 [README](../README.md)，AI 验收见 [AI 阅读记录](verification/ai-reading/README.md)。
+
+桌面交付采用 Electron / Electron Forge，与浏览器共用界面及业务服务。固定应用来源和用户数据目录，单实例运行，退出前停止生成并等待保存；失败保留工作台，未响应时提供明确的重试或强制关闭选择。模型连接由应用自动管理，用户密钥经系统加密后保存，不包含于安装包或资料备份。完整 ZIP 备份用于浏览器与桌面之间迁移；恢复前校验来源和资产，原资料与资产在同一事务中保留一份副本。当前发布流水线生成未签名安装产物及 Release 草稿，开发者签名、公证、自动更新与跨设备同步仍未实现。分发和版本管理见 [桌面分发](desktop-distribution.md)，实际结果见 [桌面验收](verification/desktop/README.md)。
 
 2026-10-16 AI 阅读已实现：选取材料后连续对话，AI 整理独立卡片草稿，用户修改确认，卡片保留论文与对话双来源；区域框选以截图作为证据，实际模型已通过图片冒烟。详细行为以 [产品需求](ai-reading/requirements.md)、[UX 设计](ai-reading/ux-design.md)和[开发计划](ai-reading/development-plan.md)为准；可点击[交互原型](ai-reading/prototype.html)仍仅用于设计评审。完整 OCR、复杂图表/公式语义可靠性、跨设备同步仍不在本轮范围。
 

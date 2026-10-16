@@ -42,6 +42,30 @@ afterEach(async () => {
 });
 
 describe('工作台共享实体与会话', () => {
+  it('关闭前等待进行中的保存，并保存等待期间的最新修改', async () => {
+    let finish!: () => void;
+    vi.mocked(saveWorkspace).mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    workspace.updateData(data => { data.cards['card-a'].body = '第一份快照'; });
+    workspace.retrySave();
+    workspace.updateData(data => { data.cards['card-a'].body = '关闭前的最后修改'; });
+    let complete = false;
+    const flush = workspace.flushSave().then(() => { complete = true; });
+    await Promise.resolve();
+    expect(complete).toBe(false);
+    finish();
+    await flush;
+    expect(vi.mocked(saveWorkspace).mock.calls.at(-1)?.[0].cards['card-a'].body).toBe('关闭前的最后修改');
+    expect(workspace.getState().saveStatus).toBe('saved');
+  });
+  it('大记录保存失败时关闭等待失败，原编辑保留且能够重试', async () => {
+    vi.mocked(saveWorkspace).mockRejectedValue(new Error('quota error'));
+    workspace.updateData(data => { data.cards['card-a'].body = '待保存'.repeat(600_000); });
+    await expect(workspace.flushSave()).rejects.toThrow(/quota error/);
+    expect(workspace.getState().data.cards['card-a'].body.length).toBe(1_800_000);
+    vi.mocked(saveWorkspace).mockResolvedValue(undefined);
+    await workspace.flushSave();
+    expect(workspace.getState().saveStatus).toBe('saved');
+  });
   it('关联已有卡片同时关联证据论文，资料正文保持唯一', () => {
     workspace.associateCard('research-b', 'card-a');
     let data = workspace.getState().data;

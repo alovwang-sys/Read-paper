@@ -38,6 +38,7 @@ import { BoardView } from '../features/board/BoardView';
 import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
 import { getAIConfig } from '../services/ai';
+import { BackupControls } from '../features/settings/BackupControls';
 
 const collections: { id: CollectionId; name: string; icon: typeof Inbox }[] = [
   { id: 'inbox', name: '收件箱', icon: Inbox },
@@ -61,7 +62,7 @@ function ModelConnection() {
     }).catch(() => { if (!cancelled) setMessage('AI 本地服务未启动。请按 README 启动后重试。'); });
     return () => { cancelled = true; };
   }, []);
-  return <p>{message}</p>;
+  return <><p>{message}</p>{window.papertrailDesktop && <button className="button" onClick={() => void window.papertrailDesktop?.openAISettings()}>配置模型连接</button>}</>;
 }
 function ResourceIcon({ kind, size = 16 }: { kind: string; size?: number }) {
   const Icon =
@@ -118,6 +119,7 @@ export function App() {
   const [dialog, setDialog] = useState<'new' | 'search' | 'settings' | null>(
     null,
   );
+  useEffect(() => window.papertrailDesktop?.onOpenStorage(() => setDialog('settings')), []);
   const [search, setSearch] = useState('');
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
@@ -874,10 +876,11 @@ export function App() {
               <div className="settings-content">
                 <p>
                   <span className="status-dot" /> PDF
-                  与研究数据保存在此浏览器的本地存储中。
+                  与研究数据保存在{window.papertrailDesktop ? '此应用的本地数据目录中。' : '此浏览器的本地存储中。'}
                 </p>
-                <p>换浏览器或清除站点数据将移除本地资料。</p>
+                <p>{window.papertrailDesktop ? '资料保存在此电脑。换电脑前请导出完整备份。' : '换浏览器或清除站点数据将移除本地资料。'}</p>
                 <ModelConnection />
+                <BackupControls />
                 <p>
                   保存状态：{saveStatus}
                   {saveError && ` · ${saveError}`}

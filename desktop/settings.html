@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>模型连接 · Papertrail</title><link rel="stylesheet" href="/desktop-settings.css"></head>
+<body>
+  <main>
+    <h1>模型连接</h1>
+    <p>使用你自己的 API 密钥。密钥经系统加密保存在此电脑，安装包与资料备份均不包含它。</p>
+    <form>
+      <label>API 地址<input name="baseURL" type="url" required autocomplete="off"></label>
+      <label>模型名称<input name="model" required autocomplete="off" maxlength="100"></label>
+      <label>API 密钥<input name="key" type="password" autocomplete="new-password" maxlength="4096" placeholder="留空保留已有密钥"></label>
+      <label class="check"><input name="images" type="checkbox">模型支持区域图片</label>
+      <label class="check"><input name="removeKey" type="checkbox">清除此电脑保存的密钥</label>
+      <p>保存连接会停止当前正在生成的回答，已收到内容会保留。</p>
+      <p id="status" role="status">正在读取设置…</p>
+      <button type="submit" disabled>保存连接</button>
+    </form>
+  </main>
+  <script src="/desktop-settings.js"></script>
+</body>
+</html>
