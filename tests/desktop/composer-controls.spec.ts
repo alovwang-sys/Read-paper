@@ -124,7 +124,7 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     await page.getByRole('main', { name: '主工作区' }).getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
     await expect(page.getByRole('main', { name: '主工作区' }).locator('canvas')).toBeVisible();
     const notice = page.getByRole('button', { name: '关闭提示', exact: true });
-    if (await notice.isVisible()) await notice.click();
+    await expect(notice).not.toBeVisible();
     await page.setViewportSize({ width: 1024, height: 800 });
     for (const name of ['添加材料', 'Codex 访问权限', '选择 Codex 模型', '语音输入', '发送问题']) {
       const button = panel(page).getByRole('button', { name, exact: true }); await expect(button).toBeVisible();

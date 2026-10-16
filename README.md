@@ -18,7 +18,7 @@ npm run test:desktop:e2e   # 启动上一步生成的真实应用并验证保存
 npm run desktop:make       # 生成本机安装产物 out/make/
 ```
 
-macOS 生成 DMG 与 ZIP；Windows 生成 Setup.exe 及配套 Squirrel 文件。PR/main 的 GitHub Actions 运行检查及三目标构建，临时 artifacts 保留 14 天。推荐发行入口是仓库 **Actions → Desktop release draft → Run workflow**：选择 `main`，输入与 `package.json.version` 一致的标签（当前为 `v0.1.0`）。标签不存在时，工作流将其固定到本次启动的 main 提交；已有标签不移动，仍可重跑原版本。全部检查与三目标打包应用 E2E 通过后生成带 `SHA256SUMS` 的 **Draft + Pre-release**。草稿尚不公开；获授权的维护者或 agent 核对附件及实际验证记录后，可保留 Pre-release 标记发布公开技术预览，用户从 Releases 下载。预览说明可列出未完成的 Windows / Intel 安装器人工验收和未签名状态；全平台安装、升级及签名验收是稳定版门槛。完整网页步骤、命令行 tag 方式和四层验证见 [桌面分发](docs/desktop-distribution.md)。
+macOS 生成 DMG 与 ZIP；Windows 生成 Setup.exe 及配套 Squirrel 文件。PR/main 的 GitHub Actions 运行检查及三目标构建，临时 artifacts 保留 14 天。推荐发行入口是仓库 **Actions → Desktop release draft → Run workflow**：选择 `main`，输入与 `package.json.version` 一致的标签（当前为 `v0.1.1`）。标签不存在时，工作流将其固定到本次启动的 main 提交；已有标签不移动，仍可重跑原版本。全部检查与三目标打包应用 E2E 通过后生成带 `SHA256SUMS` 的 **Draft + Pre-release**。草稿尚不公开；获授权的维护者或 agent 核对附件及实际验证记录后，可保留 Pre-release 标记发布公开技术预览，用户从 Releases 下载。预览说明可列出未完成的 Windows / Intel 安装器人工验收和未签名状态；全平台安装、升级及签名验收是稳定版门槛。完整网页步骤、命令行 tag 方式和四层验证见 [桌面分发](docs/desktop-distribution.md)。
 
 桌面版从“文件 → 模型连接…”或设置中的“配置模型连接”填写自己的 API 地址、模型和密钥。密钥由 Electron `safeStorage` 经系统加密后保存在固定用户数据目录 `Papertrail/ai-settings.json`，不会读取或打包工程 `.env.local`，也不返回给工作台页面。保存连接会停止旧连接上的生成；没有配置密钥时仍可人工阅读或选择演示模式。
 
