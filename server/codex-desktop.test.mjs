@@ -13,7 +13,7 @@ async function fixture(t, options = {}) {
   const skillDir = join(root, 'skills', 'local');
   await mkdir(cwd); await mkdir(skillDir, { recursive: true });
   await writeFile(join(cwd, 'manifest.json'), '{}');
-  await writeFile(join(skillDir, 'SKILL.md'), '---\nname: local\ndescription: Local guidance\n---\nRead the selected research materials.');
+  await writeFile(join(skillDir, 'SKILL.md'), options.skillText || '---\nname: local\ndescription: Local guidance\n---\nRead the selected research materials.');
   await mkdir(join(skillDir, 'plugin'));
   await writeFile(join(skillDir, 'plugin', 'SKILL.md'), '---\nname: plugin\ndescription: Plain local guidance\n---\nRead the selected research materials.');
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -65,7 +65,7 @@ async function fixture(t, options = {}) {
     } });
     captured.push({ executable, args, options: spawnOptions }); children.push(child); return child;
   };
-  const runtime = createCodexRuntime({ spawnImpl, rpcTimeoutMs: 500, env: { PRIVATE_TOKEN: 'secret-for-redaction' } });
+  const runtime = createCodexRuntime({ spawnImpl, tikhubSpawnImpl: options.tikhubSpawnImpl, rpcTimeoutMs: 500, env: { PRIVATE_TOKEN: 'secret-for-redaction', ...options.env } });
   return { runtime, captured, children, nativeReplies, cwd, skillPath, skillDir, setEnabled(value) { enabled = value; } };
 }
 
@@ -222,4 +222,52 @@ test('plain plugin skills load only through explicit native extra roots while th
   assert.equal(start.config['plugins.installed.enabled'], false);
   assert.deepEqual(turn.input[1], { type: 'skill', name: 'plugin', path: join(f.skillDir, 'plugin', 'SKILL.md') });
   assert.deepEqual(f.captured.find((entry) => entry.method === 'skills/extraRoots/set').params, { extraRoots: [join(f.skillDir, 'plugin')] });
+});
+
+test('selected TikHub registers native tools, routes real tool requests once and keeps activity separate from answer text', async t => {
+  const pythonCalls = [], replies = [], events = [];
+  const f = await fixture(t, {
+    env: { TIKHUB_API_KEY: 'fixture-only-credential' },
+    skillText: '---\nname: tikhub\ndescription: TikHub MCP\n---\nUse the TikHub MCP tools.',
+    skills: ({ skillPath, enabled }) => [{ name: 'tikhub', description: 'TikHub MCP', path: skillPath, enabled }],
+    tikhubSpawnImpl: (executable, args, options) => {
+      const child = new EventEmitter(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.exitCode = null;
+      child.kill = () => { child.exitCode = 0; child.emit('close', 0); };
+      child.stdin = new Writable({ write(_chunk, _encoding, callback) { callback(); }, final(callback) {
+        pythonCalls.push({ executable, args, options });
+        queueMicrotask(() => { child.stdout.write(JSON.stringify({ platform: 'douyin', toolCount: 319 })); child.exitCode = 0; child.emit('close', 0); }); callback();
+      } }); return child;
+    },
+    onTurn: async ({ notify, request, finish }) => {
+      const args = { action: 'check', platform: 'douyin' }, call = { callId: 'tik1', tool: 'read_paper_tikhub', arguments: args };
+      notify('item/started', { item: { id: 'tik1', type: 'dynamicToolCall', tool: call.tool, arguments: args, status: 'inProgress' } });
+      replies.push(await request('item/tool/call', call));
+      replies.push(await request('item/tool/call', call));
+      replies.push(await request('item/tool/call', { ...call, arguments: { action: 'platforms' } }));
+      replies.push(await request('item/tool/call', { ...call, threadId: 'another', callId: 'foreign' }));
+      notify('item/completed', { item: { id: 'tik1', type: 'dynamicToolCall', tool: call.tool, arguments: args, status: 'completed', ...replies[0] } });
+      finish();
+    },
+  });
+  await mkdir(join(f.skillDir, 'scripts')); await writeFile(join(f.skillDir, 'scripts', 'tikhub.py'), '# fixture only');
+  const caps = await f.runtime.capabilities();
+  assert.equal(caps.skills[0].enabled, true); assert.match(caps.skills[0].description, /已接入 TikHub/);
+  assert.doesNotMatch(JSON.stringify(caps), /fixture-only-credential|tikhub\.py|scriptPath/);
+  const answer = await f.runtime.run({ cwd: f.cwd, prompt: 'Only check tool discovery', skillIds: [caps.skills[0].id], codex: {}, onEvent: event => events.push(event) });
+  assert.equal(answer.body, 'Original model answer'); assert.equal(pythonCalls.length, 1);
+  assert.equal(replies[0].success, true); assert.deepEqual(replies[0], replies[1]);
+  assert.equal(replies[2].success, false); assert.equal(replies[3].success, false);
+  const start = f.captured.find(entry => entry.method === 'thread/start').params;
+  assert.equal(start.dynamicTools[0].name, 'read_paper_tikhub'); assert.equal(start.config['mcp_servers.external.enabled'], false);
+  assert.ok(!start.runtimeWorkspaceRoots.some(path => path.includes('secrets')));
+  assert.match(events.find(event => event.type === 'progress' && event.status === 'done').output, /319/);
+  assert.doesNotMatch(JSON.stringify(events), /fixture-only-credential/);
+});
+
+test('TikHub tool requests are rejected when its Skill was not selected, including during native resume', async t => {
+  const replies = [];
+  const f = await fixture(t, { onTurn: async ({ request, finish }) => { replies.push(await request('item/tool/call', { callId: 'unselected', tool: 'read_paper_tikhub', arguments: { action: 'platforms' } })); finish(); } });
+  await f.runtime.run({ cwd: f.cwd, prompt: 'Q', nativeSessionId: 'thread1', skillIds: [], codex: {} });
+  assert.equal(replies[0].success, false);
+  assert.ok(!f.captured.find(entry => entry.method === 'thread/resume').params.dynamicTools);
 });

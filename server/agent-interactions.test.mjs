@@ -118,3 +118,13 @@ test('removing a Skill starts a fresh native thread instead of retaining its ins
   await (await f.post({ ...runBody, requestId: 'second', history, skillIds: [] })).text();
   assert.equal(calls[1].nativeSessionId, undefined);
 });
+
+test('adding an external-tool Skill starts a fresh thread so its native tools are registered', async t => {
+  const calls = [];
+  const f = await fixture(t, { async run(input) { calls.push(input); return { nativeSessionId: `native-${calls.length}`, body: 'Answer' }; } });
+  await (await f.post(runBody)).text();
+  const history = [{ requestId: 'request', prompt: 'Test', body: 'Answer', evidenceIds: [], context: [] }];
+  await (await f.post({ ...runBody, requestId: 'second', history, skillIds: ['tikhub'] })).text();
+  assert.equal(calls[1].nativeSessionId, undefined);
+  assert.equal(calls[1].prompt.includes('Answer'), true);
+});

@@ -97,7 +97,7 @@ function scopeOf(request) {
   return { evidence: [...new Set(evidence.map((item) => hash(JSON.stringify(item))))].sort(), history: request.history.map((turn) => turn.requestId), skills: [...(request.skillIds || [])].sort() };
 }
 function containsScope(previous, current) {
-  return previous.evidence.every((id) => current.evidence.includes(id)) && previous.history.every((id) => current.history.includes(id)) && (previous.skills || []).every(id => current.skills.includes(id));
+  return previous.evidence.every((id) => current.evidence.includes(id)) && previous.history.every((id) => current.history.includes(id)) && JSON.stringify(previous.skills || []) === JSON.stringify(current.skills);
 }
 
 function validateReply(interaction, reply) {
@@ -260,7 +260,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       const previous = body.purpose === 'chat' && !body.reset ? await loadMapping(key) : undefined;
       const scope = scopeOf(body);
       const reuse = previous && containsScope(previous.scope, scope);
-      if (previous && !reuse) await send({ type: 'progress', kind: 'status', text: '材料或历史范围已缩小，已开启新的原生会话。' });
+      if (previous && !reuse) await send({ type: 'progress', kind: 'status', text: '材料或历史范围已缩小，或所选技能已变化，已开启新的原生会话。' });
       const cwd = await snapshot(key, body);
       let nativeSessionId = reuse ? previous.nativeSessionId : undefined;
       let nativeModel = reuse && typeof previous.model === 'string' && previous.model.length <= 200 ? previous.model : undefined;

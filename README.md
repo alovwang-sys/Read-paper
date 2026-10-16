@@ -36,7 +36,9 @@ npm run fixtures      # 重建字节稳定的合法自制样例
 
 OpenCode 默认继承本机配置中的模型或 TUI 最近选择的模型，确定后显式传给 `run`，避免非交互运行自行改选免费模型。`OPENCODE_MODEL=供应商/模型` 仅为可选覆盖；通常无需重复填写。平台只读取模型及 provider 连接配置，不继承工具、MCP 或 agents 设置，不改写用户全局配置；本地模型、环境凭据和自定义 provider 不会因 `auth list` 缺少人类可读标签而被阻断，认证与额度以实际请求结果确认。
 
-本轮本机助手接收明确选择的文字证据，不自动发送整个资料库；区域图片仍使用已有图像模型直连。Codex 输入区支持 `/` 操作、`$` 搜索本机技能、模型与 Chat/Plan 选择，原生提问和审批在聊天中答复；默认只读，额外权限须用户明确答复。插件/MCP 依赖技能暂不可用，Claude/OpenCode 未开放工具。移除材料不清除旧原生历史，缩小范围、不含历史或重试时开启新 session。中央资源标签可固定、关闭和排序，引用复用论文标签并保留右侧回答。程序版本、配置、状态存放位置、真实冒烟与限制见 [验收记录](docs/verification/agents/README.md) 和 [运行时记录](docs/verification/agents/runtime-notes.md)，设计见 [助手设计](docs/agents/design.md)。
+本轮本机助手接收明确选择的文字证据，不自动发送整个资料库；区域图片仍使用已有图像模型直连。Codex 输入区支持 `/` 操作、`$` 搜索本机技能、模型与 Chat/Plan 选择，原生提问和审批在聊天中答复；默认只读，额外权限须用户明确答复。未接入的外部工具依赖仍显示限制，Claude/OpenCode 未开放工具。移除材料不清除旧原生历史，缩小范围、不含历史或重试时开启新 session。中央资源标签可固定、关闭和排序，引用复用论文标签并保留右侧回答。程序版本、配置、状态存放位置、真实冒烟与限制见 [验收记录](docs/verification/agents/README.md) 和 [运行时记录](docs/verification/agents/runtime-notes.md)，设计见 [助手设计](docs/agents/design.md)。
+
+TikHub 已接入：本机安装启用 `tikhub` 技能并保留其 `scripts/tikhub.py`，具备 Python 3 与技能规定的本机凭据后，可在 Codex 技能菜单选择 `$tikhub`。菜单顶部“刷新 Codex 能力”可重新检测。通过原生动态工具发现工具、获取输入结构及发起数据调用，实际数据调用在聊天中授权，可能消耗 TikHub 额度；无需另外安装 npm MCP 客户端或修改全局配置。未接入的其他 MCP 依赖仍显示限制。
 
 ## 使用
 

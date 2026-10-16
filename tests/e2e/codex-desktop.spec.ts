@@ -101,8 +101,11 @@ test('工具审批只允许本次或拒绝，不自动改变其他请求', async
   await start(page, api); await send(page, '审批：只读检查材料');
   await panel(page).getByRole('region', { name: 'Codex 工具审批' }).getByRole('button', { name: '拒绝', exact: true }).click();
   await expect(panel(page).locator('.ai-answer')).toContainText('继续完成原研究'); expect(api.replies[0].reply).toEqual({ decision: 'deny' });
-  await send(page, '审批：本次允许读取'); await panel(page).getByRole('region', { name: 'Codex 工具审批' }).last().getByRole('button', { name: '允许本次', exact: true }).click();
-  await expect(panel(page).locator('.ai-answer').last()).toContainText('继续完成原研究'); expect(api.replies[1].reply).toEqual({ decision: 'allowOnce' });
+  await send(page, '审批：本次允许读取'); await expect.poll(() => api.runs.length).toBe(2);
+  const secondTurn = panel(page).locator(`[data-request-id="${api.runs[1].requestId}"]`);
+  const allow = secondTurn.getByRole('region', { name: 'Codex 工具审批' }).getByRole('button', { name: '允许本次', exact: true });
+  await expect(allow).toBeEnabled(); await allow.click();
+  await expect(secondTurn.locator('.ai-answer')).toContainText('继续完成原研究'); expect(api.replies[1]).toMatchObject({ requestId: api.runs[1].requestId, reply: { decision: 'allowOnce' } });
 });
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 800 }]) {
