@@ -1,0 +1,66 @@
+.card-editor {
+  padding: 26px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+.card-editor-kind {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: #8a9484;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  margin-bottom: 22px;
+}
+.card-editor-kind small {
+  margin-left: auto;
+  letter-spacing: 0;
+}
+.card-editor .card-title-field input {
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 11px 12px;
+  width: 100%;
+}
+.card-editor .card-body-field {
+  margin-top: 20px;
+}
+.card-editor .card-body-field textarea {
+  font-size: 15px;
+  line-height: 1.9;
+  min-height: 240px;
+  padding: 13px;
+  resize: vertical;
+  width: 100%;
+}
+.card-review-toggle {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 17px 0;
+  font-size: 12px;
+  color: #a17946;
+  cursor: pointer;
+}
+.card-review-toggle input {
+  accent-color: #9f855d;
+}
+.card-research-info {
+  font-size: 11px;
+  line-height: 1.7;
+  padding-top: 17px;
+  border-top: 1px solid var(--border, #e7e7e4);
+}
+.card-research-info p {
+  color: #63745a;
+  margin: 5px 0 0;
+}
+.card-editor .evidence-list {
+  padding: 27px 0 0;
+}
+.card-unsourced {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #9f855d;
+}
