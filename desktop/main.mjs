@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { startDesktopAI } from './local-ai.mjs';
 import { createSettingsStore } from './settings.mjs';
-import { APP_URL, SETTINGS_URL, createAppProtocol } from './protocol.mjs';
+import { APP_URL, SETTINGS_URL, createAppProtocol, canWriteClipboard } from './protocol.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 app.setName('Papertrail');
@@ -49,8 +49,8 @@ function secureWindow(window) {
     return { action: 'deny' };
   });
   window.webContents.on('will-navigate', event => event.preventDefault());
-  window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
-  window.webContents.session.setPermissionCheckHandler(() => false);
+  window.webContents.session.setPermissionRequestHandler((contents, permission, callback, details) => callback(canWriteClipboard({ contents, mainContents: mainWindow?.webContents, permission, details })));
+  window.webContents.session.setPermissionCheckHandler((contents, permission, origin, details) => canWriteClipboard({ contents, mainContents: mainWindow?.webContents, permission, origin, details }));
 }
 function showAISettings() {
   if (settingsWindow && !settingsWindow.isDestroyed()) { settingsWindow.focus(); return; }

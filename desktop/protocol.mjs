@@ -4,6 +4,10 @@ import { extname, resolve, sep } from 'node:path';
 export const APP_ORIGIN = 'papertrail://app';
 export const APP_URL = `${APP_ORIGIN}/`;
 export const SETTINGS_URL = `${APP_ORIGIN}/desktop-settings`;
+export function canWriteClipboard({ contents, mainContents, permission, details, origin = APP_ORIGIN }) {
+  return Boolean(mainContents && contents === mainContents && !contents.isDestroyed() && contents.getURL() === APP_URL
+    && permission === 'clipboard-sanitized-write' && details?.isMainFrame === true && details.requestingUrl === APP_URL && (origin === APP_ORIGIN || origin === APP_URL));
+}
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.pdf': 'application/pdf', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.wasm': 'application/wasm' };
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'";
 

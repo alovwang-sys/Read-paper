@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAppProtocol } from './protocol.mjs';
+import { createAppProtocol, canWriteClipboard, APP_URL, APP_ORIGIN } from './protocol.mjs';
 import config from '../forge.config.cjs';
 
 test('生产协议仅服务dist与设置文件，阻止路径穿越和未知接口', async () => {
@@ -41,4 +41,11 @@ test('安装包白名单排除.env、真实材料、测试和Git文件', () => {
   const ignore = config.packagerConfig.ignore;
   for (const file of ['/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', '/server/ai.mjs', '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
   for (const file of ['/.env.local', '/.git/config', '/docs/private.pdf', '/tests/fixtures/a.pdf', '/server/ai.test.mjs', '/desktop/settings.test.mjs', '/README.md', '/package-lock.json']) assert.equal(ignore(file), true, file);
+});
+test('仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝', () => {
+  const contents = { getURL: () => APP_URL, isDestroyed: () => false };
+  const request = { contents, mainContents: contents, permission: 'clipboard-sanitized-write', origin: APP_ORIGIN, details: { isMainFrame: true, requestingUrl: APP_URL } };
+  assert.equal(canWriteClipboard(request), true);
+  assert.equal(canWriteClipboard({ ...request, origin: APP_URL }), true);
+  for (const patch of [{ permission: 'clipboard-read' }, { contents: { ...contents } }, { origin: 'https://example.com' }, { details: { isMainFrame: false, requestingUrl: APP_URL } }, { details: { isMainFrame: true, requestingUrl: 'papertrail://app/desktop-settings' } }]) assert.equal(canWriteClipboard({ ...request, ...patch }), false);
 });

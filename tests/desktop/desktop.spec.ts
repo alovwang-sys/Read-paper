@@ -19,10 +19,19 @@ async function saved(page: Page) {
 }
 async function launch(directory: string) {
   const application = await _electron.launch({ executablePath, env: { ...process.env, PAPERTRAIL_USER_DATA: directory }, timeout: 60_000 });
-  const page = await application.firstWindow();
-  await expect(page.getByRole('button', { name: '新建研究', exact: true })).toBeVisible();
-  await saved(page);
-  return { application, page };
+  try {
+    const page = await application.firstWindow();
+    // Hosted desktops may clamp the native window to a 1024px display.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('button', { name: '新建研究', exact: true })).toBeVisible();
+    await saved(page);
+    return { application, page };
+  } catch (error) {
+    const exited = application.waitForEvent('close');
+    application.process().kill();
+    await exited;
+    throw error;
+  }
 }
 async function close(application: ElectronApplication) {
   const exited = application.waitForEvent('close');
@@ -121,7 +130,7 @@ test('安装产物：独立运行、PDF与双栏、模型设置、关闭保存�
     expect(pageErrors).toEqual([]);
   } finally {
     if (application) await close(application).catch(() => application?.process().kill());
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -153,7 +162,7 @@ test('保存失败保留窗口与最新修改，重试后允许退出', async ()
     await saved(page);
   } finally {
     if (application) await close(application).catch(() => application?.process().kill());
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -190,7 +199,7 @@ test('生成过程中退出保留已收到的文字与原研究归属', async ()
     expect(requests.at(-1)?.body).toContain('演示回答：');
   } finally {
     if (application) await close(application).catch(() => application?.process().kill());
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -215,6 +224,39 @@ test('工作台没有关闭回应时保留应用，并允许用户明确强制�
     application = undefined;
   } finally {
     if (application) application.process().kill();
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }
+});
+
+test('复制权限只授予工作台写入，设置窗口和读取均拒绝', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'papertrail-clipboard-'));
+  let application: ElectronApplication | undefined;
+  try {
+    const session = await launch(directory);
+    application = session.application;
+    const page = session.page;
+    const permission = (target: Page, name: string) => target.evaluate(async name => (await navigator.permissions.query({ name: name as PermissionName })).state, name);
+    expect(await permission(page, 'clipboard-write')).toBe('granted');
+    expect(await permission(page, 'clipboard-read')).toBe('denied');
+    const opened = application.waitForEvent('window');
+    await page.evaluate(() => window.papertrailDesktop?.openAISettings());
+    const settings = await opened;
+    expect(await permission(settings, 'clipboard-write')).toBe('denied');
+    await settings.close();
+    await page.bringToFront();
+    expect(await permission(page, 'clipboard-write')).toBe('granted');
+    await expect(page.evaluate(() => navigator.clipboard.readText())).rejects.toThrow();
+    if (process.env.CI) {
+      // Only touch the clipboard on disposable CI machines, never the user's clipboard.
+      await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+      await panel(page).getByLabel('AI 运行模式').selectOption('demo');
+      await panel(page).getByLabel('向 AI 提问').fill('验证复制回答');
+      await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
+      await panel(page).getByRole('button', { name: '复制', exact: true }).click();
+      await expect.poll(() => application!.evaluate(({ clipboard }) => clipboard.readText())).toContain('演示回答：验证复制回答');
+    }
+  } finally {
+    if (application) await close(application).catch(() => application?.process().kill());
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });

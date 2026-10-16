@@ -11,20 +11,21 @@
 | `npm run check` | 通过 |
 | `npm test` | 85 项通过；包含备份 15 项、等待保存和保存失败恢复 |
 | `npm run test:server` | 15 项通过 |
-| `npm run test:desktop` | 10 项通过；本地随机端口与 token、取消、协议路径、加密设置、打包白名单 |
+| `npm run test:desktop` | 11 项通过；本地随机端口与 token、取消、协议路径、加密设置、打包白名单与剪贴板权限 |
 | `node --test .github/scripts/release.test.mjs` | 12 项通过；版本/main 来源、完整资产、草稿幂等、已发布拒写、tag 漂移和校验和 |
 | `npm run test:e2e` | Chromium 16 项全部通过 |
 | `npm run desktop:make` | 生成 macOS arm64 DMG 与 ZIP |
-| `npm run test:desktop:e2e` | 真实打包应用 4 项通过 |
+| `npm run test:desktop:e2e` | 核心真实打包应用 4 项通过，另新增剪贴板权限定向 1 项通过 |
 | 挂载 DMG → `ditto` 复制到独立临时安装目录 → 卸载镜像 → 从复制后的 `.app` 运行首项桌面测试 | 通过（1 项）；未依赖 Vite 或开发 AI 服务 |
 | Actionlint 1.7.11、YAML 解析、`git diff --check` | 通过；Actions SHA 已通过官方仓库核对 |
 
-桌面四项覆盖：
+桌面核心四项与剪贴板定向覆盖：
 
 1. 固定 `papertrail://app/`，主区不能读取模型密钥，未开放 Node；实际 ASAR 不含 `.env`、证书、Git、测试、文档或私人资料。内置 PDF/worker 可渲染，三个主区与右侧组合可操作；模型连接写入系统加密文件，客户端 config 不返回密钥；1440×900、1280×800、1024px 均截图。超过 1.5MB 恢复缓冲限制的正文，编辑后立即退出并重启仍保留。
 2. 注入 IndexedDB 配额错误，退出不关闭窗口且保留最新文字；恢复写入并重试后可退出。
 3. 演示流式生成中退出，收到的文字保留，状态为 stopped，仍归原研究。
 4. 丢弃 renderer 的关闭回应，10 秒后保留工作台，只有模拟用户明确选择“强制关闭”才退出；不超时自动放行。
+5. 仅工作台主框架可写剪贴板，模型设置窗口和读取权限保持拒绝；打开并关闭设置后仍正确。仅在可丢弃 CI 系统中实际写入/读取复制结果，本机只验证权限，不触碰用户剪贴板。
 
 备份浏览器 E2E 覆盖真实 PDF ZIP、损坏 ZIP 拒绝、确认前不替换、确认后所有资产 SHA-256/研究/引用/布局一致、刷新恢复，以及同事务的 `before-backup-restore` 原资料副本。保存失败时仍能将内存最新文字导出，数据库与保存错误状态不伪装成功。
 
@@ -52,6 +53,8 @@
 ## GitHub 与分发边界
 
 PR/main CI 在 Linux 执行全部确定性检查，之后在 macOS arm64、macOS x64、Windows x64 构建并启动各自应用；结果以本 PR 的 GitHub Checks/Actions 为准。本记录中的本机数据不替代其余两个架构的云端结果。通过后的安装包在该 run 的 artifacts 下载，保留 14 天。
+
+首轮 CI 的基础检查与浏览器 16 项已通过，macOS arm64 DMG/ZIP 已生成；桌面测试在受限的云端显示分辨率下等待已折叠左栏的按钮而失败。trace 证实工作台已正常显示；测试已改为先设置 1440×900 逻辑视口，再验证入口，并在启动断言失败时关闭测试进程。1024px 折叠场景仍单独验证，不能通过隐藏该场景来伪造通过。最终是否全部通过仍以 PR 当前 head 的 Checks 为准。
 
 版本 tag 必须与 package 版本一致且指向 main 历史。全部检查和平台成功后，单个只做资产处理的写权限 job 创建 Draft + Pre-release；不会自动正式发布。不推送功能分支 tag，不覆写已发布版本，不把预览包提交到 Git。
 
