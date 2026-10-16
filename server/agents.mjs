@@ -100,6 +100,8 @@ const sessionKey = (body) => hash(JSON.stringify([body.workspaceId, body.researc
 const runtimeMessages = {
   'not-installed': '未安装所选 Agent CLI，请在本机安装并登录后重试。',
   'needs-auth': '所选 Agent 尚未登录，请在本机终端登录后重试。',
+  'model_required': 'OpenCode 未找到有效的已选模型，请在 OpenCode 中选择模型后重新连接，或用 OPENCODE_MODEL 显式指定。',
+  'config_unavailable': '无法读取 OpenCode 本机配置或最近模型，请检查 OpenCode 配置后重新连接。',
   'rate_limited': '所选 Agent 的模型供应商限制了请求频率或额度，请稍后手动重试。',
   'sandbox_unavailable': '此 Agent CLI 无法隔离材料目录，请升级后重试。',
   'protocol_error': 'Agent 协议不兼容，请检查 CLI 版本与本机配置后重试。',
@@ -225,16 +227,18 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       if (previous && !reuse) await send({ type: 'progress', kind: 'status', text: '材料或历史范围已缩小，已开启新的原生会话。' });
       const cwd = await snapshot(key, body);
       let nativeSessionId = reuse ? previous.nativeSessionId : undefined;
-      const persist = (value) => {
+      let nativeModel = reuse && typeof previous.model === 'string' && previous.model.length <= 200 ? previous.model : undefined;
+      const persist = (value, selectedModel) => {
         nativeSessionId = value;
+        if (typeof selectedModel === 'string' && selectedModel.length <= 200) nativeModel = selectedModel;
         if (body.purpose !== 'chat') return Promise.resolve();
-        mappingWrites = mappingWrites.then(() => saveMapping(key, { version: 1, nativeSessionId, scope: { evidence: scope.evidence, history: [...scope.history, body.requestId] }, updatedAt: new Date().toISOString() }));
+        mappingWrites = mappingWrites.then(() => saveMapping(key, { version: 1, nativeSessionId, ...(nativeModel ? { model: nativeModel } : {}), scope: { evidence: scope.evidence, history: [...scope.history, body.requestId] }, updatedAt: new Date().toISOString() }));
         return mappingWrites;
       };
-      const run = adapters[body.agentId].run({ prompt: compileAgentPrompt(body), cwd, nativeSessionId, signal: controller.signal,
+      const run = adapters[body.agentId].run({ prompt: compileAgentPrompt(body), cwd, nativeSessionId, nativeModel, signal: controller.signal,
         onEvent(event) {
           if (controller.signal.aborted) return;
-          if (event.type === 'session' && typeof event.nativeSessionId === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(event.nativeSessionId)) persist(event.nativeSessionId).then(() => send(event)).catch(() => controller.abort());
+          if (event.type === 'session' && typeof event.nativeSessionId === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(event.nativeSessionId)) persist(event.nativeSessionId, event.model).then(() => send(event)).catch(() => controller.abort());
           else if (event.type === 'delta' && typeof event.text === 'string') send({ type: 'delta', text: event.text }).catch(() => controller.abort());
           else if (event.type === 'progress') {
             const progress = sanitizeAgentProgress(event, env);
@@ -245,7 +249,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       runCompletion = run.catch(() => {});
       const result = await Promise.race([run, new Promise((_, reject) => { const cancel = () => reject(failure(timedOut ? 504 : 499, timedOut ? 'timeout' : 'stopped', timedOut ? 'Agent 响应超时，已停止并保留收到的内容，请重试。' : '生成已停止。')); controller.signal.addEventListener('abort', cancel, { once: true }); if (controller.signal.aborted) cancel(); })]);
       if (typeof result.nativeSessionId !== 'string' || !/^[A-Za-z0-9_-]{1,200}$/.test(result.nativeSessionId) || typeof result.body !== 'string' || result.body.length > 1_000_000 || (result.model !== undefined && (typeof result.model !== 'string' || result.model.length > 200))) throw failure(502, 'invalid_agent_response', 'Agent 返回的会话或回答格式不正确。');
-      await persist(result.nativeSessionId); await mappingWrites;
+      await persist(result.nativeSessionId, result.model); await mappingWrites;
       if (!streamed && result.body) await send({ type: 'delta', text: result.body });
       await send({ type: 'done', nativeSessionId: result.nativeSessionId, model: result.model });
       res.end();

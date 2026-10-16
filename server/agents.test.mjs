@@ -54,9 +54,27 @@ test('streams only answer deltas, saves explicit snapshots, and resumes across s
   assert.deepEqual(manifest.context, [evidence()]); assert.equal((await stat(join(calls[0].cwd, 'materials.md'))).mode & 0o222, 0);
   f.restart();
   await events(await f.post(request({ requestId: 'request2', history: [history()] })));
-  assert.equal(calls[1].nativeSessionId, 'native-1'); assert.equal(calls[1].cwd, calls[0].cwd);
+  assert.equal(calls[1].nativeSessionId, 'native-1'); assert.equal(calls[1].nativeModel, 'test-model'); assert.equal(calls[1].cwd, calls[0].cwd);
   assert.match(calls[1].prompt, /Renumbered answer \[1\]/); assert.doesNotMatch(calls[1].prompt, /Original answer/);
   assert.equal((await readdir(join(f.stateDir, 'snapshots'))).length, 2);
+});
+
+test('native model is saved with the session before an interrupted answer and survives service restart', async (t) => {
+  const calls = [];
+  const runtime = { async run(input) {
+    calls.push(input);
+    input.onEvent({ type: 'session', nativeSessionId: 'native-model', model: 'local/original#high' });
+    if (calls.length === 1) throw new Error('interrupted');
+    return { body: 'Answer', nativeSessionId: 'native-model', model: input.nativeModel };
+  } };
+  const f = await fixture(t, runtime);
+  assert.equal((await events(await f.post(request()))).at(-1).type, 'error');
+  f.restart();
+  await events(await f.post(request({ requestId: 'request2', history: [history()] })));
+  assert.equal(calls[1].nativeSessionId, 'native-model');
+  assert.equal(calls[1].nativeModel, 'local/original#high');
+  await events(await f.post(request({ requestId: 'request3', reset: true })));
+  assert.equal(calls[2].nativeModel, undefined);
 });
 
 test('workspace, research and connection isolate sessions; narrowing history starts a new native session', async (t) => {
