@@ -179,6 +179,20 @@ test('1024px 导航抽屉、右侧关闭、键盘搜索均可操作', async ({ p
 test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆盖正文', async ({
   page,
 }) => {
+  let attempts = 0;
+  await page.route('**/api/ai/config', route => route.fulfill({ json: {
+    configured: true, model: 'test-retry', images: false,
+  } }));
+  await page.route('**/api/ai/chat', route => {
+    attempts++;
+    return route.fulfill({
+      status: attempts === 1 ? 503 : 200,
+      contentType: 'application/x-ndjson',
+      body: attempts === 1
+        ? `${JSON.stringify({ type: 'error', error: '测试适配器：请求暂时不可用' })}\n`
+        : `${JSON.stringify({ type: 'delta', text: '确定性测试回答，未调用真实模型。 [1]' })}\n${JSON.stringify({ type: 'done', model: 'test-retry' })}\n`,
+    });
+  });
   await page.evaluate(async () => {
     const storePath = '/src/services/workspace.ts',
       pdfPath = '/src/services/pdf.ts';
@@ -226,33 +240,22 @@ test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆�
     .locator('[data-evidence-id="evidence-a"]')
     .getByRole('button', { name: '加入 AI', exact: true })
     .click();
-  await page.evaluate(async () => {
-    const aiPath = '/src/services/ai.ts';
-    await (
-      await import(aiPath)
-    ).submitAI(
-      'research-a',
-      'conversation-research-a',
-      '重试这份证据的解释',
-      async () => {
-        throw new Error('测试适配器：请求暂时不可用');
-      },
-    );
-  });
+  await page.getByLabel('向 AI 提问', { exact: true }).fill('重试这份证据的解释');
+  await page.getByRole('button', { name: '发送问题', exact: true }).click();
   await expect(
     page.getByRole('alert').filter({ hasText: '测试适配器：请求暂时不可用' }),
   ).toBeVisible();
   await page.screenshot({
     path: 'docs/verification/screenshots/ai-request-error.png',
   });
-  await page.getByLabel('AI 运行模式').selectOption('demo');
   await page.getByRole('button', { name: '按原范围重试', exact: true }).click();
   await expect(page.locator('.ai-answer').last()).toContainText(
     '未调用真实模型',
   );
   const snapshot = await readData(page);
   const retried = Object.values(snapshot.requests).at(-1)!;
-  expect(retried).toMatchObject({ mode: 'demo', status: 'done' });
+  expect(retried).toMatchObject({ mode: 'live', connectionId: 'model', status: 'done' });
+  expect(attempts).toBe(2);
   expect(retried.retryOf).toBeTruthy();
   const body = snapshot.drafts['draft-a'].body;
   expect(body).toBe(

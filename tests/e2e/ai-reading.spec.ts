@@ -84,7 +84,8 @@ test('区域拖框、演示对话、片段卡片、刷新来源与真实 Markdow
   expect(evidence.region!.hash).toMatch(/^[a-f0-9]{64}$/);
   expect(Object.keys(state.requests)).toHaveLength(0);
 
-  await panel(page).getByLabel('AI 运行模式').selectOption('demo');
+  await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+  await panel(page).getByRole('button', { name: '演示模式', exact: true }).click();
   const question = 'E2E 区域阅读：解释所选图像的研究含义，并指出待核查条件。';
   await panel(page).getByLabel('向 AI 提问').fill(question);
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
@@ -167,7 +168,8 @@ test('干净新会话、历史搜索重命名、归档恢复及刷新持久化',
   await openPaper(page);
   await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
   await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
-  await panel(page).getByLabel('AI 运行模式').selectOption('demo');
+  await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+  await panel(page).getByRole('button', { name: '演示模式', exact: true }).click();
   const question = 'E2E 历史检索：证据应如何留存？';
   await panel(page).getByLabel('向 AI 提问').fill(question);
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();

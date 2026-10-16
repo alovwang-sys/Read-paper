@@ -30,6 +30,12 @@ npm run test:e2e       # 真正的 Chromium 用户路径测试
 npm run fixtures      # 重建字节稳定的合法自制样例
 ```
 
+## 本机 AI 助手
+
+启动 `npm run dev` 与 `npm run ai`，在 AI 面板输入区的“切换 AI 助手”查看 Codex、Claude Code、OpenCode。使用各 CLI 自己的本机登录与订阅，页面不接收或保存 CLI 密钥；本机运行不代表离线推理。每段对话绑定助手，切换恢复各自输入、历史与材料，运行中的回答仍归原研究。原始回答、工具进度和确认后的知识卡片可分别回查。
+
+本轮本机助手接收明确选择的文字证据，不自动发送整个资料库；区域图片仍使用已有图像模型直连。工具能力按运行时实际权限显示，写入和不支持的授权请求会被拒绝。移除材料不清除旧原生历史，缩小范围、不含历史或重试时开启新 session。程序版本、配置、状态存放位置、真实冒烟与限制见 [验收记录](docs/verification/agents/README.md) 和 [运行时记录](docs/verification/agents/runtime-notes.md)，设计见 [助手设计](docs/agents/design.md)。
+
 ## 使用
 
 - 左栏上部浏览全局资料；下部切换研究、打开资源。相同资源复用打开项，支持固定与关闭。`⌘K` / `Ctrl+K` 搜索，`Esc` 关闭弹层。

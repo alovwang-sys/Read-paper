@@ -419,7 +419,9 @@ export const workspace = {
     const id = uid('conversation');
     workspace.updateData(data => {
       if (!data.researches[researchId]) throw new Error('研究不存在。');
-      data.conversations[id] = { id, researchId, title: '新的阅读对话', contextIds: [], requestIds: [], input: '', historyRange: 'all', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      const current = getActiveConversation(data, researchId);
+      const connectionId = current?.connectionId ?? (data.sessions[researchId].panel.aiMode === 'demo' ? 'demo' : 'model');
+      data.conversations[id] = { id, researchId, connectionId, title: '新的阅读对话', contextIds: [], requestIds: [], input: '', historyRange: 'all', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       data.sessions[researchId].activeConversationId = id;
       data.sessions[researchId].panel.aiView = 'chat';
     });
@@ -429,8 +431,10 @@ export const workspace = {
     workspace.updateData(data => {
       const conversation = data.conversations[conversationId];
       if (!conversation || conversation.researchId !== researchId) throw new Error('会话不属于该研究。');
+      conversation.connectionId ??= conversation.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1)?.mode === 'demo' ? 'demo' : 'model';
       data.sessions[researchId].activeConversationId = conversationId;
       data.sessions[researchId].panel.aiView = 'chat';
+      data.sessions[researchId].panel.aiMode = conversation.connectionId === 'demo' ? 'demo' : 'live';
     });
   },
   renameConversation(conversationId: string, title: string) {

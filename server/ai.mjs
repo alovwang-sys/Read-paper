@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { pathToFileURL } from 'node:url';
+import { createAgentHandler } from './agents.mjs';
 
 const LIMITS = Object.freeze({ maxInputChars: 120_000, maxImages: 4, maxImageBytes: 8 * 1024 * 1024 });
 const MAX_BODY_BYTES = LIMITS.maxInputChars * 6 + Math.ceil(LIMITS.maxImageBytes / 3) * 4 * LIMITS.maxImages + 4096;
@@ -284,8 +285,14 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try { process.loadEnvFile('.env.local'); } catch (error) { if (error.code !== 'ENOENT') throw new Error('无法加载 .env.local，请检查文件格式。'); }
   const handler = createAIHandler();
+  const agents = createAgentHandler();
   const port = Number(process.env.AI_PORT || 8787);
-  const server = createServer(handler);
+  const server = createServer(async (req, res) => {
+    if (!await agents(req, res)) await handler(req, res);
+  });
   server.requestTimeout = 30_000;
   server.listen(port, '127.0.0.1', () => { console.log(`本地 AI 服务已启动：http://127.0.0.1:${port}`); });
+  const close = () => { agents.close(); server.close(); };
+  process.once('SIGTERM', close);
+  process.once('SIGINT', close);
 }

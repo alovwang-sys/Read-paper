@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, History, Plus, Search } from 'lucide-react';
 import { useWorkspace } from '../../services/workspace';
+import { connectionLabel } from '../../services/agents';
 
 export function ConversationHistory({ onBack }: { onBack: () => void }) {
   const { data, research, actions } = useWorkspace();
@@ -14,7 +15,7 @@ export function ConversationHistory({ onBack }: { onBack: () => void }) {
       (item) =>
         item.researchId === research.id &&
         !!item.archived === archived &&
-        `${item.title ?? ''} ${item.requestIds.map((id) => `${data.requests[id]?.prompt ?? ''} ${data.requests[id]?.body ?? ''}`).join(' ')}`
+        `${connectionLabel(item.connectionId)} ${item.title ?? ''} ${item.requestIds.map((id) => `${data.requests[id]?.prompt ?? ''} ${data.requests[id]?.body ?? ''}`).join(' ')}`
           .toLocaleLowerCase()
           .includes(query.toLocaleLowerCase()),
     )
@@ -88,6 +89,7 @@ export function ConversationHistory({ onBack }: { onBack: () => void }) {
             (draft) =>
               draft.conversationId === entry.id && draft.status !== 'saved',
           );
+          const running = entry.requestIds.some(id => data.requests[id]?.status === 'generating');
           return (
             <article className="ai-history-item" key={entry.id}>
               {renaming === entry.id ? (
@@ -137,6 +139,7 @@ export function ConversationHistory({ onBack }: { onBack: () => void }) {
                       onBack();
                     }}
                   >
+                    <span className="ai-history-connection"><span className="ai-badge">{connectionLabel(entry.connectionId)}</span>{running && <span className="ai-running-badge"><span />运行中</span>}</span>
                     <h4>{entry.title || '新的阅读对话'}</h4>
                     <p>{turns.at(-1)?.prompt ?? '尚未发送问题'}</p>
                     <small>

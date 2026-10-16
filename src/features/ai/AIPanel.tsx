@@ -13,6 +13,8 @@ import {
   X,
 } from 'lucide-react';
 import type {
+  AgentConnection,
+  AIConnectionId,
   AIRequest,
   CardProvenance,
   ContextSnapshot,
@@ -31,10 +33,12 @@ import {
   submitAI,
 } from '../../services/ai';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
+import { connectionLabel, conversationConnection, getAgents, selectAgent } from '../../services/agents';
 import { CardDraftEditor } from '../cards/CardDraftEditor';
 import { MarkdownContent } from './MarkdownContent';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationSource } from './ConversationSource';
+import { AgentPicker, agentStateLabel } from './AgentPicker';
 import {
   ContextDetails,
   RegionPreview,
@@ -56,6 +60,7 @@ function toSource(request: AIRequest, title: string): CardProvenance {
     context: request.context,
     createdAt: request.createdAt,
     model: request.model,
+    connectionId: request.connectionId,
     generationRequestIds: [],
     incomplete: request.status !== 'done' || !!request.legacy,
   };
@@ -76,13 +81,9 @@ export function AIPanel() {
     useState<Awaited<ReturnType<typeof getAIConfig>>>();
   const [configError, setConfigError] = useState('');
   const [loadingConfig, setLoadingConfig] = useState(false);
-  const mode = session.panel.aiMode ?? 'live';
-  const setMode = (nextMode: 'live' | 'demo') =>
-    actions.updateData((next) => {
-      next.sessions[
-        data.scope.kind === 'research' ? data.scope.researchId : 'library'
-      ].panel.aiMode = nextMode;
-    });
+  const [agents, setAgents] = useState<AgentConnection[]>([]);
+  const [agentError, setAgentError] = useState('');
+  const [loadingAgents, setLoadingAgents] = useState(true);
   const [intent, setIntent] = useState<SelectionIntent>();
   const [selectedFragment, setSelectedFragment] = useState<{
     requestId: string;
@@ -104,6 +105,13 @@ export function AIPanel() {
   const conversation = research
     ? getActiveConversation(data, research.id)
     : undefined;
+  const connectionId = conversation ? conversationConnection(conversation) : 'model';
+  const mode = connectionId === 'demo' ? 'demo' : 'live';
+  const native = connectionId !== 'demo' && connectionId !== 'model';
+  const agent = agents.find(item => item.id === connectionId);
+  const backgroundTasks = Object.values(data.requests).filter(request =>
+    request.researchId === research?.id && request.conversationId !== conversation?.id && request.status === 'generating',
+  );
   const requests =
     conversation?.requestIds
       .map((id) => data.requests[id])
@@ -127,14 +135,14 @@ export function AIPanel() {
   const prompt = conversation?.input ?? '';
   const missingImages =
     mode === 'live' &&
-    conversation?.contextIds.some(
+    (conversation?.contextIds.some(
       (id) => data.evidence[id]?.kind === 'region',
-    ) &&
-    !config?.images;
+    ) || selectedHistory.some(turn => turn.context.some(item => item.kind === 'region'))) &&
+    !(native ? agent?.capabilities.images : config?.images);
   const canSend =
     !!prompt.trim() &&
     !generating &&
-    (mode === 'demo' || !!config?.configured) &&
+    (mode === 'demo' || (native ? agent?.state === 'ready' && !loadingAgents && !agentError : !!config?.configured && !configError)) &&
     !missingImages;
   const updatePanel = (
     nextView: 'chat' | 'history' | 'draft' | 'source',
@@ -159,8 +167,29 @@ export function AIPanel() {
       setLoadingConfig(false);
     }
   }
+  async function loadAgents() {
+    setLoadingAgents(true);
+    setAgentError('');
+    try {
+      setAgents(await getAgents());
+    } catch {
+      setAgents([]);
+      setAgentError('无法连接本机 Agent 服务。启动本地服务后重新检查，当前输入已保留。');
+    } finally {
+      setLoadingAgents(false);
+    }
+  }
+  function switchAgent(id: AIConnectionId) {
+    if (!research || id === connectionId) return;
+    rememberScroll();
+    void execute(() => {
+      selectAgent(research.id, id);
+      actions.notice(`已切换到${connectionLabel(id)}。原对话、未发送输入及运行中的任务均已保留。`);
+    });
+  }
   useEffect(() => {
     void loadConfig();
+    void loadAgents();
   }, []);
   useEffect(() => {
     setError('');
@@ -376,7 +405,7 @@ export function AIPanel() {
         <button
           className="icon-button"
           aria-label="新建干净对话"
-          title="新对话，不带旧材料与历史"
+          title={`继续使用${connectionLabel(connectionId)}，不带旧材料与历史`}
           onClick={() => {
             rememberScroll();
             actions.createConversation(research.id);
@@ -391,23 +420,26 @@ export function AIPanel() {
         <span>
           {mode === 'demo'
             ? '演示模式 · 预设回答，无真实模型调用'
+            : native
+              ? loadingAgents
+                ? `正在检查 ${connectionLabel(connectionId)}…`
+                : `${connectionLabel(connectionId)} · ${agent ? agentStateLabel[agent.state] : '未连接'}${agent?.version ? ` · ${agent.version}` : ''}`
             : loadingConfig
               ? '正在检查模型配置…'
               : config?.configured
                 ? `${config.model} · 真实模型`
                 : '真实模型尚未连接'}
         </span>
-        <select
-          aria-label="AI 运行模式"
-          value={mode}
-          onChange={(event) => setMode(event.target.value as 'live' | 'demo')}
-          disabled={!!generating}
-        >
-          <option value="live">真实模型</option>
-          <option value="demo">演示模式</option>
-        </select>
+        {native && agent?.state === 'ready' && <span className="ai-badge">{agent.capabilities.tools ? '只读工具' : '仅对话'}</span>}
       </div>
-      {mode === 'live' &&
+      {!!backgroundTasks.length && <button className="ai-background-tasks" onClick={() => { rememberScroll(); updatePanel('history'); }}><span />{backgroundTasks.length} 个任务在其他对话运行 · 查看</button>}
+      {native && !loadingAgents && (agentError || agent?.state !== 'ready') && <div className="ai-connection" role="status">
+        <p><strong>{agent ? `${connectionLabel(connectionId)} · ${agentStateLabel[agent.state]}` : '本机助手未连接'}</strong></p>
+        <p>{agentError || agent?.detail || '请检查该助手的安装和登录状态，然后重新连接。'}</p>
+        <p>当前输入和对话已保留；不会自动改用其他助手。</p>
+        <button className="text-button" onClick={() => void loadAgents()}><RefreshCw size={13} />重新连接助手</button>
+      </div>}
+      {!native && mode === 'live' &&
         (configError || (!loadingConfig && !config?.configured)) && (
           <div className="ai-connection">
             <p>
@@ -504,7 +536,7 @@ export function AIPanel() {
               {request.legacy && <p className="ai-scope-notice">旧版保存记录：回答可能曾被编辑，无法保证是原始模型输出；不纳入前序对话。</p>}
               <details className="ai-turn-range">
                 <summary>
-                  发送时：{request.context.length} 条材料 ·{' '}
+                  {request.connectionId && request.connectionId !== 'model' && request.connectionId !== 'demo' ? `${connectionLabel(request.connectionId)} · ` : ''}发送时：{request.context.length} 条材料 ·{' '}
                   {request.history?.length ?? 0} 轮前序对话
                 </summary>
                 <ContextDetails items={request.context} />
@@ -529,7 +561,7 @@ export function AIPanel() {
                 <strong>
                   {request.mode === 'demo'
                     ? 'AI 演示'
-                    : (request.model ?? 'AI')}
+                    : (request.model ?? connectionLabel(request.connectionId))}
                 </strong>
                 {request.superseded && (
                   <span className="ai-badge">保留的旧版本</span>
@@ -553,6 +585,10 @@ export function AIPanel() {
                   正在回答…
                 </div>
               )}
+              {!!request.events?.length && <details className="ai-agent-events" open={request.status === 'generating'}>
+                <summary>助手活动 · {request.events.length}</summary>
+                <ol>{request.events.map((event, index) => <li key={index} className={event.kind === 'permission' ? 'is-permission' : ''}><span>{event.kind === 'tool' ? '只读工具' : event.kind === 'permission' ? '权限限制' : '状态'}</span>{event.text}</li>)}</ol>
+              </details>}
               {request.status !== 'generating' && incomplete && (
                 <div className="ai-error" role="alert">
                   {request.error ||
@@ -834,6 +870,12 @@ export function AIPanel() {
             <option value="none">不含前序对话</option>
           </select>
         </div>
+        {native && <details className="ai-native-scope">
+          <summary>Agent 累计范围 · {conversation.sentContext?.length ?? 0} 条已发材料</summary>
+          <p>原生会话可能保留此前发送的问答、材料和工具结果。移除本轮材料不会清除这些历史。</p>
+          {!!conversation.sentContext?.length && <ContextDetails items={conversation.sentContext} />}
+          <p>{conversation.historyRange && conversation.historyRange !== 'all' ? '下次请求将从所选前序范围建立新的原生会话；旧会话记录仍保留。' : '如需完全独立的范围，请新建干净对话。'}</p>
+        </details>}
         {!!selectedHistory.length && (
           <details className="ai-history-scope">
             <summary>查看将发送的历史与旧材料</summary>
@@ -858,7 +900,7 @@ export function AIPanel() {
         )}
         {missingImages && (
           <p className="ai-error">
-            当前模型仅支持文字。请移除区域图片后发送，区域证据仍会保留。
+            当前助手不支持区域图片。本轮材料或所选历史含图片，请调整材料与历史范围，或切换支持图片的助手；区域证据仍会保留。
           </p>
         )}
         {error && (
@@ -889,7 +931,7 @@ export function AIPanel() {
           }}
         />
         <div className="ai-composer-footer">
-          <small>⌘ / Ctrl + Enter 发送 · Enter 换行</small>
+          <AgentPicker current={connectionId} agents={agents} loading={loadingAgents} error={agentError} model={config?.model} configured={!!config?.configured && !configError} onSelect={switchAgent} onRefresh={() => { void loadAgents(); void loadConfig(); }} />
           {generating ? (
             <button className="button" onClick={() => stopAI(generating.id)}>
               <Square size={13} />
@@ -907,7 +949,7 @@ export function AIPanel() {
           )}
         </div>
         <p className="ai-sending-note">
-          只发送上方材料及所选历史，不自动发送整篇论文。
+          ⌘ / Ctrl + Enter 发送 · {native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}
         </p>
       </div>
       <dialog
@@ -1049,10 +1091,10 @@ export function AIPanel() {
                 )}
                 <p className="ai-footnote">
                   {intent?.regenerate
-                    ? `${mode === 'demo' ? '使用演示预设' : '发送到真实模型'}。前序材料可能仍存在于历史中；可取消并调整范围。`
+                    ? `${mode === 'demo' ? '使用演示预设' : `发送到${connectionLabel(connectionId)}`}。前序材料可能仍存在于历史中；可取消并调整范围。`
                     : intent?.manual
                       ? '保留原始问答，草稿由你编辑后确认加入卡片。'
-                      : `${mode === 'demo' ? '使用演示预设' : '使用真实模型'}整理；会发送原始问答、所选片段及该轮材料。结果先进入独立草稿，由你修改确认。`}
+                      : `${mode === 'demo' ? '使用演示预设' : `使用${connectionLabel(connectionId)}`}整理；会发送原始问答、所选片段及该轮材料。结果先进入独立草稿，由你修改确认。`}
                 </p>
                 <div className="ai-dialog-actions">
                   <button

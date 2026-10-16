@@ -72,6 +72,7 @@ export type CardProvenance = {
   context: ContextSnapshot[];
   createdAt: string;
   model?: string;
+  connectionId?: AIConnectionId;
   generationRequestIds: string[];
   incomplete?: boolean;
 };
@@ -172,6 +173,16 @@ export type AIHistoryTurn = {
   evidenceIds: string[];
   context: ContextSnapshot[];
 };
+export type AIConnectionId = 'model' | 'demo' | 'codex' | 'claude' | 'opencode';
+export type AgentEvent = { kind: 'tool' | 'status' | 'permission'; text: string };
+export type AgentConnection = {
+  id: 'codex' | 'claude' | 'opencode';
+  name: string;
+  state: 'ready' | 'not-installed' | 'needs-auth' | 'error';
+  version?: string;
+  detail?: string;
+  capabilities: { images: boolean; tools: boolean; resume: boolean; permissions: 'read-only' };
+};
 export type AIRequest = {
   id: string;
   researchId: string;
@@ -195,6 +206,9 @@ export type AIRequest = {
   legacy?: boolean;
   validationError?: string;
   draftId?: string;
+  connectionId?: AIConnectionId;
+  nativeSessionId?: string;
+  events?: AgentEvent[];
 };
 export type Conversation = {
   id: string;
@@ -208,9 +222,13 @@ export type Conversation = {
   archived?: boolean;
   historyRange?: 'all' | 'latest' | 'none';
   scrollTop?: number;
+  connectionId?: AIConnectionId;
+  nativeSessionId?: string;
+  sentContext?: ContextSnapshot[];
 };
 export type WorkspaceData = {
   schemaVersion: 2;
+  agentWorkspaceId?: string;
   researches: Record<string, Research>;
   documents: Record<string, PaperDocument>;
   evidence: Record<string, Evidence>;

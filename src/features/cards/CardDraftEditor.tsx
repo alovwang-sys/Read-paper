@@ -19,12 +19,13 @@ import {
   undoCardRevision,
 } from '../../services/ai';
 import { useWorkspace } from '../../services/workspace';
+import { connectionLabel } from '../../services/agents';
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { hasOriginalDocument } from '../ai/SourceDetails';
 
 export function CardDraftEditor({
   draftId,
-  demo,
+  demo: demoMode,
   onBack,
   onSource,
 }: {
@@ -38,6 +39,7 @@ export function CardDraftEditor({
   const [revising, setRevising] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const draft = data.cardDrafts[draftId];
+  const demo = draft?.source.connectionId ? draft.source.connectionId === 'demo' : demoMode;
   if (!draft)
     return (
       <div className="ai-empty">
@@ -132,7 +134,7 @@ export function CardDraftEditor({
         <span>
           {demo
             ? '演示模式 · 整理与修订使用预设内容'
-            : '真实模型 · AI 修订会发送当前草稿与来源'}
+            : `${connectionLabel(draft.source.connectionId)} · 修订会发送当前草稿与来源`}
         </span>
       </div>
       <div className="ai-content-scroll">

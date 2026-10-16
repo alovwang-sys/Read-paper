@@ -6,6 +6,10 @@
 
 2026-10-16 的 [产品需求](ai-reading/requirements.md)、[UX 交互设计](ai-reading/ux-design.md)与[可点击原型](ai-reading/prototype.html)是设计基线。AR0–AR8 的实际交付见下表；现有 T0–T7 保留为首版基线及回归要求。原型不能替代实际功能验收。
 
+## 本机助手增量（issue #1）
+
+从 `origin/main` 开发，复用既有 AI 与知识保存路径。A0/B0 身份与材料契约、A1 Codex、A2 会话隔离/停止/恢复、A3 Claude Code/OpenCode 的实际交付与验证分开记录于 [本机助手验收](verification/agents/README.md)。认证缺失与未验证能力不得标为已完成；不在此任务展开 issue #2 的项目记忆或 issue #3 的文献检索。体验决策见 [助手设计](agents/design.md)。
+
 ## 下一轮 AI 阅读开发入口
 
 R1 交付“文字选择 → 真实多轮对话 → 知识点整理 → 独立草稿编辑 → 确认卡片 → 原文与对话回查”；R2 增加图表、公式与扫描页的区域问答。R1 可以独立试用，完整框选需求在 R2 验收后交付。

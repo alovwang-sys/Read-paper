@@ -3,6 +3,7 @@ import type { WorkspaceData } from '../domain/types';
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
+const connectionIds = ['model', 'demo', 'codex', 'claude', 'opencode'];
 
 export function migrateWorkspace(value: unknown): WorkspaceData {
   if (!record(value) || ![1, 2].includes(value.schemaVersion as number))
@@ -41,6 +42,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     conversation.historyRange ??= 'all';
     conversation.createdAt ??= new Date(0).toISOString();
     conversation.updatedAt ??= conversation.createdAt;
+    if (conversation.connectionId !== undefined && !connectionIds.includes(conversation.connectionId))
+      throw new Error('助手连接记录不受支持，未覆盖现有数据。');
   }
   for (const request of Object.values(data.requests)) {
     if (typeof request.prompt !== 'string' || typeof request.body !== 'string' || !Array.isArray(request.context) || !Array.isArray(request.evidenceIds))
@@ -51,6 +54,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     }
     request.purpose ??= 'chat';
     request.history ??= [];
+    if (request.connectionId !== undefined && !connectionIds.includes(request.connectionId))
+      throw new Error('请求的助手连接不受支持，未覆盖现有数据。');
     if (request.status === 'generating') {
       request.status = 'interrupted';
       request.error = '页面已重新加载，已保留最近保存的内容，请按原范围重试。';

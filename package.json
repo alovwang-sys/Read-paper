@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "ai": "node server/ai.mjs",
-    "test:server": "node --test server/ai.test.mjs",
+    "test:server": "node --test server/*.test.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "check": "tsc --noEmit",
