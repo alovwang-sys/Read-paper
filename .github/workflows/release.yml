@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag on main (for example v0.1.0)
+        description: Version tag matching package.json (created on main if missing, for example v0.1.0)
         required: true
         type: string
 
@@ -22,13 +22,15 @@ jobs:
     name: Verify release source
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: write
     outputs:
       sha: ${{ steps.source.outputs.sha }}
       tag: ${{ steps.source.outputs.tag }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: main
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || 'main' }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
@@ -37,6 +39,7 @@ jobs:
       - name: Verify version, tag and main ancestry
         id: source
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           RELEASE_EVENT: ${{ github.event_name }}
           RELEASE_REF: ${{ github.ref }}
