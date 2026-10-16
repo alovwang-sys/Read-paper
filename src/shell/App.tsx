@@ -304,28 +304,30 @@ export function App() {
           ))}
         </nav>
         <div className="sidebar-divider" />
-        <div className="sidebar-section-label">当前研究</div>
-        <label className="research-switcher">
-          <span className="research-dot" />
-          <select
-            aria-label="切换研究"
-            value={research?.id ?? ''}
-            onChange={(event) => actions.switchResearch(event.target.value)}
-          >
-            <option value="" disabled>
-              全局资料浏览
-            </option>
-            {Object.values(data.researches).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
+        <div className="sidebar-section-label">研究项目</div>
+        <div className="research-project-row">
+          <label className="research-switcher" title={research?.title ?? '切换研究'}>
+            <span className="research-dot" />
+            <select
+              aria-label="切换研究"
+              value={research?.id ?? ''}
+              onChange={(event) => actions.switchResearch(event.target.value)}
+            >
+              <option value="" disabled>
+                全局资料浏览
               </option>
-            ))}
-          </select>
-          <ChevronDown size={13} />
-        </label>
+              {Object.values(data.researches).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.title}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={13} />
+          </label>
+          {research && <ResearchDirectory researchId={research.id} settings />}
+        </div>
         {research && (
           <div className="research-nav">
-            <ResearchDirectory researchId={research.id} collapsed={data.sidebarCollapsed} />
             <button
               className={`nav-item ${active.kind === 'research' ? 'active' : ''}`}
               onClick={() => open({ kind: 'research', id: research.id })}

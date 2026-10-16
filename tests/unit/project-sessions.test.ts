@@ -161,14 +161,32 @@ describe('研究项目原生历史的公开服务路径', () => {
 
 describe('研究目录请求和重载恢复', () => {
   it('预览与绑定使用明确研究身份，未提交前不改变绑定；状态读取恢复同一标识', async () => {
-    const newDirectory = { id: 'binding-b', projectId: 'project-b', path: '/fixture/research-b' };
+    const newDirectory = { id: 'binding-b', projectId: 'project-b', path: '/fixture/research-b', name: 'research-b' };
     const mock = vi.fn(async (url: string) => Response.json(url.endsWith('/preview') ? { path: newDirectory.path, name: 'research-b' } : newDirectory));
     vi.stubGlobal('fetch', mock); workspace.switchResearch('research-b');
+    const before = structuredClone(data());
     await previewResearchDirectory(newDirectory.path, 'research-b'); expect(data().researches['research-b'].directory).toBeUndefined();
+    expect(data().researches['research-b'].title).toBe(before.researches['research-b'].title);
     await bindResearchDirectory('research-b', newDirectory.path); expect(data().researches['research-b'].directory).toEqual(newDirectory);
+    expect(data().researches['research-b']).toEqual({ ...before.researches['research-b'], title: 'research-b', directory: newDirectory });
+    expect(data().conversations).toEqual(before.conversations);
     workspace.switchResearch('research-a'); await getResearchDirectory('research-b');
     for (const call of mock.mock.calls as unknown as [string, RequestInit][]) expect(JSON.parse(call[1].body as string)).toMatchObject({ workspaceId: 'workspace-existing', researchId: 'research-b' });
     expect(data().researches['research-a'].directory).toEqual(directory);
+  });
+
+  it('已有项目从真实目录同步名称，不修改研究身份、资料、对话或当前选择', async () => {
+    const before = structuredClone(data());
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ...directory, name: '长文本阅读' })));
+    await getResearchDirectory('research-a');
+    expect(data().researches['research-a']).toEqual({ ...before.researches['research-a'], title: '长文本阅读', directory: { ...directory, name: '长文本阅读' } });
+    expect(data().conversations).toEqual(before.conversations);
+    expect(data().documents).toEqual(before.documents);
+    expect(data().scope).toEqual(before.scope);
+    const restored = migrateWorkspace(data());
+    expect(restored.researches['research-a'].directory?.name).toBe('长文本阅读');
+    restored.researches['research-a'].directory!.name = '';
+    expect(() => migrateWorkspace(restored)).toThrow('研究目录名称损坏');
   });
 
   it.each(['network', 'html'] as const)('研究服务%s错误使用可操作文案并保留绑定与输入', async (kind) => {

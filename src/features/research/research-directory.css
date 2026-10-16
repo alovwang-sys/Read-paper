@@ -1,8 +1,7 @@
 .research-directory-trigger { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 38px; padding: 7px 10px; color: #4b6254; text-align: left; font: inherit; font-size: 13px; border-radius: 6px; }
 .research-directory-trigger:hover { background: #e7ede6; }
 .research-directory-trigger > svg { flex-shrink: 0; }
-.research-directory-trigger > small { margin-left: auto; font-size: 12px; color: #607365; white-space: nowrap; }
-.research-directory-trigger.is-collapsed { justify-content: center; padding: 7px; }
+.research-directory-trigger.is-settings { justify-content: center; width: 36px; min-height: 36px; padding: 7px; flex-shrink: 0; }
 .research-directory-dialog { box-sizing: border-box; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; overflow: auto; border: 1px solid #d9e3db; border-radius: 12px; background: #fcfdfb; color: #2d4336; box-shadow: 0 20px 70px #24392a24; font-family: inherit; font-size: 13px; line-height: 1.65; }
 .research-directory-dialog * { box-sizing: border-box; }
 .research-directory-dialog::backdrop { background: #23382e4a; backdrop-filter: blur(2px); }
@@ -16,6 +15,7 @@
 .research-directory-dialog .directory-icon-button { width: 36px; padding: 5px; flex-shrink: 0; border: 0; background: transparent; }
 .directory-dialog-content { padding: 16px 24px 20px; }
 .directory-description { margin: 0 0 18px; color: #627365; }
+.directory-connection { display: flex; align-items: center; gap: 7px; margin: 0 0 14px; color: #46604c; font-size: 12px; }
 .directory-path-form label { display: block; margin-bottom: 7px; color: #46604c; font-size: 12px; font-weight: 600; }
 .directory-path-form > div { display: flex; gap: 7px; }
 .directory-path-form input { min-width: 0; width: 100%; padding: 9px 10px; border: 1px solid #dce5da; border-radius: 6px; background: #fff; color: #35503c; font: 12px/1.6 ui-monospace, SFMono-Regular, monospace; }
@@ -27,10 +27,10 @@
 .directory-folders > button { width: 100%; border: 0; border-radius: 4px; justify-content: flex-start; padding: 8px; }
 .directory-folders > button > span { flex: 1; text-align: left; overflow-wrap: anywhere; }
 .directory-folders > p { margin: 14px 10px; font-size: 12px; color: #687b6b; }
-.directory-current, .directory-preview { margin: 0 0 17px; padding: 11px 13px; border-radius: 7px; background: #eef4eb; color: #3d6249; }
-.directory-current p, .directory-preview p { margin: 4px 0; font-size: 12px; overflow-wrap: anywhere; user-select: text; }
-.directory-current small, .directory-preview small { color: #637a66; font-size: 12px; }
-.directory-preview { display: flex; align-items: flex-start; gap: 9px; margin: 15px 0 0; }
+.directory-location-note { color: #697c6c; font-size: 12px; }
+.directory-preview { display: flex; align-items: flex-start; gap: 9px; margin: 15px 0 0; padding: 11px 13px; border-radius: 7px; background: #eef4eb; color: #3d6249; }
+.directory-preview p { margin: 4px 0; font-size: 12px; overflow-wrap: anywhere; user-select: text; }
+.directory-preview small { color: #637a66; font-size: 12px; }
 .directory-preview > svg { margin-top: 4px; flex-shrink: 0; }
 .directory-preview strong { font-size: 13px; }
 .directory-storage-note { margin-top: 18px; color: #697c6c; font-size: 12px; }

@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowUp, Check, ChevronRight, Folder, FolderOpen, RefreshCw, X } from 'lucide-react';
+import { ArrowUp, Check, ChevronRight, Ellipsis, Folder, FolderOpen, RefreshCw, X } from 'lucide-react';
 import { bindResearchDirectory, browseResearchDirectories, getResearchDirectory, previewResearchDirectory } from '../../services/agents';
 import { useWorkspace } from '../../services/workspace';
 import './research-directory.css';
 
-export function ResearchDirectory({ researchId, collapsed = false, label = '研究目录' }: { researchId: string; collapsed?: boolean; label?: string }) {
+export function ResearchDirectory({ researchId, settings = false, label = '选择研究目录' }: { researchId: string; settings?: boolean; label?: string }) {
   const { data, actions } = useWorkspace();
   const research = data.researches[researchId];
   const directory = research?.directory;
@@ -84,27 +84,27 @@ export function ResearchDirectory({ researchId, collapsed = false, label = '研�
       await bindResearchDirectory(researchId, candidate.path);
       setConnected(true);
       setOpen(false);
-      actions.notice('研究目录已连接；原有资料和对话已保留。');
+      actions.notice('项目已连接，名称已与文件夹保持一致。');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '目录连接失败，请重试。');
     } finally { setBusy(false); setBinding(false); }
   }
   if (!research) return null;
-  const status = directory ? checking ? '检查中' : connected ? '已连接' : '待重连' : '待选择';
+  const status = directory ? checking ? '正在检查' : connected ? '已连接' : '需要重新连接' : '尚未选择目录';
   return <>
-    <button ref={trigger} type="button" className={`research-directory-trigger ${collapsed ? 'is-collapsed' : ''}`} title={directory?.path ?? '为这个研究选择目录'} aria-label={`研究目录 · ${status}`} onClick={show}>
-      <FolderOpen size={16} />
-      {!collapsed && <><span>{label}</span><small>{status}</small></>}
+    <button ref={trigger} type="button" className={`research-directory-trigger ${settings ? 'is-settings' : ''}`} title={settings ? `项目设置 · ${status}${directory ? `\n${directory.path}` : ''}` : label} aria-label={settings ? `项目设置 · ${research.title}` : label} aria-haspopup="dialog" onClick={show}>
+      {settings ? <Ellipsis size={18} /> : <><FolderOpen size={16} /><span>{label}</span></>}
     </button>
     <dialog ref={dialog} className="research-directory-dialog" aria-labelledby={titleId} onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }} onCancel={event => { event.preventDefault(); if (!binding) close(); }} onClose={() => { setOpen(false); trigger.current?.focus(); }}>
-      <header><div><h2 id={titleId}>研究目录</h2><p>{research.title}</p></div><button type="button" className="directory-icon-button" aria-label="关闭研究目录" disabled={binding} onClick={close}><X size={18} /></button></header>
+      <header><div><h2 id={titleId}>项目设置</h2><p>{research.title}</p></div><button type="button" className="directory-icon-button" aria-label="关闭项目设置" disabled={binding} onClick={close}><X size={18} /></button></header>
       <div className="directory-dialog-content">
-        <p className="directory-description">此研究的原生对话将归到这个目录。浏览和预览不会移动资料或创建文件。</p>
-        {directory && <div className="directory-current"><strong>当前绑定</strong><p>{directory.path}</p><small>已有会话保留原目录归属。此处可以重新连接同一目录。</small></div>}
+        <p className="directory-description">项目使用所在文件夹的名称，原生 AI 对话也归到这个目录。</p>
+        <p className="directory-connection" role="status"><FolderOpen size={15} />{status}</p>
         <form className="directory-path-form" onSubmit={event => { event.preventDefault(); if (!busy) void browse(path.trim() || undefined); }}>
-          <label htmlFor={`${titleId}-path`}>本机目录路径</label>
-          <div><input id={`${titleId}-path`} value={path} onChange={event => { setPath(event.target.value); setCandidate(undefined); }} placeholder="输入绝对路径，或浏览下方目录" readOnly={!!directory} spellCheck={false} /><button type="submit" disabled={busy}><RefreshCw size={14} />{directory ? '重新检查' : '打开路径'}</button></div>
+          <label htmlFor={`${titleId}-path`}>{directory ? '项目位置' : '本机目录路径'}</label>
+          <div><input id={`${titleId}-path`} value={path} disabled={busy} onChange={event => { setPath(event.target.value); setCandidate(undefined); }} placeholder="输入绝对路径，或浏览下方目录" readOnly={!!directory} spellCheck={false} /><button type="submit" disabled={busy}><RefreshCw size={14} />{directory ? '重新检查' : '打开路径'}</button></div>
         </form>
+        {directory && <p className="directory-location-note">可重新连接原目录，论文、卡片和已有对话会保留。</p>}
         {!directory && <div className="directory-browser" aria-busy={busy}>
           <div className="directory-browser-heading"><span>选择已有目录</span><button type="button" disabled={busy || !listing?.parent} onClick={() => void browse(listing?.parent)}><ArrowUp size={14} />上一级</button></div>
           <div className="directory-folders">
@@ -113,7 +113,7 @@ export function ResearchDirectory({ researchId, collapsed = false, label = '研�
             {busy && !listing && <p role="status">正在读取本机目录…</p>}
           </div>
         </div>}
-        {candidate && <div className="directory-preview"><Check size={16} /><div><strong>{candidate.name || candidate.path}</strong><p>{candidate.path}</p><small>{directory ? '目录可访问，确认后重新连接。' : '点击“使用这个目录”后才保存关联。'}</small></div></div>}
+        {!directory && candidate && <div className="directory-preview"><Check size={16} /><div><strong>项目将命名为「{candidate.name || candidate.path}」</strong><p>{candidate.path}</p><small>点击“使用这个目录”后生效，原有资料和输入会保留。</small></div></div>}
         {error && <p className="directory-error" role="alert">{error}</p>}
         <details className="directory-storage-note"><summary>资料与对话保存在什么位置？</summary><p>研究目录用于项目归属，原生记录仍由各助手保存。当前浏览器中的论文、卡片和笔记不会因绑定目录自动迁移。</p></details>
       </div>

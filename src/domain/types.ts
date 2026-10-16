@@ -22,7 +22,7 @@ export type Research = {
   createdAt: string;
   directory?: ResearchDirectory;
 };
-export type ResearchDirectory = { id: string; projectId: string; path: string };
+export type ResearchDirectory = { id: string; projectId: string; path: string; name?: string };
 export type NativeAgentId = 'codex' | 'claude' | 'opencode';
 export type NativeSessionSummary = {
   id: string;

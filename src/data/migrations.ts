@@ -29,6 +29,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (typeof research.question !== 'string' || !strings(research.documentIds) || !strings(research.cardIds)) throw new Error('研究关联损坏，未覆盖现有数据。');
   for (const research of Object.values(data.researches))
     if (research.directory !== undefined && (!record(research.directory) || ['id', 'projectId', 'path'].some(key => typeof research.directory?.[key as keyof typeof research.directory] !== 'string' || !research.directory[key as keyof typeof research.directory]))) throw new Error('研究目录关联损坏，未覆盖现有数据。');
+  for (const research of Object.values(data.researches))
+    if (research.directory?.name !== undefined && (typeof research.directory.name !== 'string' || !research.directory.name)) throw new Error('研究目录名称损坏，未覆盖现有数据。');
   for (const doc of Object.values(data.documents))
     if (typeof doc.assetId !== 'string' || typeof doc.hash !== 'string' || typeof doc.filename !== 'string' || !Number.isInteger(doc.pageCount) || doc.pageCount < 1) throw new Error('论文来源损坏，未覆盖现有数据。');
   for (const item of [...Object.values(data.cards), ...Object.values(data.drafts)])

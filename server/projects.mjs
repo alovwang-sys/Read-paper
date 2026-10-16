@@ -181,7 +181,8 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     async status(body) {
       identity(body); await ready;
       if (!registry.bindings[key(body)]) return undefined;
-      return binding(body);
+      const project = await binding(body);
+      return { ...project, name: basename(project.path) };
     },
     async bind(body) {
       const work = async () => {
@@ -195,8 +196,8 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       const previous = await projectManifest(preview.path);
       const projectId = previous?.projectId || randomUUID();
       const directory = await managed(preview.path, true);
-      if (!previous) await atomicJSON(join(directory, 'project.json'), { version: 1, projectId, workspaceId: body.workspaceId, researchId: body.researchId, title: safeText(body.title), createdAt: new Date().toISOString() });
-      const result = { id: existing?.id || randomUUID(), projectId, path: preview.path, researchId: body.researchId };
+      if (!previous || previous.title !== preview.name) await atomicJSON(join(directory, 'project.json'), previous ? { ...previous, title: preview.name } : { version: 1, projectId, workspaceId: body.workspaceId, researchId: body.researchId, title: preview.name, createdAt: new Date().toISOString() });
+      const result = { id: existing?.id || randomUUID(), projectId, path: preview.path, name: preview.name, researchId: body.researchId };
       registry.bindings[key(body)] = result; await save();
       return result;
       };

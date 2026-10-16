@@ -227,3 +227,45 @@ test('a stalled native history query is bounded and aborts only its owned read c
   await assert.rejects(store.read({ ...identity(), sessionRef: ref }), { code: 'history_timeout' });
   assert.equal(aborted, 2);
 });
+
+test('new bindings and manifests use the canonical directory name rather than the UI title or symlink alias', async (t) => {
+  const f = await fixture(t);
+  const binding = await f.store.bind({ ...identity(), path: join(f.root, 'alias'), title: 'Unrelated display title' });
+  assert.equal(binding.path, f.first); assert.equal(binding.name, 'first');
+  const manifest = JSON.parse(await readFile(join(f.first, '.read-paper', 'project.json'), 'utf8'));
+  assert.equal(manifest.title, 'first'); assert.equal(manifest.projectId, binding.projectId);
+  assert.equal((await f.store.status(identity())).name, 'first');
+});
+
+test('reconnecting a previously named project updates only its manifest title and retains native identity', async (t) => {
+  const f = await fixture(t); const original = await f.bind();
+  const ref = await f.store.remember(original, 'codex', 'existing-native-session', 'read-paper');
+  const file = join(f.first, '.read-paper', 'project.json');
+  const prior = { ...JSON.parse(await readFile(file, 'utf8')), title: 'Earlier application name', createdAt: '2025-01-02T03:04:05.000Z', customMetadata: { keep: true } };
+  await writeFile(file, JSON.stringify(prior)); f.restart();
+  const reconnected = await f.store.bind({ ...identity(), path: join(f.root, 'alias'), title: 'Another UI title' });
+  assert.equal(reconnected.id, original.id); assert.equal(reconnected.projectId, original.projectId);
+  assert.equal(reconnected.researchId, original.researchId); assert.equal(reconnected.path, original.path); assert.equal(reconnected.name, 'first');
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), { ...prior, title: 'first' });
+  const registry = JSON.parse(await readFile(join(f.stateDir, 'projects.json'), 'utf8'));
+  assert.equal(registry.sessions[ref].nativeId, 'existing-native-session');
+  await f.store.read({ ...identity(), sessionRef: ref });
+  assert.equal(f.calls.at(-1).sessionId, 'existing-native-session'); assert.equal(f.calls.at(-1).cwd, original.path);
+});
+
+test('status derives the canonical name for legacy bindings without rewriting manifest or registry files', async (t) => {
+  const f = await fixture(t); const original = await f.bind();
+  const manifestFile = join(f.first, '.read-paper', 'project.json'); const registryFile = join(f.stateDir, 'projects.json');
+  const manifest = { ...JSON.parse(await readFile(manifestFile, 'utf8')), title: 'Preserve until explicit reconnect' };
+  await writeFile(manifestFile, JSON.stringify(manifest));
+  const registry = JSON.parse(await readFile(registryFile, 'utf8'));
+  for (const binding of Object.values(registry.bindings)) delete binding.name;
+  await writeFile(registryFile, JSON.stringify(registry)); f.restart();
+  const before = await Promise.all([manifestFile, registryFile].map(async file => ({ text: await readFile(file, 'utf8'), info: await stat(file) })));
+  const status = await f.store.status(identity());
+  assert.deepEqual(status, { ...original, name: 'first' });
+  for (const [index, file] of [manifestFile, registryFile].entries()) {
+    assert.equal(await readFile(file, 'utf8'), before[index].text);
+    const after = await stat(file); assert.equal(after.ino, before[index].info.ino); assert.equal(after.mtimeMs, before[index].info.mtimeMs);
+  }
+});

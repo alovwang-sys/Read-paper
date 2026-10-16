@@ -61,7 +61,11 @@ async function projectRequest<T>(researchId: string, action: string, values: obj
 
 export async function getResearchDirectory(researchId: string): Promise<ResearchDirectory | undefined> {
   const directory = await projectRequest<ResearchDirectory | null>(researchId, 'status');
-  if (directory) workspace.updateData(data => { if (data.researches[researchId]) data.researches[researchId].directory = directory; });
+  if (directory) workspace.updateData(data => {
+    const research = data.researches[researchId];
+    research.directory = directory;
+    if (directory.name) research.title = directory.name;
+  });
   return directory ?? undefined;
 }
 export function previewResearchDirectory(path: string, researchId?: string): Promise<{ path: string; name: string }> {
@@ -77,8 +81,12 @@ export function browseResearchDirectories(path?: string, researchId?: string): P
   return projectRequest(id, 'browse', path ? { path } : {});
 }
 export async function bindResearchDirectory(researchId: string, path: string): Promise<ResearchDirectory> {
-  const directory = await projectRequest<ResearchDirectory>(researchId, 'bind', { path, title: workspace.getState().data.researches[researchId].title });
-  workspace.updateData(data => { data.researches[researchId].directory = directory; });
+  const directory = await projectRequest<ResearchDirectory>(researchId, 'bind', { path });
+  workspace.updateData(data => {
+    const research = data.researches[researchId];
+    research.directory = directory;
+    if (directory.name) research.title = directory.name;
+  });
   return directory;
 }
 export function listProjectSessions(researchId: string): Promise<{ sessions: NativeSessionSummary[]; errors: { agentId: string; error: string }[] }> {
