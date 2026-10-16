@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { createSeed, emptySession } from '../data/seed';
-import { loadWorkspace, saveWorkspace, saveMigrationBackup } from '../data/storage';
+import { loadWorkspace, saveWorkspace, saveMigrationBackup, restoreWorkspaceBackup } from '../data/storage';
 import { migrateWorkspace } from '../data/migrations';
 import type {
   BoardPlacement,
@@ -105,6 +105,8 @@ let revision = 0,
   journalRevision = 0,
   timer: ReturnType<typeof setTimeout> | undefined,
   saving = false;
+let inFlightSave: Promise<void> | undefined;
+let restoring = false;
 const JOURNAL = 'papertrail-recovery-v2';
 const LEGACY_JOURNAL = 'papertrail-recovery-v1';
 function emit() {
@@ -114,7 +116,12 @@ function status(patch: Partial<WorkspaceState>) {
   state = { ...state, ...patch };
   emit();
 }
-async function persist() {
+function persist(): Promise<void> {
+  if (inFlightSave) return inFlightSave;
+  inFlightSave = saveSnapshot().finally(() => { inFlightSave = undefined; });
+  return inFlightSave;
+}
+async function saveSnapshot() {
   if (saving || !state.loaded || state.loadError) return;
   saving = true;
   const currentRevision = revision,
@@ -150,6 +157,7 @@ export const workspace = {
   },
   async load() {
     try {
+      if (inFlightSave) await inFlightSave;
       const journal = localStorage.getItem(JOURNAL);
       const oldJournal = localStorage.getItem(LEGACY_JOURNAL);
       const database = await loadWorkspace();
@@ -177,6 +185,7 @@ export const workspace = {
     }
   },
   updateData(change: (data: WorkspaceData) => void) {
+    if (restoring) throw new Error('正在恢复资料，请稍后再编辑。');
     if (!state.loaded || state.loadError)
       throw new Error('数据尚未成功加载，请重试加载后编辑');
     const data = structuredClone(state.data);
@@ -203,7 +212,30 @@ export const workspace = {
   },
   retrySave() {
     clearTimeout(timer);
-    void persist();
+    if (inFlightSave) void inFlightSave.then(() => { if (state.saveStatus !== 'saved') void persist(); });
+    else void persist();
+  },
+  async flushSave() {
+    clearTimeout(timer);
+    if (!state.loaded || state.loadError) return;
+    do {
+      await persist();
+      clearTimeout(timer);
+      if (state.saveStatus === 'error') throw new Error(state.saveError || '本地保存失败。');
+    } while (state.saveStatus !== 'saved');
+  },
+  async restoreBackup(data: WorkspaceData, assets: Array<{ id: string; blob: Blob }>) {
+    if (restoring) throw new Error('已有恢复任务正在进行。');
+    restoring = true;
+    try {
+      await workspace.flushSave();
+      // Refuse the restore if stale recovery buffers cannot be removed first.
+      localStorage.removeItem(JOURNAL);
+      localStorage.removeItem(LEGACY_JOURNAL);
+      await restoreWorkspaceBackup(data, assets);
+      await workspace.load();
+      if (state.loadError) throw new Error(state.loadError);
+    } finally { restoring = false; }
   },
   notice(message?: string) {
     status({ notice: message });

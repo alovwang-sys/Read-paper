@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request as httpRequest } from 'node:http';
 import { once } from 'node:events';
-import { createAIHandler, readCompletionStream } from './ai.mjs';
+import { createAIHandler, readCompletionStream, validateAISettings } from './ai.mjs';
 
 const secret = 'test-private-key-never-send-to-client';
 const env = { AI_API_KEY: secret };
@@ -81,6 +81,42 @@ test('invalid server configuration fails without exposing its value', () => {
     { AI_BASE_URL: `https://example.com/?key=${secret}` },
     { AI_PORT: secret }, { AI_MODEL: `${secret} ` + 'invalid model' },
   ]) assert.throws(() => createAIHandler({ env: { ...env, ...config } }), (error) => !error.message.includes(secret));
+});
+
+test('settings validation returns public capabilities without credentials', () => {
+  const validated = validateAISettings({ ...env, AI_MODEL: 'custom-model', AI_BASE_URL: 'https://example.com/v1', AI_IMAGES: 'true' });
+  assert.equal(validated.configured, true);
+  assert.equal(validated.model, 'custom-model');
+  assert.equal(validated.images, true);
+  assert.equal(JSON.stringify(validated).includes(secret), false);
+  assert.equal(JSON.stringify(validated).includes('example.com'), false);
+  assert.throws(() => validateAISettings({ AI_BASE_URL: `http://${secret}.example` }), (error) => !error.message.includes(secret));
+});
+
+test('optional desktop token protects both endpoints and retains caller validation', async () => {
+  const localToken = 'desktop-session-private-token';
+  let calls = 0;
+  await withServer({ localToken, fetchImpl: async () => { calls += 1; return response(); } }, async (port) => {
+    for (const token of [undefined, 'wrong', `${localToken}extra`, 'x'.repeat(localToken.length)]) {
+      const headers = token === undefined ? {} : { 'X-Papertrail-Token': token };
+      for (const options of [{}, { path: '/api/ai/config', method: 'GET', body: '' }]) {
+        const res = await call(port, { ...options, headers });
+        assert.equal(res.status, 403);
+        assert.equal(events(res.body)[0].code, 'forbidden_token');
+        assert.equal(res.body.includes(localToken), false);
+      }
+    }
+    const headers = { 'X-Papertrail-Token': localToken };
+    assert.equal((await call(port, { headers })).status, 200);
+    const config = await call(port, { path: '/api/ai/config', method: 'GET', body: '', headers });
+    assert.equal(config.status, 200);
+    assert.equal(config.body.includes(localToken), false);
+    assert.equal(config.body.includes(secret), false);
+    assert.equal((await call(port, { headers: { ...headers, Origin: 'null' } })).status, 403);
+    assert.equal((await call(port, { headers: { ...headers, Host: 'attacker.example:8787' } })).status, 403);
+    assert.equal((await call(port, { headers: { ...headers, 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
+  });
+  assert.equal(calls, 1);
 });
 
 test('live endpoint fixes model, URL and key server-side, emits only content with one terminal frame', async () => {
