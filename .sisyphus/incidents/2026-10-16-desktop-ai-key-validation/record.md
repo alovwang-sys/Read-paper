@@ -33,12 +33,16 @@ npm run test:desktop
 exit 0；14 tests，14 pass
 ```
 
-打包应用 E2E、安装版更新和用户重新配置后的真实调用：待验证，不能以合成测试替代。
+修复代码提交 `53ad974` 的 [CI run 38871861521](https://github.com/alovwang-sys/Read-paper/actions/runs/38871861521) 已全部通过：基础检查、macOS arm64、macOS x64、Windows x64 构建及各自 5 项打包应用 E2E、Required checks。三个平台附件均已生成。
+
+本机 `npm run desktop:package` exit 0，包含类型检查、前端构建与 arm64 应用打包。确认实际 ASAR 含新增校验与正确状态文案后，正常退出并更新 `/Applications/Papertrail.app`，研究和会话历史重启恢复。
+
+用户重新保存密钥后，现场已出现两轮完整真实回答；更新安装版后，再通过界面对原失败的“你好”按原范围重试，收到 `glm-5.3-flash` 的完整真实回答，状态“回答完成”，保存状态“已保存”。本次重试发送 0 条材料、0 轮历史，没有扩大发送范围。此结果不是演示响应。包含用户会话的截图仅保存在本地忽略目录 `out/verification/installed-live-response.png`，不提交仓库。
 
 ## 隔离与退路
 
 调查期间主 checkout 被并行任务切到 `codex/issue-1-ai-agents` 并出现未提交修改。修复在独立 worktree `desktop-ai-key-validation` 的 `codex/desktop-installers` 分支完成，未恢复或覆盖主目录的工作。
 
-源代码退路为基线 `2350b66`；旧版 DMG 仍保留。修复不修改研究数据库。真实密钥由用户在应用中重新粘贴，不通过聊天传递，也不自动删改其中的字符。
+源代码退路为基线 `2350b66`；旧版 DMG 仍保留，更新前应用保存在修复 worktree 的 `out/installed-before-53ad/Papertrail.app`。修复不改变研究数据库结构。真实密钥由用户在应用中重新粘贴，不通过聊天传递，也不自动删改其中的字符。
 
 本项目当前同类事件登记 1 条，全局次数未知；未接入全局 PMB 工具。本地经验索引见 `.sisyphus/PMB.md`。

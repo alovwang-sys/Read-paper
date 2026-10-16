@@ -2,6 +2,8 @@
 
 日期：2026-10-16。基线：`main` 的 `502f7f9`，实现分支 `codex/desktop-installers`。本记录区分本机实际验证、GitHub CI 与正式分发；不把存在打包配置当作跨平台已经验收。
 
+后续连接故障修复与安装机真实调用记录见[事件验收](../../../.sisyphus/incidents/2026-10-16-desktop-ai-key-validation/record.md)。该记录覆盖修复代码 `53ad974` 的三平台完整 CI、安装版更新、配置恢复与原失败请求真实重试；以下表格保留初次打包基线的验证范围。
+
 ## 本机已经执行
 
 环境：macOS Apple 芯片、Node.js 24.21.0、Electron 44.8.0、Electron Forge 8.0.1。所有模型相关自动化使用确定性测试或演示响应，本轮没有调用付费模型。
