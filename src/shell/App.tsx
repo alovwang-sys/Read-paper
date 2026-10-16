@@ -29,6 +29,7 @@ import {
   workspace,
 } from '../services/workspace';
 import { ResearchView } from '../features/research/ResearchView';
+import { ResearchDirectory } from '../features/research/ResearchDirectory';
 import { LibraryView } from '../features/library/LibraryView';
 import { PdfReader } from '../features/reader/PdfReader';
 import { ImportPDFButton } from '../features/reader/ImportPDFButton';
@@ -322,6 +323,7 @@ export function App() {
         </label>
         {research && (
           <div className="research-nav">
+            <ResearchDirectory researchId={research.id} collapsed={data.sidebarCollapsed} />
             <button
               className={`nav-item ${active.kind === 'research' ? 'active' : ''}`}
               onClick={() => open({ kind: 'research', id: research.id })}

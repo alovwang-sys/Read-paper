@@ -1,3 +1,4 @@
+import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import type { AgentConnection } from '../../src/domain/types';
@@ -17,19 +18,20 @@ async function select(page: Page, label: string) {
   await panel(page).getByRole('button', { name: label, exact: true }).click();
 }
 async function setup(page: Page, withEvidence = false) {
+  await mockProjectService(page);
   const calls: Record<string, unknown>[] = [];
   await page.route('**/api/ai/config', route => route.fulfill({ json: { configured: true, model: 'test-model', provider: '测试', images: false, mode: 'live', limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } } }));
   await page.route('**/api/ai/agents', route => route.fulfill({ json: { agents } }));
   await page.route('**/api/ai/agents/run', route => {
     const request = route.request().postDataJSON(); calls.push(request);
     return route.fulfill({ contentType: 'application/x-ndjson', body: ndjson(
-      { type: 'session', nativeSessionId: 'desktop-test-session' },
+      { type: 'session', nativeSessionId: 'desktop-test-session', nativeSessionRef: fixtureSessionRef('desktop-test-session') },
       { type: 'progress', kind: 'tool', id: 'read-materials', toolName: 'exec_command', command: 'cat materials.md', text: '读取本次论文材料', status: 'running' },
       { type: 'progress', kind: 'tool', id: 'read-materials', toolName: 'exec_command', command: 'cat materials.md', text: '已读取本次材料', status: 'done', exitCode: 0, output: 'Selected evidence\nPDF page 3\nKeep experimental conditions and limitations.' },
       { type: 'progress', kind: 'tool', id: 'search-materials', toolName: 'exec_command', command: 'rg "baseline" materials.md', text: '当前摘录没有该关键词', status: 'error', exitCode: 1, output: 'No matching lines. Exit code: 1' },
       { type: 'progress', kind: 'permission', text: '材料以外的写入请求已拒绝；继续使用当前只读材料。' },
       { type: 'delta', text: withEvidence ? answer : answer.replace(' [1]', '') },
-      { type: 'done', model: 'test-research-model', nativeSessionId: 'desktop-test-session' },
+      { type: 'done', model: 'test-research-model', nativeSessionId: 'desktop-test-session', nativeSessionRef: fixtureSessionRef('desktop-test-session') },
     ) });
   });
   await page.goto('/'); await expect(main(page)).toBeVisible();

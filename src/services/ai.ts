@@ -150,13 +150,17 @@ export const liveResponder: AIResponder = async (request, options) => {
 const agentResponder: AIResponder = async (request, options) => {
   if (request.context.some(item => item.kind === 'region')) throw new Error('本机助手当前仅支持文字材料，区域图片已保留。请选择支持图片的模型连接。');
   if (!workspace.getState().data.agentWorkspaceId) workspace.updateData(data => { data.agentWorkspaceId = uid('workspace'); });
-  const { agentWorkspaceId: workspaceId, conversations } = workspace.getState().data;
+  const { agentWorkspaceId: workspaceId, conversations, researches } = workspace.getState().data;
   const conversation = conversations[request.conversationId];
+  const bindingId = researches[request.researchId]?.directory?.id;
+  if (request.purpose === 'chat' && !bindingId) throw new Error('请先为当前研究选择目录，输入和材料已保留。');
+  if (request.purpose === 'chat' && conversation.nativeSessionId && !conversation.nativeSessionRef) throw new Error('此为旧版临时目录对话，请在研究目录开始新对话；旧记录仍保留。');
   const response = await fetch('/api/ai/agents/run', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: options?.signal,
     body: JSON.stringify({ workspaceId, requestId: request.id, researchId: request.researchId, conversationId: request.conversationId,
       connectionId: request.connectionId, purpose: request.purpose ?? 'chat', prompt: request.prompt,
       context: request.context, history: request.history ?? [],
+      ...(bindingId ? { bindingId, ...(request.purpose === 'chat' && conversation.nativeSessionRef ? { sessionRef: conversation.nativeSessionRef } : {}) } : {}),
       ...(request.connectionId === 'codex' && request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : {}),
       reset: !!request.retryOf || !!request.regeneratedFrom || (!!conversation && conversation.historyRange !== 'all') }),
   });
@@ -191,6 +195,11 @@ const agentResponder: AIResponder = async (request, options) => {
           const target = data.conversations[request.conversationId];
           const previous = target.nativeSessionId === event.nativeSessionId ? target.sentContext ?? [] : [];
           target.nativeSessionId = event.nativeSessionId;
+          if (typeof event.nativeSessionRef === 'string') {
+            target.nativeSessionRef = event.nativeSessionRef;
+            target.nativeState = event.type === 'done' ? 'idle' : 'busy';
+            target.nativeCanResume = event.type === 'done';
+          }
           target.sentContext = [...new Map([...previous, ...structuredClone(request.context)].map(item => [item.evidenceId, item])).values()];
         }
       });
@@ -335,14 +344,14 @@ export async function submitAI(researchId: string, conversationId: string, promp
 }
 export async function retryAI(requestId: string, mode?: 'live' | 'demo') {
   const old = workspace.getState().data.requests[requestId];
-  if (!old || !['error', 'stopped', 'interrupted'].includes(old.status) || (old.purpose && old.purpose !== 'chat')) throw new Error('此请求暂时无法重试。');
+  if (!old || old.nativeImported || !['error', 'stopped', 'interrupted'].includes(old.status) || (old.purpose && old.purpose !== 'chat')) throw new Error('此请求暂时无法重试。');
   const request: AIRequest = { ...structuredClone(old), id: uid('request'), status: 'generating', events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, validationError: undefined, superseded: false, retryOf: old.id, createdAt: new Date().toISOString() };
   for (const snapshot of request.context) validateSnapshot(workspace.getState().data, snapshot);
   return runChatRequest(request, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }
 export async function regenerateAI(requestId: string, mode?: 'live' | 'demo') {
   const data = workspace.getState().data, old = data.requests[requestId];
-  if (!old || old.status !== 'done' || data.conversations[old.conversationId].requestIds.map(id => data.requests[id]).filter(r => !r.purpose || r.purpose === 'chat').at(-1)?.id !== old.id) throw new Error('仅最新一轮完成回答可重新生成。');
+  if (!old || old.nativeImported || old.status !== 'done' || data.conversations[old.conversationId].requestIds.map(id => data.requests[id]).filter(r => !r.purpose || r.purpose === 'chat').at(-1)?.id !== old.id) throw new Error('仅最新一轮完成回答可重新生成。');
   const history = historyForConversation(data, old.conversationId, old.id);
   return runChatRequest({ ...structuredClone(old), id: uid('request'), context: snapshotContext(data, old.researchId, old.conversationId, history), history, events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, superseded: false, status: 'generating', regeneratedFrom: old.id, createdAt: new Date().toISOString() }, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }

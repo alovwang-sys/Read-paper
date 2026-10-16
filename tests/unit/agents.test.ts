@@ -2,19 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
-import { getAgents, selectAgent } from '../../src/services/agents';
+import { bindResearchDirectory, getAgents, getResearchDirectory, listProjectSessions, openProjectSession, refreshProjectConversation, selectAgent } from '../../src/services/agents';
 import { commitCardDraft, generateCardDraft, respondToAgent, retryAI, stopAI, submitAI } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), contentHash: vi.fn() }));
 const data = () => workspace.getState().data;
 const frames = (events: unknown[]) => new Response(events.map(event => JSON.stringify(event)).join('\n') + '\n');
-const done = (text = '回答来自所选证据 [1]') => frames([{ type: 'session', nativeSessionId: 'native-1' }, { type: 'progress', kind: 'tool', text: '读取材料快照' }, { type: 'delta', text }, { type: 'done', model: 'runtime-model' }]);
+const done = (text = '回答来自所选证据 [1]') => frames([{ type: 'session', nativeSessionId: 'native-1', nativeSessionRef: 'ref-native-1' }, { type: 'progress', kind: 'tool', text: '读取材料快照' }, { type: 'delta', text }, { type: 'done', model: 'runtime-model', nativeSessionId: 'native-1', nativeSessionRef: 'ref-native-1' }]);
 beforeEach(async () => {
   vi.useFakeTimers();
   const memory = new Map<string, string>();
   vi.stubGlobal('localStorage', { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => memory.set(key, value), removeItem: (key: string) => memory.delete(key) });
   const seed = createSeed();
+  Object.values(seed.researches).forEach(research => { research.directory = { id: `binding-${research.id}`, projectId: `project-${research.id}`, path: `/fixture/${research.id}` }; });
   Object.values(seed.documents).forEach(doc => { doc.hash = 'a'.repeat(64); });
   vi.mocked(loadWorkspace).mockResolvedValue(seed);
   vi.mocked(saveWorkspace).mockResolvedValue(undefined);
@@ -24,6 +25,34 @@ beforeEach(async () => {
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('研究与助手会话', () => {
+  it('目录只在绑定确认时保存，状态与原生列表使用同一研究身份', async () => {
+    const binding = { id: 'binding-confirmed', projectId: 'project-confirmed', path: '/fixture/confirmed' };
+    const fetchMock = vi.fn(async (url: string) => Response.json(url.endsWith('/list') ? { sessions: [], errors: [] } : binding));
+    vi.stubGlobal('fetch', fetchMock);
+    const prior = data().researches['research-a'].directory;
+    expect(prior?.path).toBe('/fixture/research-a');
+    await bindResearchDirectory('research-a', binding.path);
+    expect(data().researches['research-a'].directory).toEqual(binding);
+    expect(await getResearchDirectory('research-a')).toEqual(binding);
+    expect(await listProjectSessions('research-a')).toEqual({ sessions: [], errors: [] });
+    for (const [, init] of fetchMock.mock.calls as unknown as [string, RequestInit][]) expect(JSON.parse(init.body as string)).toMatchObject({ researchId: 'research-a', workspaceId: data().agentWorkspaceId });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/ai/agents/projects/bind', '/api/ai/agents/projects/status', '/api/ai/agents/projects/list']);
+  });
+
+  it('原生会话按身份导入并增量刷新，保留输入与可核查来源边界', async () => {
+    const snapshot = { id: 'ref-native-import', agentId: 'codex' as const, nativeSessionId: 'native-import', title: '原生研究对话', updatedAt: '2026-10-17T00:00:00Z', state: 'idle' as const, canResume: true, origin: 'native' as const, messages: [{ id: 'user-1', role: 'user' as const, text: '比较条件' }, { id: 'answer-1', role: 'assistant' as const, text: '原始回答，没有已关联材料。' }] };
+    const fetchMock = vi.fn(async () => Response.json(snapshot)); vi.stubGlobal('fetch', fetchMock);
+    const id = await openProjectSession('research-a', snapshot);
+    workspace.updateData(next => { next.conversations[id].input = '尚未发送的追问'; });
+    const requestId = data().conversations[id].requestIds[0];
+    expect(data().requests[requestId]).toMatchObject({ nativeImported: true, nativeMessageId: 'user-1', context: [], evidenceIds: [], body: '原始回答，没有已关联材料。' });
+    snapshot.messages.push({ id: 'answer-extra', role: 'assistant', text: '新增的原生内容。' });
+    await refreshProjectConversation('research-a', id); await refreshProjectConversation('research-a', id);
+    expect(data().conversations[id]).toMatchObject({ input: '尚未发送的追问', nativeSessionRef: snapshot.id, nativeSessionId: snapshot.nativeSessionId, nativeCanResume: true, requestIds: [requestId] });
+    expect(data().requests[requestId].body).toBe('原始回答，没有已关联材料。\n\n新增的原生内容。');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('安装入口只保留已核实的官方HTTPS站点', async () => {
     const base = { name: 'Codex', state: 'not-installed', capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } };
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ agents: [
@@ -195,7 +224,7 @@ describe('研究与助手会话', () => {
   it('续接仅在done返回原生ID时，新增材料仍计入累计范围与请求身份', async () => {
     const conversation = selectAgent('research-a', 'opencode');
     workspace.addContext({ researchId: 'research-a', conversationId: conversation, evidenceIds: ['evidence-a'] });
-    vi.stubGlobal('fetch', vi.fn(async () => frames([{ type: 'delta', text: '正文 [1]' }, { type: 'done', nativeSessionId: 'ses_test', model: 'explicit-model' }])));
+    vi.stubGlobal('fetch', vi.fn(async () => frames([{ type: 'delta', text: '正文 [1]' }, { type: 'done', nativeSessionId: 'ses_test', nativeSessionRef: 'ref-ses-test', model: 'explicit-model' }])));
     const first = await submitAI('research-a', conversation, '第一问');
     expect(data().requests[first].nativeSessionId).toBe('ses_test');
     workspace.addContext({ researchId: 'research-a', conversationId: conversation, evidenceIds: ['evidence-b'] });

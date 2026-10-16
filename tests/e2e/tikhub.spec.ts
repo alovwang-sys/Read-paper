@@ -1,3 +1,4 @@
+import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test as base, type Page } from '@playwright/test';
 import { createServer, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
@@ -20,7 +21,7 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
   const pending = new Map<string, { run: Run; response: ServerResponse; interactionId: string }>();
   const event = (response: ServerResponse, value: object) => response.write(JSON.stringify(value) + '\n');
   const finish = (response: ServerResponse, text: string) => {
-    event(response, { type: 'delta', text }); event(response, { type: 'done', model: 'mock-codex', nativeSessionId: 'mock-tikhub-session' }); response.end();
+    event(response, { type: 'delta', text }); event(response, { type: 'done', model: 'mock-codex', nativeSessionId: 'mock-tikhub-session', nativeSessionRef: fixtureSessionRef('mock-tikhub-session') }); response.end();
   };
   const server = createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5173'); res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -40,7 +41,7 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
     if (path.endsWith('/run')) {
       const run = body as Run; api.runs.push(run); res.setHeader('Content-Type', 'application/x-ndjson'); res.flushHeaders();
-      event(res, { type: 'session', nativeSessionId: 'mock-tikhub-session' });
+      event(res, { type: 'session', nativeSessionId: 'mock-tikhub-session', nativeSessionRef: fixtureSessionRef('mock-tikhub-session') });
       if (run.prompt.includes('目录')) {
         const progress = { type: 'progress', kind: 'tool', id: `check-${run.requestId}`, toolName: 'read_paper_tikhub', command: checkArgs };
         event(res, { ...progress, text: '检查抖音接口目录', status: 'running' });
@@ -81,6 +82,7 @@ const panel = (page: Page) => page.getByRole('complementary', { name: '参考面
 const approval = (page: Page) => panel(page).getByRole('region', { name: 'Codex 工具审批' }).last();
 async function start(page: Page, api: API, pdf = false) {
   await page.route('**/api/ai/**', route => route.continue({ url: api.url + new URL(route.request().url()).pathname }));
+  await mockProjectService(page);
   await page.goto('/'); await expect(page.getByRole('main')).toBeVisible();
   if (pdf) {
     await page.getByRole('main').getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();

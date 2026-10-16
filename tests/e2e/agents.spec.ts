@@ -1,3 +1,4 @@
+import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import type { AgentConnection, WorkspaceData } from '../../src/domain/types';
@@ -22,6 +23,7 @@ async function select(page: Page, label: string) {
   await panel(page).getByRole('button', { name: label, exact: true }).click();
 }
 async function start(page: Page) {
+  await mockProjectService(page);
   await page.route('**/api/ai/config', route => route.fulfill({ json: {
     configured: false, model: '测试模型', provider: '测试', images: true, mode: 'live',
     limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 },
@@ -92,7 +94,7 @@ test('生成中切换助手、后台归属、停止及权限拒绝不回退', as
     if (!deny) await gate;
     await route.fulfill({ contentType: 'application/x-ndjson', body: deny
       ? ndjson({ type: 'progress', kind: 'permission', text: '拒绝写入文件：当前助手为只读模式。' }, { type: 'error', error: '权限拒绝，已保留输入与原始记录。' })
-      : ndjson({ type: 'session', nativeSessionId: 'codex-session-test' }, { type: 'delta', text: 'Codex 的独立回答。' }, { type: 'done', model: 'Codex' }),
+      : ndjson({ type: 'session', nativeSessionId: 'codex-session-test', nativeSessionRef: fixtureSessionRef('codex-session-test') }, { type: 'delta', text: 'Codex 的独立回答。' }, { type: 'done', model: 'Codex', nativeSessionId: 'codex-session-test', nativeSessionRef: fixtureSessionRef('codex-session-test') }),
     }).catch(() => {});
   });
   await start(page);
@@ -131,10 +133,10 @@ test('显式材料、原生累计提示与收缩前序范围', async ({ page }) 
   await page.route('**/api/ai/agents/run', route => {
     const body = route.request().postDataJSON(); calls.push(body);
     return route.fulfill({ contentType: 'application/x-ndjson', body: ndjson(
-      { type: 'session', nativeSessionId: `session-${calls.length}` },
+      { type: 'session', nativeSessionId: `session-${calls.length}`, nativeSessionRef: fixtureSessionRef(`session-${calls.length}`) },
       { type: 'progress', kind: 'tool', text: '只读核查所选论文材料。' },
       { type: 'delta', text: body.context.length ? '结论需要结合证据的适用条件核查。 [1]' : '没有直接论文材料，请补充证据后核查。' },
-      { type: 'done', model: 'Codex' },
+      { type: 'done', model: 'Codex', nativeSessionId: 'codex-session-test', nativeSessionRef: fixtureSessionRef('codex-session-test') },
     ) });
   });
   await start(page);
@@ -177,9 +179,9 @@ test('演示模式经历史返回 Codex 后，PDF 快捷解释仍使用原助手
   await page.route('**/api/ai/agents/run', route => {
     calls.push(route.request().postDataJSON());
     return route.fulfill({ contentType: 'application/x-ndjson', body: ndjson(
-      { type: 'session', nativeSessionId: 'reader-native' },
+      { type: 'session', nativeSessionId: 'reader-native', nativeSessionRef: fixtureSessionRef('reader-native') },
       { type: 'delta', text: 'Codex 对所选原文的解释，需结合上下文核查。 [1]' },
-      { type: 'done', model: 'Codex', nativeSessionId: 'reader-native' },
+      { type: 'done', model: 'Codex', nativeSessionId: 'reader-native', nativeSessionRef: fixtureSessionRef('reader-native') },
     ) });
   });
   await start(page);

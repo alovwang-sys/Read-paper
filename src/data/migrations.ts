@@ -27,6 +27,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       if (item.id !== id || typeof item.title !== 'string') throw new Error('资源标识或标题损坏，未覆盖现有数据。');
   for (const research of Object.values(data.researches))
     if (typeof research.question !== 'string' || !strings(research.documentIds) || !strings(research.cardIds)) throw new Error('研究关联损坏，未覆盖现有数据。');
+  for (const research of Object.values(data.researches))
+    if (research.directory !== undefined && (!record(research.directory) || ['id', 'projectId', 'path'].some(key => typeof research.directory?.[key as keyof typeof research.directory] !== 'string' || !research.directory[key as keyof typeof research.directory]))) throw new Error('研究目录关联损坏，未覆盖现有数据。');
   for (const doc of Object.values(data.documents))
     if (typeof doc.assetId !== 'string' || typeof doc.hash !== 'string' || typeof doc.filename !== 'string' || !Number.isInteger(doc.pageCount) || doc.pageCount < 1) throw new Error('论文来源损坏，未覆盖现有数据。');
   for (const item of [...Object.values(data.cards), ...Object.values(data.drafts)])
@@ -44,6 +46,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     conversation.updatedAt ??= conversation.createdAt;
     if (conversation.connectionId !== undefined && !connectionIds.includes(conversation.connectionId))
       throw new Error('助手连接记录不受支持，未覆盖现有数据。');
+    if (conversation.nativeSessionRef !== undefined && typeof conversation.nativeSessionRef !== 'string' || conversation.nativeState !== undefined && !['idle', 'busy', 'unknown'].includes(conversation.nativeState) || conversation.nativeCanResume !== undefined && typeof conversation.nativeCanResume !== 'boolean') throw new Error('原生会话关联损坏，未覆盖现有数据。');
+    if (conversation.nativeState === 'busy') { conversation.nativeState = 'unknown'; conversation.nativeCanResume = false; }
   }
   for (const request of Object.values(data.requests)) {
     if (typeof request.prompt !== 'string' || typeof request.body !== 'string' || !Array.isArray(request.context) || !Array.isArray(request.evidenceIds))

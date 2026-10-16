@@ -1,0 +1,43 @@
+.research-directory-trigger { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 38px; padding: 7px 10px; color: #4b6254; text-align: left; font: inherit; font-size: 13px; border-radius: 6px; }
+.research-directory-trigger:hover { background: #e7ede6; }
+.research-directory-trigger > svg { flex-shrink: 0; }
+.research-directory-trigger > small { margin-left: auto; font-size: 12px; color: #607365; white-space: nowrap; }
+.research-directory-trigger.is-collapsed { justify-content: center; padding: 7px; }
+.research-directory-dialog { box-sizing: border-box; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; overflow: auto; border: 1px solid #d9e3db; border-radius: 12px; background: #fcfdfb; color: #2d4336; box-shadow: 0 20px 70px #24392a24; font-family: inherit; font-size: 13px; line-height: 1.65; }
+.research-directory-dialog * { box-sizing: border-box; }
+.research-directory-dialog::backdrop { background: #23382e4a; backdrop-filter: blur(2px); }
+.research-directory-dialog header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 21px 24px 16px; border-bottom: 1px solid #dfe6dc; }
+.research-directory-dialog h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.research-directory-dialog header p { margin: 3px 0 0; color: #65766a; }
+.research-directory-dialog button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 11px; border: 1px solid #dce5da; border-radius: 6px; color: #3f614a; background: #fff; font: inherit; cursor: pointer; }
+.research-directory-dialog button:hover:enabled { background: #edf3ec; }
+.research-directory-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.research-directory-dialog :focus-visible, .research-directory-trigger:focus-visible { outline: 2px solid #287364; outline-offset: 3px; }
+.research-directory-dialog .directory-icon-button { width: 36px; padding: 5px; flex-shrink: 0; border: 0; background: transparent; }
+.directory-dialog-content { padding: 16px 24px 20px; }
+.directory-description { margin: 0 0 18px; color: #627365; }
+.directory-path-form label { display: block; margin-bottom: 7px; color: #46604c; font-size: 12px; font-weight: 600; }
+.directory-path-form > div { display: flex; gap: 7px; }
+.directory-path-form input { min-width: 0; width: 100%; padding: 9px 10px; border: 1px solid #dce5da; border-radius: 6px; background: #fff; color: #35503c; font: 12px/1.6 ui-monospace, SFMono-Regular, monospace; }
+.directory-path-form button { white-space: nowrap; }
+.directory-browser { margin-top: 16px; border: 1px solid #dce5da; border-radius: 7px; overflow: hidden; background: #fff; }
+.directory-browser-heading { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: #f3f6f0; color: #657566; font-size: 12px; }
+.directory-browser-heading button { background: transparent; border: 0; }
+.directory-folders { max-height: 205px; overflow: auto; min-height: 60px; padding: 4px; }
+.directory-folders > button { width: 100%; border: 0; border-radius: 4px; justify-content: flex-start; padding: 8px; }
+.directory-folders > button > span { flex: 1; text-align: left; overflow-wrap: anywhere; }
+.directory-folders > p { margin: 14px 10px; font-size: 12px; color: #687b6b; }
+.directory-current, .directory-preview { margin: 0 0 17px; padding: 11px 13px; border-radius: 7px; background: #eef4eb; color: #3d6249; }
+.directory-current p, .directory-preview p { margin: 4px 0; font-size: 12px; overflow-wrap: anywhere; user-select: text; }
+.directory-current small, .directory-preview small { color: #637a66; font-size: 12px; }
+.directory-preview { display: flex; align-items: flex-start; gap: 9px; margin: 15px 0 0; }
+.directory-preview > svg { margin-top: 4px; flex-shrink: 0; }
+.directory-preview strong { font-size: 13px; }
+.directory-storage-note { margin-top: 18px; color: #697c6c; font-size: 12px; }
+.directory-storage-note > summary { cursor: pointer; min-height: 36px; display: list-item; padding-block: 6px; }
+.directory-storage-note p { margin: 5px 0; }
+.directory-error { padding: 10px 12px; margin: 12px 0 0; color: #953e36; background: #fff1ec; border: 1px solid #edcfc6; border-radius: 6px; font-size: 12px; overflow-wrap: anywhere; }
+.research-directory-dialog footer { display: flex; justify-content: flex-end; gap: 8px; padding: 15px 24px; border-top: 1px solid #dfe6dc; }
+.research-directory-dialog footer button { min-height: 40px; }
+.research-directory-dialog .directory-primary { background: #287364; color: #fff; border-color: #287364; }
+.research-directory-dialog .directory-primary:hover:enabled { background: #205f51; }

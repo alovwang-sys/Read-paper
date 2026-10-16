@@ -1,3 +1,4 @@
+import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test as base, type Page } from '@playwright/test';
 import { createServer, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
@@ -21,16 +22,16 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
     let body: Record<string, any> = {}; const chunks = []; for await (const chunk of req) chunks.push(chunk); if (chunks.length) body = JSON.parse(Buffer.concat(chunks).toString());
     if (path.endsWith('/run')) {
       runs.push(body); res.setHeader('Content-Type', 'application/x-ndjson'); res.flushHeaders();
-      event(res, { type: 'session', nativeSessionId: `native-${runs.length}` });
+      event(res, { type: 'session', nativeSessionId: `native-${runs.length}`, nativeSessionRef: fixtureSessionRef(`native-${runs.length}`) });
       if (/审批|问题/.test(body.prompt)) {
         const interaction = body.prompt.includes('审批') ? { id: `approval-${runs.length}`, kind: 'approval', title: '允许读取这次材料？', detail: 'Codex 正在等待本次工具操作的决定。', command: 'cat materials.md', status: 'pending' } : { id: `question-${runs.length}`, kind: 'question', title: '需要补充研究偏好', questions: [{ id: 'format', header: '输出形式', ...(body.prompt.includes('限定选项') ? { allowOther: false } : {}), question: '希望怎样组织解释？', options: [{ label: '概览', description: '先说明核心结论' }, { label: '比较', description: '对照条件与限制' }] }], status: 'pending' };
         event(res, { type: 'interaction', interaction }); pending.set(body.requestId, res); res.on('close', () => { if (pending.get(body.requestId) === res) pending.delete(body.requestId); });
-      } else { event(res, { type: 'delta', text: '保留原文条件，再核对这项结论。' }); event(res, { type: 'done', model: body.codex?.model || 'model-default', nativeSessionId: `native-${runs.length}` }); res.end(); }
+      } else { event(res, { type: 'delta', text: '保留原文条件，再核对这项结论。' }); event(res, { type: 'done', model: body.codex?.model || 'model-default', nativeSessionId: `native-${runs.length}`, nativeSessionRef: fixtureSessionRef(`native-${runs.length}`) }); res.end(); }
       return;
     }
     if (path.endsWith('/respond')) {
       replies.push(body); const stream = pending.get(body.requestId);
-      if (stream) { event(stream, { type: 'interaction-resolved', id: body.interactionId, status: body.reply.decision === 'deny' ? 'denied' : 'answered' }); event(stream, { type: 'delta', text: '已按答复继续完成原研究的问题。' }); event(stream, { type: 'done', model: 'model-default', nativeSessionId: `native-${runs.length}` }); stream.end(); pending.delete(body.requestId); }
+      if (stream) { event(stream, { type: 'interaction-resolved', id: body.interactionId, status: body.reply.decision === 'deny' ? 'denied' : 'answered' }); event(stream, { type: 'delta', text: '已按答复继续完成原研究的问题。' }); event(stream, { type: 'done', model: 'model-default', nativeSessionId: `native-${runs.length}`, nativeSessionRef: fixtureSessionRef(`native-${runs.length}`) }); stream.end(); pending.delete(body.requestId); }
       json({ accepted: true }); return;
     }
     if (path.endsWith('/stop')) { stops.push(body); pending.get(body.requestId)?.end(); pending.delete(body.requestId); json({ stopped: true }); return; }
@@ -45,6 +46,7 @@ const panel = (page: Page) => page.getByRole('complementary', { name: '参考面
 async function state(page: Page): Promise<WorkspaceData> { return page.evaluate(() => JSON.parse(localStorage.getItem('papertrail-recovery-v2')!)); }
 async function start(page: Page, api: API) {
   await page.route('**/api/ai/**', route => route.continue({ url: api.url + new URL(route.request().url()).pathname }));
+  await mockProjectService(page);
   await page.goto('/'); await expect(page.getByRole('main')).toBeVisible();
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click(); await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();

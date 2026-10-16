@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Papertrail · 研究与原生会话交互原型</title>
+  <style>
+    :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:#263c35;background:#f4f6f3;font-size:14px;font-synthesis:none;--green:#32614f;--muted:#5f7065;--line:#e2e7e1;--soft:#eff3ed;--paper:#fff;--sidebar:208px;--right:420px}
+    *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit;color:inherit}button,select{cursor:pointer}button{border:0;background:none;min-height:36px;border-radius:6px;padding:7px 10px}button:hover{background:#edf2eb}button:disabled{opacity:.5;cursor:default}button:disabled:hover{background:initial}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #447e66;outline-offset:3px}button.primary{background:var(--green);color:white}button.primary:hover{background:#244c3c}button.outline{border:1px solid #d8e1d8;background:white}.muted{color:var(--muted)}.small{font-size:12px}.tiny{font-size:11px}.dot{display:inline-block;width:6px;height:6px;background:#6f9984;border-radius:50%;margin-right:6px}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pill{font-size:11px;border-radius:4px;background:#edf2ec;padding:4px 6px;white-space:nowrap}.prototype-bar{height:42px;border-bottom:1px solid #d8e0d6;background:#e9eee4;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:#63715f}.prototype-bar strong{font-size:11px;font-weight:650;color:#465b45;letter-spacing:.03em}.demo-controls{display:flex;align-items:center;gap:7px;white-space:nowrap}.prototype-bar button,.prototype-bar select{font-size:11px;min-height:36px;height:36px;border:1px solid #cbd5c5;border-radius:5px;background:#f8faf4;padding:4px 8px}.prototype-bar label{display:flex;align-items:center;gap:5px}.shell{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr) var(--right);height:calc(100dvh - 42px);min-height:0;overflow:hidden}.sidebar{background:#f4f6f3;border-right:1px solid var(--line);padding:24px 13px 14px;display:flex;flex-direction:column;min-width:0}.brand{display:flex;gap:10px;align-items:center;padding:0 8px 25px}.brand-mark{display:grid;place-items:center;width:31px;height:33px;border-radius:8px;background:var(--green);color:white;font:23px Georgia,serif}.brand strong{font-size:16px;letter-spacing:-.5px}.brand .small{font-size:12px;letter-spacing:.13em;margin-top:2px}.side-action{height:38px;background:white;border:1px solid var(--line);box-shadow:0 1px 2px #243d2c04;display:flex;align-items:center;gap:10px;padding:0 10px;margin-bottom:24px;color:#6e7d72;font-size:13px}.side-item{display:flex;align-items:center;gap:11px;height:39px;padding:0 12px;color:#6c7a71;font-size:13px;border-radius:6px}.side-symbol{font-size:15px;width:17px;text-align:center;color:#7e8e80;flex:none}.side-label{margin:28px 12px 12px;font-size:12px;letter-spacing:.08em;color:#5f7065}.research-name{font-size:13px;padding:4px 11px 12px;color:#3c5546;font-weight:600;line-height:1.65}.directory-link{width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding-left:12px;font-size:13px;color:#5d7462;margin:1px 0 16px}.side-separator{border-top:1px solid var(--line);margin:14px 5px 0}.side-item.active{background:#e4ece2;color:#3c624b}.side-footer{margin-top:auto;padding:14px 9px 2px;border-top:1px solid var(--line);font-size:12px;color:#5f7065}.rail-label{display:none}
+    .workspace{display:flex;flex-direction:column;min-width:0;min-height:0;background:#edf0e9}.breadcrumb{height:51px;background:#fff;display:flex;gap:12px;align-items:center;padding:0 23px;border-bottom:1px solid var(--line);color:#5f7065;font-size:12px;flex:none}.breadcrumb .current{color:#465b4b}.breadcrumb .right-status{margin-left:auto;white-space:nowrap;font-size:12px;color:#5f7065}.resource-tabs{height:41px;background:#fafbf8;border-bottom:1px solid var(--line);display:flex;align-items:stretch;padding:0 15px;gap:8px;flex:none}.resource-tab{border-bottom:2px solid #69886a;padding:11px 12px 9px;font-size:13px;color:#425a46;background:#fff;display:flex;gap:8px;align-items:center;min-width:0;max-width:310px}.resource-tabs .tab-meta{margin-left:auto;align-self:center;color:#5f7065;font-size:12px;white-space:nowrap}.reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 17px;height:48px;border-bottom:1px solid #e3e7de;background:#f8faf5;font-size:13px;flex:none}.tool-group{display:flex;align-items:center;gap:6px}.reader-toolbar button{min-width:36px;padding:6px}.reader-toolbar .selected{background:#e6edde;color:#59724e}.page-num{display:inline-block;background:#fff;border:1px solid #e1e5db;border-radius:3px;padding:5px 10px;margin-right:5px}.reader-scroll{overflow:auto;min-height:0;padding:28px 26px 38px;scrollbar-color:#c8d0c0 transparent;scrollbar-width:thin}.paper{max-width:590px;min-height:748px;padding:41px 45px 36px;margin:0 auto;background:#fff;box-shadow:0 2px 8px #27352108;color:#263d36;font-family:Georgia,"Times New Roman",serif}.paper-kicker{font:9px -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.13em;color:#507160;border-bottom:1px solid #78917b;padding-bottom:10px;margin-bottom:22px}.paper h1{font-size:23px;line-height:1.28;letter-spacing:-.4px;margin:0 0 14px}.paper .authors{font-size:10px;color:#8a958b;margin:0 0 28px;line-height:1.8}.paper h2{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;color:#45725c;margin:25px 0 10px}.paper p{font-size:12px;line-height:1.75;margin:9px 0}.paper .abstract{font-size:11px;color:#718072;border-left:2px solid #d8e2d4;padding-left:13px}.paper .highlight{background:#ecf2d4;box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:2px 0;transition:background .2s}.paper .highlight.focused{background:#e4edb3;outline:2px solid #a5ba66;outline-offset:4px}.paper .columns{display:grid;grid-template-columns:1fr 1fr;gap:20px}.paper .columns p{font-size:10px;text-align:justify;line-height:1.65}.paper .caption{font-size:9px;font-style:italic;color:#7d8c7e;border-top:1px solid #e0e6dc;margin-top:23px;padding-top:12px}.paper-footer{margin-top:34px;display:flex;justify-content:space-between;font:9px -apple-system,BlinkMacSystemFont,sans-serif;color:#9ca497}.reader-footer{height:29px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;background:#f8faf5;border-top:1px solid var(--line);font-size:12px;color:#5f7065;flex:none}
+    .panel{background:white;border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0;min-height:0}.panel-top{height:51px;display:flex;align-items:center;padding:0 20px;gap:8px;font-size:12px;color:#5f7065;border-bottom:1px solid var(--line);flex:none}.panel-top .panel-mode{margin-left:auto;color:#587b61;background:#edf2e9;padding:7px 20px;border-radius:5px}.panel-heading{height:67px;flex:none;padding:12px 16px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #edf0ea}.heading-copy{min-width:0;flex:1}.heading-copy h2{font-size:14px;font-weight:600;line-height:1.5;margin:0;overflow:hidden;;text-overflow:ellipsis;;white-space:nowrap}.heading-copy p{font-size:12px;color:#5f7065;margin:2px 0 0}.panel-heading .new-chat{font-size:13px;border:1px solid #dce4d7;white-space:nowrap;padding:5px 9px;min-height:36px}.history-btn{min-width:77px;padding:5px 6px;font-size:13px;white-space:nowrap;color:#48694e}.history-btn-label{font-size:10px;display:block}.chat-scroll{flex:1;overflow:auto;padding:18px 20px 13px;scrollbar-width:thin;min-height:0}.session-meta{display:flex;gap:6px;align-items:center;font-size:12px;color:#5f7065;margin-bottom:23px}.session-meta .session-link{margin-left:auto;font-size:13px;min-height:36px;padding:3px 4px;color:#748b74}.turn{margin-bottom:25px}.message-label{font-size:12px;color:#5f7065;margin-bottom:9px;display:flex;align-items:center;gap:7px}.agent-letter{width:23px;height:23px;display:grid;place-items:center;background:#eef3e9;color:#638266;border-radius:7px;font:12px Georgia,serif}.user-message{background:#f0f3ec;border:1px solid #e8ede2;padding:12px 14px;border-radius:9px 9px 2px 9px;font-size:14px;line-height:1.8;color:#4b624c;margin-left:31px}.assistant-message{font-size:14px;line-height:1.95;color:#526453}.assistant-message p{margin:7px 0}.assistant-message strong{font-weight:600;color:#38563f}.citation{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:4px 8px;border:1px solid #dbe5d5;color:#587654;background:#f4f7ef;font-size:13px;margin-top:7px}.answer-meta{font-size:12px;color:#5f7065;margin-top:12px}.conversation-end{display:flex;align-items:center;gap:8px;color:#5f7065;font-size:12px;margin:6px 0 22px}.conversation-end:before,.conversation-end:after{content:"";flex:1;border-top:1px solid #edf0e7}.composer-wrap{padding:11px 16px 13px;border-top:1px solid #ebeee7;flex:none;background:#fff}.directory-needed{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f2f6ec;border:1px solid #e1e9d8;border-radius:6px;padding:7px 9px;margin-bottom:10px;font-size:12px;color:#657f55}.directory-needed button{font-size:13px;border:1px solid #d5e0cc;background:#fff;padding:5px 7px;white-space:nowrap}.context-line{font-size:12px;color:#5f7065;margin:0 2px 9px;display:flex;align-items:center;justify-content:space-between}.composer{border:1px solid #d7e1d0;border-radius:10px;background:#fcfdf9;padding:10px 10px 8px;box-shadow:0 2px 5px #314b2c03}.composer textarea{resize:none;width:100%;border:0;background:transparent;min-height:64px;max-height:130px;font-size:14px;line-height:1.7;padding:0 2px;display:block;outline-offset:5px}.composer textarea::placeholder{color:#697a68}.composer-bottom{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:5px}.agent-select{font-size:13px;border:1px solid #dfe7d7;border-radius:5px;background:#f2f6ed;min-height:36px;padding:4px 7px;max-width:145px;color:#59794f}.send-button{height:36px;min-height:36px;width:36px;font-size:18px;padding:3px}.composer-note{font-size:12px;color:#5f7065;margin:7px 1px 0;line-height:1.6}.busy-notice{font-size:12px;line-height:1.75;color:#8a7046;background:#fbf7ec;border:1px solid #ece1c9;border-radius:7px;padding:11px 12px;margin:0 0 18px}.busy-notice button{padding:5px 7px;font-size:13px;min-height:36px;margin-top:6px;color:#7c653f;border:1px solid #ded1b4;background:#fffdf7}.welcome{padding:42px 17px 20px;text-align:center;color:#5f7065}.welcome .welcome-mark{width:42px;height:42px;display:grid;place-items:center;background:#eef4e8;color:#70925a;font:21px Georgia,serif;border-radius:12px;margin:0 auto 16px}.welcome h3{font-size:16px;color:#466142;font-weight:500;margin:0 0 11px}.welcome p{font-size:12px;line-height:1.9;margin:0}.welcome button{margin-top:22px;font-size:13px;border:1px solid #e0e7d8;line-height:1.7;text-align:left;padding:10px 13px;background:#fafcf7}.inline-note{font-size:12px;color:#5f7065;margin:8px 0}
+    .history-view{display:flex;flex-direction:column;min-height:0;flex:1}.history-tools{padding:16px 17px 12px;flex:none}.searchbox{display:flex;border:1px solid #dbe3d6;border-radius:7px;background:#fbfcf9;gap:4px;align-items:center;padding:0 4px 0 12px;height:38px}.searchbox input{width:100%;min-width:0;border:0;background:transparent;font-size:13px;height:32px}.searchbox button{min-width:32px;min-height:36px;padding:0;color:#829778}.filters{display:flex;gap:4px;margin-top:13px}.filter{min-height:36px;padding:6px 9px;font-size:13px;color:#5f7065;border:1px solid transparent}.filter.selected{border-color:#d5e1cc;background:#edf4e7;color:#517145}.history-summary{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:#5f7065;min-height:36px}.refresh{font-size:13px;color:#6c8960;min-height:36px}.history-list{overflow:auto;padding:0 17px 15px;flex:1;min-height:0}.history-row{display:block;width:100%;text-align:left;border-bottom:1px solid #e9eee3;border-radius:0;padding:15px 9px;min-height:91px}.history-row:hover{background:#f5f8ef;border-radius:6px}.history-title{font-size:14px;color:#465f41;line-height:1.6;margin-bottom:8px}.history-row-meta{display:flex;align-items:center;gap:7px;font-size:12px;color:#5f7065}.history-row-meta .time{margin-left:auto}.origin-badge{color:#5b7257;background:#f0f4e9;padding:3px 5px;border-radius:3px}.busy-tag{color:#7b5d2a}.history-footnote{padding:12px 20px 15px;border-top:1px solid #edf0e7;line-height:1.8;color:#5f7065;font-size:12px;flex:none}.empty-state{text-align:center;padding:64px 20px;color:#5f7065;font-size:12px;line-height:1.9}.empty-state strong{display:block;color:#617754;font-size:13px;font-weight:500;margin-bottom:8px}.empty-state button{font-size:13px;margin-top:9px;border:1px solid #dbe4d2}.loading-dot{display:inline-block;width:6px;height:6px;margin:18px 3px;background:#96ad83;border-radius:50%;animation:pulse .65s alternate infinite}.loading-dot:nth-child(2){animation-delay:.2s}.loading-dot:nth-child(3){animation-delay:.4s}@keyframes pulse{to{opacity:.2}}[hidden]{display:none!important}
+    dialog{border:1px solid #dce4d6;border-radius:12px;padding:0;width:510px;max-width:calc(100vw - 40px);color:#354e37;box-shadow:0 20px 70px #20351b1c}dialog::backdrop{background:#293c2a40;backdrop-filter:blur(2px)}.dialog-header{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 24px 17px;border-bottom:1px solid #e7ece2}.dialog-header h2{font-size:17px;font-weight:550;margin:0}.dialog-header p{font-size:12px;color:#5f7065;margin:6px 0 0}.close-dialog{font-size:20px;min-height:36px;margin:-8px -9px 0 0;padding:4px 10px;color:#8b9b82}.dialog-content{padding:23px 24px}.field-label{font-size:12px;color:#5f7065;margin:0 0 9px}.directory-row{display:flex;align-items:center;gap:8px}.directory-value{font-size:12px;min-width:0;flex:1;padding:11px 10px;border:1px solid #dce4d6;border-radius:6px;background:#fbfcf8;overflow-wrap:anywhere}.directory-row button{font-size:13px;white-space:nowrap;border:1px solid #dce4d6;min-height:39px}.dialog-description{font-size:12px;color:#5f7065;line-height:1.9;margin:14px 0 20px}.storage-explainer{background:#f4f7ef;border:1px solid #e8eee0;border-radius:7px;padding:13px 14px;font-size:12px;line-height:1.9;color:#5f7065}.storage-explainer strong{color:#59734c;font-weight:550}.storage-explainer p{margin:5px 0}.dialog-footer{padding:16px 24px;border-top:1px solid #e7ece2;display:flex;justify-content:flex-end;gap:8px;font-size:13px}.dialog-footer button{min-width:71px}.sample-warning{font-size:12px;color:#5f7065;line-height:1.8;margin:15px 0 0}.locator{width:100%;border:1px solid #dce4d4;background:#f7f9f2;font:12px/1.9 ui-monospace,SFMono-Regular,monospace;padding:12px;border-radius:6px;resize:none;margin-top:12px;font-size:12px}.toast{position:fixed;bottom:21px;left:calc(var(--sidebar) + 23px);max-width:calc(100vw - var(--right) - var(--sidebar) - 46px);background:#3e5f3d;color:#fff;border-radius:7px;padding:11px 15px;font-size:12px;line-height:1.7;box-shadow:0 3px 10px #30492c12;z-index:5}
+    @media(max-width:1300px){:root{--sidebar:184px;--muted:#5f7065}.sidebar{padding-left:10px;padding-right:10px}.brand{padding-left:7px}.breadcrumb{padding:0 19px;font-size:12px;color:#5f7065}.reader-scroll{padding:22px 22px 33px}.paper{padding:35px 37px}.paper h1{font-size:21px}.prototype-bar{padding:0 11px;gap:8px}.prototype-bar .demo-explainer{display:none}.reader-toolbar{padding-left:12px;padding-right:12px;font-size:13px}}
+    @media(max-width:1100px){:root{--sidebar:56px;--muted:#5f7065}.sidebar{padding:20px 6px 13px}.brand{padding:0 6px 26px}.brand-mark{width:31px}.brand-copy,.sidebar .side-text,.sidebar .side-label,.research-name,.side-action,.side-separator,.side-footer,.side-item .dot{display:none}.side-item{padding:0;justify-content:center;height:43px;font-size:13px}.side-symbol{font-size:16px}.directory-link{justify-content:center;padding:0;margin:18px 0;font-size:13px}.directory-link .side-symbol{font-size:21px}.rail-label{display:block;height:17px;border-top:1px solid var(--line);margin-top:20px}.breadcrumb{padding:0 16px;gap:7px;font-size:12px;color:#5f7065}.breadcrumb .right-status{display:none;font-size:12px;color:#5f7065}.reader-scroll{padding:20px 20px 30px}.paper{padding:33px 32px;min-height:741px}.paper h1{font-size:21px}.paper p{font-size:11px}.paper .columns{gap:15px}.resource-tabs .tab-meta{display:none;font-size:12px;color:#5f7065}.prototype-bar{padding:0 9px}.prototype-bar select{max-width:111px}.prototype-bar .demo-controls{gap:5px}.prototype-bar .demo-label{display:none}.reader-toolbar .zoom-label{display:none}}
+    @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <div class="prototype-bar" aria-label="原型演示控件">
+    <div><strong>交互原型 · 示例数据</strong><span class="demo-explainer">　仅演示设计，不连接原生客户端或用户文件</span></div>
+    <div class="demo-controls">
+      <label><span class="demo-label">目录示例</span><select id="directory-fixture" aria-label="切换目录示例"><option value="bound">目录：已绑定</option><option value="unbound">目录：未绑定</option></select></label>
+      <label><span class="demo-label">列表状态</span><select id="history-fixture" aria-label="切换历史列表示例状态"><option value="normal">历史：正常</option><option value="empty">历史：空数据</option><option value="error">历史：错误</option></select></label>
+      <button id="simulate-native">模拟原生端新增</button>
+      <button id="reset-demo">重置演示</button>
+    </div>
+  </div>
+  <div class="shell">
+    <aside class="sidebar" aria-label="研究导航">
+      <div class="brand"><div class="brand-mark" aria-hidden="true">P</div><div class="brand-copy"><strong>Papertrail</strong><div class="small muted">研究始于问题</div></div></div>
+      <div class="side-action"><span>＋</span><span class="side-text">新建研究</span></div>
+      <div class="side-item"><span class="side-symbol">▱</span><span class="side-text">收件箱</span></div>
+      <div class="side-item"><span class="side-symbol">▥</span><span class="side-text">论文库</span></div>
+      <div class="side-item"><span class="side-symbol">◇</span><span class="side-text">研究空间</span></div>
+      <div class="side-item"><span class="side-symbol">▤</span><span class="side-text">卡片库</span></div>
+      <div class="side-separator"></div><div class="rail-label"></div>
+      <div class="side-label">当前研究</div>
+      <div class="research-name"><span class="dot"></span>检索增强，何时有效？</div>
+      <button id="directory-open" class="directory-link" title="研究目录"><span class="side-symbol">⌑</span><span class="side-text">研究目录</span><span id="directory-status" class="side-text tiny muted" style="margin-left:auto">已绑定</span></button>
+      <div class="side-item"><span class="side-symbol">◇</span><span class="side-text">研究概览</span></div>
+      <div class="side-item"><span class="side-symbol">▤</span><span class="side-text">证据与卡片</span></div>
+      <div class="side-item"><span class="side-symbol">▧</span><span class="side-text">论证与结论</span></div>
+      <div class="side-label">打开的资源 <span style="float:right">1</span></div>
+      <div class="side-item active"><span class="side-symbol">▥</span><span class="side-text truncate">Adaptive Retrieval</span></div>
+      <div class="side-footer"><span class="dot"></span>示例研究 · 本地设计预览</div>
+    </aside>
+    <main class="workspace" aria-label="论文阅读工作区">
+      <div class="breadcrumb"><span>研究</span><span>›</span><span class="current truncate">检索增强，何时有效？</span><span class="right-status">示例阅读位置已保留</span></div>
+      <div class="resource-tabs"><div class="resource-tab"><span class="muted">▥</span><span class="truncate" title="Adaptive Retrieval · Evidence &amp; Reliability">Adaptive Retrieval · Evidence &amp; Reliability</span></div><span class="tab-meta">PDF 文档</span></div>
+      <div class="reader-toolbar"><div class="tool-group"><span class="selected" style="padding:8px;border-radius:4px">文字选择</span><span class="muted">区域框选</span></div><div class="tool-group"><button id="page-prev" aria-label="上一页">‹</button><span><span class="page-num" id="page-number">3</span><span class="muted">/ 8</span></span><button id="page-next" aria-label="下一页">›</button></div><div class="tool-group muted"><span class="zoom-label">适合页面</span><span>100%</span></div></div>
+      <div class="reader-scroll" id="reader-scroll">
+        <article class="paper" id="paper">
+          <div class="paper-kicker">READ-PAPER / RESEARCH MATERIAL</div>
+          <h1>Adaptive Retrieval for<br>Evidence-Grounded Answers</h1>
+          <p class="authors">Research Methods Group · 2026<br>研究示例材料，非真实发表论文</p>
+          <h2>Abstract</h2>
+          <p class="abstract">Retrieval-augmented generation can support verifiable answers. Its value depends on the relevance of the evidence and on how faithfully the answer preserves the limits of that evidence.</p>
+          <h2>3. Evidence relevance and answer reliability</h2>
+          <p>We examine when retrieved evidence helps a reader distinguish supported claims from fluent but unsupported statements.</p>
+          <p><span class="highlight" id="source-highlight">Retrieval improves factual accuracy when the evidence corpus is relevant.</span> This finding is conditional on source relevance and recoverable citations. The presence of a citation alone does not establish correctness.</p>
+          <div class="columns"><div><h2>3.1 Main finding</h2><p>Evidence should be evaluated in the context of the original research question. A passage may be topically similar while failing to support the specific claim being made.</p><p>Readers should inspect the original excerpt rather than treating a generated reference as a guarantee of reliability.</p></div><div><h2>3.2 Conditions and limits</h2><p>A fluent answer may still contain unsupported details. Explicit boundaries help the reader decide when the finding can be reused in another setting.</p><p>Preserving those conditions makes a research note easier to verify and keeps future writing grounded in its sources.</p></div></div>
+          <p class="caption">Research fixture for the reading workflow. Original excerpts remain available beside the conversation.</p>
+          <div class="paper-footer"><span>Adaptive Retrieval / Research Methods</span><span id="paper-page">3</span></div>
+        </article>
+      </div>
+      <div class="reader-footer"><span>adaptive-retrieval.pdf · 示例文档</span><span id="reader-location">PDF 第 3 页 · 阅读就绪</span></div>
+    </main>
+    <aside class="panel" aria-label="AI 研究助手">
+      <div class="panel-top"><span>研究参考</span><span class="panel-mode">AI 助手</span></div>
+      <div class="panel-heading">
+        <button id="history-toggle" class="history-btn" aria-label="对话记录" title="对话记录">对话记录</button>
+        <div class="heading-copy"><h2 id="conversation-title">证据相关性与适用条件</h2><p id="conversation-subtitle">当前研究 · Codex</p></div>
+        <button id="new-chat" class="new-chat">＋ 新对话</button>
+      </div>
+      <section id="chat-view" style="display:contents">
+        <div class="chat-scroll" id="chat-scroll"></div>
+        <div class="composer-wrap">
+          <div id="directory-needed" class="directory-needed" hidden><span>为这个研究选择目录</span><button id="bind-from-chat">选择研究目录</button></div>
+          <div class="context-line"><span>本轮材料　1 条证据</span><span>PDF 第 3 页</span></div>
+          <div class="composer">
+            <textarea id="message-input" aria-label="消息输入" placeholder="围绕这篇论文，继续追问…"></textarea>
+            <div class="composer-bottom"><label><span class="sr-only" hidden>助手</span><select id="agent-select" class="agent-select" aria-label="切换助手"><option value="Codex">Codex</option><option value="OpenCode">OpenCode</option><option value="Claude Code">Claude Code</option></select></label><button id="send-message" class="primary send-button" aria-label="模拟发送消息" title="模拟发送消息">↑</button></div>
+          </div>
+          <p class="composer-note" id="composer-note">交互原型 · 仅模拟发送　　⌘ / Ctrl + Enter 发送</p>
+        </div>
+      </section>
+      <section id="history-view" class="history-view" hidden>
+        <div class="history-tools">
+          <form id="search-form" class="searchbox"><input id="history-search" aria-label="搜索当前研究的对话" placeholder="搜索当前研究的对话…"><button type="submit" aria-label="搜索">⌕</button></form>
+          <div class="filters" aria-label="按助手筛选"><button class="filter selected" data-filter="全部">全部</button><button class="filter" data-filter="Codex">Codex</button><button class="filter" data-filter="OpenCode">OpenCode</button><button class="filter" data-filter="Claude Code">Claude Code</button></div>
+          <div class="history-summary"><span id="history-count">当前研究 · 6 个对话</span><button id="refresh-history" class="refresh">↻ 刷新</button></div>
+        </div>
+        <div class="history-list" id="history-list" aria-live="polite"></div>
+        <div class="history-footnote">按研究目录归类，三个助手的对话各自独立。<br>此处展示示例记录，真实跨客户端互通待实机验收。</div>
+      </section>
+    </aside>
+  </div>
+  <dialog id="directory-dialog" aria-labelledby="directory-title">
+    <div class="dialog-header"><div><h2 id="directory-title">研究目录</h2><p>检索增强，何时有效？</p></div><button class="close-dialog" data-close="directory-dialog" aria-label="关闭研究目录">×</button></div>
+    <div class="dialog-content"><p class="field-label">此研究绑定的目录</p><div class="directory-row"><div class="directory-value" id="directory-value">/Users/research/Projects/retrieval-study</div><button id="browse-directory">浏览示例…</button></div><p class="dialog-description" id="directory-description">此研究与原生助手都以该目录识别项目。聊天时无需重复选择。</p><div class="storage-explainer"><strong>目录与对话记录的保存位置</strong><p>研究资料与可读备份建议存入此目录；原生会话日志默认仍由各客户端管理。</p><p>备份先提供可读归档。原生恢复与跨客户端兼容性待实机验证。</p></div><p class="sample-warning">交互原型 · 示例数据。浏览仅选择内置示例目录，不访问文件系统；保存只修改本页面演示状态。</p></div>
+    <div class="dialog-footer"><button class="outline" data-close="directory-dialog">取消</button><button id="save-directory" class="primary">保存示例</button></div>
+  </dialog>
+  <dialog id="handoff-dialog" aria-labelledby="handoff-title">
+    <div class="dialog-header"><div><h2 id="handoff-title">在原生应用处理</h2><p id="handoff-subtitle">会话定位信息 · 示例</p></div><button class="close-dialog" data-close="handoff-dialog" aria-label="关闭会话定位">×</button></div>
+    <div class="dialog-content"><div class="dialog-description" style="margin-top:0">此原型不会启动原生应用。可复制下方示例信息，在对应客户端找到该项目与会话。运行中的会话需在原生应用完成或停止，这里不会抢占任务。</div><textarea id="session-locator" class="locator" rows="5" readonly aria-label="示例会话定位信息"></textarea><p class="sample-warning" id="copy-status">真实启动协议及定位方式待实机验证；Claude Code Desktop 独立列表需显式交接。</p></div>
+    <div class="dialog-footer"><button class="outline" data-close="handoff-dialog">关闭</button><button id="copy-locator" class="primary">复制定位信息</button></div>
+  </dialog>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script>
+    const $ = id => document.getElementById(id);
+    const key = 'papertrail-project-sessions-prototype-v1';
+    const initial = () => ({directory:'/Users/research/Projects/retrieval-study',activeAgent:'Codex',active:{Codex:'codex-rp',OpenCode:'opencode-rp','Claude Code':'claude-rp'},nativeAdded:false,sessions:[
+      {id:'codex-rp',agent:'Codex',title:'证据相关性与适用条件',origin:'Read-paper',time:'今天 14:32',input:'把“相关证据库”这个前提再解释清楚',messages:[{role:'user',text:'根据当前证据，检索增强在什么条件下有效？请保留引用。'},{role:'assistant',text:'论文将效果与一个明确前提联系起来：<strong>检索到的证据库需要与问题相关。</strong><p>因此，不能把“用了检索”直接等同于“更可靠”。还应检查原文是否支持当前判断，并保留其适用条件。</p>',citation:true}]},
+      {id:'native-codex',agent:'Codex',title:'比较两种检索策略的实验设定',origin:'Codex 原生',time:'今天 13:48',native:true,input:'',messages:[{role:'user',text:'比较两种检索策略，先核对证据范围。'},{role:'assistant',text:'我们已按研究问题整理实验设定。接下来可以检查证据相关性，再比较输出是否保留条件。',citation:true}]},
+      {id:'native-busy',agent:'Claude Code',title:'核对引用与研究笔记',origin:'Claude Code 原生',time:'今天 13:21',native:true,busy:true,input:'原生任务完成后继续核对遗漏条件',messages:[{role:'user',text:'检查研究笔记中的引用，并列出尚待核对的条目。'},{role:'assistant',text:'已读取研究笔记，正在逐条检查来源与上下文。<p>此处为原生运行中会话的只读历史示例。</p>',citation:true}]},
+      {id:'opencode-rp',agent:'OpenCode',title:'证据卡片的结构',origin:'Read-paper',time:'昨天 18:06',input:'请把适用条件单独列一栏',messages:[{role:'user',text:'如何整理这条证据，方便后续写作？'},{role:'assistant',text:'可以分别记录主张、原文摘录和适用条件。保留来源页码后，写作时就能回到同一段证据。',citation:true}]},
+      {id:'claude-rp',agent:'Claude Code',title:'研究问题与下一步阅读',origin:'Read-paper',time:'昨天 16:24',input:'下一步优先核对哪些证据？',messages:[{role:'assistant',text:'先找出结论依赖的前提，再围绕每个前提补充支持与反例。'}]},
+      {id:'native-open',agent:'OpenCode',title:'梳理论文中的局限性',origin:'OpenCode 原生',time:'10 月 15 日',native:true,input:'',messages:[{role:'assistant',text:'当前材料指出，引用可回溯性与证据相关性需要分别检查。',citation:true}]}
+    ]});
+    let state;
+    try { state=JSON.parse(localStorage.getItem(key)) || initial(); } catch {state=initial();}
+    let view='chat', filter='全部', query='', listStatus='ready', historyFixture='normal', temporaryDirectory=state.directory, toastTimer, loadTimer, dialogOpener;
+    const pending = new Set();
+    const current = () => state.sessions.find(s=>s.id===state.active[state.activeAgent]);
+    function persist(){try{localStorage.setItem(key,JSON.stringify(state));}catch{}}
+    function esc(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    function notify(message){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,3400);}
+    function syncInput(){const s=current();if(s)s.input=$('message-input').value;persist();}
+    function render(){
+      const s=current();
+      $('chat-view').hidden=view!=='chat';$('history-view').hidden=view!=='history';
+      $('conversation-title').textContent=view==='history'?'对话记录':s.title;$('conversation-title').title=s.title;
+      $('conversation-subtitle').textContent=view==='history'?'检索增强，何时有效？':`当前研究 · ${s.agent}`;
+      $('history-toggle').textContent=view==='history'?'‹ 返回对话':'对话记录';
+      $('history-toggle').setAttribute('aria-label',view==='history'?'返回当前对话':'对话记录');
+      $('history-toggle').title=view==='history'?'返回当前对话':'对话记录';
+      $('agent-select').value=state.activeAgent;
+      $('message-input').value=s.input;
+      $('message-input').disabled=false;
+      $('message-input').placeholder=s.busy?'原生任务完成后可继续，当前输入会保留':'围绕这篇论文，继续追问…';
+      $('composer-note').textContent=s.busy?'原生会话忙碌 · 未发送的输入已保留':'交互原型 · 仅模拟发送　　⌘ / Ctrl + Enter 发送';
+      $('send-message').disabled=!state.directory||!!s.busy||pending.has(s.id)||!s.input.trim();$('directory-needed').hidden=!!state.directory;$('directory-status').textContent=state.directory?'已绑定':'待绑定';
+      if(view==='history')renderHistory();else renderChat();
+    }
+    function renderChat(){
+      const s=current();
+      const source=s.native?`${s.agent} 原生会话 · ${s.agent==='Claude Code'?'已交接示例':'示例发现'}`:'Read-paper 创建 · 示例会话';
+      let html=`<div class="session-meta"><span class="dot"></span><span>${esc(source)}</span>${s.native?'<button class="session-link" id="native-locator">会话定位 ↗</button>':''}</div>`;
+      if(s.busy)html+='<div class="busy-notice">此会话正在 Claude Code 原生应用运行，当前为只读历史。<br><button id="busy-handoff">在原生应用处理 ↗</button></div>';
+      if(!s.messages.length)html+=`<div class="welcome"><div class="welcome-mark">?</div><h3>从这篇论文继续探索</h3><p>${esc(s.agent)} 的新对话已准备好。<br>旧对话与未发送输入保留在对话记录中。</p><button id="suggestion">这条证据支持什么结论？<br><span class="muted">请同时说明适用条件与局限</span></button></div>`;
+      for(const msg of s.messages){html+=msg.role==='user'?`<div class="turn"><div class="message-label" style="justify-content:flex-end">你 · 示例</div><div class="user-message">${esc(msg.text)}</div></div>`:`<div class="turn"><div class="message-label"><span class="agent-letter">${esc(s.agent[0])}</span><span>${esc(s.agent)} · 示例回答</span></div><div class="assistant-message">${msg.text}${msg.citation?'<br><button class="citation" data-citation>［1］ PDF 第 3 页 ↗</button>':''}</div><div class="answer-meta">仅展示交互，未经真实模型生成</div></div>`;}
+      if(pending.has(s.id))html+='<div class="inline-note">正在生成示例回答…</div>';
+      else if(s.messages.length)html+='<div class="conversation-end">以上为示例对话</div>';
+      $('chat-scroll').innerHTML=html;
+      document.querySelectorAll('[data-citation]').forEach(b=>b.onclick=locateCitation);
+      if($('native-locator'))$('native-locator').onclick=openHandoff;
+      if($('busy-handoff'))$('busy-handoff').onclick=openHandoff;
+      if($('suggestion'))$('suggestion').onclick=()=>{s.input='这条证据支持什么结论？请同时说明适用条件与局限。';persist();render();$('message-input').focus();};
+    }
+    function renderHistory(){
+      document.querySelectorAll('[data-filter]').forEach(b=>{const on=b.dataset.filter===filter;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on);});
+      const sessions=state.sessions.filter(s=>(filter==='全部'||s.agent===filter)&&(`${s.title} ${s.agent} ${s.origin}`.toLowerCase().includes(query.toLowerCase())));
+      $('history-count').textContent=`当前研究 · ${historyFixture==='empty'?0:sessions.length} 个对话`;
+      if(listStatus==='loading'){$('history-list').innerHTML='<div class="empty-state"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span><div>读取示例记录…</div></div>';return;}
+      if(listStatus==='error'){$('history-list').innerHTML='<div class="empty-state"><strong>暂时无法读取对话记录</strong>当前输入已保留。请重试读取示例记录。<br><button id="retry-history">重新读取</button></div>';$('retry-history').onclick=()=>{historyFixture='normal';$('history-fixture').value='normal';loadHistory();};return;}
+      if(!sessions.length||historyFixture==='empty'){$('history-list').innerHTML=`<div class="empty-state"><strong>${query?'未找到匹配对话':'暂无对话记录'}</strong>${query?'试试其他关键词，或清除筛选。':'此研究的对话会集中显示在这里。'}<br><button id="empty-action">${query||filter!=='全部'?'清除搜索与筛选':'开始新对话'}</button></div>`;$('empty-action').onclick=()=>{if(query||filter!=='全部'){query='';filter='全部';$('history-search').value='';renderHistory();}else newChat();};return;}
+      $('history-list').innerHTML=sessions.map(s=>`<button class="history-row" data-session="${esc(s.id)}"><div class="history-title">${esc(s.title)}</div><div class="history-row-meta"><span class="origin-badge">${esc(s.agent)}</span><span>${s.native?(s.agent==='Claude Code'?'原生已交接示例':'来自原生应用'):'Read-paper'}</span>${s.busy?'<span class="busy-tag">● 运行中</span>':''}<span class="time">${esc(s.time)}</span></div></button>`).join('');
+      document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>{const s=state.sessions.find(item=>item.id===b.dataset.session);state.activeAgent=s.agent;state.active[s.agent]=s.id;persist();view='chat';render();$('message-input').disabled?$('history-toggle').focus():$('message-input').focus();});
+    }
+    function loadHistory(){clearTimeout(loadTimer);listStatus='loading';renderHistory();loadTimer=setTimeout(()=>{listStatus=historyFixture==='error'?'error':'ready';if(view==='history')renderHistory();},420);}
+    function newChat(){syncInput();const agent=state.activeAgent,id=`example-${Date.now()}`;state.sessions.unshift({id,agent,title:'新的研究对话',origin:'Read-paper',time:'刚刚',input:'',messages:[]});state.active[agent]=id;persist();view='chat';render();$('message-input').focus();}
+    function send(){syncInput();const s=current();if(!state.directory||s.busy||pending.has(s.id)||!s.input.trim())return;const message=s.input;s.input='';s.messages.push({role:'user',text:message});if(s.title==='新的研究对话')s.title=message.slice(0,20);s.time='刚刚';pending.add(s.id);persist();render();$('chat-scroll').scrollTop=$('chat-scroll').scrollHeight;setTimeout(()=>{s.messages.push({role:'assistant',text:'这是一条<strong>模拟回答</strong>：证据支持“在证据库相关时，检索可能提高事实准确性”。实际写作还需核对相关性的判断标准与适用范围。',citation:true});pending.delete(s.id);persist();if(current().id===s.id&&view==='chat'){render();$('chat-scroll').scrollTop=$('chat-scroll').scrollHeight;}},650);}
+    function locateCitation(){syncInput();$('page-number').textContent='3';$('paper-page').textContent='3';$('reader-location').textContent='PDF 第 3 页 · 引用 [1] 已定位';$('source-highlight').classList.add('focused');$('source-highlight').scrollIntoView({block:'center',behavior:'smooth'});notify('已在中央定位示例原文，当前对话与输入已保留。');}
+    function showDialog(id){dialogOpener=document.activeElement;$(id).showModal();$(id).querySelector('button').focus();}
+    function closeDialog(id){$(id).close();if(dialogOpener?.isConnected)dialogOpener.focus();}
+    function updateDirectoryDialog(){$('directory-value').textContent=temporaryDirectory||'尚未绑定研究目录';$('directory-description').textContent=temporaryDirectory?'此研究与原生助手都以该目录识别项目。聊天时无需重复选择。':'先绑定一个固定目录，再以该目录发现本研究的原生会话。此处仍可浏览示例对话。';$('save-directory').disabled=!temporaryDirectory;}
+    function openHandoff(){const s=current();$('handoff-subtitle').textContent=`${s.agent} · ${s.busy?'运行中，只读':'示例会话'}`;$('session-locator').value=`【交互原型 · 示例定位信息】\n助手：${s.agent}\n研究目录：${state.directory||'未绑定（示例）'}\n会话：${s.title}\n示例会话 ID：${s.id}`;$('copy-status').textContent='真实启动协议及定位方式待实机验证；Claude Code Desktop 独立列表需显式交接。';showDialog('handoff-dialog');}
+    $('message-input').addEventListener('input',()=>{syncInput();$('send-message').disabled=!state.directory||!!current().busy||!current().input.trim()||pending.has(current().id);});
+    $('message-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();send();}});
+    $('send-message').onclick=send;
+    $('new-chat').onclick=newChat;
+    $('agent-select').onchange=e=>{syncInput();state.activeAgent=e.target.value;persist();render();$('message-input').focus();};
+    $('history-toggle').onclick=()=>{syncInput();view=view==='chat'?'history':'chat';render();if(view==='history'){loadHistory();$('history-search').focus();}};
+    $('search-form').onsubmit=e=>{e.preventDefault();query=$('history-search').value.trim();renderHistory();};
+    $('history-search').oninput=()=>{query=$('history-search').value.trim();renderHistory();};
+    document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;renderHistory();});
+    $('refresh-history').onclick=loadHistory;
+    $('history-fixture').onchange=e=>{syncInput();historyFixture=e.target.value;view='history';render();loadHistory();};
+    $('directory-open').onclick=()=>{syncInput();temporaryDirectory=state.directory;updateDirectoryDialog();showDialog('directory-dialog');};
+    $('bind-from-chat').onclick=()=>$('directory-open').click();
+    $('directory-fixture').onchange=e=>{state.directory=e.target.value==='bound'?'/Users/research/Projects/retrieval-study':'';persist();temporaryDirectory=state.directory;updateDirectoryDialog();render();notify(state.directory?'已切换为已绑定目录示例。':'已切换为未绑定目录示例。');};
+    $('browse-directory').onclick=()=>{temporaryDirectory='/Users/research/Projects/retrieval-study';updateDirectoryDialog();$('directory-description').textContent='已选择内置示例目录。点击“保存示例”后生效。未访问用户文件。';};
+    $('save-directory').onclick=()=>{state.directory=temporaryDirectory;persist();$('directory-fixture').value='bound';closeDialog('directory-dialog');render();notify('示例目录已绑定。真实目录授权与文件读写尚未实现。');};
+    document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeDialog(b.dataset.close));
+    document.querySelectorAll('dialog').forEach(d=>d.addEventListener('cancel',e=>{e.preventDefault();closeDialog(d.id);}));
+    $('copy-locator').onclick=async()=>{try{await navigator.clipboard.writeText($('session-locator').value);$('copy-status').textContent='已复制示例定位信息。请在对应原生应用中自行查找。';}catch{$('session-locator').focus();$('session-locator').select();$('copy-status').textContent='浏览器不允许自动复制；已选中定位信息，可按 ⌘ / Ctrl + C。';}};
+    $('simulate-native').onclick=()=>{if(state.nativeAdded){notify('原生新增示例已存在，可在对话记录中搜索“新增”。');return;}state.nativeAdded=true;state.sessions.unshift({id:'native-added',agent:'Codex',title:'原生端新增：检查反例与边界',origin:'Codex 原生',native:true,time:'刚刚',input:'',messages:[{role:'user',text:'这条结论是否存在反例？'},{role:'assistant',text:'需要继续检查证据不相关时的表现，并区分检索质量与回答生成的影响。',citation:true}]});persist();notify('已模拟原生端新增。打开对话记录或刷新列表查看；未连接原生客户端。');};
+    $('reset-demo').onclick=()=>{state=initial();pending.clear();persist();view='chat';filter='全部';query='';historyFixture='normal';$('history-search').value='';$('history-fixture').value='normal';$('directory-fixture').value='bound';render();notify('示例已重置。');};
+    for(const [button,step] of [['page-prev',-1],['page-next',1]])$(button).onclick=()=>{const page=Math.max(1,Math.min(8,Number($('page-number').textContent)+step));$('page-number').textContent=page;$('paper-page').textContent=page;$('reader-location').textContent=`PDF 第 ${page} 页 · 示例翻页`;$('source-highlight').classList.remove('focused');notify('示例翻页：仅演示位置变化，论文内容为固定样例。');};
+    $('directory-fixture').value=state.directory?'bound':'unbound';
+    render();
+  </script>
+</body>
+</html>

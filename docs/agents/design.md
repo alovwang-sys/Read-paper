@@ -2,6 +2,8 @@
 
 2026-10-16，issue [#1](https://github.com/alovwang-sys/Read-paper/issues/1)。以 `origin/main` 的浏览器工作台为基线；桌面安装分支的功能不包含在本次开发中。
 
+2026-10-17 已接入[研究项目与原生会话第一版](project-sessions-plan.md)：聊天 cwd 使用研究目录，每轮显式材料保存在项目内不可变快照；同一右栏读取三类助手原生历史。Codex 的接续由实测原生 writer 锁保护；OpenCode／Claude Code 外部未知占用记录只读，本软件已管理会话保留续接。目录、显示缓存和来源保全已有回归，真实问答与桌面列表的未验收项见[验证记录](../verification/project-sessions/README.md)。完整产品目标和后续范围见[需求](project-sessions-requirements.md)与[UX 设计](project-sessions-ux.md)。
+
 ## 产品决策
 
 研究问题和证据是稳定的工作中心。AI 面板在输入区提供一个“切换 AI 助手”入口，列出 Codex、Claude Code、OpenCode，以及已有的模型直连和演示模式。列表显示安装/认证/就绪/错误、版本与实际能力。未连接也能选中查看原因，发送前必须就绪；连接失败不会自动换供应商。

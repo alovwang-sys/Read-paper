@@ -12,6 +12,8 @@
 
 ## 下一轮 AI 阅读开发入口
 
+项目会话第一版已接入目录绑定、原生目录归属、三类助手历史发现/读取、身份去重与可读归档，并通过确定性集成检查。PS0 实机探针按能力记录，PS1 与 PS5 已实现本轮切片；PS2/PS3 的真实双向模型回复和桌面列表仍待验收，PS4 的完整资产备份恢复未实现，均不能整体标完成。详见[实施计划](agents/project-sessions-plan.md)和[验证记录](verification/project-sessions/README.md)；产品要求见[需求](agents/project-sessions-requirements.md)，交互见[UX 设计](agents/project-sessions-ux.md)。
+
 R1 交付“文字选择 → 真实多轮对话 → 知识点整理 → 独立草稿编辑 → 确认卡片 → 原文与对话回查”；R2 增加图表、公式与扫描页的区域问答。R1 可以独立试用，完整框选需求在 R2 验收后交付。
 
 | 任务组 | 目标 | 当前状态 |

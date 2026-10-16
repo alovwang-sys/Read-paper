@@ -20,6 +20,25 @@ export type Research = {
   documentIds: string[];
   cardIds: string[];
   createdAt: string;
+  directory?: ResearchDirectory;
+};
+export type ResearchDirectory = { id: string; projectId: string; path: string };
+export type NativeAgentId = 'codex' | 'claude' | 'opencode';
+export type NativeSessionSummary = {
+  id: string;
+  agentId: NativeAgentId;
+  title: string;
+  updatedAt: string;
+  state: 'idle' | 'busy' | 'unknown';
+  canResume: boolean;
+  reason?: string;
+  nativeSessionId?: string;
+  origin?: 'native' | 'read-paper';
+};
+export type NativeSessionSnapshot = NativeSessionSummary & {
+  messages: { id: string; role: 'user' | 'assistant'; text: string; createdAt?: string; requestId?: string; events?: AgentEvent[] }[];
+  truncated?: boolean;
+  archiveError?: string;
 };
 export type PaperDocument = {
   id: string;
@@ -232,6 +251,8 @@ export type AIRequest = {
   draftId?: string;
   connectionId?: AIConnectionId;
   nativeSessionId?: string;
+  nativeImported?: boolean;
+  nativeMessageId?: string;
   events?: AgentEvent[];
   skills?: AgentSkill[];
   codex?: CodexSettings;
@@ -251,6 +272,11 @@ export type Conversation = {
   scrollTop?: number;
   connectionId?: AIConnectionId;
   nativeSessionId?: string;
+  nativeSessionRef?: string;
+  nativeState?: 'idle' | 'busy' | 'unknown';
+  nativeCanResume?: boolean;
+  nativeReason?: string;
+  nativeImported?: boolean;
   sentContext?: ContextSnapshot[];
   skills?: AgentSkill[];
   codex?: CodexSettings;

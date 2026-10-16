@@ -176,14 +176,21 @@ export const workspace = {
       });
     }
   },
-  updateData(change: (data: WorkspaceData) => void) {
+  updateData(change: (data: WorkspaceData) => void, options?: { nativeHistoryRef: string }) {
     if (!state.loaded || state.loadError)
       throw new Error('数据尚未成功加载，请重试加载后编辑');
     const data = structuredClone(state.data);
     change(data);
-    for (const request of Object.values(state.data.requests))
-      if (request.status !== 'generating' && data.requests[request.id] && data.requests[request.id].body !== request.body)
+    for (const request of Object.values(state.data.requests)) {
+      const next = data.requests[request.id];
+      // Native imports are a read-only display cache. Saved cards retain their own source snapshot.
+      const nativeRefresh = options?.nativeHistoryRef && request.nativeImported && next?.nativeImported
+        && request.nativeMessageId === next.nativeMessageId && request.nativeSessionId === next.nativeSessionId
+        && request.prompt === next.prompt && request.conversationId === next.conversationId
+        && data.conversations[request.conversationId]?.nativeSessionRef === options.nativeHistoryRef;
+      if (request.status !== 'generating' && next && next.body !== request.body && !nativeRefresh)
         throw new Error('原始问答不可改写，请编辑独立卡片草稿。');
+    }
     revision++;
     let journalError: string | undefined;
     try {

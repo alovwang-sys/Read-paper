@@ -1,7 +1,9 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { constants } from 'node:fs';
+import { lstat, open, readdir, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 
 export const runtimeError = (message, code = 'agent_failed') => Object.assign(new Error(message), { code });
 const stopped = () => runtimeError('生成已停止。', 'stopped');
@@ -9,7 +11,7 @@ const MAX_OUTPUT = 8_000_000;
 const SESSION = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const status = (value) => ({ ...value, capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } });
 
-// Both CLIs own their process group. No shell, shared daemon, or raw stderr reaches the browser.
+// Cancellation targets this CLI process group; never a user's shared daemon.
 export function runNativeProcess({ executable, args, cwd, env, input = '', signal, spawnImpl = spawn, timeoutMs = 180_000, killAfterMs = 750, onLine }) {
   if (signal?.aborted) return Promise.reject(stopped());
   return new Promise((resolve, reject) => {
@@ -74,10 +76,140 @@ function executablePath(env) {
   return env.CLAUDE_BIN || (existsSync(local) ? local : 'claude');
 }
 
+export async function projectDirectory(cwd) {
+  if (typeof cwd !== 'string' || !isAbsolute(cwd) || cwd.includes('\0')) throw runtimeError('研究目录无效。', 'invalid_project');
+  try {
+    const directory = await realpath(cwd);
+    if (!(await stat(directory)).isDirectory()) throw new Error();
+    return directory;
+  } catch { throw runtimeError('研究目录不可访问，请重新连接目录。', 'project_unavailable'); }
+}
+
+const CLAUDE_READ_ONLY = 'Claude Code 未提供可原子核验的跨客户端会话占用锁；此原生记录只读。请先在原生应用中继续。';
+
+async function claudeProjectPath(cwd, env) {
+  const directory = await projectDirectory(cwd);
+  const name = env.CLAUDE_CONFIG_DIR && /^[\w-]{1,64}$/.test(env.CLAUDE_CODE_PROJECT_DIR_NAME || '')
+    ? env.CLAUDE_CODE_PROJECT_DIR_NAME : directory.replace(/[^a-zA-Z0-9]/g, '-');
+  // shortcut: long native directory hashes are version-specific; add SDK discovery before supporting these paths.
+  if (name.length > 200) throw runtimeError('此目录对应的 Claude Code 历史使用版本相关的长路径索引，当前不能安全发现。', 'history_unsupported');
+  const path = join(env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'projects', name);
+  try { if (!(await lstat(path)).isDirectory()) throw new Error(); }
+  catch (error) { if (error.code !== 'ENOENT') throw runtimeError('Claude Code 项目历史目录不可读取。', 'history_unavailable'); }
+  return { directory, path };
+}
+
+async function claudeTranscript({ cwd, path, sessionId, signal }) {
+  if (!SESSION.test(sessionId || '')) throw runtimeError('Claude Code 会话标识无效。', 'invalid_session');
+  if (signal?.aborted) throw stopped();
+  let file;
+  try { file = await open(join(path, `${sessionId}.jsonl`), constants.O_RDONLY | constants.O_NOFOLLOW); }
+  catch { throw runtimeError('Claude Code 会话记录不可读取。', 'history_unavailable'); }
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.size > MAX_OUTPUT) throw runtimeError('Claude Code 会话记录过大或格式不支持。', 'history_unsupported');
+    const bytes = Buffer.alloc(MAX_OUTPUT + 1);
+    let size = 0;
+    while (size < bytes.length) {
+      const { bytesRead } = await file.read(bytes, size, bytes.length - size, size);
+      if (!bytesRead) break;
+      size += bytesRead;
+    }
+    if (size > MAX_OUTPUT) throw runtimeError('Claude Code 会话记录超过读取限制。', 'history_unsupported');
+    const contents = bytes.toString('utf8', 0, size);
+    if (signal?.aborted) throw stopped();
+    const rows = contents.split('\n');
+    const messages = new Map();
+    const directories = new Map();
+    let matched = false, title, truncated = false;
+    for (let i = 0; i < rows.length; i++) {
+      if (!rows[i].trim()) continue;
+      let entry;
+      try { entry = JSON.parse(rows[i]); }
+      catch {
+        if (i === rows.length - 1) { truncated = true; continue; }
+        throw runtimeError('Claude Code 会话记录损坏，原始文件已保留。', 'history_unavailable');
+      }
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+      if (entry.sessionId && entry.sessionId !== sessionId) throw runtimeError('Claude Code 会话记录身份不匹配。', 'invalid_session');
+      if (typeof entry.cwd === 'string') {
+        let nativeCwd;
+        try {
+          if (!directories.has(entry.cwd)) directories.set(entry.cwd, await realpath(entry.cwd));
+          nativeCwd = directories.get(entry.cwd);
+        } catch { throw runtimeError('Claude Code 会话的研究目录不可核验。', 'invalid_session'); }
+        if (nativeCwd !== cwd) throw runtimeError('此 Claude Code 会话不属于当前研究目录。', 'invalid_session');
+        matched = true;
+      }
+      if (typeof entry.customTitle === 'string') title = entry.customTitle;
+      if (entry.isSidechain || !['user', 'assistant'].includes(entry.type) || typeof entry.uuid !== 'string' || entry.uuid.length > 200) continue;
+      const content = entry.message?.content;
+      const text = typeof content === 'string' ? content : Array.isArray(content)
+        ? content.map(part => part?.type === 'text' && typeof part.text === 'string' ? part.text : part?.type === 'thinking' ? '' : '[附件或工具记录未展开]').filter(Boolean).join('\n') : '';
+      if (!text) continue;
+      messages.set(entry.uuid, { id: entry.uuid, role: entry.type, text: text.slice(0, 100_000),
+        ...(typeof entry.timestamp === 'string' && Number.isFinite(Date.parse(entry.timestamp)) ? { createdAt: new Date(entry.timestamp).toISOString() } : {}) });
+      if (text.length > 100_000) truncated = true;
+    }
+    if (!matched) throw runtimeError('无法确认此 Claude Code 会话所属目录。', 'invalid_session');
+    const all = [...messages.values()];
+    const prompt = all.find(message => message.role === 'user')?.text || '';
+    title ||= (prompt.startsWith('[Read-paper requestId=') ? prompt.split('用户本次问题：').slice(1).join('用户本次问题：').trim() : prompt).split('\n')[0] || 'Claude Code 对话';
+    let budget = 1_000_000;
+    const visible = [];
+    for (const message of all.slice(-500)) {
+      if (budget <= 0) { truncated = true; break; }
+      if (message.text.length > budget) truncated = true;
+      visible.push({ ...message, text: message.text.slice(0, budget) }); budget -= message.text.length;
+    }
+    return { id: sessionId, title: title.slice(0, 160), updatedAt: info.mtime.toISOString(), state: 'unknown', canResume: false, reason: CLAUDE_READ_ONLY,
+      messages: visible, ...(truncated || all.length > 500 ? { truncated: true } : {}) };
+  } finally { await file.close(); }
+}
+
 export function createClaudeRuntime({ executable, spawnImpl = spawn, env = process.env, timeoutMs = 180_000, killAfterMs = 750 } = {}) {
   executable ||= executablePath(env);
   const invoke = (args, options = {}) => runNativeProcess({ executable, spawnImpl, env, timeoutMs, killAfterMs, args, ...options });
+  async function applyActivity(sessions, cwd, signal) {
+    try {
+      const response = await invoke(['agents', '--json', '--cwd', cwd], { cwd, signal, timeoutMs: 10_000 });
+      const active = JSON.parse(response.output);
+      if (response.code !== 0 || !Array.isArray(active) || active.length > 1000) return;
+      const busy = new Set();
+      for (const item of active) {
+        if (!SESSION.test(item.sessionId || '') || typeof item.cwd !== 'string' || (!['busy', 'waiting'].includes(item.status) && !['working', 'blocked'].includes(item.state))) continue;
+        if (await realpath(item.cwd).catch(() => undefined) === cwd) busy.add(item.sessionId);
+      }
+      for (const session of sessions) if (busy.has(session.id)) { session.state = 'busy'; session.reason = '正在 Claude Code 原生应用中运行或等待输入，当前仅可查看记录。'; }
+    } catch (error) { if (signal?.aborted) throw stopped(); }
+  }
   return {
+    async listSessions({ cwd, signal } = {}) {
+      const project = await claudeProjectPath(cwd, env);
+      let files;
+      try { files = await readdir(project.path, { withFileTypes: true }); }
+      catch (error) { if (error.code === 'ENOENT') return { sessions: [], detail: CLAUDE_READ_ONLY }; throw runtimeError('Claude Code 项目历史不可读取。', 'history_unavailable'); }
+      const candidates = [];
+      for (const entry of files) {
+        if (!entry.isFile() || !entry.name.endsWith('.jsonl') || !SESSION.test(entry.name.slice(0, -6))) continue;
+        const info = await lstat(join(project.path, entry.name)).catch(() => undefined);
+        if (info?.isFile()) candidates.push({ id: entry.name.slice(0, -6), updated: info.mtimeMs });
+      }
+      const sessions = [];
+      let skipped = 0;
+      for (const entry of candidates.sort((a, b) => b.updated - a.updated).slice(0, 100)) {
+        try { const { messages, truncated, ...session } = await claudeTranscript({ cwd: project.directory, path: project.path, sessionId: entry.id, signal }); sessions.push(session); }
+        catch (error) { if (error.code === 'stopped') throw error; skipped++; }
+      }
+      if (sessions.length) await applyActivity(sessions, project.directory, signal);
+      return { sessions, detail: `${CLAUDE_READ_ONLY}${skipped ? ` ${skipped} 条记录无法安全核验，未显示。` : ''}${candidates.length > 100 ? ' 当前显示最近 100 条记录。' : ''}` };
+    },
+    async readSession({ cwd, sessionId, signal } = {}) {
+      const project = await claudeProjectPath(cwd, env);
+      const session = await claudeTranscript({ cwd: project.directory, path: project.path, sessionId, signal });
+      await applyActivity([session], project.directory, signal);
+      return session;
+    },
     async probe() {
       let version;
       try {
