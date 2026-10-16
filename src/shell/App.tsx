@@ -38,6 +38,7 @@ import { BoardView } from '../features/board/BoardView';
 import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
 import { getAIConfig } from '../services/ai';
+import { ResourceTabs } from './ResourceTabs';
 
 const collections: { id: CollectionId; name: string; icon: typeof Inbox }[] = [
   { id: 'inbox', name: '收件箱', icon: Inbox },
@@ -380,13 +381,13 @@ export function App() {
                 >
                   <Pin size={12} />
                 </button>
-                <button
+                {ref.kind !== 'research' && <button
                   className="icon-button close"
                   aria-label={`关闭 ${resourceTitle(data, ref)}`}
                   onClick={() => actions.closeResource(ref)}
                 >
                   <X size={12} />
-                </button>
+                </button>}
               </div>
             ))}
         </div>
@@ -485,6 +486,14 @@ export function App() {
             </button>
           </div>
         )}
+        <ResourceTabs items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
+          title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)}
+          onClose={ref => actions.closeResource(ref)} onPin={ref => actions.pinResource(ref)}
+          onMove={(from, to) => actions.updateData(next => {
+            const items = next.sessions[scopeKey(next.scope)].openItems;
+            if (from < 0 || to < 0 || from >= items.length || to >= items.length) return;
+            items.splice(to, 0, items.splice(from, 1)[0]);
+          })} />
         <main aria-label="主工作区" className="main-workspace">
           <ErrorBoundary key={`${active.kind}:${active.id}`}>
             {active.kind === 'collection' ? (

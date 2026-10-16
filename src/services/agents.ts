@@ -1,4 +1,4 @@
-import type { AgentConnection, AIConnectionId, Conversation } from '../domain/types';
+import type { AgentConnection, AIConnectionId, CodexCapabilities, Conversation } from '../domain/types';
 import { getActiveConversation, workspace } from './workspace';
 
 export function connectionLabel(id?: AIConnectionId) {
@@ -26,6 +26,14 @@ export async function getAgents(): Promise<AgentConnection[]> {
     const { installation: _untrusted, ...connection } = agent;
     return connection;
   });
+}
+
+export async function getCodexCapabilities(): Promise<CodexCapabilities> {
+  const response = await fetch('/api/ai/agents/codex/capabilities');
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || '无法读取 Codex 的模型与 Skills，请重新检测。');
+  if (!Array.isArray(result.skills) || !Array.isArray(result.models) || typeof result.plan !== 'boolean') throw new Error('Codex 能力信息格式无效，请升级本机 Codex。');
+  return result;
 }
 
 export function selectAgent(researchId: string, connectionId: AIConnectionId) {

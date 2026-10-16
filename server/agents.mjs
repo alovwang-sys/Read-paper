@@ -30,12 +30,15 @@ function validateIdentity(body) {
 
 function validateRun(body) {
   const agentId = validateIdentity(body);
-  if (!only(body, [...identityKeys, 'purpose', 'prompt', 'context', 'history', 'reset'])
+  if (!only(body, [...identityKeys, 'purpose', 'prompt', 'context', 'history', 'reset', 'skillIds', 'codex'])
     || !['chat', 'card', 'revision'].includes(body.purpose)
     || typeof body.prompt !== 'string' || !body.prompt.trim()
     || !Array.isArray(body.context) || body.context.length > 128
     || !Array.isArray(body.history) || body.history.length > 128
     || (body.reset !== undefined && typeof body.reset !== 'boolean')) throw invalid();
+  if (body.skillIds !== undefined && (!Array.isArray(body.skillIds) || body.skillIds.length > 4 || !body.skillIds.every(id => typeof id === 'string' && IDS.test(id)) || new Set(body.skillIds).size !== body.skillIds.length)) throw invalid('请选择最多四个有效的 Skill。');
+  if (body.codex !== undefined && (!record(body.codex) || !only(body.codex, ['model', 'mode']) || (body.codex.model !== undefined && (typeof body.codex.model !== 'string' || !body.codex.model.trim() || body.codex.model.length > 200)) || ![undefined, 'chat', 'plan'].includes(body.codex.mode))) throw invalid('Codex 设置格式不正确。');
+  if ((body.skillIds !== undefined || body.codex !== undefined) && (agentId !== 'codex' || body.purpose !== 'chat')) throw invalid('此设置仅适用于 Codex 聊天。');
   let chars = body.prompt.length;
   const text = (value, empty = false) => { if (typeof value !== 'string' || (!empty && !value.trim())) throw invalid(); chars += value.length; return value; };
   const context = (items) => {
@@ -91,10 +94,21 @@ export function compileAgentPrompt(request) {
 
 function scopeOf(request) {
   const evidence = [...request.context, ...request.history.flatMap((turn) => turn.context)];
-  return { evidence: [...new Set(evidence.map((item) => hash(JSON.stringify(item))))].sort(), history: request.history.map((turn) => turn.requestId) };
+  return { evidence: [...new Set(evidence.map((item) => hash(JSON.stringify(item))))].sort(), history: request.history.map((turn) => turn.requestId), skills: [...(request.skillIds || [])].sort() };
 }
 function containsScope(previous, current) {
-  return previous.evidence.every((id) => current.evidence.includes(id)) && previous.history.every((id) => current.history.includes(id));
+  return previous.evidence.every((id) => current.evidence.includes(id)) && previous.history.every((id) => current.history.includes(id)) && (previous.skills || []).every(id => current.skills.includes(id));
+}
+
+function validateReply(interaction, reply) {
+  if (!record(reply)) throw invalid('交互回答格式不正确。');
+  if (interaction.kind === 'approval') {
+    if (!only(reply, ['decision']) || !['allowOnce', 'deny'].includes(reply.decision)) throw invalid('请选择单次允许或拒绝。');
+  } else {
+    const questions = interaction.questions || [];
+    if (!only(reply, ['answers']) || !record(reply.answers) || Object.keys(reply.answers).length !== questions.length || questions.some(q => !Array.isArray(reply.answers[q.id]) || reply.answers[q.id].length < 1 || reply.answers[q.id].length > 20 || reply.answers[q.id].some(answer => typeof answer !== 'string' || !answer.trim() || answer.length > 8000 || (q.allowOther === false && !q.options.some(option => option.label === answer))))) throw invalid('请回答本次提出的每一个问题。');
+  }
+  return reply;
 }
 const sessionKey = (body) => hash(JSON.stringify([body.workspaceId, body.researchId, body.conversationId, body.connectionId, ...(body.purpose && body.purpose !== 'chat' ? [body.purpose, body.requestId] : [])]));
 const runtimeMessages = {
@@ -107,6 +121,9 @@ const runtimeMessages = {
   'protocol_error': 'Agent 协议不兼容，请检查 CLI 版本与本机配置后重试。',
   'input_required': 'Agent 需要结构化输入；当前连接不支持交互，请在问题中补全信息后重试。',
   'interaction_unsupported': 'Agent 请求了当前连接不支持的交互，已拒绝。',
+  'invalid_skill': '所选 Codex Skill 已停用、不可用或不存在，请在技能菜单中重新选择。',
+  'invalid_model': '所选 Codex 模型不可用，请在模型菜单中重新选择。',
+  'capability_unavailable': '当前 Codex 版本或配置不提供所选能力，请重新读取能力或升级后重试。',
   'stopped': '生成已停止。',
 };
 const requestKey = (body) => hash(JSON.stringify(identityKeys.map((key) => body[key])));
@@ -115,6 +132,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
   const adapters = runtimes || { codex: createCodexRuntime({ env }), claude: createClaudeRuntime({ env }), opencode: createOpenCodeRuntime({ env }) };
   const ports = new Set(allowedPorts || [Number(env.AI_PORT || 8787), Number(env.AI_APP_PORT || 5173), 5173, 5174, 4173]);
   const active = new Map();
+  const pending = new Map();
   const busy = new Set();
   const recent = new Set();
   const directory = resolve(stateDir);
@@ -146,7 +164,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
     const work = join(directory, 'materials', key);
     await mkdir(work, { recursive: true, mode: 0o700 });
     await chmod(work, 0o700);
-    const manifest = JSON.stringify({ version: 1, workspaceId: request.workspaceId, requestId: request.requestId, researchId: request.researchId, conversationId: request.conversationId, connectionId: request.connectionId, purpose: request.purpose, prompt: request.prompt, context: request.context, history: request.history }, null, 2);
+    const manifest = JSON.stringify({ version: 1, workspaceId: request.workspaceId, requestId: request.requestId, researchId: request.researchId, conversationId: request.conversationId, connectionId: request.connectionId, purpose: request.purpose, prompt: request.prompt, context: request.context, history: request.history, skillIds: request.skillIds, codex: request.codex }, null, 2);
     const materials = request.context.map((item, index) => `## [${index + 1}] ${item.title}\nevidenceId: ${item.evidenceId}\ndocumentId: ${item.documentId}\ndocumentHash: ${item.documentHash}\nPDF 第 ${item.pageIndex + 1} 页\n\n${item.quote}`).join('\n\n');
     for (const [name, value] of [['manifest.json', manifest], ['materials.md', materials || '本次未发送论文材料。']]) {
       const file = join(work, name);
@@ -192,16 +210,34 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       return eventQueue;
     };
     const disconnect = () => { if (!res.writableEnded) controller?.abort(); };
+    const armTimer = () => { clearTimeout(timer); timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs); };
     try {
       checkCaller(req, ports);
       if (req.url === '/api/ai/agents' && req.method === 'GET') {
         res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify({ agents: await probeAll() })); return true;
       }
-      if (!['/api/ai/agents/run', '/api/ai/agents/stop'].includes(req.url)) throw failure(404, 'not_found', 'Agent 接口不存在。');
+      if (req.url === '/api/ai/agents/codex/capabilities' && req.method === 'GET') {
+        if (!adapters.codex?.capabilities) throw failure(503, 'capabilities_unavailable', '当前 Codex 版本不能读取 Skills 与模型，请升级后重试。');
+        let capabilityTimer;
+        try {
+          const capabilities = await Promise.race([adapters.codex.capabilities(), new Promise((_, reject) => { capabilityTimer = setTimeout(() => reject(failure(504, 'timeout', '读取 Codex 能力超时，请重试。')), probeTimeoutMs); })]);
+          res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify(capabilities)); return true;
+        } finally { clearTimeout(capabilityTimer); }
+      }
+      if (!['/api/ai/agents/run', '/api/ai/agents/stop', '/api/ai/agents/respond'].includes(req.url)) throw failure(404, 'not_found', 'Agent 接口不存在。');
       if (req.method !== 'POST') throw failure(405, 'method_not_allowed', '此接口仅支持 POST。');
       body = await readBody(req);
       validateIdentity(body);
       request = requestKey(body);
+      if (req.url.endsWith('/respond')) {
+        if (!only(body, [...identityKeys, 'interactionId', 'reply']) || typeof body.interactionId !== 'string' || !IDS.test(body.interactionId)) throw invalid();
+        const item = pending.get(body.interactionId);
+        if (!item || item.request !== request || !active.has(request)) throw failure(409, 'interaction_expired', '此交互已经结束或不属于该会话。');
+        const reply = validateReply(item.interaction, body.reply);
+        pending.delete(body.interactionId);
+        await item.answer(reply);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify({ accepted: true })); return true;
+      }
       if (req.url.endsWith('/stop')) {
         if (!only(body, identityKeys)) throw invalid();
         const running = active.get(request);
@@ -219,7 +255,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       active.set(request, { stop }); busy.add(key); recent.add(request); registered = true;
       if (recent.size > 2048) recent.delete(recent.values().next().value);
       req.on('aborted', disconnect); res.on('close', disconnect); res.on('error', disconnect);
-      timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+      armTimer();
       await ready;
       const previous = body.purpose === 'chat' && !body.reset ? await loadMapping(key) : undefined;
       const scope = scopeOf(body);
@@ -232,10 +268,28 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
         nativeSessionId = value;
         if (typeof selectedModel === 'string' && selectedModel.length <= 200) nativeModel = selectedModel;
         if (body.purpose !== 'chat') return Promise.resolve();
-        mappingWrites = mappingWrites.then(() => saveMapping(key, { version: 1, nativeSessionId, ...(nativeModel ? { model: nativeModel } : {}), scope: { evidence: scope.evidence, history: [...scope.history, body.requestId] }, updatedAt: new Date().toISOString() }));
+        mappingWrites = mappingWrites.then(() => saveMapping(key, { version: 1, nativeSessionId, ...(nativeModel ? { model: nativeModel } : {}), scope: { ...scope, history: [...scope.history, body.requestId] }, updatedAt: new Date().toISOString() }));
         return mappingWrites;
       };
       const run = adapters[body.agentId].run({ prompt: compileAgentPrompt(body), cwd, nativeSessionId, nativeModel, signal: controller.signal,
+        skillIds: body.skillIds, codex: body.codex,
+        ...(body.agentId === 'codex' && body.purpose === 'chat' && body.codex !== undefined ? { onInteraction: input => {
+          if (controller.signal.aborted) return Promise.reject(failure(499, 'stopped', '生成已停止。'));
+          if (!record(input) || !['approval', 'question'].includes(input.kind)) return Promise.reject(failure(502, 'invalid_interaction', 'Codex 交互格式无效。'));
+          const interaction = { ...input, id: randomUUID(), status: 'pending' };
+          clearTimeout(timer);
+          return new Promise((resolveAnswer, reject) => {
+            const cancel = () => { pending.delete(interaction.id); reject(failure(499, 'stopped', '生成已停止。')); };
+            controller.signal.addEventListener('abort', cancel, { once: true });
+            pending.set(interaction.id, { request, interaction, answer: async reply => {
+              controller.signal.removeEventListener('abort', cancel);
+              if (![...pending.values()].some(item => item.request === request)) armTimer();
+              try { await send({ type: 'interaction-resolved', id: interaction.id, status: reply.decision === 'deny' ? 'denied' : 'answered' }); resolveAnswer(reply); }
+              catch (error) { reject(error); controller.abort(); }
+            } });
+            send({ type: 'interaction', interaction }).catch(error => { reject(error); controller.abort(); });
+          });
+        } } : {}),
         onEvent(event) {
           if (controller.signal.aborted) return;
           if (event.type === 'session' && typeof event.nativeSessionId === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(event.nativeSessionId)) persist(event.nativeSessionId, event.model).then(() => send(event)).catch(() => controller.abort());
@@ -255,6 +309,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       res.end();
     } catch (error) {
       if (res.destroyed) return true;
+      await mappingWrites.catch(() => {});
       const message = timedOut ? 'Agent 响应超时，已停止并保留收到的内容，请重试。' : stopped ? '生成已停止。' : error.status ? error.message : runtimeMessages[error.code] || '本机 Agent 连接失败，请检查 CLI 配置后重试。';
       if (!res.headersSent) res.statusCode = timedOut ? 504 : stopped ? 200 : error.status || 502;
       if (body && record(body)) {

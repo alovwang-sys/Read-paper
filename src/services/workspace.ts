@@ -296,7 +296,10 @@ export const workspace = {
       const session = data.sessions[scopeKey(data.scope)];
       if (target === 'main') {
         const previous = session.history.pop();
-        if (previous) session.active = previous;
+        if (previous && (previous.kind === 'collection' || resourceExists(data, previous))) {
+          session.active = previous;
+          if (previous.kind !== 'collection' && !session.openItems.some(ref => sameRef(ref, previous))) session.openItems.push(previous);
+        }
         session.anchor = undefined;
       } else {
         session.panel.ref = session.panel.history.pop();

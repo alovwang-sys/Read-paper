@@ -1,4 +1,4 @@
-import type { AIHistoryTurn, AIRequest, CardDraft, CardProvenance, ContextSnapshot, WorkspaceData } from '../domain/types';
+import type { AgentInteraction, AgentReply, AIHistoryTurn, AIRequest, CardDraft, CardProvenance, ContextSnapshot, WorkspaceData } from '../domain/types';
 import { contentHash, getAsset } from '../data/storage';
 import { mapCitationNumbers, remapCitationNumbers } from '../domain/citations';
 import { linkCard, uid, validateEvidence, workspace } from './workspace';
@@ -157,6 +157,7 @@ const agentResponder: AIResponder = async (request, options) => {
     body: JSON.stringify({ workspaceId, requestId: request.id, researchId: request.researchId, conversationId: request.conversationId,
       connectionId: request.connectionId, purpose: request.purpose ?? 'chat', prompt: request.prompt,
       context: request.context, history: request.history ?? [],
+      ...(request.connectionId === 'codex' && request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : {}),
       reset: !!request.retryOf || !!request.regeneratedFrom || (!!conversation && conversation.historyRange !== 'all') }),
   });
   if (!response.body) throw new Error('本机助手连接没有返回内容。');
@@ -168,6 +169,19 @@ const agentResponder: AIResponder = async (request, options) => {
     if (options?.signal.aborted) return;
     if (event.type === 'error') throw new Error(event.error || '本机助手运行失败，已有内容已保留。');
     if (event.type === 'delta' && typeof event.text === 'string') { body += event.text; options?.onDelta(event.text); }
+    if (event.type === 'interaction' && event.interaction?.id && ['approval', 'question'].includes(event.interaction.kind)) {
+      workspace.updateData(data => {
+        const current = data.requests[request.id];
+        if (current?.status !== 'generating') return;
+        if (!current.interactions?.some(item => item.id === event.interaction.id)) current.interactions = [...(current.interactions ?? []), { ...event.interaction, status: 'pending' } as AgentInteraction];
+      });
+    }
+    if (event.type === 'interaction-resolved' && ['answered', 'denied'].includes(event.status)) {
+      workspace.updateData(data => {
+        const interaction = data.requests[request.id]?.interactions?.find(item => item.id === event.id);
+        if (interaction) interaction.status = event.status;
+      });
+    }
     if ((event.type === 'session' || event.type === 'done') && typeof event.nativeSessionId === 'string') {
       workspace.updateData(data => {
         const current = data.requests[request.id];
@@ -280,7 +294,9 @@ async function runRequest(request: AIRequest, responder: AIResponder) {
       });
     }
   } finally {
-    clearInterval(timer); clearInterval(checkpoint); running.delete(request.id); workspace.retrySave();
+    clearInterval(timer); clearInterval(checkpoint); running.delete(request.id);
+    workspace.updateData(data => { for (const item of data.requests[request.id]?.interactions ?? []) if (item.status === 'pending') item.status = 'expired'; });
+    workspace.retrySave();
   }
   return request.id;
 }
@@ -288,12 +304,19 @@ export function stopAI(requestId: string) {
   const active = running.get(requestId);
   if (!active) return;
   active.flush();
-  workspace.updateData(data => { if (data.requests[requestId].status === 'generating') { data.requests[requestId].status = 'stopped'; data.requests[requestId].error = '已停止，已保留部分内容。'; } });
+  workspace.updateData(data => { if (data.requests[requestId].status === 'generating') { data.requests[requestId].status = 'stopped'; data.requests[requestId].error = '已停止，已保留部分内容。'; for (const item of data.requests[requestId].interactions ?? []) if (item.status === 'pending') item.status = 'expired'; } });
   active.controller.abort();
   const request = workspace.getState().data.requests[requestId];
   if (request.connectionId && !['model', 'demo'].includes(request.connectionId)) {
     void fetch('/api/ai/agents/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId: workspace.getState().data.agentWorkspaceId, requestId, researchId: request.researchId, conversationId: request.conversationId, connectionId: request.connectionId }) }).catch(() => {});
   }
+}
+export async function respondToAgent(requestId: string, interactionId: string, reply: AgentReply) {
+  const data = workspace.getState().data, request = data.requests[requestId];
+  if (!request || request.status !== 'generating' || !request.interactions?.some(item => item.id === interactionId && item.status === 'pending')) throw new Error('此交互已结束，请继续当前对话。');
+  const response = await fetch('/api/ai/agents/respond', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId: data.agentWorkspaceId, requestId, researchId: request.researchId, conversationId: request.conversationId, connectionId: request.connectionId, interactionId, reply }) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || '回答未送达，请重试。');
 }
 export async function submitAI(researchId: string, conversationId: string, prompt: string, responder?: AIResponder) {
   if (!prompt.trim()) throw new Error('请输入问题');
@@ -305,6 +328,7 @@ export async function submitAI(researchId: string, conversationId: string, promp
   if (pendingConversations.has(conversationId) || conversation.requestIds.some(id => data.requests[id]?.status === 'generating' && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) throw new Error('当前会话正在回答，请停止或等待完成。');
   const history = historyForConversation(data, conversationId), context = snapshotContext(data, researchId, conversationId, history);
   const request: AIRequest = { id: uid('request'), researchId, conversationId, connectionId, prompt: prompt.trim(), context, history, purpose: 'chat', mode: responder === demoResponder ? 'demo' : 'live', createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [] };
+  if (connectionId === 'codex') { request.skills = structuredClone(conversation.skills ?? []); request.codex = structuredClone(conversation.codex ?? {}); }
   const result = await runChatRequest(request, responder);
   workspace.updateData(next => { if (next.conversations[conversationId].input === prompt) next.conversations[conversationId].input = ''; });
   return result;
@@ -312,7 +336,7 @@ export async function submitAI(researchId: string, conversationId: string, promp
 export async function retryAI(requestId: string, mode?: 'live' | 'demo') {
   const old = workspace.getState().data.requests[requestId];
   if (!old || !['error', 'stopped', 'interrupted'].includes(old.status) || (old.purpose && old.purpose !== 'chat')) throw new Error('此请求暂时无法重试。');
-  const request: AIRequest = { ...structuredClone(old), id: uid('request'), status: 'generating', events: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, validationError: undefined, superseded: false, retryOf: old.id, createdAt: new Date().toISOString() };
+  const request: AIRequest = { ...structuredClone(old), id: uid('request'), status: 'generating', events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, validationError: undefined, superseded: false, retryOf: old.id, createdAt: new Date().toISOString() };
   for (const snapshot of request.context) validateSnapshot(workspace.getState().data, snapshot);
   return runChatRequest(request, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }
@@ -320,7 +344,7 @@ export async function regenerateAI(requestId: string, mode?: 'live' | 'demo') {
   const data = workspace.getState().data, old = data.requests[requestId];
   if (!old || old.status !== 'done' || data.conversations[old.conversationId].requestIds.map(id => data.requests[id]).filter(r => !r.purpose || r.purpose === 'chat').at(-1)?.id !== old.id) throw new Error('仅最新一轮完成回答可重新生成。');
   const history = historyForConversation(data, old.conversationId, old.id);
-  return runChatRequest({ ...structuredClone(old), id: uid('request'), context: snapshotContext(data, old.researchId, old.conversationId, history), history, events: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, superseded: false, status: 'generating', regeneratedFrom: old.id, createdAt: new Date().toISOString() }, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
+  return runChatRequest({ ...structuredClone(old), id: uid('request'), context: snapshotContext(data, old.researchId, old.conversationId, history), history, events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, superseded: false, status: 'generating', regeneratedFrom: old.id, createdAt: new Date().toISOString() }, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }
 function provenance(request: AIRequest, selection: string): CardProvenance {
   return { researchId: request.researchId, conversationId: request.conversationId, conversationTitle: workspace.getState().data.conversations[request.conversationId]?.title || '阅读对话', requestId: request.id, prompt: request.prompt, answer: request.body, answerEvidenceIds: [...request.evidenceIds], selection, context: structuredClone(request.context), createdAt: new Date().toISOString(), model: request.model, connectionId: request.connectionId, generationRequestIds: [], incomplete: request.status !== 'done' || !!request.legacy };

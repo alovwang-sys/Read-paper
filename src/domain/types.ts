@@ -174,6 +174,20 @@ export type AIHistoryTurn = {
   context: ContextSnapshot[];
 };
 export type AIConnectionId = 'model' | 'demo' | 'codex' | 'claude' | 'opencode';
+export type AgentSkill = { id: string; name: string; description: string; enabled: boolean; disabledReason?: string };
+export type CodexSettings = { model?: string; mode?: 'chat' | 'plan' };
+export type CodexCapabilities = { skills: AgentSkill[]; models: { id: string; name: string; isDefault?: boolean }[]; plan: boolean };
+export type AgentInteraction = {
+  id: string;
+  kind: 'approval' | 'question';
+  title: string;
+  detail?: string;
+  command?: string;
+  questions?: { id: string; header?: string; question: string; options: { label: string; description?: string }[]; allowOther?: boolean }[];
+  status: 'pending' | 'answered' | 'denied' | 'expired';
+  answerDrafts?: Record<string, string[]>;
+};
+export type AgentReply = { decision: 'allowOnce' | 'deny' } | { answers: Record<string, string[]> };
 export type AgentEvent = {
   kind: 'tool' | 'status' | 'permission';
   text: string;
@@ -219,6 +233,9 @@ export type AIRequest = {
   connectionId?: AIConnectionId;
   nativeSessionId?: string;
   events?: AgentEvent[];
+  skills?: AgentSkill[];
+  codex?: CodexSettings;
+  interactions?: AgentInteraction[];
 };
 export type Conversation = {
   id: string;
@@ -235,6 +252,8 @@ export type Conversation = {
   connectionId?: AIConnectionId;
   nativeSessionId?: string;
   sentContext?: ContextSnapshot[];
+  skills?: AgentSkill[];
+  codex?: CodexSettings;
 };
 export type WorkspaceData = {
   schemaVersion: 2;

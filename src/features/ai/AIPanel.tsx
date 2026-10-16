@@ -41,6 +41,8 @@ import { ConversationHistory } from './ConversationHistory';
 import { ConversationSource } from './ConversationSource';
 import { AgentPicker, agentStateLabel } from './AgentPicker';
 import { AgentActivity } from './AgentActivity';
+import { CodexComposerTools, type CodexComposerToolsHandle } from './CodexComposerTools';
+import { AgentInteractionCard } from './AgentInteractionCard';
 import {
   ContextDetails,
   RegionPreview,
@@ -96,6 +98,7 @@ export function AIPanel() {
   const [scopeNotice, setScopeNotice] = useState('');
   const scroll = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  const codexTools = useRef<CodexComposerToolsHandle>(null);
   const closeIntent = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const atBottom = useRef(true);
@@ -218,7 +221,7 @@ export function AIPanel() {
     if (atBottom.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
     else if (latest?.body) setHasNewContent(true);
-  }, [latest?.body, latest?.id, latest?.status, view]);
+  }, [latest?.body, latest?.id, latest?.status, latest?.interactions?.length, view]);
   useLayoutEffect(() => {
     const element = input.current;
     if (view !== 'chat' || !element) return;
@@ -248,6 +251,7 @@ export function AIPanel() {
     }
   }
   async function send() {
+    if (connectionId === 'codex' && codexTools.current?.handleSubmit()) return;
     if (!research || !conversation || !canSend) return;
     atBottom.current = true;
     await execute(() =>
@@ -432,7 +436,7 @@ export function AIPanel() {
                 ? `${config.model} · 真实模型`
                 : '真实模型尚未连接'}
         </span>
-        {native && agent?.state === 'ready' && <span className="ai-badge">{agent.capabilities.tools ? '只读工具' : '仅对话'}</span>}
+        {native && agent?.state === 'ready' && <span className="ai-badge">{connectionId === 'codex' ? '默认只读 · 逐次审批' : agent.capabilities.tools ? '只读工具' : '仅对话'}</span>}
       </div>
       {!!backgroundTasks.length && <button className="ai-background-tasks" onClick={() => { rememberScroll(); updatePanel('history'); }}><span />{backgroundTasks.length} 个任务在其他对话运行 · 查看</button>}
       {native && !loadingAgents && (agentError || agent?.state !== 'ready') && <div className="ai-connection" role="status">
@@ -546,6 +550,7 @@ export function AIPanel() {
                   {request.connectionId && request.connectionId !== 'model' && request.connectionId !== 'demo' ? `${connectionLabel(request.connectionId)} · ` : ''}发送时：{request.context.length} 条材料 ·{' '}
                   {request.history?.length ?? 0} 轮前序对话
                 </summary>
+                {request.connectionId === 'codex' && <div className="codex-request-settings"><span>{request.codex?.mode === 'plan' ? 'Plan' : 'Chat'} · {request.codex?.model || request.model || '连接默认模型'}</span>{!!request.skills?.length && <span>技能：{request.skills.map(skill => skill.name).join('、')}</span>}</div>}
                 <ContextDetails items={request.context} />
                 {request.history?.map((turn, index) => (
                   <details className="ai-details" key={turn.requestId}>
@@ -577,6 +582,7 @@ export function AIPanel() {
                 )}
               </div>
               {!!request.events?.length && <AgentActivity events={request.events} generating={request.status === 'generating'} />}
+              {request.interactions?.map(interaction => <AgentInteractionCard key={interaction.id} request={request} interaction={interaction} />)}
               <div
                 className="ai-answer"
                 tabIndex={0}
@@ -592,7 +598,7 @@ export function AIPanel() {
               {request.status === 'generating' && (
                 <div className="ai-generating">
                   <span />
-                  {request.events?.at(-1)?.status === 'running' ? request.events.at(-1)?.text : '正在生成回答…'}
+                  {request.interactions?.some(interaction => interaction.status === 'pending') ? '等待你的答复…' : request.events?.at(-1)?.status === 'running' ? request.events.at(-1)?.text : '正在生成回答…'}
                 </div>
               )}
 
@@ -919,6 +925,7 @@ export function AIPanel() {
           </p>
         )}
         <div className="ai-input-shell">
+        {connectionId === 'codex' && <CodexComposerTools key={conversation.id} ref={codexTools} inputRef={input} value={prompt} skills={conversation.skills ?? []} settings={conversation.codex ?? {}} status={agent ? agentStateLabel[agent.state] : '未连接'} onInput={value => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].input = value; })} onSkills={skills => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].skills = skills; })} onSettings={codex => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].codex = codex; })} onNew={() => { rememberScroll(); actions.createConversation(research.id); input.current?.focus(); }} />}
         <textarea
           ref={input}
           aria-label="向 AI 提问"

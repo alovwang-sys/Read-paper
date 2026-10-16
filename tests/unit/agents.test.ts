@@ -3,7 +3,7 @@ import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { getAgents, selectAgent } from '../../src/services/agents';
-import { commitCardDraft, generateCardDraft, retryAI, stopAI, submitAI } from '../../src/services/ai';
+import { commitCardDraft, generateCardDraft, respondToAgent, retryAI, stopAI, submitAI } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), contentHash: vi.fn() }));
@@ -105,6 +105,91 @@ describe('研究与助手会话', () => {
     const next = await retryAI(id, 'demo');
     expect(data().requests[next]).toMatchObject({ retryOf: id, connectionId: 'codex', status: 'done' });
     expect(JSON.parse((mock.mock.calls as unknown as [string, RequestInit][])[1][1].body as string).reset).toBe(true);
+  });
+
+  it('Codex 提交冻结技能和模型模式，重试沿用原快照，整理卡片不继承技能', async () => {
+    const conversation = selectAgent('research-a', 'codex');
+    const skill = { id: '/skills/research/SKILL.md', name: '研究核查', description: '核对研究依据', enabled: true };
+    const settings = { model: 'submitted-model', mode: 'plan' as const };
+    workspace.updateData(next => { next.conversations[conversation].skills = [skill]; next.conversations[conversation].codex = settings; });
+    let release!: (response: Response) => void;
+    let runs = 0;
+    const mock = vi.fn((_url: string, init?: RequestInit): Promise<Response> => {
+      const payload = JSON.parse(init?.body as string);
+      if (payload.purpose === 'card') return Promise.resolve(done(JSON.stringify({ title: '独立研究卡片', body: '需要继续核查的观点。', evidenceIds: [] })));
+      return ++runs === 1 ? new Promise(resolve => { release = resolve; }) : Promise.resolve(done('有效答复。'));
+    });
+    vi.stubGlobal('fetch', mock);
+    const pending = submitAI('research-a', conversation, '调用所选技能核查');
+    await vi.waitFor(() => expect(release).toBeDefined());
+    workspace.updateData(next => {
+      next.conversations[conversation].skills![0].name = '后续修改的技能';
+      next.conversations[conversation].skills = [];
+      next.conversations[conversation].codex = { model: 'later-model', mode: 'chat' };
+    });
+    release(done('越界的来源编号 [99]'));
+    const original = await pending;
+    expect(data().requests[original]).toMatchObject({ status: 'error', skills: [skill], codex: settings });
+    expect(JSON.parse(mock.mock.calls[0][1]!.body as string)).toMatchObject({ skillIds: [skill.id], codex: settings });
+    const retry = await retryAI(original);
+    expect(data().requests[retry]).toMatchObject({ status: 'done', retryOf: original, skills: [skill], codex: settings });
+    expect(JSON.parse(mock.mock.calls[1][1]!.body as string)).toMatchObject({ skillIds: [skill.id], codex: settings, reset: true });
+    await generateCardDraft(retry);
+    const cardPayload = JSON.parse(mock.mock.calls[2][1]!.body as string);
+    expect(cardPayload.purpose).toBe('card');
+    expect(cardPayload).not.toHaveProperty('skillIds');
+    expect(cardPayload).not.toHaveProperty('codex');
+    const cardRequest = data().requests[cardPayload.requestId];
+    expect(cardRequest.skills).toBeUndefined();
+    expect(cardRequest.codex).toBeUndefined();
+  });
+
+  it('跨研究交互回应绑定原请求，断流和停止均让未完成交互失效', async () => {
+    const conversation = selectAgent('research-a', 'codex');
+    const streams: ReadableStreamDefaultController<Uint8Array>[] = [];
+    const mock = vi.fn((url: string, _init?: RequestInit): Promise<Response> => {
+      if (url.endsWith('/respond')) return Promise.resolve(Response.json({ accepted: true }));
+      if (url.endsWith('/stop')) return Promise.resolve(Response.json({ stopped: true }));
+      return Promise.resolve(new Response(new ReadableStream<Uint8Array>({ start(controller) { streams.push(controller); } })));
+    });
+    const emit = (index: number, ...events: object[]) => streams[index].enqueue(new TextEncoder().encode(events.map(event => JSON.stringify(event)).join('\n') + '\n'));
+    vi.stubGlobal('fetch', mock);
+    const pending = submitAI('research-a', conversation, '需要确认后再继续');
+    await vi.waitFor(() => expect(streams).toHaveLength(1));
+    const request = Object.values(data().requests).find(item => item.conversationId === conversation)!;
+    emit(0, { type: 'interaction', interaction: { id: 'question-1', kind: 'question', title: '核查范围', questions: [{ id: 'scope', question: '核查哪些材料？', options: [{ label: '当前材料' }] }] } });
+    await vi.waitFor(() => expect(data().requests[request.id].interactions?.[0].status).toBe('pending'));
+    workspace.switchResearch('research-b');
+    selectAgent('research-b', 'opencode');
+    const reply = { answers: { scope: ['当前材料'] } };
+    await respondToAgent(request.id, 'question-1', reply);
+    const responseCall = mock.mock.calls.find(([url]) => url.endsWith('/respond'))!;
+    expect(JSON.parse(responseCall[1]!.body as string)).toEqual({ workspaceId: data().agentWorkspaceId, requestId: request.id, researchId: 'research-a', conversationId: conversation, connectionId: 'codex', interactionId: 'question-1', reply });
+    emit(0,
+      { type: 'interaction-resolved', id: 'question-1', status: 'answered' },
+      { type: 'delta', text: '已开始分析当前材料。' },
+      { type: 'interaction', interaction: { id: 'approval-1', kind: 'approval', title: '继续读取材料' } },
+    );
+    streams[0].close();
+    expect(await pending).toBe(request.id);
+    expect(data().requests[request.id]).toMatchObject({ status: 'error', researchId: 'research-a', body: '已开始分析当前材料。', interactions: [{ id: 'question-1', status: 'answered' }, { id: 'approval-1', status: 'expired' }] });
+    const sent = mock.mock.calls.length;
+    await expect(respondToAgent(request.id, 'approval-1', { decision: 'allowOnce' })).rejects.toThrow(/结束/);
+    expect(mock).toHaveBeenCalledTimes(sent);
+
+    const retrying = retryAI(request.id);
+    await vi.waitFor(() => expect(streams).toHaveLength(2));
+    const retry = Object.values(data().requests).find(item => item.retryOf === request.id)!;
+    emit(1, { type: 'interaction', interaction: { id: 'approval-2', kind: 'approval', title: '读取本轮材料' } });
+    await vi.waitFor(() => expect(data().requests[retry.id].interactions?.[0].status).toBe('pending'));
+    stopAI(retry.id);
+    expect(data().requests[retry.id]).toMatchObject({ status: 'stopped', interactions: [{ id: 'approval-2', status: 'expired' }] });
+    await expect(respondToAgent(retry.id, 'approval-2', { decision: 'allowOnce' })).rejects.toThrow(/结束/);
+    streams[1].close(); await retrying;
+    const stopCall = mock.mock.calls.find(([url]) => url.endsWith('/stop'))!;
+    expect(JSON.parse(stopCall[1]!.body as string)).toMatchObject({ requestId: retry.id, researchId: 'research-a', conversationId: conversation, connectionId: 'codex', workspaceId: data().agentWorkspaceId });
+    expect(data().scope).toEqual({ kind: 'research', researchId: 'research-b' });
+    expect(workspace.getActiveConversation('research-b').requestIds).toEqual([]);
   });
 
   it('续接仅在done返回原生ID时，新增材料仍计入累计范围与请求身份', async () => {

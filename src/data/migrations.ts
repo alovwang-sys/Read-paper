@@ -58,6 +58,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       throw new Error('请求的助手连接不受支持，未覆盖现有数据。');
     if (request.status === 'generating') {
       request.status = 'interrupted';
+      for (const interaction of request.interactions ?? []) if (interaction.status === 'pending') interaction.status = 'expired';
       request.error = '页面已重新加载，已保留最近保存的内容，请按原范围重试。';
     }
   }
