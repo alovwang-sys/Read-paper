@@ -18,7 +18,7 @@ const exists = (path: string) => stat(path).then(() => true, error => { if (erro
 async function fixture() {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'papertrail-directory-desktop-')));
   const userData = join(root, 'app-data'), home = join(root, 'isolated-home'), parent = join(root, 'researches');
-  await Promise.all([mkdir(userData), mkdir(home), mkdir(parent)]);
+  await Promise.all([mkdir(userData), mkdir(join(home, 'Documents'), { recursive: true }), mkdir(parent)]);
   return { root, userData, home, parent };
 }
 async function data(page: Page): Promise<WorkspaceData> {
@@ -41,11 +41,15 @@ async function launch(userData: string, home: string, modelRequests: string[]) {
     XDG_CONFIG_HOME: join(home, '.config'), XDG_DATA_HOME: join(home, '.local/share'), XDG_CACHE_HOME: join(home, '.cache'), XDG_STATE_HOME: join(home, '.local/state'),
     OPENCODE_CONFIG_DIR: join(home, '.opencode'), OPENCODE_CONFIG: '', OPENCODE_CONFIG_CONTENT: '', AI_API_KEY: '', OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', ANTHROPIC_AUTH_TOKEN: '',
   }, timeout: 60_000 });
+  // Provide the isolated profile's Documents explicitly instead of depending on
+  // the runner's user profile and Windows known-folder configuration.
+  await application.evaluate(({ app }, documents) => app.setPath('documents', documents), join(home, 'Documents'));
   const page = await application.firstWindow();
   page.on('request', request => { if (/\/api\/ai\/(?:chat|agents\/run)$/.test(new URL(request.url()).pathname)) modelRequests.push(request.url()); });
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(main(page)).toBeVisible(); await saved(page);
   expect(page.url()).toBe('papertrail://app/');
+  expect(await page.evaluate(() => window.papertrailDesktop!.getProjectLocation!())).toBe(join(home, 'Documents'));
   // Return to the workbench if a real save error blocks quit; never force-close it.
   await application.evaluate(({ dialog }) => {
     const calls: { title?: string; detail?: string }[] = [];
