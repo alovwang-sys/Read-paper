@@ -176,7 +176,11 @@ export type Draft = {
   cardSources?: { cardId: string; title: string; provenance: CardProvenance }[];
 };
 export type ReadingPosition = { pageIndex: number; scale: number; offset?: number };
-export type ReaderTarget = 'main' | 'inspector' | 'main-secondary';
+export type ReaderTarget = 'main' | 'inspector' | 'main-secondary' | `view:${string}`;
+export type WorkspaceTab = { id: string; ref: ResourceRef; anchor?: ResourceAnchor; reading?: ReadingPosition; documentInfo?: boolean };
+export type PaneGroup = { kind: 'group'; id: string; tabs: WorkspaceTab[]; activeTabId?: string };
+export type PaneNode = PaneGroup | { kind: 'split'; id: string; axis: 'row' | 'column'; ratio: number; first: PaneNode; second: PaneNode };
+export type WorkspaceLayout = { root: PaneNode; focusedPaneId: string; zoomedPaneId?: string };
 export type BoardViewport = { x: number; y: number; scale: number };
 export type PanelState = {
   open: boolean;
@@ -212,6 +216,7 @@ export type Session = {
   history: Session['active'][];
   panel: PanelState;
   readers: Record<string, ReadingPosition>;
+  layout?: WorkspaceLayout;
   mainSplit?: { open?: boolean; layout: 'horizontal' | 'vertical'; ref: SecondaryResourceRef; anchor?: ResourceAnchor };
   /** Legacy per-paper layout, consumed on load. */
   readerSplits?: Record<string, 'horizontal' | 'vertical'>;

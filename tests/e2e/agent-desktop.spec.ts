@@ -109,7 +109,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await expect(settings.locator(':scope > summary')).toHaveText('对话范围 · 前序 1 轮 · Agent 已发 1 条材料');
     const turn = panel(page).locator('.ai-turn');
     await turn.getByRole('button', { name: /^引用 1：/ }).click();
-    await expect(main(page).getByRole('region', { name: 'PDF 阅读器 主区' })).toBeVisible();
+    await expect(main(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toBeVisible();
     await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
     await expect(turn.locator('.ai-answer')).toContainText('检索增强的效果取决于证据');
     await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('下一条尚未发送的问题');

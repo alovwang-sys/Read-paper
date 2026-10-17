@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { BookOpen, FileText, Layers, Network, Pin, Columns2, X } from 'lucide-react';
+import { BookOpen, FileText, Layers, Network, Pin, X } from 'lucide-react';
 import type { ResourceRef, Session } from '../domain/types';
 import './resource-tabs.css';
 
@@ -11,14 +11,13 @@ type Props = {
   pinnedIds: string[];
   title: (ref: ResourceRef) => string;
   onOpen: (ref: ResourceRef) => void;
-  onOpenSecondary?: (ref: ResourceRef) => void;
   onClose: (ref: ResourceRef) => void;
   onPin: (ref: ResourceRef) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
 };
 const keyOf = (ref: { kind: string; id: string }) => `${ref.kind}:${ref.id}`;
 
-export function ResourceTabs({ preview, leading, items, active, pinnedIds, title, onOpen, onOpenSecondary, onClose, onPin, onMove }: Props) {
+export function ResourceTabs({ preview, leading, items, active, pinnedIds, title, onOpen, onClose, onPin, onMove }: Props) {
   const leadingButton = useRef<HTMLButtonElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const [dragOver, setDragOver] = useState<string>();
@@ -112,7 +111,6 @@ export function ResourceTabs({ preview, leading, items, active, pinnedIds, title
               <Icon size={14} aria-hidden="true" />
               <span>{label}</span>
             </button>
-            {onOpenSecondary && active.kind !== 'researchView' && active.kind !== 'collection' && ['document', 'card'].includes(item.kind) && <button className="resource-tab-action" aria-label={`在对照窗打开 ${label}`} title="在对照窗打开" onClick={() => onOpenSecondary(item)}><Columns2 size={12} aria-hidden="true" /></button>}
             <button
               className="resource-tab-action resource-tab-pin"
               aria-label={`${pinned ? '取消固定' : '固定'}标签 ${label}`}

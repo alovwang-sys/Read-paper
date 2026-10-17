@@ -18,7 +18,7 @@ async function state(page: Page): Promise<WorkspaceData> {
   });
 }
 async function originalInMain(page: Page) {
-  await expect(main(page).getByRole('region', { name: 'PDF 阅读器 主区' })).toBeVisible();
+  await expect(main(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toBeVisible();
   await expect(main(page).getByRole('spinbutton').first()).toHaveValue('3');
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
   await expect(main(page).locator('canvas').first()).toBeVisible();

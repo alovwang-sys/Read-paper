@@ -1,0 +1,20 @@
+.pane-tabs { display: flex; flex: 0 0 34px; min-height: 34px; min-width: 0; align-items: stretch; padding-left: 4px; border-bottom: 1px solid #dfe5e1; background: #edf1ef; }
+.is-focused > .pane-tabs { background: #f4f7f4; }
+.pane-tablist { display: flex; flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; overscroll-behavior-x: contain; align-items: stretch; }
+.pane-tab { position: relative; display: flex; flex: 0 0 auto; min-width: 76px; max-width: 220px; align-items: stretch; border-bottom: 2px solid transparent; color: #819087; }
+.pane-tab.is-active { border-bottom-color: #6c9b87; background: #fff; color: #3b5a4a; }
+.pane-tab:hover { background: #f9fbf8; }
+.pane-tab-select { display: flex; flex: 1; min-width: 0; align-items: center; gap: 6px; padding: 0 5px 0 8px; text-align: left; font-size: 11px; cursor: grab; }
+.pane-tab-select:active { cursor: grabbing; }
+.pane-tab-select > svg { flex-shrink: 0; }
+.pane-tab-select > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-tab-select > small { flex-shrink: 0; font-size: 9px; color: #97a595; }
+.pane-tab-select:focus-visible { outline-offset: -2px; }
+.pane-tab-pin { color: #71947c; }
+.pane-tab-close { display: grid; place-items: center; flex: 0 0 23px; align-self: center; width: 23px; height: 25px; margin: 0 2px 0 0; color: #92a094; border-radius: 4px; }
+.pane-tab-close:hover { background: #e6ece7; color: #456553; }
+.pane-menu-trigger { display: grid; place-items: center; flex: 0 0 31px; align-self: center; height: 29px; margin: 0 3px; border-radius: 4px; color: #84988a; }
+.pane-menu-trigger:hover, .pane-menu-trigger.is-active { color: #42684f; background: #e3ece3; }
+.pane-tab.has-drop-before::before { content: ''; position: absolute; left: -1px; top: 3px; bottom: 2px; z-index: 2; width: 3px; border-radius: 2px; background: #4b9479; pointer-events: none; }
+.pane-tab-end-drop { align-self: stretch; flex: 0 0 3px; background: #4b9479; margin: 3px 0; }
+.pane-tabs-empty { display: flex; align-items: center; padding: 0 10px; color: #a0aca2; font-size: 11px; }

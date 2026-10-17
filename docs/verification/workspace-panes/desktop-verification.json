@@ -1,0 +1,61 @@
+{
+  "verifiedAt": "2026-10-17T10:30:44.127Z",
+  "command": "npm run test:desktop:e2e",
+  "exitCode": 0,
+  "passed": 14,
+  "failed": 0,
+  "duration": "1.7m",
+  "asarSha256": "f543ced7c1ab5d6834609018351e8d1d6d536d15b5773b51e34732083880435c",
+  "normalQuitAndRestart": true,
+  "nativeFullscreenEvents": true,
+  "nativeKeyboardTransport": "webContents.sendInputEvent keyDown/keyUp with control+meta; actual before-input-event and enter/leave asserted",
+  "liveModelInvocation": false,
+  "recordingStarted": false,
+  "evidence": [
+    {
+      "file": "desktop-reader-images.png",
+      "source": "docs/verification/reader-images/desktop-reader-images.png",
+      "modifiedAt": "2026-10-17T10:30:01.597Z"
+    },
+    {
+      "file": "desktop-reader-images.json",
+      "source": "docs/verification/reader-images/desktop-reader-images.json",
+      "modifiedAt": "2026-10-17T10:30:01.598Z"
+    },
+    {
+      "file": "desktop-fullscreen.png",
+      "source": "docs/verification/fullscreen/desktop-fullscreen.png",
+      "modifiedAt": "2026-10-17T10:29:19.928Z"
+    },
+    {
+      "file": "desktop-window-restored.png",
+      "source": "docs/verification/fullscreen/desktop-window-restored.png",
+      "modifiedAt": "2026-10-17T10:29:22.318Z"
+    },
+    {
+      "file": "desktop-fullscreen.json",
+      "source": "docs/verification/fullscreen/desktop-fullscreen.json",
+      "modifiedAt": "2026-10-17T10:29:22.319Z"
+    },
+    {
+      "file": "desktop-pdf-card-1440x900.png",
+      "source": "test-results-desktop/desktop-安装产物：独立运行、PDF与双栏、模型设置、关闭保存及重启恢复/screenshots/01-pdf-card-1440x900.png",
+      "modifiedAt": "2026-10-17T10:28:46.284Z"
+    },
+    {
+      "file": "desktop-board-source-1280x800.png",
+      "source": "test-results-desktop/desktop-安装产物：独立运行、PDF与双栏、模型设置、关闭保存及重启恢复/screenshots/02-board-source-1280x800.png",
+      "modifiedAt": "2026-10-17T10:28:47.218Z"
+    },
+    {
+      "file": "desktop-writing-ai-1440x900.png",
+      "source": "test-results-desktop/desktop-安装产物：独立运行、PDF与双栏、模型设置、关闭保存及重启恢复/screenshots/03-writing-ai-1440x900.png",
+      "modifiedAt": "2026-10-17T10:28:48.422Z"
+    },
+    {
+      "file": "desktop-writing-ai-1024x800.png",
+      "source": "test-results-desktop/desktop-安装产物：独立运行、PDF与双栏、模型设置、关闭保存及重启恢复/screenshots/04-writing-ai-1024x800.png",
+      "modifiedAt": "2026-10-17T10:28:48.474Z"
+    }
+  ]
+}

@@ -7,53 +7,10 @@
   position: relative;
   overflow: hidden;
 }
-.pdf-reader-layout {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  background: #f0f1ed;
-  container-type: inline-size;
-}
-.pdf-layout-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 14px;
-  border-bottom: 1px solid var(--border, #e7e7e4);
-  background: #fafbf8;
-  color: #7a8870;
-  font-size: 11px;
-  flex-shrink: 0;
-}
-.pdf-layout-toolbar > span,
-.pdf-layout-toolbar > div,
-.pdf-layout-toolbar .text-button,
-.pdf-layout-select { display: flex; align-items: center; gap: 6px; }
-.pdf-layout-toolbar .text-button { font-size: 11px; min-height: 28px; padding: 4px 6px; }
-.pdf-layout-select select { padding: 4px; border: 1px solid #dce4d7; border-radius: 5px; background: white; color: #52644a; font-size: 11px; }
-.pdf-reading-panes { display: flex; flex: 1; min-height: 0; min-width: 0; }
-.pdf-reading-pane { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
 .pdf-reader-pane { flex: 1; min-height: 0; }
-.pdf-split-vertical .pdf-reading-panes { flex-direction: column; }
-.pdf-reading-pane + .pdf-reading-pane { border-left: 2px solid #d3dccb; }
-.pdf-split-vertical .pdf-reading-pane + .pdf-reading-pane { border-left: 0; border-top: 2px solid #d3dccb; }
-.pdf-pane-label { display: flex; align-items: center; justify-content: space-between; padding: 5px 14px; font-size: 10px; color: #59704b; background: #edf2e7; flex-shrink: 0; }
-.pdf-pane-label span { color: #8a967f; }
 .pdf-page-stack { display: flex; flex-direction: column; gap: 24px; min-width: 100%; width: max-content; }
 .pdf-sheet-placeholder { display: flex; align-items: start; justify-content: center; }
 .pdf-page-placeholder-label { padding: 18px; color: #a1aa9a; font-size: 11px; }
-@container (max-width: 760px) {
-  .pdf-split-horizontal .pdf-reading-panes { flex-direction: column; }
-  .pdf-split-horizontal .pdf-reading-pane + .pdf-reading-pane { border-left: 0; border-top: 2px solid #d3dccb; }
-  .pdf-reading-pane .pdf-toolbar { padding: 6px 10px; gap: 5px; }
-  .pdf-reading-pane .pdf-status { padding: 5px 10px; gap: 4px; flex-wrap: wrap; }
-  .pdf-reading-pane .pdf-selection-modes button { min-height: 28px; }
-  .pdf-reading-pane .pdf-pages, .pdf-reading-pane .pdf-zoom { gap: 2px; }
-  .pdf-layout-select > span { display: none; }
-}
 .pdf-toolbar {
   display: flex;
   justify-content: space-between;
@@ -554,10 +511,3 @@
 .pdf-finish-prompt, .pdf-excerpt-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 18px; background: #f6f8ed; color: #536847; font-size: 12px; border-bottom: 1px solid #dce4d1; }
 .pdf-finish-prompt .button { font-size: 11px; }
 .pdf-saved-region { position: absolute; z-index: 4; border: 1px solid #c0a13b; background: #f5dc6b24; padding: 0; cursor: pointer; }
-.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-layout-toolbar { padding-top: 2px; padding-bottom: 2px; }
-.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-pane-label { padding-top: 2px; padding-bottom: 2px; }
-.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-toolbar { padding-top: 4px; padding-bottom: 4px; }
-.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-status-ready,
-.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-footer { display: none; }
-
-.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-scroll { padding-top: 12px; padding-bottom: 12px; }

@@ -196,7 +196,7 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   const doc = Object.values(state.documents).find(
     (item) => item.filename === 'adaptive-retrieval.pdf',
   )!;
-  await page.getByRole('tablist', { name: '中央资源标签' }).getByRole('tab', { name: doc.title, exact: true }).click();
+  await page.getByRole('tablist', { name: '窗格 1 标签', exact: true }).getByRole('tab', { name: doc.title, exact: true }).click();
   await setPdfPage(page, 3);
   await selectText(page, quote);
   await main(page)
@@ -329,7 +329,7 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   expect(state.sessions[researchId].readers[`main:${doc.id}`].pageIndex).toBe(
     2,
   );
-  await page.getByRole('tablist', { name: '中央资源标签' }).getByRole('tab', { name: doc.title, exact: true }).click();
+  await page.getByRole('tablist', { name: '窗格 1 标签', exact: true }).getByRole('tab', { name: doc.title, exact: true }).click();
   await expect(main(page).locator('.pdf-sheet[data-page-index="2"] .pdf-text-layer')).toContainText(
     quote,
   );

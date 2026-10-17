@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import {
   BookOpen,
   ChevronLeft,
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { ReadingPosition, ReaderTarget, ResourceAnchor } from '../../domain/types';
-import { scopeKey, useWorkspace } from '../../services/workspace';
+import { getReaderPosition, registerReaderFlush, scopeKey, useWorkspace } from '../../services/workspace';
 import { loadPdfDocument } from '../../services/pdf';
 import { submitAI } from '../../services/ai';
 import { currentAssistantSupportsImages } from '../../services/agents';
@@ -45,10 +45,7 @@ export function PdfReader({
 }) {
   const { data, session, research, actions } = useWorkspace();
   const doc = data.documents[documentId];
-  const position = session.readers[`${target}:${documentId}`] ?? {
-    pageIndex: 0,
-    scale: 1,
-  };
+  const position = getReaderPosition(session, documentId, target);
   const initialPage = Math.min(position.pageIndex, Math.max(0, (doc?.pageCount ?? 1) - 1));
   const [pageIndex, setVisiblePage] = useState(initialPage);
   const [selectionPage, setSelectionPage] = useState<number>();
@@ -81,7 +78,7 @@ export function PdfReader({
   const [imagesSupported, setImagesSupported] = useState<boolean>();
   const dragStart = useRef<{ x: number; y: number } | undefined>(undefined);
   const selectionVersion = useRef(0);
-  const [width, setWidth] = useState(target === 'main' ? 720 : 320);
+  const [width, setWidth] = useState(target === 'inspector' ? 320 : 720);
   const [viewportHeight, setViewportHeight] = useState(600);
   const [navigationRevision, setNavigationRevision] = useState(0);
   const scroll = useRef<HTMLDivElement>(null);
@@ -97,6 +94,7 @@ export function PdfReader({
   const navigationRequested = useRef(false);
   const scrollFrame = useRef<number | undefined>(undefined);
   const readScroll = useRef<() => void>(() => {});
+  const latestPositionFlush = useRef<{ key: string; flush: () => void } | undefined>(undefined);
   const pageSizes = useMemo(() => Array.from({ length: pdf?.numPages ?? 0 }, (_, index) => {
     const natural = naturalSizes[index] ?? naturalSizes[0] ?? { width: 612, height: 792, scale: 1, rotation: 0 };
     const fit = Math.max(0.2, Math.min(1.5, (width - (target === 'inspector' ? 24 : 56)) / natural.width));
@@ -110,6 +108,7 @@ export function PdfReader({
   const rendering = !pdf || !selectedHandle || selectedHandle.rendering;
   const pageTextReady = selectedHandle?.textReady ?? false;
   const viewScope = scopeKey(data.scope);
+  const readerKey = `${viewScope}:${target}:${documentId}`;
   const sourceEvidence = anchor?.evidenceId
     ? data.evidence[anchor.evidenceId]
     : undefined;
@@ -199,8 +198,10 @@ export function PdfReader({
     const update = () => {
       const node = scroll.current!;
       const style = getComputedStyle(node);
+      const height = node.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      if (node.clientWidth <= 0 || height <= 0) return;
       setWidth(node.clientWidth);
-      setViewportHeight(node.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
+      setViewportHeight(height);
     };
     const observer = new ResizeObserver(update);
     observer.observe(scroll.current);
@@ -303,7 +304,8 @@ export function PdfReader({
     const index = Math.min(destination.pageIndex, pdf.numPages - 1);
     setVisiblePage(index);
     const top = pageSizes.slice(0, index).reduce((sum, size) => sum + size.height + 24, 0);
-    const region = externalNavigation && sourceValid && sourceEvidence.region && sourceEvidence.pageIndex === index
+    // Moving a view keeps its saved scroll position even while the source remains highlighted.
+    const region = externalNavigation && !destination.offset && sourceValid && sourceEvidence.region && sourceEvidence.pageIndex === index
       ? rotateRegion(sourceEvidence.region.rect, pageSizes[index].rotation - sourceEvidence.region.rotation) : undefined;
     const offset = region ? region.y : destination.offset ?? 0;
     scroll.current.scrollTo({ top: Math.max(0, top + offset * pageSizes[index].height - (region ? 40 : 0)), left: 0 });
@@ -317,13 +319,26 @@ export function PdfReader({
     lastWrittenPosition.current = next;
     actions.setReader(documentId, next, target, data.scope);
   }
-  useEffect(() => {
-    window.addEventListener('beforeunload', flushPosition);
-    return () => {
-      window.removeEventListener('beforeunload', flushPosition);
-      window.clearTimeout(positionTimer.current);
+  latestPositionFlush.current = { key: readerKey, flush: () => {
+    const positionKey = `${position.pageIndex}:${position.scale}:${position.offset ?? 0}`;
+    if (!navigationRequested.current && lastPositionKey.current === positionKey) readScroll.current();
+    flushPosition();
+  } };
+  useLayoutEffect(() => {
+    const flush = () => {
       if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current);
-      flushPosition();
+      scrollFrame.current = undefined;
+      const latest = latestPositionFlush.current;
+      if (latest?.key === readerKey) latest.flush();
+      else flushPosition();
+    };
+    const unregister = target.startsWith('view:') ? registerReaderFlush(`${viewScope}:${target}`, flush) : undefined;
+    window.addEventListener('beforeunload', flush);
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      // Capture the last scroll before moving this view detaches its DOM.
+      flush();
+      unregister?.();
     };
   }, [documentId, target, viewScope]);
 
@@ -335,7 +350,7 @@ export function PdfReader({
     });
   }
   readScroll.current = () => {
-      if (!scroll.current || !pageSizes.length || lastLayout.current !== layoutKey) return;
+      if (!scroll.current || scroll.current.clientWidth <= 0 || scroll.current.clientHeight <= 0 || !pageSizes.length || lastLayout.current !== layoutKey) return;
       let top = 0, index = 0;
       const y = Math.max(0, scroll.current.scrollTop);
       // Browser scrollTop is rounded; PDF page geometry can have fractional pixels.
@@ -657,8 +672,9 @@ export function PdfReader({
   );
   return (
     <section
-      className={`pdf-reader pdf-reader-pane pdf-reader-${target}`}
-      aria-label={`PDF 阅读器 ${target === 'main' ? '主区' : target === 'main-secondary' ? '对照位置' : '参考面板'}`}
+      className={`pdf-reader pdf-reader-pane pdf-reader-${target.startsWith('view:') ? 'workspace' : target}`}
+      aria-label={target.startsWith('view:') ? 'PDF 阅读器' : `PDF 阅读器 ${target === 'main' ? '主区' : target === 'main-secondary' ? '对照位置' : '参考面板'}`}
+      data-view-id={target}
       onKeyDown={(event) => {
         const editing = (event.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]');
         if (!editing && !event.metaKey && !event.ctrlKey && !event.altKey && (quote || regionPreview) && ['h', 'c'].includes(event.key.toLowerCase())) { event.preventDefault(); event.stopPropagation(); void saveSelection(event.key.toLowerCase() === 'h' ? 'excerpt' : 'card'); }

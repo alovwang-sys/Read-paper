@@ -32,7 +32,7 @@ async function placeSource(page: Page, title: string) {
   await main(page).getByRole('button', { name: '添加资料', exact: true }).click();
   await main(page).getByRole('button', { name: 'PDF 论文', exact: true }).click();
   await main(page).getByRole('button', { name: `添加到白板：${title}`, exact: true }).click();
-  await page.getByRole('tablist', { name: '中央资源标签' }).getByRole('tab', { name: title, exact: true }).click();
+  await main(page).getByRole('tablist', { name: '窗格 1 标签', exact: true }).getByRole('tab', { name: title, exact: true }).click();
 }
 
 test('本地标识去重、标题建条目、资料库复用和添加框键盘返回', async ({ page }) => {

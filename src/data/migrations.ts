@@ -1,4 +1,5 @@
 import { hasFullText } from '../domain/knowledge';
+import { ensurePaneLayout, validatePaneLayout, syncPaneSession } from '../services/panes';
 import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -176,5 +177,11 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   }
   for (const draft of Object.values(data.drafts)) if (draft.cardRefs !== undefined && (!Array.isArray(draft.cardRefs) || draft.cardRefs.some(ref => !record(ref) || typeof ref.cardId !== 'string' || typeof ref.insertedAt !== 'string' || ref.evidenceIds !== undefined && !strings(ref.evidenceIds)))) throw new Error('文稿卡片记录损坏。');
   data.schemaVersion = 3;
+  for (const [key, session] of Object.entries(data.sessions)) {
+    ensurePaneLayout(session, key);
+    validatePaneLayout(data, key);
+    syncPaneSession(session, !['collection', 'researchView', 'research'].includes(session.active.kind));
+    delete session.mainSplit;
+  }
   return data;
 }

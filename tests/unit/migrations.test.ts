@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createSeed } from '../../src/data/seed';
 import { migrateWorkspace } from '../../src/data/migrations';
+import { paneGroups } from '../../src/services/panes';
 
 function legacyWorkspace() {
   const { cardDrafts: _cardDrafts, ...seed } = createSeed();
@@ -218,7 +219,11 @@ describe('连续阅读位置校验', () => {
     seed.sessions['research-a'].readers['main-secondary:paper-a'] = { pageIndex: 1, scale: 1, offset: 0.3 };
     seed.sessions['research-a'].readerSplits = { 'paper-a': 'horizontal' };
     seed.sessions['research-a'].active = { kind: 'document', id: 'paper-a' };
-    expect(migrateWorkspace(seed).sessions['research-a']).toMatchObject({ readers: { 'main-secondary:paper-a': { pageIndex: 1, scale: 1, offset: 0.3 } }, mainSplit: { layout: 'horizontal', ref: { kind: 'document', id: 'paper-a' } } });
+    const migrated = migrateWorkspace(seed).sessions['research-a'];
+    expect(migrated.readers['main-secondary:paper-a']).toEqual({ pageIndex: 1, scale: 1, offset: 0.3 });
+    expect(migrated.layout!.root).toMatchObject({ kind: 'split', axis: 'row' });
+    expect(paneGroups(migrated.layout!.root)[1].tabs[0]).toMatchObject({ ref: { kind: 'document', id: 'paper-a' }, reading: { pageIndex: 1, scale: 1, offset: 0.3 } });
+    expect(migrated.mainSplit).toBeUndefined();
     seed.sessions['research-a'].readers['main-secondary:paper-a'].offset = NaN;
     expect(() => migrateWorkspace(seed)).toThrow('阅读位置损坏');
     seed.sessions['research-a'].readers['main-secondary:paper-a'].offset = 0.3;
@@ -232,7 +237,7 @@ describe('独立资源分屏迁移', () => {
   it('保留卡片对照并拒绝跨研究或失效资源，旧版仅转换布局不改两位置', () => {
     const seed = createSeed();
     seed.sessions['research-a'].mainSplit = { layout: 'vertical', ref: { kind: 'card', id: 'card-a' } };
-    expect(migrateWorkspace(seed).sessions['research-a'].mainSplit).toEqual(seed.sessions['research-a'].mainSplit);
+    expect(paneGroups(migrateWorkspace(seed).sessions['research-a'].layout!.root)[1].tabs[0].ref).toEqual({ kind: 'card', id: 'card-a' });
     seed.sessions['research-b'].mainSplit = seed.sessions['research-a'].mainSplit;
     expect(() => migrateWorkspace(seed)).toThrow('不属于本研究');
     seed.sessions['research-b'].mainSplit = undefined;

@@ -50,7 +50,7 @@ async function start(page: Page) {
 }
 async function reader(page: Page) {
   await openSource(page, paperTitle);
-  await expect(main(page).getByRole('region', { name: 'PDF 阅读器 主区' })).toBeVisible();
+  await expect(main(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toBeVisible();
   await expect(main(page).locator('.pdf-text-layer span').filter({ hasText: excerptStart }).first()).toBeVisible();
 }
 async function selectExcerpt(page: Page) {

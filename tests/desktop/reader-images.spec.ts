@@ -7,13 +7,14 @@ import { createSeed } from '../../src/data/seed';
 import type { ContextSnapshot, WorkspaceData } from '../../src/domain/types';
 import { fixtureSessionRef, mockProjectService } from '../e2e/project-fixture';
 import { openSource } from '../e2e/knowledge-helpers';
+import { groups, paneAction, paneById, split } from '../e2e/workspace-split-helpers';
 
 const packageRoot = resolve(`out/Papertrail-${process.platform}-${process.arch}`);
 const executablePath = process.env.PAPERTRAIL_EXECUTABLE || (process.platform === 'darwin'
   ? join(packageRoot, 'Papertrail.app/Contents/MacOS/Papertrail') : join(packageRoot, 'Papertrail.exe'));
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
-const primary = (page: Page) => main(page).getByRole('region', { name: 'PDF 阅读器 主区', exact: true });
-const secondary = (page: Page) => main(page).getByRole('region', { name: 'PDF 阅读器 对照位置', exact: true });
+const primary = (page: Page) => main(page).getByRole('region', { name: '工作区窗格 1', exact: true });
+const secondary = (page: Page) => main(page).getByRole('region', { name: '工作区窗格 2', exact: true });
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
 const input = (page: Page) => panel(page).getByLabel('向 AI 提问');
 const saved = (page: Page) => expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
@@ -57,6 +58,15 @@ async function goTo(pane: Locator, number: number) {
   await expect(pane.locator(`.pdf-sheet[data-page-index="${number - 1}"] canvas`)).toBeVisible();
   await expect(pane.locator('.pdf-page-loading')).toHaveCount(0);
   await expect(pane.getByLabel('PDF 页码', { exact: true })).toHaveValue(String(number));
+}
+
+async function viewportPosition(pane: Locator) {
+  return pane.locator('.pdf-scroll').evaluate(node => {
+    const bounds = node.getBoundingClientRect(), padding = parseFloat(getComputedStyle(node).paddingTop);
+    const sheet = [...node.querySelectorAll<HTMLElement>('.pdf-sheet')].find(sheet => sheet.getBoundingClientRect().bottom > bounds.top + padding + 1)!;
+    const page = sheet.getBoundingClientRect();
+    return { pageIndex: Number(sheet.dataset.pageIndex), offset: (bounds.top + padding - page.top) / page.height };
+  });
 }
 
 // PDF rendering, cropping, IndexedDB and shutdown are real; only the native service uses fixtures.
@@ -105,7 +115,8 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
     await expect.poll(() => scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(pageStep);
     const beforeSplit = await scroller.evaluate(node => node.scrollTop);
-    await main(page).getByRole('button', { name: '分屏阅读', exact: true }).click();
+    await paneAction(page, primary(page), '向下分屏');
+    await expect(secondary(page)).toBeVisible();
     await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
     await expect.poll(() => scroller.evaluate((node, savedTop) => Math.abs(node.scrollTop - savedTop), beforeSplit)).toBeLessThanOrEqual(2);
     await goTo(primary(page), 2); await goTo(secondary(page), 3);
@@ -139,9 +150,37 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     expect(run.context[0]).toMatchObject({ kind: 'region', documentId: 'paper-a', pageIndex: 1 });
     await expect(input(page)).toHaveValue(''); await input(page).fill(draft);
     await primary(page).getByRole('button', { name: '文字选择', exact: true }).click();
-    await expect.poll(async () => (await state(page)).sessions['research-a'].readers['main:paper-a']).toMatchObject({ pageIndex: 1, scale: 1 });
-    await expect.poll(async () => (await state(page)).sessions['research-a'].readers['main-secondary:paper-a']).toMatchObject({ pageIndex: 2, scale: 1.25 });
+    const secondaryId = (await secondary(page).getAttribute('data-pane-id'))!;
+    // Leave a source region, then clone and move its view: the current offset must win over the old anchor.
+    await panel(page).getByRole('button', { name: /^引用 1：/ }).click();
+    await expect(primary(page).locator('.pdf-region-source')).toHaveCount(1);
+    await primary(page).locator('.pdf-scroll').evaluate(async node => {
+      node.scrollTop += node.querySelector<HTMLElement>('.pdf-sheet[data-page-index="1"]')!.getBoundingClientRect().height * .28;
+      await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    });
+    const beforeClone = await viewportPosition(primary(page));
+    expect(beforeClone.pageIndex).toBe(1); expect(beforeClone.offset).toBeGreaterThan(.2);
+    const cloned = await split(page, primary(page), '下');
+    await expect.poll(async () => Math.abs((await viewportPosition(cloned)).offset - beforeClone.offset)).toBeLessThanOrEqual(.02);
+    await expect(cloned.locator('.pdf-region-source')).toHaveCount(1);
+    const clonedViewId = (await cloned.getByRole('region', { name: 'PDF 阅读器', exact: true }).getAttribute('data-view-id'))!;
+    const destinationNumber = groups((await state(page)).sessions['research-a'].layout!.root).findIndex(group => group.id === secondaryId) + 1;
+    await paneAction(page, cloned, `移到窗格 ${destinationNumber}`);
+    const moved = paneById(page, secondaryId);
+    await expect(moved.getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', clonedViewId);
+    await expect.poll(async () => Math.abs((await viewportPosition(moved)).offset - beforeClone.offset)).toBeLessThanOrEqual(.02);
+    await expect(moved.locator('.pdf-region-source')).toHaveCount(1);
+    await paneAction(page, moved, '关闭当前标签');
+    await expect(secondary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
+    await expect(secondary(page).locator('.pdf-zoom')).toContainText('125%');
+    const readingViews = async () => groups((await state(page)).sessions['research-a'].layout!.root).flatMap(group => group.tabs).filter(tab => tab.ref.kind === 'document' && tab.ref.id === 'paper-a');
+    await expect.poll(async () => (await readingViews()).map(tab => tab.reading)).toMatchObject([{ pageIndex: 1, scale: 1 }, { pageIndex: 2, scale: 1.25 }]);
     await saved(page); const before = await state(page);
+    const beforeViews = await readingViews();
+    expect(beforeViews).toHaveLength(2);
+    expect(beforeViews[0].id).not.toBe(beforeViews[1].id);
+    await expect(primary(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', `view:${beforeViews[0].id}`);
+    await expect(secondary(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', `view:${beforeViews[1].id}`);
     await close(application); application = undefined;
 
     session = await launch(userData, home); application = session.application; page = session.page;
@@ -157,9 +196,9 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     await expect(primary(page).locator('.pdf-page-loading')).toHaveCount(0);
     await expect(secondary(page).locator('.pdf-page-loading')).toHaveCount(0);
     const restored = await state(page);
-    expect(restored.sessions['research-a'].mainSplit).toEqual(before.sessions['research-a'].mainSplit);
-    for (const key of ['main:paper-a', 'main-secondary:paper-a'])
-      expect(restored.sessions['research-a'].readers[key]).toEqual(before.sessions['research-a'].readers[key]);
+    expect(restored.sessions['research-a'].layout).toEqual(before.sessions['research-a'].layout);
+    const restoredViews = groups(restored.sessions['research-a'].layout!.root).flatMap(group => group.tabs).filter(tab => tab.ref.kind === 'document' && tab.ref.id === 'paper-a');
+    expect(restoredViews.map(tab => ({ id: tab.id, reading: tab.reading }))).toEqual(beforeViews.map(tab => ({ id: tab.id, reading: tab.reading })));
     expect(restored.requests[run.requestId].context[0].region).toEqual(run.context[0].region);
     expect(restored.conversations['conversation-research-a'].codex?.model).toBe('vision');
     const retainedImage = await page.evaluate(async assetId => {
@@ -182,7 +221,9 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     await page.screenshot({ path: 'docs/verification/reader-images/desktop-reader-images.png' });
     await writeFile('docs/verification/reader-images/desktop-reader-images.json', JSON.stringify({
       executablePath, protocol: 'papertrail://app/', mockNativeRequests: runs.length, actualModelCalls: 0, recordingStarted: false,
-      continuousScrollReachedPage: 2, readersAfterRestart: restored.sessions['research-a'].readers,
+      continuousScrollReachedPage: 2, paneLayoutRetainedAfterRestart: true,
+      anchoredViewCloneAndMoveRetainOffset: true, sourceHighlightRetainedAfterCloneAndMove: true,
+      readersAfterRestart: restoredViews.map(tab => ({ viewId: tab.id, documentId: tab.ref.id, reading: tab.reading })),
       model: run.codex.model, evidencePageIndex: run.context[0].pageIndex, imageBytes: bytes.length, imageHash,
       screenshotMatchesFrozenSource: true, imageAssetRetainedAfterRestart: true, nextDraftRetained: true, pageErrors,
     }, null, 2) + '\n');

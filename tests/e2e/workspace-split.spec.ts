@@ -1,152 +1,228 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
-import { mkdir } from 'node:fs/promises';
-import { createSeed } from '../../src/data/seed';
-import type { WorkspaceData } from '../../src/domain/types';
-import { mockProjectService } from './project-fixture';
+import { expect, test } from '@playwright/test';
+import { mkdir, readFile } from 'node:fs/promises';
+import type { WorkspaceLayout } from '../../src/domain/types';
 import { openResearchPage, openSource, switchResearch } from './knowledge-helpers';
+import { dragView, goTo, groups, layout, main, openCard, pane, paneAction, paneById, panes, panel, saved, split, start, state, waitForPdf } from './workspace-split-helpers';
 
-const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
-const primary = (page: Page) => main(page).getByRole('region', { name: '中央主窗', exact: true });
-const secondary = (page: Page) => main(page).getByRole('region', { name: '中央对照窗', exact: true });
-const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
-const saved = (page: Page) => expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+const paperA = 'Adaptive Retrieval: Evidence & Reliability';
+const paperB = 'Retrieval Baselines & Trade-offs';
+const cardA = '相关性是检索收益的前提';
+const draftA = '检索增强的适用条件';
 
-async function state(page: Page): Promise<WorkspaceData> {
-  return page.evaluate(async () => {
-    const journal = localStorage.getItem('papertrail-recovery-v3');
-    if (journal) return JSON.parse(journal);
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('papertrail', 1);
-      request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
-    });
-    try { return await new Promise<WorkspaceData>((resolve, reject) => {
-      const request = db.transaction('workspace').objectStore('workspace').get('current');
-      request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
-    }); } finally { db.close(); }
+function expectRestored(actual: WorkspaceLayout, expected: WorkspaceLayout) {
+  const comparable = structuredClone(actual);
+  const expectedTabs = groups(expected.root).flatMap(group => group.tabs);
+  for (const tab of groups(comparable.root).flatMap(group => group.tabs)) {
+    const before = expectedTabs.find(item => item.id === tab.id)?.reading;
+    if (!tab.reading || !before) continue;
+    // Scroll geometry rounds to pixels; page indexes, scale and the entire tree stay exact.
+    expect(Math.abs((tab.reading.offset ?? 0) - (before.offset ?? 0))).toBeLessThanOrEqual(.002);
+    if (before.offset === undefined) delete tab.reading.offset;
+    else tab.reading.offset = before.offset;
+  }
+  expect(comparable).toEqual(expected);
+}
+
+test('窗格可递归分成三到六个不均匀区域，分隔条键盘/指针调整并放大还原', async ({ page }) => {
+  await start(page);
+  const originalId = await pane(page, 1).getAttribute('data-pane-id');
+  const right = await split(page, pane(page, 1), '右');
+  const bottom = await split(page, right, '下');
+  await expect(panes(page)).toHaveCount(3);
+  const fourth = await split(page, paneById(page, originalId!), '左');
+  await split(page, bottom, '下');
+  await split(page, fourth, '上');
+  await expect(panes(page)).toHaveCount(6);
+  const smallestId = await panes(page).evaluateAll(nodes => nodes.map(node => {
+    const bounds = node.getBoundingClientRect();
+    return { id: (node as HTMLElement).dataset.paneId!, area: bounds.width * bounds.height };
+  }).sort((a, b) => a.area - b.area)[0].id);
+  await paneById(page, smallestId).getByRole('button', { name: /^窗格 \d+ 操作$/ }).click();
+  const menu = page.getByRole('menu');
+  await menu.getByRole('menuitem').first().press('End');
+  const lastAction = menu.getByRole('menuitem', { name: '关闭当前标签', exact: true });
+  await expect(lastAction).toBeFocused();
+  const menuBox = (await menu.boundingBox())!, lastBox = (await lastAction.boundingBox())!;
+  expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(menuBox.y + menuBox.height + 1);
+  await mkdir('docs/verification/workspace-panes', { recursive: true });
+  await page.screenshot({ path: 'docs/verification/workspace-panes/six-panes-menu.png' });
+  await lastAction.press('Escape');
+  const areas = await panes(page).evaluateAll(nodes => nodes.map(node => { const box = node.getBoundingClientRect(); return box.width * box.height; }));
+  expect(Math.max(...areas)).toBeGreaterThan(Math.min(...areas) * 1.5);
+  const separator = main(page).getByRole('separator').first();
+  const beforeKey = Number(await separator.getAttribute('aria-valuenow'));
+  await separator.focus();
+  await separator.press((await separator.getAttribute('aria-orientation')) === 'vertical' ? 'ArrowRight' : 'ArrowDown');
+  await expect.poll(async () => Number(await separator.getAttribute('aria-valuenow'))).toBeGreaterThan(beforeKey);
+  const beforeDrag = Number(await separator.getAttribute('aria-valuenow'));
+  const box = (await separator.boundingBox())!;
+  const vertical = await separator.getAttribute('aria-orientation') === 'vertical';
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + (vertical ? -45 : 0), box.y + box.height / 2 + (vertical ? 0 : -45), { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => Number(await separator.getAttribute('aria-valuenow'))).toBeLessThan(beforeDrag);
+  const snapshot = await layout(page);
+  const chosen = groups(snapshot.root)[2];
+  await paneAction(page, paneById(page, chosen.id), '放大当前窗格');
+  await expect.poll(async () => (await layout(page)).zoomedPaneId).toBe(chosen.id);
+  await expect(paneById(page, chosen.id)).toBeVisible();
+  for (const group of groups(snapshot.root).filter(group => group.id !== chosen.id)) await expect(paneById(page, group.id)).toBeHidden();
+  await paneAction(page, paneById(page, chosen.id), '还原窗格布局');
+  await expect.poll(async () => (await layout(page)).root).toEqual(snapshot.root);
+  for (const group of groups(snapshot.root)) await expect(paneById(page, group.id)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
+});
+
+test('真实标签拖动显示落位预览，中心移动与Option复制，四边可依次拆成六窗', async ({ page }) => {
+  test.setTimeout(90000);
+  await start(page);
+  await openSource(page, paperB);
+  const firstId = await pane(page, 1).getAttribute('data-pane-id');
+  const second = await split(page, pane(page, 1), '右');
+  const secondId = await second.getAttribute('data-pane-id');
+  await waitForPdf(paneById(page, firstId!)); await waitForPdf(second);
+  const firstGroup = groups((await layout(page)).root).find(group => group.id === firstId)!;
+  const viewA = firstGroup.tabs.find(tab => tab.ref.id === 'paper-a')!;
+  await dragView(page, viewA.id, second, 'center');
+  await expect.poll(async () => groups((await layout(page)).root).find(group => group.id === firstId)!.tabs.some(tab => tab.id === viewA.id)).toBe(false);
+  await expect.poll(async () => groups((await layout(page)).root).find(group => group.id === secondId)!.tabs.some(tab => tab.id === viewA.id)).toBe(true);
+  await dragView(page, viewA.id, paneById(page, firstId!), 'center', true);
+  await expect.poll(async () => groups((await layout(page)).root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a').length).toBe(2);
+  await waitForPdf(paneById(page, firstId!));
+  for (const [index, side] of (['left', 'right', 'up', 'down'] as const).entries()) {
+    await dragView(page, viewA.id, paneById(page, firstId!), side, true);
+    await expect(panes(page)).toHaveCount(index + 3);
+  }
+  const current = await layout(page);
+  const viewsA = groups(current.root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a');
+  expect(viewsA).toHaveLength(6);
+  expect(new Set(viewsA.map(tab => tab.id)).size).toBe(6);
+  expect(viewsA.every(tab => tab.ref.kind === 'document')).toBe(true);
+  await saved(page); await page.reload();
+  await expect(panes(page)).toHaveCount(6);
+  expect(groups((await layout(page)).root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a').map(tab => tab.id).sort()).toEqual(viewsA.map(tab => tab.id).sort());
+});
+
+test('拖入仍在加载的论文窗格，PDF画布在预览期间替换后仍接受真实drop', async ({ page }) => {
+  const bytes = await readFile('public/samples/retrieval-baseline.pdf');
+  let releasePdf!: () => void;
+  const pending = new Promise<void>(resolve => { releasePdf = resolve; });
+  await page.route('**/samples/retrieval-baseline.pdf', async route => {
+    await pending;
+    await route.fulfill({ contentType: 'application/pdf', body: bytes });
   });
-}
+  try {
+    await start(page);
+    await openSource(page, paperB);
+    const firstId = (await pane(page, 1).getAttribute('data-pane-id'))!;
+    const second = await split(page, pane(page, 1), '右');
+    const secondId = (await second.getAttribute('data-pane-id'))!;
+    await expect(second.locator('.pdf-loading')).toBeVisible();
+    const original = groups((await layout(page)).root).find(group => group.id === firstId)!.tabs.find(tab => tab.ref.id === 'paper-a')!;
+    await dragView(page, original.id, second, 'center', false, async () => {
+      const receiver = await second.locator('[data-pane-drop-receiver]').elementHandle();
+      expect(receiver).toBeTruthy();
+      releasePdf();
+      await waitForPdf(second);
+      await expect(second.locator('.pdf-loading')).toHaveCount(0);
+      expect(await receiver!.evaluate(node => node.isConnected)).toBe(true);
+      await expect(second.locator('.pane-drop-preview[data-drop-side="center"]')).toBeVisible();
+    });
+    await expect.poll(async () => groups((await layout(page)).root).find(group => group.id === firstId)!.tabs.some(tab => tab.id === original.id)).toBe(false);
+    const destination = groups((await layout(page)).root).find(group => group.id === secondId)!;
+    expect(destination.tabs.find(tab => tab.id === original.id)?.ref).toEqual({ kind: 'document', id: 'paper-a' });
+    expect(destination.activeTabId).toBe(original.id);
+    await expect(second.getByLabel('PDF 页码', { exact: true })).toHaveValue('1');
+  } finally { releasePdf(); }
+});
 
-async function start(page: Page) {
-  const seed = createSeed();
-  seed.panelWidth = 340; seed.sessions['research-a'].panel.mode = 'ai';
-  seed.researches['research-b'].documentIds = ['paper-a', 'paper-c'];
-  seed.researches['research-b'].cardIds = ['card-c'];
-  for (const conversation of Object.values(seed.conversations)) conversation.connectionId = 'demo';
-  await mockProjectService(page, { bound: false, seed });
-  await page.route('**/api/ai/config', route => route.fulfill({ json: { configured: false, images: true, model: 'split-fixture', mode: 'demo', limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } } }));
-  await page.route('**/api/ai/agents', route => route.fulfill({ json: { agents: [] } }));
-  await page.route('**/api/ai/chat', () => { throw new Error('Split tests must not call a real model'); });
-  await page.goto('/');
-  await expect(main(page)).toBeVisible();
-  await openSource(page, seed.documents['paper-a'].title);
-  await expect(primary(page).locator('.pdf-page-loading')).toHaveCount(0);
-  await expect(primary(page).locator('canvas').first()).toBeVisible();
-  await main(page).getByRole('button', { name: '分屏阅读', exact: true }).click();
-  await expect(main(page).getByLabel('选择对照内容')).toBeVisible();
-}
-
-async function goTo(pane: Locator, page: number) {
-  await pane.getByLabel('PDF 页码', { exact: true }).fill(String(page));
-  await expect(pane.locator('.pdf-page-loading')).toHaveCount(0);
-  await expect.poll(() => pane.locator(`.pdf-sheet[data-page-index="${page - 1}"]`).evaluate(sheet => {
-    const scroll = sheet.closest('.pdf-scroll')!;
-    return Math.abs(sheet.getBoundingClientRect().top - scroll.getBoundingClientRect().top - parseFloat(getComputedStyle(scroll).paddingTop));
-  })).toBeLessThanOrEqual(2);
-}
-
-test('中央可同时阅读两篇论文，独立翻页缩放与阅读状态，右侧 AI 草稿不变', async ({ page }) => {
+test('聚焦窗格承接打开操作，论文卡片白板文稿均可分屏，卡片共享正文', async ({ page }) => {
   await start(page);
-  await openResearchPage(page, '研究主页');
-  await expect(page.getByRole('button', { name: /^在对照窗打开 / })).toHaveCount(0);
-  await openResearchPage(page, '资料');
-  await expect(page.getByRole('button', { name: /^在对照窗打开 / })).toHaveCount(0);
-  await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
-  await expect(page.getByRole('button', { name: '在对照窗打开 Adaptive Retrieval: Evidence & Reliability', exact: true })).toBeVisible();
-  const question = '这两篇论文对证据相关性的观点有何不同？';
-  await panel(page).getByLabel('向 AI 提问').fill(question);
-  await main(page).getByLabel('选择对照内容').selectOption('document:paper-b');
-  await goTo(primary(page), 3); await goTo(secondary(page), 2);
-  await secondary(page).getByRole('button', { name: '放大 PDF', exact: true }).click();
-  await secondary(page).getByRole('button', { name: '略读过', exact: true }).click();
-  await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
-  await expect(primary(page).locator('.pdf-zoom')).toContainText('100%');
-  await expect(secondary(page).locator('.pdf-zoom')).toContainText('125%');
+  const firstId = await pane(page, 1).getAttribute('data-pane-id');
+  const second = await split(page, pane(page, 1), '右');
+  const secondId = await second.getAttribute('data-pane-id');
+  await openCard(page, cardA);
+  await expect(paneById(page, firstId!).getByLabel('PDF 页码', { exact: true })).toHaveValue('1');
+  await expect(paneById(page, secondId!).getByLabel('卡片标题')).toHaveValue(cardA);
+  const third = await split(page, paneById(page, secondId!), '下');
+  const thirdId = await third.getAttribute('data-pane-id');
+  const body = '多窗共享同一张卡片，编辑后仍能回到原文。';
+  await third.getByLabel('卡片正文').fill(body);
+  await expect(paneById(page, secondId!).getByLabel('卡片正文')).toHaveValue(body);
+  await openResearchPage(page, '证据与论证');
+  await expect(paneById(page, thirdId!).getByLabel('查找白板资料')).toBeVisible();
+  const fourth = await split(page, paneById(page, thirdId!), '右');
+  await openResearchPage(page, draftA);
+  await expect(fourth.getByLabel('结论正文')).toBeVisible();
+  await fourth.getByLabel('结论正文').fill('在同一工作台整理分屏阅读的结论。');
   const current = await state(page);
-  expect(current.documents['paper-b'].readingStatus).toBe('skimmed');
-  expect(current.documents['paper-a'].readingStatus).toBe('reading');
-  expect(current.sessions['research-a'].active).toEqual({ kind: 'document', id: 'paper-a' });
-  expect(current.sessions['research-a'].mainSplit?.ref).toEqual({ kind: 'document', id: 'paper-b' });
-  await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue(question);
+  expect(current.cards['card-a'].body).toBe(body);
+  const activeRefs = groups(current.sessions['research-a'].layout!.root).map(group => group.tabs.find(tab => tab.id === group.activeTabId)!.ref.kind);
+  expect(activeRefs).toEqual(['document', 'card', 'board', 'draft']);
   await saved(page); await page.reload();
-  await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
-  await expect(secondary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
-  await expect(secondary(page).locator('.pdf-zoom')).toContainText('125%');
-  await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue(question);
-  await main(page).getByRole('button', { name: '关闭阅读器分屏', exact: true }).click();
-  await main(page).getByRole('button', { name: '分屏阅读', exact: true }).click();
-  await expect(main(page).getByLabel('选择对照内容')).toHaveValue('document:paper-b');
-  await expect(secondary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
-  await expect(secondary(page).locator('.pdf-zoom')).toContainText('125%');
-  await main(page).getByRole('button', { name: '关闭阅读器分屏', exact: true }).click();
-  await page.getByRole('button', { name: '在对照窗打开 Retrieval Baselines & Trade-offs', exact: true }).click();
-  await expect(main(page).getByLabel('选择对照内容')).toHaveValue('document:paper-b');
-  await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
+  await expect(paneById(page, secondId!).getByLabel('卡片正文')).toHaveValue(body);
+  await expect(fourth.getByLabel('结论正文')).toHaveValue('在同一工作台整理分屏阅读的结论。');
 });
 
-test('论文与卡片、两张卡片共用实体，切换与关闭分屏保留编辑内容', async ({ page }) => {
+test('多窗格与聚焦状态按研究隔离，刷新后恢复原布局和每个视图的阅读位置', async ({ page }) => {
   await start(page);
-  await main(page).getByLabel('选择对照内容').selectOption('card:card-a');
-  await expect(primary(page).getByRole('region', { name: 'PDF 阅读器 主区', exact: true })).toBeVisible();
-  const note = '对照论文原文：收益以相关证据覆盖为前提。';
-  await secondary(page).getByLabel('卡片正文').fill(note);
-  await main(page).getByLabel('选择主窗内容').selectOption('card:card-b');
-  await primary(page).getByLabel('卡片正文').fill('另一张卡片：无关材料可能放大不确定性。');
-  await expect(secondary(page).getByLabel('卡片正文')).toHaveValue(note);
-  await main(page).getByLabel('选择主窗内容').selectOption('card:card-a');
-  await expect(primary(page).getByLabel('卡片正文')).toHaveValue(note);
-  const updated = `${note}\n已在主窗补充适用条件。`;
-  await primary(page).getByLabel('卡片正文').fill(updated);
-  await expect(secondary(page).getByLabel('卡片正文')).toHaveValue(updated);
-  await main(page).getByLabel('选择对照内容').selectOption('card:card-b');
-  await main(page).getByRole('button', { name: '关闭阅读器分屏', exact: true }).click();
-  await main(page).getByRole('button', { name: '分屏阅读', exact: true }).click();
-  await expect(main(page).getByLabel('选择对照内容')).toHaveValue('card:card-b');
-  await expect(secondary(page).getByLabel('卡片正文')).toHaveValue('另一张卡片：无关材料可能放大不确定性。');
-  await main(page).getByRole('button', { name: '关闭阅读器分屏', exact: true }).click();
-  await expect(primary(page).getByLabel('卡片正文')).toHaveValue(updated);
-  await saved(page); await page.reload();
-  await expect(primary(page).getByLabel('卡片正文')).toHaveValue(updated);
-  expect((await state(page)).cards['card-b'].body).toContain('无关材料可能放大不确定性');
-});
-
-test('分屏内容与可选资源按研究隔离，返回原研究恢复原对照', async ({ page }) => {
-  await start(page);
-  await main(page).getByLabel('选择对照内容').selectOption('document:paper-b');
-  await goTo(secondary(page), 2);
+  const firstId = await pane(page, 1).getAttribute('data-pane-id');
+  const second = await split(page, pane(page, 1), '右');
+  await goTo(paneById(page, firstId!), 3);
+  await second.getByRole('tab').first().click();
+  await openSource(page, paperB);
+  await goTo(second, 2);
+  const third = await split(page, second, '下');
+  await openCard(page, cardA);
+  const question = '对照两篇论文，继续核查证据的适用条件。';
+  await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+  await panel(page).getByLabel('向 AI 提问').fill(question);
+  const original = await layout(page);
   await switchResearch(page, 'research-b');
-  await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
-  await expect(main(page).getByLabel('选择对照内容')).toHaveCount(0);
-  await main(page).getByRole('button', { name: '分屏阅读', exact: true }).click();
-  const available = await main(page).getByLabel('选择对照内容').locator('option').evaluateAll(nodes => nodes.map(node => (node as HTMLOptionElement).value));
-  expect(available).toContain('document:paper-c'); expect(available).toContain('card:card-c');
-  expect(available).not.toContain('document:paper-b'); expect(available).not.toContain('card:card-a');
-  await main(page).getByLabel('选择对照内容').selectOption('card:card-c');
+  await expect(panes(page)).toHaveCount(0);
+  await openSource(page, paperA);
+  const other = await split(page, pane(page, 1), '下');
+  await goTo(other, 2);
+  const alternate = await layout(page, 'research-b');
+  expect(groups(alternate.root).flatMap(group => group.tabs).some(tab => tab.ref.id === 'paper-b' || tab.ref.id === 'card-a')).toBe(false);
   await switchResearch(page, 'research-a');
-  await expect(main(page).getByLabel('选择对照内容')).toHaveValue('document:paper-b');
-  await expect(secondary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
-  expect((await state(page)).sessions['research-b'].mainSplit?.ref).toEqual({ kind: 'card', id: 'card-c' });
+  await expect(panes(page)).toHaveCount(3);
+  await expect(paneById(page, firstId!).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
+  await expect(second.getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
+  await expect(third.getByLabel('卡片标题')).toHaveValue(cardA);
+  await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue(question);
+  expect((await layout(page)).focusedPaneId).toBe(original.focusedPaneId);
+  await saved(page); await page.reload();
+  await expect(panes(page)).toHaveCount(3);
+  expectRestored(await layout(page), original);
+  expectRestored(await layout(page, 'research-b'), alternate);
 });
 
-for (const width of [1440, 1280, 1024]) test(`PDF 与知识卡片对照 ${width}px，右侧 AI 保持可用`, async ({ page }) => {
+for (const width of [1440, 1280, 1024]) test(`三窗格布局在 ${width}px 保持结构，放大后可恢复且右侧AI可用`, async ({ page }) => {
   await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
   await start(page);
-  await main(page).getByLabel('选择对照内容').selectOption('card:card-a');
-  await main(page).getByLabel('阅读器分屏方向').selectOption('horizontal');
-  await expect(secondary(page).getByLabel('卡片正文')).toBeVisible();
-  await expect(primary(page).locator('.pdf-page-loading')).toHaveCount(0);
-  await expect(panel(page).getByLabel('向 AI 提问')).toBeVisible();
+  const firstId = await pane(page, 1).getAttribute('data-pane-id');
+  const right = await split(page, pane(page, 1), '右');
+  await openCard(page, cardA);
+  const below = await split(page, right, '下');
+  await openResearchPage(page, draftA);
+  await below.getByLabel('结论正文').fill('窄屏保留多窗格，通过放大查看当前内容。');
+  await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+  await waitForPdf(paneById(page, firstId!));
+  const original = await layout(page);
+  const first = (await paneById(page, firstId!).boundingBox())!, second = (await right.boundingBox())!, third = (await below.boundingBox())!;
+  expect(second.x).toBeGreaterThan(first.x + first.width - 3);
+  expect(third.y).toBeGreaterThan(second.y + second.height - 3);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  await expect(panel(page).getByLabel('向 AI 提问')).toBeVisible();
   await saved(page); await page.evaluate(() => document.fonts.ready);
-  await mkdir('docs/verification/reader-images', { recursive: true });
-  await page.screenshot({ path: `docs/verification/reader-images/workspace-pdf-card-${width}.png` });
+  await mkdir('docs/verification/workspace-panes', { recursive: true });
+  await page.screenshot({ path: `docs/verification/workspace-panes/three-panes-${width}.png` });
+  await paneAction(page, below, '放大当前窗格');
+  await expect(below.getByLabel('结论正文')).toHaveValue('窄屏保留多窗格，通过放大查看当前内容。');
+  await expect(paneById(page, firstId!)).toBeHidden();
+  await paneAction(page, below, '还原窗格布局');
+  await expect(paneById(page, firstId!)).toBeVisible();
+  expect((await layout(page)).root).toEqual(original.root);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 });
