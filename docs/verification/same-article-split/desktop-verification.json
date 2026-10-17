@@ -1,0 +1,92 @@
+{
+  "verifiedAt": "2026-10-17T18:17:15.814Z",
+  "command": "npm run test:desktop:e2e",
+  "exitCode": 0,
+  "passed": 14,
+  "failed": 0,
+  "durationReported": "1.7m",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "asarPath": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar",
+  "asarSha256": "4f6390e906aff6e8edba64cdddf580e29b04b020bd850c5d381f6584f94d1fb6",
+  "independentUserDataAndHome": true,
+  "productionApplicationTouched": false,
+  "nativeSoleTabDrag": {
+    "direction": "down",
+    "alt": false,
+    "trusted": true,
+    "copyPreview": true
+  },
+  "readersAfterRestart": [
+    {
+      "viewId": "view-edb2a351-b683-411b-be67-add5f886a76b",
+      "documentId": "paper-a",
+      "reading": {
+        "pageIndex": 1,
+        "scale": 1,
+        "offset": 0.29535558780841803
+      }
+    },
+    {
+      "viewId": "view-0fe02807-cd14-43bb-b07f-81d6c178b7fb",
+      "documentId": "paper-a",
+      "reading": {
+        "pageIndex": 2,
+        "scale": 1.25,
+        "offset": 0
+      }
+    }
+  ],
+  "actualModelCallsInReaderTest": 0,
+  "artifacts": [
+    {
+      "path": "desktop-reader-images.png",
+      "sha256": "9dec1f600ca4c8f88524189b74d98b20263c5965140bccaa52ad70f75c1df510",
+      "bytes": 249467
+    },
+    {
+      "path": "desktop-reader-images.json",
+      "sha256": "e0163b50df75f9fd4bdcab5d84585cb855e539b55ddc297d200bb1a0161f0dec",
+      "bytes": 1288
+    },
+    {
+      "path": "desktop-fullscreen.png",
+      "sha256": "e94bc5b5c1ee6fe99e4f93281fb9657695977c5e7ab77e37e8ecb992d5ef8386",
+      "bytes": 161724
+    },
+    {
+      "path": "desktop-window-restored.png",
+      "sha256": "0ab2ceef12a8c05f200f4c368b3e2e299fef1e47fa816f1b28f4042db31ff92c",
+      "bytes": 159754
+    },
+    {
+      "path": "desktop-fullscreen.json",
+      "sha256": "98aa88280b4dd274972249a2e528858b37428b83d0986d159a2262089bc2443e",
+      "bytes": 1559
+    },
+    {
+      "path": "desktop-pdf-card-1440x900.png",
+      "sha256": "649c3be0d46828ac3c26b2bb149b9ab569117bf11e5b5f4688b1210b4690fbfa",
+      "bytes": 233500
+    },
+    {
+      "path": "desktop-board-source-1280x800.png",
+      "sha256": "725769ec6a9988677b2d2316328dccc04e38146ab9597c399eea18f57c54f503",
+      "bytes": 178609
+    },
+    {
+      "path": "desktop-writing-ai-1440x900.png",
+      "sha256": "4e5032c9e5088c4cb4aeda0bd99712a7d1b481072460acb1c533af972be983fc",
+      "bytes": 181575
+    },
+    {
+      "path": "desktop-writing-ai-1024x800.png",
+      "sha256": "bf0ae7011ceb5302c4502544ac8ea83b43732e40be9fd59d23b15c97395f9510",
+      "bytes": 133307
+    }
+  ],
+  "limitations": [
+    "Native model requests were mocked; paid model inference was not exercised.",
+    "System dictation recording was not started."
+  ]
+}

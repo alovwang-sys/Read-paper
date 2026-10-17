@@ -7,7 +7,10 @@ export function AgentActivity({ events, generating }: { events: AgentEvent[]; ge
   if (!events.length) return null;
   const tools = events.filter(event => event.kind === 'tool');
   const running = generating && tools.some(event => event.status === 'running');
-  return <details className="ai-agent-events">
+  const recovery = events.find(event => event.kind === 'status' && event.id === 'session-fork');
+  return <>
+    {recovery && <div className="ai-scope-notice" role="status"><strong>已恢复对话</strong><p>{recovery.text}</p></div>}
+    <details className="ai-agent-events">
     <summary><Wrench size={12} /><span>执行过程 · {events.length}</span><small>{running ? '工具执行中' : `${tools.length} 次工具调用`}</small></summary>
     <div className="ai-execution-list">
       {events.map((event, index) => event.kind === 'tool' ? <details className={`ai-tool-call is-${event.status ?? 'record'}`} key={event.id ?? index}>
@@ -26,5 +29,6 @@ export function AgentActivity({ events, generating }: { events: AgentEvent[]; ge
         {event.kind === 'permission' && <ShieldAlert size={13} />}<span>{event.text}</span>
       </div>)}
     </div>
-  </details>;
+    </details>
+  </>;
 }

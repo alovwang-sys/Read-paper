@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, readFile, realpath, readdir, chmod, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, readdir, chmod, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -73,6 +73,26 @@ test('bound HTTP chat uses real project cwd and an immutable per-request materia
   assert.match(await readFile(join(f.calls[1].materialCwd, 'materials.md'), 'utf8'), /Second quote/);
 });
 
+test('project region image files stay immutable across follow-up requests and archives contain metadata only', async t => {
+  const f = await fixture(t); const project = await f.bind('a');
+  const bytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const source = { ...evidence('figure', ''), kind: 'region', region: { assetId: 'figure-image', hash: createHash('sha256').update(bytes).digest('hex'), rect: { x: 0, y: 0, width: 1, height: 1 }, rotation: 0, width: 30, height: 20 } };
+  const images = [{ evidenceId: source.evidenceId, dataUrl: `data:image/png;base64,${bytes.toString('base64')}` }];
+  const first = await finish(await f.post('run', body('a', project.id, { context: [source], images })));
+  assert.equal(first.at(-1).type, 'done');
+  const firstPath = f.calls[0].imagePaths[0].path;
+  assert.deepEqual(await readFile(firstPath), bytes);
+  assert.equal((await stat(firstPath)).mode & 0o777, 0o400);
+  assert.equal((await stat(f.calls[0].materialCwd)).mode & 0o777, 0o500);
+  const manifest = await readFile(join(f.calls[0].materialCwd, 'manifest.json'), 'utf8');
+  assert.doesNotMatch(manifest, /data:image|dataUrl/);
+  assert.deepEqual(JSON.parse(manifest).images, [{ evidenceId: 'figure', fileName: 'region-1.png' }]);
+  const second = await finish(await f.post('run', body('a', project.id, { requestId: 'request-2', context: [source], images })));
+  assert.equal(second.at(-1).type, 'done');
+  assert.notEqual(f.calls[1].imagePaths[0].path, firstPath);
+  assert.deepEqual(await readFile(firstPath), bytes);
+});
+
 test('opaque project session refs resume their native identity and cannot be used from another research', async t => {
   const calls = [];
   const f = await fixture(t, { codex: {
@@ -113,6 +133,43 @@ test('two local conversation IDs cannot run the same native project session conc
   release(); assert.equal((await first.finish()).at(-1).type, 'done');
   const after = await finish(await f.post('run', body('a', project.id, { requestId: 'after-completion', conversationId: 'second-local-conversation', sessionRef: ref })));
   assert.equal(after.at(-1).type, 'done'); assert.equal(started, 2);
+});
+
+test('fork recovery protects the new native writer, releases the original and persists the new ref across restart', async t => {
+  let release;
+  const starts = [];
+  const f = await fixture(t, { codex: {
+    async listSessions() { return { sessions: [native('original-native')] }; },
+    async run(input) {
+      starts.push(input.nativeSessionId);
+      const id = starts.length === 1 ? 'fork-native' : input.nativeSessionId;
+      input.onEvent({ type: 'session', nativeSessionId: id, ...(starts.length === 1 ? { forkedFromId: input.nativeSessionId } : {}) });
+      if (starts.length === 1) await new Promise((resolve, reject) => {
+        release = resolve;
+        input.signal.addEventListener('abort', () => reject(Object.assign(new Error('stopped'), { code: 'stopped' })), { once: true });
+      });
+      return { body: 'Finished', nativeSessionId: id };
+    },
+  } });
+  const project = await f.bind('a');
+  const listed = await (await f.post('projects/list', identity('a'))).json();
+  const originalRef = listed.sessions[0].id;
+  const first = await runningStream(await f.post('run', body('a', project.id, { sessionRef: originalRef })));
+  try {
+    assert.notEqual(first.sessionRef, originalRef);
+    const duplicate = await finish(await f.post('run', body('a', project.id, { requestId: 'same-fork', conversationId: 'second-conversation', sessionRef: first.sessionRef })));
+    assert.equal(duplicate.at(-1).code, 'session_busy');
+    assert.deepEqual(starts, ['original-native']);
+    const original = await finish(await f.post('run', body('a', project.id, { requestId: 'use-original', conversationId: 'other-conversation', sessionRef: originalRef })));
+    assert.equal(original.at(-1).type, 'done');
+    assert.deepEqual(starts, ['original-native', 'original-native']);
+  } finally { release(); await first.finish(); }
+  f.restart();
+  const history = [{ requestId: 'request-1', prompt: 'Earlier question', body: 'Finished', evidenceIds: [], context: [] }];
+  const after = await finish(await f.post('run', body('a', project.id, { requestId: 'after-restart', history })));
+  assert.equal(after.at(-1).type, 'done');
+  assert.equal(after.at(-1).nativeSessionRef, first.sessionRef);
+  assert.equal(starts.at(-1), 'fork-native');
 });
 
 test('unconfirmed OpenCode stop reaches HTTP clients and persists a read-only native session after restart', async t => {

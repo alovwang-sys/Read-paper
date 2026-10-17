@@ -147,3 +147,46 @@ test('invalid settings are rejected before a socket can listen, without leaking 
   }
   assert.equal(listens, 0);
 });
+
+test('will-quit waits for local service cleanup once, then permits the repeated quit event', async () => {
+  const { createQuitHandler } = await import('./local-ai.mjs');
+  let finish;
+  const cleanup = new Promise(resolve => { finish = resolve; });
+  let stops = 0, quits = 0, prevented = 0;
+  let quitCompleted;
+  const repeatedQuit = new Promise(resolve => { quitCompleted = resolve; });
+  const handler = createQuitHandler({ stop: () => { stops++; return cleanup; }, quit: () => { quits++; handler(event); quitCompleted(); }, onError: error => assert.fail(error) });
+  const event = { preventDefault() { prevented++; } };
+  handler(event); handler(event);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(prevented, 2); assert.equal(stops, 1); assert.equal(quits, 0);
+  finish(); await repeatedQuit;
+  assert.equal(quits, 1); assert.equal(prevented, 2);
+});
+
+test('will-quit keeps the application alive when cleanup fails and allows a later retry', async () => {
+  const { createQuitHandler } = await import('./local-ai.mjs');
+  let stops = 0, quits = 0, reported;
+  let quitCompleted;
+  const repeatedQuit = new Promise(resolve => { quitCompleted = resolve; });
+  const handler = createQuitHandler({ stop: async () => { if (++stops === 1) throw new Error('cleanup failed'); }, quit: () => { quits++; quitCompleted(); }, onError: error => { reported = error; } });
+  const event = { preventDefault() {} };
+  handler(event); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(quits, 0); assert.equal(reported.message, 'cleanup failed');
+  handler(event); await repeatedQuit;
+  assert.equal(stops, 2); assert.equal(quits, 1);
+});
+
+test('completed cleanup defers the repeated quit beyond the current native event turn', async () => {
+  const { createQuitHandler } = await import('./local-ai.mjs');
+  let quit;
+  const repeatedQuit = new Promise(resolve => { quit = resolve; });
+  let calls = 0;
+  const handler = createQuitHandler({ stop: async () => {}, quit: () => { calls++; quit(); }, onError: error => assert.fail(error) });
+  handler({ preventDefault() {} });
+  // Electron ignores a second app.quit while its cancelled will-quit is unwinding.
+  for (let index = 0; index < 5; index++) await Promise.resolve();
+  assert.equal(calls, 0, 'native event must unwind before app.quit is called again');
+  await repeatedQuit;
+  assert.equal(calls, 1);
+});

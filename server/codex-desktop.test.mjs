@@ -108,6 +108,42 @@ test('native skill input, selected readonly roots, catalog model mapping and rea
   assert.ok(f.captured.filter((entry) => entry.executable).every((entry) => entry.options.shell === false));
 });
 
+test('Codex sends immutable local images only when the selected model explicitly advertises image input', async t => {
+  const models = [
+    { id: 'vision', model: 'native-vision', displayName: 'Vision', isDefault: true, inputModalities: ['text', 'image'] },
+    { id: 'text', model: 'native-text', displayName: 'Text', inputModalities: ['text'] },
+    { id: 'unknown', model: 'native-unknown', displayName: 'Legacy catalog' },
+  ];
+  const f = await fixture(t, { models });
+  const image = join(f.cwd, 'region-1.png');
+  await writeFile(image, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), { mode: 0o400 });
+  const catalog = await f.runtime.capabilities();
+  assert.deepEqual(catalog.models[0].inputModalities, ['text', 'image']);
+  assert.equal(catalog.models[2].inputModalities, undefined);
+  assert.equal((await f.runtime.probe()).capabilities.images, true);
+  const imagePaths = [{ evidenceId: 'region-evidence', path: image }];
+  for (const model of ['text', 'unknown']) await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Explain this figure', codex: { model }, imagePaths }), { code: 'images_unsupported' });
+  assert.ok(!f.captured.some(entry => entry.method === 'thread/start' || entry.method === 'turn/start'));
+  await f.runtime.run({ cwd: f.cwd, prompt: 'Explain this figure', codex: { model: 'vision' }, imagePaths });
+  const turn = f.captured.find(entry => entry.method === 'turn/start').params;
+  assert.equal(turn.model, 'native-vision');
+  assert.deepEqual(turn.input.slice(1), [
+    { type: 'text', text: '区域图片来源 evidenceId=region-evidence', text_elements: [] },
+    { type: 'localImage', path: image },
+  ]);
+  assert.doesNotMatch(JSON.stringify(turn), /data:image/);
+  const unknown = await fixture(t);
+  assert.equal((await unknown.runtime.probe()).capabilities.images, false);
+});
+
+test('Codex refuses image paths outside the material directory before spawning', async t => {
+  const f = await fixture(t);
+  const outside = join(f.skillDir, 'region-1.png');
+  await writeFile(outside, 'outside');
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Q', codex: {}, imagePaths: [{ evidenceId: 'e1', path: outside }] }), { code: 'invalid_input' });
+  assert.equal(f.children.length, 0);
+});
+
 test('invalid and newly disabled skills, unknown models and unavailable Plan never start a model turn', async (t) => {
   const f = await fixture(t); const catalog = await f.runtime.capabilities();
   await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Q', skillIds: [f.skillPath], codex: {} }), { code: 'invalid_skill' });

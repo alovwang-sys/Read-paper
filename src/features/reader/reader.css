@@ -7,6 +7,10 @@
   position: relative;
   overflow: hidden;
 }
+.pdf-reader-pane { flex: 1; min-height: 0; }
+.pdf-page-stack { display: flex; flex-direction: column; gap: 24px; min-width: 100%; width: max-content; }
+.pdf-sheet-placeholder { display: flex; align-items: start; justify-content: center; }
+.pdf-page-placeholder-label { padding: 18px; color: #a1aa9a; font-size: 11px; }
 .pdf-toolbar {
   display: flex;
   justify-content: space-between;

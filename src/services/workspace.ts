@@ -3,9 +3,13 @@ import { createSeed, emptySession } from '../data/seed';
 import { loadWorkspace, saveWorkspace, saveMigrationBackup, restoreWorkspaceBackup } from '../data/storage';
 import { migrateWorkspace } from '../data/migrations';
 import { hasFullText, normalizeIdentifier } from '../domain/knowledge';
+import { paneGroups, findPaneTab, ensurePaneLayout, replacePane, collapseEmptyPanes, syncPaneSession } from './panes';
+export { getReaderPosition } from './panes';
 export { hasFullText, normalizeIdentifier, conclusionIssues } from '../domain/knowledge';
 import type {
   BoardPlacement,
+  ReadingPosition,
+  ReaderTarget,
   CollectionId,
   Evidence,
   PanelMode,
@@ -21,6 +25,10 @@ import type {
   RegionSource,
   ResearchViewId,
   ResearchDirectory,
+  SourceCandidate,
+  SourceDiscovery,
+  PaneNode,
+  WorkspaceTab,
 } from '../domain/types';
 
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -28,6 +36,36 @@ export const scopeKey = (scope: WorkspaceScope) =>
   scope.kind === 'research' ? scope.researchId : 'library';
 export const sameRef = (a: { kind: string; id: string }, b: { kind: string; id: string }) =>
   a.kind === b.kind && a.id === b.id;
+const readerFlushes = new Map<string, () => void>();
+export function registerReaderFlush(key: string, flush: () => void) {
+  readerFlushes.set(key, flush);
+  return () => { if (readerFlushes.get(key) === flush) readerFlushes.delete(key); };
+}
+function flushPaneReaders() { for (const flush of [...readerFlushes.values()]) flush(); }
+type PaneSide = 'left' | 'right' | 'up' | 'down';
+function splitLayout(session: Session, paneId: string, side: PaneSide, tab: WorkspaceTab) {
+  const layout = ensurePaneLayout(session);
+  if (!['left', 'right', 'up', 'down'].includes(side) || !paneGroups(layout.root).some(pane => pane.id === paneId)) throw new Error('目标窗格不存在。');
+  const pane = { kind: 'group' as const, id: uid('pane'), tabs: [tab], activeTabId: tab.id };
+  const old = paneGroups(layout.root).find(pane => pane.id === paneId)!;
+  const first = side === 'left' || side === 'up';
+  layout.root = replacePane(layout.root, paneId, { kind: 'split', id: uid('split'), axis: side === 'left' || side === 'right' ? 'row' : 'column', ratio: 0.5, first: first ? pane : old, second: first ? old : pane });
+  layout.focusedPaneId = pane.id;
+  delete layout.zoomedPaneId;
+}
+function openPaneResource(session: Session, ref: ResourceRef, anchor?: ResourceAnchor, paneId?: string) {
+  const layout = ensurePaneLayout(session);
+  const pane = paneGroups(layout.root).find(pane => pane.id === (paneId ?? layout.focusedPaneId))!;
+  let tab = pane.tabs.find(tab => tab.id === pane.activeTabId && sameRef(tab.ref, ref)) ?? pane.tabs.find(tab => sameRef(tab.ref, ref));
+  if (!tab) { tab = { id: uid('view'), ref: { ...ref }, ...(ref.kind === 'document' && session.readers[`main:${ref.id}`] ? { reading: { ...session.readers[`main:${ref.id}`] } } : {}) }; pane.tabs.push(tab); }
+  if (anchor) { tab.anchor = { ...anchor }; if (ref.kind === 'document' && session.readers[`main:${ref.id}`]) tab.reading = { ...session.readers[`main:${ref.id}`] }; }
+  else delete tab.anchor;
+  tab.documentInfo = false;
+  pane.activeTabId = tab.id; layout.focusedPaneId = pane.id;
+  if (layout.zoomedPaneId) layout.zoomedPaneId = pane.id;
+  syncPaneSession(session);
+  return tab;
+}
 export function resourceTitle(data: WorkspaceData, ref: ResourceRef) {
   const entities =
     ref.kind === 'research'
@@ -177,9 +215,9 @@ export const workspace = {
       }
       const saved = journal ? JSON.parse(journal) : database?.schemaVersion === 3 ? database : oldJournal ? JSON.parse(oldJournal) : database;
       const migrated = saved && saved.schemaVersion < 3;
-      const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating'));
+      const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating') || Object.values(saved.documents ?? {}).some(doc => (doc as { acquisition?: { status?: string } }).acquisition?.status === 'fetching'));
       if (migrated) await saveMigrationBackup({ database, recovery: journal ?? oldJournal });
-      const data = saved ? migrateWorkspace(saved) : createSeed();
+      const data = migrateWorkspace(saved ?? createSeed());
       status({
         data,
         loaded: true,
@@ -261,16 +299,33 @@ export const workspace = {
     status({ notice: message });
   },
   openResearchView(researchId: string, view: ResearchViewId) {
+    flushPaneReaders();
     workspace.updateData(data => {
       if (!data.researches[researchId]) throw new Error('研究不存在。');
       data.scope = { kind: 'research', researchId };
       const session = data.sessions[researchId];
+      session.sourcePreview = undefined;
       if (session.active.kind !== 'researchView' || session.active.id !== view) session.history.push(session.active);
       session.active = { kind: 'researchView', id: view };
       session.researchView = view;
       session.anchor = undefined;
     });
     status({ selection: undefined });
+  },
+  openSourcePreview(candidate: SourceCandidate, scope: WorkspaceScope, discovery?: SourceDiscovery) {
+    const url = new URL(candidate.url);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('请使用有效的公开网页链接。');
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(scope)];
+      if (!session) throw new Error('研究不存在。');
+      data.scope = scope;
+      session.sourcePreview = { candidate, discovery };
+    });
+    status({ selection: undefined });
+  },
+  closeSourcePreview(scope = state.data.scope) {
+    workspace.updateData(data => { data.sessions[scopeKey(scope)].sourcePreview = undefined; });
   },
   addSource(input: { kind: 'identifier'; raw: string } | { kind: 'title'; title: string } | { kind: 'library'; documentId: string }, target: WorkspaceScope) {
     let documentId = '', created = false;
@@ -298,21 +353,41 @@ export const workspace = {
   mergeDocuments(stubId: string, intoId: string) {
     workspace.updateData(data => {
       const stub = data.documents[stubId], target = data.documents[intoId];
-      if (!stub || hasFullText(stub) || !hasFullText(target) || stubId === intoId) throw new Error('只能把无全文条目合并到已有全文的资料。');
-      if (Object.entries(stub.identifiers ?? {}).some(([key, value]) => target.identifiers?.[key as 'doi' | 'arxiv' | 'url'] && target.identifiers[key as 'doi' | 'arxiv' | 'url'] !== value)) throw new Error('两条资料的标识不一致，无法安全合并；请先核对来源。');
+      const sameIdentifier = stub && target && (['doi', 'arxiv'] as const).some(key => stub.identifiers?.[key] && stub.identifiers[key] === target.identifiers?.[key]);
+      if (!stub || hasFullText(stub) || !target || !hasFullText(target) && !sameIdentifier || stubId === intoId) throw new Error('只能把无全文条目合并到已有全文或具有相同文献标识的资料。');
+      if ((['doi', 'arxiv'] as const).some(key => stub.identifiers?.[key] && target.identifiers?.[key] && stub.identifiers[key] !== target.identifiers[key]) || stub.identifiers?.url && target.identifiers?.url && stub.identifiers.url !== target.identifiers.url && !sameIdentifier) throw new Error('两条资料的标识不一致，无法安全合并；请先核对来源。');
       if (Object.values(data.evidence).some(e => e.documentId === stubId)) throw new Error('无全文条目已有摘录，无法安全合并。');
-      for (const research of Object.values(data.researches)) research.documentIds = [...new Set(research.documentIds.map(id => id === stubId ? intoId : id))];
+      for (const research of Object.values(data.researches)) {
+        research.documentIds = [...new Set(research.documentIds.map(id => id === stubId ? intoId : id))];
+        const source = research.sourceRecords?.[stubId];
+        if (source && research.sourceRecords) {
+          const targetRecord = research.sourceRecords[intoId];
+          research.sourceRecords[intoId] = {
+            note: [...new Set([targetRecord?.note, source.note].filter(Boolean))].join('\n\n'),
+            discoveries: [...(targetRecord?.discoveries ?? []), ...source.discoveries].filter((item, index, items) => items.findIndex(other => other.url === item.url && other.requestId === item.requestId && other.conversationId === item.conversationId) === index),
+          };
+          delete research.sourceRecords[stubId];
+        }
+      }
       const move = (ref: { kind: string; id: string }) => { if (ref.kind === 'document' && ref.id === stubId) ref.id = intoId; };
       for (const placement of Object.values(data.placements)) move(placement.resourceRef);
       for (const session of Object.values(data.sessions)) {
+        if (session.documentInfoId === stubId) session.documentInfoId = intoId;
         for (const ref of [session.active, ...session.openItems, ...session.history, ...session.panel.history]) move(ref);
         if (session.panel.ref) move(session.panel.ref);
+        if (session.mainSplit) move(session.mainSplit.ref);
+        if (session.layout) for (const pane of paneGroups(session.layout.root)) for (const tab of pane.tabs) move(tab.ref);
         if (session.panel.sourceReturnRef) move(session.panel.sourceReturnRef);
         for (const ref of session.recentItems ?? []) move(ref);
         session.openItems = session.openItems.filter((ref, index, items) => items.findIndex(other => sameRef(ref, other)) === index);
         session.pinnedIds = [...new Set(session.pinnedIds.map(id => id === stubId ? intoId : id))];
       }
       target.identifiers = { ...stub.identifiers, ...target.identifiers };
+      target.abstract ??= stub.abstract;
+      target.abstractAlternatives = [...(target.abstractAlternatives ?? []), ...(stub.abstractAlternatives ?? []), ...(stub.abstract ? [stub.abstract] : [])].filter((item, index, items) => (item.text !== target.abstract?.text || item.url !== target.abstract?.url) && items.findIndex(other => item.text === other.text && item.url === other.url) === index);
+      target.metadataSource ??= stub.metadataSource;
+      target.sourceKind ??= stub.sourceKind;
+      target.pdfUrl ??= stub.pdfUrl;
       delete data.documents[stubId];
     });
     status({ selection: undefined });
@@ -331,6 +406,12 @@ export const workspace = {
   removeExcerpt(evidenceId: string) {
     workspace.updateData(data => {
       if (Object.values(data.cards).some(c => c.evidenceIds.includes(evidenceId)) || Object.values(data.drafts).some(d => d.evidenceIds.includes(evidenceId)) || Object.values(data.conversations).some(c => c.contextIds.includes(evidenceId)) || Object.values(data.requests).some(r => r.context.some(c => c.evidenceId === evidenceId)) || Object.values(data.cardDrafts).some(d => d.evidenceIds.includes(evidenceId))) throw new Error('摘录已被引用，请先移除引用。');
+      for (const session of Object.values(data.sessions)) {
+        const anchors = [session.anchor, session.panel.anchor, session.mainSplit?.anchor,
+          ...(session.layout ? paneGroups(session.layout.root).flatMap(pane => pane.tabs.map(tab => tab.anchor)) : [])];
+        for (const anchor of anchors) if (anchor?.evidenceId === evidenceId) delete anchor.evidenceId;
+        if (session.panel.citation?.evidenceId === evidenceId) session.panel.citation = undefined;
+      }
       delete data.evidence[evidenceId];
     });
   },
@@ -354,10 +435,12 @@ export const workspace = {
     });
   },
   openCollection(collection: CollectionId) {
+    flushPaneReaders();
     workspace.updateData((data) => {
       const session = data.sessions.library;
       if (data.scope.kind === 'research') session.libraryResearchId = data.scope.researchId;
       data.scope = { kind: 'library' };
+      session.sourcePreview = undefined;
       session.history.push(session.active);
       session.active = { kind: 'collection', id: collection };
       session.anchor = undefined;
@@ -372,6 +455,7 @@ export const workspace = {
       anchor?: ResourceAnchor;
     },
   ) {
+    if (options.target !== 'inspector') flushPaneReaders();
     if (ref.kind === 'research') { workspace.openResearchView(ref.id, 'home'); return; }
     workspace.updateData((data) => {
       if (!resourceExists(data, ref))
@@ -395,6 +479,8 @@ export const workspace = {
       data.scope = options.scope;
       const session = data.sessions[scopeKey(options.scope)];
       if (options.target === 'main') {
+        session.sourcePreview = undefined;
+        session.documentInfoId = undefined;
         if (JSON.stringify(session.active) !== JSON.stringify(ref))
           session.history.push(session.active);
         if (ref.kind === 'document' && !options.anchor && !session.panel.pinned && !session.panel.findEvidenceFor && !session.panel.citation && session.panel.mode !== 'ai') { session.panel.open = true; session.panel.mode = 'excerpts'; }
@@ -434,16 +520,20 @@ export const workspace = {
           session.readers[readerKey] = {
             pageIndex,
             scale: session.readers[readerKey]?.scale ?? 1,
+            ...(session.readers[readerKey]?.offset !== undefined ? { offset: 0 } : {}),
           };
         }
       }
+      if (options.target === 'main') openPaneResource(session, ref, options.anchor);
     });
     if (options.target === 'main') status({ selection: undefined });
   },
   back(target: 'main' | 'inspector') {
+    if (target === 'main') flushPaneReaders();
     workspace.updateData((data) => {
       const session = data.sessions[scopeKey(data.scope)];
       if (target === 'main') {
+        if (session.sourcePreview) { session.sourcePreview = undefined; return; }
         const previous = session.history.pop();
         if (previous && (previous.kind === 'collection' || previous.kind === 'researchView' || resourceExists(data, previous))) {
           session.active = previous;
@@ -451,6 +541,7 @@ export const workspace = {
           if (previous.kind !== 'collection' && previous.kind !== 'researchView' && !session.openItems.some(ref => sameRef(ref, previous))) session.openItems.push(previous);
         }
         session.anchor = undefined;
+        if (!['collection', 'researchView', 'research'].includes(session.active.kind)) openPaneResource(session, session.active as ResourceRef);
       } else {
         session.panel.ref = session.panel.history.pop();
         session.panel.anchor = undefined;
@@ -458,18 +549,25 @@ export const workspace = {
     });
   },
   closeResource(ref: ResourceRef) {
+    flushPaneReaders();
     workspace.updateData((data) => {
       const session = data.sessions[scopeKey(data.scope)];
       session.openItems = session.openItems.filter(
         (item) => !sameRef(item, ref),
       );
       session.pinnedIds = session.pinnedIds.filter((id) => id !== ref.id);
+      if (session.mainSplit && sameRef(session.mainSplit.ref, ref)) session.mainSplit = undefined;
       if (session.active.kind !== 'collection' && session.active.kind !== 'researchView' && sameRef(session.active, ref))
         session.active =
           session.openItems.at(-1) ??
           (data.scope.kind === 'research'
             ? { kind: 'researchView', id: session.researchView ?? 'home' }
             : { kind: 'collection', id: 'documents' });
+      if (session.layout) {
+        for (const group of paneGroups(session.layout.root)) group.tabs = group.tabs.filter(tab => !sameRef(tab.ref, ref));
+        session.layout.root = collapseEmptyPanes(session.layout.root);
+        syncPaneSession(session, !['researchView', 'collection'].includes(session.active.kind));
+      }
     });
   },
   pinResource(ref: ResourceRef) {
@@ -482,6 +580,7 @@ export const workspace = {
   },
   switchResearch(researchId: string) {
     if (!state.data.researches[researchId]) return;
+    flushPaneReaders();
     workspace.updateData((data) => {
       data.scope = { kind: 'research', researchId };
     });
@@ -523,6 +622,7 @@ export const workspace = {
         requestIds: [],
       };
       data.sessions[id] = emptySession({ kind: 'researchView', id: 'home' });
+      ensurePaneLayout(data.sessions[id], id);
       data.sessions[id].activeConversationId = conversationId;
       data.scope = { kind: 'research', researchId: id };
     });
@@ -650,16 +750,123 @@ export const workspace = {
   },
   setReader(
     documentId: string,
-    position: { pageIndex: number; scale: number },
-    target: 'main' | 'inspector' = 'main',
+    position: ReadingPosition,
+    target: ReaderTarget = 'main',
+    scope: WorkspaceScope = state.data.scope,
   ) {
     workspace.updateData((data) => {
       const doc = data.documents[documentId];
-      if (!hasFullText(doc)) return;
-      data.sessions[scopeKey(data.scope)].readers[`${target}:${documentId}`] = {
-        pageIndex: Math.max(0, Math.min(doc.pageCount - 1, position.pageIndex)),
+      const session = data.sessions[scopeKey(scope)];
+      if (!session || scope.kind === 'research' && !data.researches[scope.researchId]?.documentIds.includes(documentId)) return;
+      if (!hasFullText(doc) || !Number.isFinite(position.pageIndex) || !Number.isFinite(position.scale)) return;
+      const next = {
+        pageIndex: Math.max(0, Math.min(doc.pageCount - 1, Math.floor(position.pageIndex))),
         scale: Math.max(0.5, Math.min(2, position.scale)),
+        ...(position.offset !== undefined && Number.isFinite(position.offset) ? { offset: Math.max(0, Math.min(1, position.offset)) } : {}),
       };
+      if (target.startsWith('view:')) {
+        const found = session.layout && findPaneTab(session.layout, target.slice(5));
+        if (!found || found.tab.ref.kind !== 'document' || found.tab.ref.id !== documentId) return;
+        found.tab.reading = next;
+        if (found.pane.id === session.layout!.focusedPaneId && found.tab.id === found.pane.activeTabId) session.readers[`main:${documentId}`] = next;
+      } else {
+        session.readers[`${target}:${documentId}`] = next;
+        if (target === 'main' && session.layout) {
+          const group = paneGroups(session.layout.root).find(pane => pane.id === session.layout!.focusedPaneId);
+          const tab = group?.tabs.find(tab => tab.id === group.activeTabId && tab.ref.kind === 'document' && tab.ref.id === documentId);
+          if (tab) tab.reading = next;
+        }
+      }
+    });
+  },
+  activatePane(paneId: string, tabId?: string) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(data.scope)], layout = ensurePaneLayout(session);
+      const pane = paneGroups(layout.root).find(pane => pane.id === paneId);
+      if (!pane || tabId && !pane.tabs.some(tab => tab.id === tabId)) return;
+      if (tabId) pane.activeTabId = tabId;
+      const next = pane.tabs.find(tab => tab.id === pane.activeTabId);
+      if (next && !sameRef(session.active, next.ref)) session.history.push(session.active);
+      layout.focusedPaneId = paneId;
+      if (layout.zoomedPaneId) layout.zoomedPaneId = paneId;
+      session.sourcePreview = undefined;
+      syncPaneSession(session);
+    });
+  },
+  splitPane(paneId: string, direction: PaneSide, tabId?: string) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(data.scope)], layout = ensurePaneLayout(session);
+      const pane = paneGroups(layout.root).find(pane => pane.id === paneId);
+      const source = pane?.tabs.find(tab => tab.id === (tabId ?? pane.activeTabId));
+      if (!source) return;
+      splitLayout(session, paneId, direction, { ...structuredClone(source), id: uid('view') });
+      syncPaneSession(session);
+    });
+  },
+  movePaneTab(tabId: string, paneId: string, side: 'center' | PaneSide = 'center', copy = false, index?: number) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(data.scope)], layout = ensurePaneLayout(session);
+      const source = findPaneTab(layout, tabId), destination = paneGroups(layout.root).find(pane => pane.id === paneId);
+      if (!source || !destination || !['center', 'left', 'right', 'up', 'down'].includes(side)) return;
+      const copying = copy || source.pane === destination && side !== 'center' && source.pane.tabs.length === 1;
+      const oldIndex = source.pane.tabs.indexOf(source.tab);
+      const tab = copying ? { ...structuredClone(source.tab), id: uid('view') } : source.tab;
+      if (!copying) { source.pane.tabs.splice(oldIndex, 1); if (source.pane.activeTabId === tabId) source.pane.activeTabId = source.pane.tabs[Math.min(oldIndex, source.pane.tabs.length - 1)]?.id; }
+      if (side === 'center') {
+        const raw = Number.isInteger(index) ? index! : destination.tabs.length;
+        const at = source.pane === destination && !copying && index !== undefined && oldIndex < raw ? raw - 1 : raw;
+        destination.tabs.splice(Math.max(0, Math.min(destination.tabs.length, at)), 0, tab);
+        destination.activeTabId = tab.id; layout.focusedPaneId = destination.id;
+        if (layout.zoomedPaneId) layout.zoomedPaneId = destination.id;
+      } else splitLayout(session, paneId, side, tab);
+      layout.root = collapseEmptyPanes(layout.root);
+      syncPaneSession(session);
+    });
+  },
+  closePaneTab(paneId: string, tabId: string) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(data.scope)], layout = ensurePaneLayout(session);
+      const pane = paneGroups(layout.root).find(pane => pane.id === paneId);
+      if (!pane) return;
+      const index = pane.tabs.findIndex(tab => tab.id === tabId);
+      if (index < 0) return;
+      pane.tabs.splice(index, 1);
+      if (pane.activeTabId === tabId) pane.activeTabId = pane.tabs[Math.min(index, pane.tabs.length - 1)]?.id;
+      layout.root = collapseEmptyPanes(layout.root); syncPaneSession(session);
+      if (!session.openItems.length) session.active = data.scope.kind === 'research' ? { kind: 'researchView', id: session.researchView ?? 'home' } : { kind: 'collection', id: 'documents' };
+    });
+  },
+  mergePanes(paneId: string) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(data.scope)], layout = ensurePaneLayout(session);
+      const groups = paneGroups(layout.root), pane = groups.find(pane => pane.id === paneId);
+      if (!pane) return;
+      pane.tabs.push(...groups.filter(group => group !== pane).flatMap(group => group.tabs));
+      layout.root = pane; layout.focusedPaneId = pane.id; delete layout.zoomedPaneId; syncPaneSession(session);
+    });
+  },
+  togglePaneZoom(paneId: string) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(data.scope)], layout = ensurePaneLayout(session);
+      if (!paneGroups(layout.root).some(pane => pane.id === paneId)) return;
+      layout.focusedPaneId = paneId;
+      if (layout.zoomedPaneId === paneId) delete layout.zoomedPaneId; else layout.zoomedPaneId = paneId;
+      syncPaneSession(session);
+    });
+  },
+  resizePane(splitId: string, ratio: number) {
+    if (!Number.isFinite(ratio)) return;
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const layout = ensurePaneLayout(data.sessions[scopeKey(data.scope)]);
+      const resize = (node: PaneNode) => { if (node.kind !== 'split') return; if (node.id === splitId) node.ratio = Math.max(0.1, Math.min(0.9, ratio)); else { resize(node.first); resize(node.second); } };
+      resize(layout.root);
     });
   },
   addPlacement(boardId: string, ref: ResourceRef): BoardPlacement {

@@ -5,6 +5,9 @@ import type { WorkspaceData } from '../../src/domain/types';
 import { choosePdf, openResearchNavigation, openResearchPage, switchResearch } from './knowledge-helpers';
 
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/sources/**', route => route.fulfill({ status: 503, json: { error: '本地标识回归使用固定样例，未联网获取全文。' } }));
+});
 async function state(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => { const journal = localStorage.getItem('papertrail-recovery-v3'); if (journal) return JSON.parse(journal); const path = '/src/data/storage.ts'; return (await import(path)).loadWorkspace(); });
 }
@@ -29,7 +32,7 @@ async function placeSource(page: Page, title: string) {
   await main(page).getByRole('button', { name: '添加资料', exact: true }).click();
   await main(page).getByRole('button', { name: 'PDF 论文', exact: true }).click();
   await main(page).getByRole('button', { name: `添加到白板：${title}`, exact: true }).click();
-  await page.getByRole('tablist', { name: '中央资源标签' }).getByRole('tab', { name: title, exact: true }).click();
+  await main(page).getByRole('tablist', { name: '窗格 1 标签', exact: true }).getByRole('tab', { name: title, exact: true }).click();
 }
 
 test('本地标识去重、标题建条目、资料库复用和添加框键盘返回', async ({ page }) => {

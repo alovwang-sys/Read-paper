@@ -1,0 +1,16 @@
+{
+  "version": "0.1.2",
+  "architecture": "arm64",
+  "installer": "/Users/amos/Downloads/Papertrail-0.1.2-session-recovery-arm64.dmg",
+  "bytes": 157972717,
+  "dmgSha256": "a447568f5ff66e005994bff3864d30ae19e6146ff49fd1b6e0e9c1df1da56203",
+  "appAsarSha256": "d363751d97073b6330ab0c072e055812d9ac03fec4065f19d254f3da9cd1e503",
+  "dmgVerified": true,
+  "runtimeFilesCompared": 101,
+  "runtimeFileMismatches": 0,
+  "bundleEntriesVerified": 272,
+  "installedApplication": "/Applications/Papertrail.app",
+  "installedPayloadVerified": true,
+  "applicationReopened": true,
+  "originalWorkspaceAndDraftRetained": true
+}

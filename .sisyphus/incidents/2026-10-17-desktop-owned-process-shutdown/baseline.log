@@ -1,0 +1,32 @@
+command: node --test --test-name-pattern='discovery timeout' server/shutdown.test.mjs
+exit: 1
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 115.198125
+
+✖ failing tests:
+
+test at server/shutdown.test.mjs:45:1
+✖ discovery timeout cancels its owned CLI and close waits for process exit (35.468875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + []
+  - [
+  -   'SIGTERM'
+  - ]
+
+      at TestContext.<anonymous> (file:///Users/amos/.codex/worktrees/source-intake/Read-paper/server/shutdown.test.mjs:50:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'SIGTERM' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

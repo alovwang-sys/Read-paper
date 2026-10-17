@@ -3,7 +3,8 @@ import { FilePlus2, Search, Upload, X } from 'lucide-react';
 import type { WorkspaceScope } from '../../domain/types';
 import { normalizeIdentifier } from '../../domain/knowledge';
 import { importPdfFiles } from '../../services/pdf';
-import { useWorkspace } from '../../services/workspace';
+import { collectSource, sourceCandidate } from '../../services/sources';
+import { scopeKey, useWorkspace } from '../../services/workspace';
 import './library.css';
 
 const ADD_SOURCE_EVENT = 'papertrail:add-source';
@@ -69,6 +70,19 @@ export function AddSourceDialog() {
       close();
     } catch (error) { setError(error instanceof Error ? error.message : '添加失败，请重试。'); }
   };
+  const collectLink = async () => {
+    if (importing.current || !query.trim()) return;
+    importing.current = true; setBusy(true); setError('');
+    const scope = structuredClone(target);
+    try {
+      const documentId = await collectSource(sourceCandidate(query), scope);
+      callback.current?.(documentId);
+      if (visible.current && scopeKey(actions.getState().data.scope) === scopeKey(scope)) actions.openResource({ kind: 'document', id: documentId }, { scope, target: 'main' });
+      actions.notice('资料已收下，正在尝试获取文献信息和全文。');
+      close();
+    } catch (error) { setError(error instanceof Error ? error.message : '保存失败，链接已保留，请重试。'); }
+    finally { importing.current = false; setBusy(false); }
+  };
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
     <section className="modal add-source-dialog" role="dialog" aria-modal="true" aria-label="添加资料" onKeyDown={event => {
       if (event.key === 'Escape') { event.stopPropagation(); close(); }
@@ -85,19 +99,19 @@ export function AddSourceDialog() {
         <option value="library">仅存入资料库（未加入研究）</option>
         {Object.values(data.researches).map(research => <option key={research.id} value={research.id}>{research.title}</option>)}
       </select></label>
-      <form onSubmit={event => { event.preventDefault(); if (busy || !query.trim()) return; if (matches[0]) add({ kind: 'library', documentId: matches[0].id }); else add(identifier ? { kind: 'identifier', raw: query } : { kind: 'title', title: query }); }}>
+      <form onSubmit={event => { event.preventDefault(); if (busy || !query.trim()) return; if (identifier) void collectLink(); else if (matches[0]) add({ kind: 'library', documentId: matches[0].id }); else add({ kind: 'title', title: query }); }}>
         <label className="search-input"><Search size={17}/><input ref={input} aria-label="标识、链接或资料标题" placeholder="粘贴 arXiv、DOI、链接，或搜索标题…" value={query} disabled={busy} onChange={event => { setQuery(event.target.value); setError(''); }}/></label>
-        <p className="muted">本地识别格式，不联网获取元数据或下载 PDF。</p>
+        <p className="muted">链接、DOI 或 arXiv：先收下资料，再尝试获取信息和全文。也可搜索已有资料或按标题新建。</p>
         <div className="source-matches">
           {matches.map(doc => {
             const usedBy = Object.values(data.researches).filter(research => research.documentIds.includes(doc.id));
             const linked = target.kind === 'research' && usedBy.some(research => research.id === target.researchId);
             return <button type="button" className="source-match" key={doc.id} disabled={busy} onClick={() => add({ kind: 'library', documentId: doc.id })}><strong>{doc.title}</strong><small>{linked ? '已在本研究中 · 打开' : `用于：${usedBy.map(research => research.title).join('、') || '尚未加入研究'} · 复用原文和已有摘录`}</small></button>;
           })}
-          {!!query.trim() && <button className="button source-create" type="button" disabled={busy} onClick={() => add(identifier ? { kind: 'identifier', raw: query } : { kind: 'title', title: query })}><FilePlus2 size={16}/>{identifier ? `收下 ${identifier.kind === 'arxiv' ? 'arXiv' : identifier.kind.toUpperCase()}：${identifier.value}` : `按标题新建条目：${query.trim()}`}</button>}
+          {!!query.trim() && <button className="button source-create" type="button" disabled={busy} onClick={() => identifier ? void collectLink() : add({ kind: 'title', title: query })}><FilePlus2 size={16}/>{busy ? '正在保存资料…' : identifier ? `收下 ${identifier.kind === 'arxiv' ? 'arXiv' : identifier.kind === 'doi' ? 'DOI' : '链接'}：${identifier.value}` : `按标题新建条目：${query.trim()}`}</button>}
         </div>
       </form>
-      <button className="source-file-drop" disabled={busy} onClick={() => fileInput.current?.click()}><Upload size={23}/><strong>{busy ? '正在逐个导入 PDF…' : '选择 PDF，或把文件拖到这里'}</strong><span>支持多选 · 每个文件不超过 50 MB</span></button>
+      <button className="source-file-drop" disabled={busy} onClick={() => fileInput.current?.click()}><Upload size={23}/><strong>{busy ? '正在保存资料…' : '选择 PDF，或把文件拖到这里'}</strong><span>支持多选 · 每个文件不超过 50 MB</span></button>
       <input ref={fileInput} type="file" accept=".pdf,application/pdf" aria-label="选择 PDF 文件" multiple hidden disabled={busy} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void importFiles(files, target); }}/>
       {error && <p role="alert" className="source-error">{error}</p>}
       {!!failures.length && <div role="alert" className="source-error"><strong>部分文件未导入，可重新选择后重试：</strong>{failures.map((failure, index) => <p key={index}>{failure.filename}：{failure.message}</p>)}</div>}

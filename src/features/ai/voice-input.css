@@ -1,5 +1,6 @@
 .reading-ai .ai-voice-input { display: contents; }
-.reading-ai .ai-voice-button { width: 36px; height: 36px; flex-shrink: 0; }
+.reading-ai .ai-voice-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 58px; height: 36px; padding: 6px; border-radius: 7px; flex-shrink: 0; color: var(--ai-muted); font-size: 12px; white-space: nowrap; }
+.reading-ai .ai-voice-button:hover { color: var(--ai-ink); background: #edf2ef; }
 .reading-ai .ai-voice-button[aria-expanded="true"] { color: var(--ai-green); background: #edf5f0; }
 .reading-ai .ai-voice-hint { display: grid; grid-template-columns: minmax(0, 1fr) 24px; gap: 8px; flex: 1 0 100%; order: 10; min-width: 0; padding: 10px; border: 1px solid var(--ai-border); border-radius: 8px; background: #f6f9f7; color: var(--ai-muted); font-size: 12px; line-height: 1.65; text-align: left; }
 .reading-ai .ai-voice-hint strong { color: var(--ai-ink); font-size: 12px; font-weight: 600; }

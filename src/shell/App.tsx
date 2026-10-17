@@ -20,7 +20,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import type { PanelMode, ResearchViewId, ResourceRef } from '../domain/types';
+import type { PanelMode, ReaderTarget, ResearchViewId, ResourceRef } from '../domain/types';
 import {
   resourceExists,
   resourceTitle,
@@ -36,6 +36,7 @@ import { ProjectFileStatus } from '../features/research/ProjectFileStatus';
 import { LibraryView } from '../features/library/LibraryView';
 import { SourcesView } from '../features/library/SourcesView';
 import { DocumentDetail } from '../features/library/DocumentDetail';
+import { SourcePreview } from '../features/library/SourcePreview';
 import { AddSourceDialog, SourceDropZone } from '../features/library/AddSourceDialog';
 import { ResourceListView } from '../features/research/ResourceListView';
 import { CardsView } from '../features/cards/CardsView';
@@ -51,6 +52,9 @@ import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
 import { getAIConfig } from '../services/ai';
 import { ResourceTabs } from './ResourceTabs';
+import { WorkspaceSplit } from './WorkspaceSplit';
+import { paneGroups } from '../services/panes';
+import { DesktopWindowControls } from './DesktopWindowControls';
 import { BackupControls } from '../features/settings/BackupControls';
 
 const researchViews: { id: ResearchViewId; name: string; icon: typeof Home; group?: string }[] = [
@@ -135,7 +139,7 @@ export function App() {
   const lastFocus = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const active = session.active;
-  const activeTitle = active.kind === 'researchView' ? researchViews.find(item => item.id === active.id)?.name ?? '研究主页' : active.kind === 'collection' ? '资料库' : resourceTitle(data, active);
+  const activeTitle = session.sourcePreview ? session.sourcePreview.candidate.title : active.kind === 'researchView' ? researchViews.find(item => item.id === active.id)?.name ?? '研究主页' : active.kind === 'collection' ? '资料库' : resourceTitle(data, active);
   const navigationTrigger = useRef<HTMLElement | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -189,7 +193,7 @@ export function App() {
   function open(ref: ResourceRef, target: 'main' | 'inspector' = 'main') {
     actions.openResource(ref, { scope: data.scope, target });
   }
-  function resourceView(ref: ResourceRef, target: 'main' | 'inspector') {
+  function resourceView(ref: ResourceRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean) {
     if (!resourceExists(data, ref))
       return (
         <div className="empty-state">
@@ -197,14 +201,14 @@ export function App() {
           <p>原文件或来源不在本地数据中，请重新导入或从资料库打开。</p>
         </div>
       );
-    if (ref.kind === 'document' && !hasFullText(data.documents[ref.id])) return <DocumentDetail key={ref.id} documentId={ref.id} />;
+    if (ref.kind === 'document' && (!hasFullText(data.documents[ref.id]) || documentInfo || target === 'main' && session.documentInfoId === ref.id)) return <DocumentDetail key={ref.id} documentId={ref.id} />;
     if (ref.kind === 'document')
       return (
         <PdfReader
           key={`${target}:${ref.id}`}
           documentId={ref.id}
           target={target}
-          anchor={target === 'main' ? session.anchor : session.panel.anchor}
+          anchor={target.startsWith('view:') ? anchor : target === 'main' ? session.anchor : target === 'main-secondary' ? session.mainSplit?.anchor : session.panel.anchor}
         />
       );
     if (ref.kind === 'card') return <CardEditor cardId={ref.id} />;
@@ -343,7 +347,7 @@ export function App() {
             <button
               className="icon-button"
               aria-label="主区返回"
-              disabled={!session.history.length}
+              disabled={!session.sourcePreview && !session.history.length}
               onClick={() => actions.back('main')}
             >
               <ArrowLeft size={17} />
@@ -353,6 +357,8 @@ export function App() {
             <strong>{activeTitle}</strong>
           </div>
           <div className="header-actions">
+            <DesktopWindowControls />
+            {!session.sourcePreview && active.kind === 'document' && hasFullText(data.documents[active.id]) && <button className="text-button" onClick={() => actions.updateData(next => { const s = next.sessions[scopeKey(next.scope)]; s.documentInfoId = session.documentInfoId === active.id ? undefined : active.id; if (s.layout) { const pane = paneGroups(s.layout.root).find(pane => pane.id === s.layout!.focusedPaneId); const tab = pane?.tabs.find(tab => tab.id === pane.activeTabId); if (tab?.ref.kind === 'document' && tab.ref.id === active.id) tab.documentInfo = s.documentInfoId === active.id; } })}>{session.documentInfoId === active.id ? '阅读全文' : '文献信息'}</button>}
             <span
               className="save-indicator"
               data-testid="save-status"
@@ -395,20 +401,20 @@ export function App() {
             </button>
           </div>
         )}
-        <ResourceTabs leading={{ title: data.scope.kind === 'research' ? researchViews.find(item => item.id === (session.researchView ?? 'home'))?.name ?? '研究主页' : '资料库', selected: active.kind === 'researchView' || active.kind === 'collection', onOpen: () => { if (data.scope.kind === 'research') actions.openResearchView(data.scope.researchId, session.researchView ?? 'home'); else actions.openCollection('documents'); } }} items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
+        {(session.sourcePreview || active.kind === 'collection' || active.kind === 'researchView') && <ResourceTabs preview={session.sourcePreview ? { title: session.sourcePreview.candidate.title, onClose: () => actions.closeSourcePreview() } : undefined} leading={{ title: data.scope.kind === 'research' ? researchViews.find(item => item.id === (session.researchView ?? 'home'))?.name ?? '研究主页' : '资料库', selected: !session.sourcePreview && (active.kind === 'researchView' || active.kind === 'collection'), onOpen: () => { if (data.scope.kind === 'research') actions.openResearchView(data.scope.researchId, session.researchView ?? 'home'); else actions.openCollection('documents'); } }} items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
           title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)}
           onClose={ref => actions.closeResource(ref)} onPin={ref => actions.pinResource(ref)}
           onMove={(from, to) => actions.updateData(next => {
             const items = next.sessions[scopeKey(next.scope)].openItems;
             if (from < 0 || to < 0 || from >= items.length || to >= items.length) return;
             items.splice(to, 0, items.splice(from, 1)[0]);
-          })} />
+          })} />}
         <main aria-label="主工作区" className="main-workspace">
-          <ErrorBoundary key={`${scopeKey(data.scope)}:${active.kind}:${active.id}`}>
-            {active.kind === 'collection' ? <LibraryView collection={active.id} /> : active.kind === 'researchView' && research ? (
+          <ErrorBoundary key={`${scopeKey(data.scope)}:${actions.getGeneration()}`}>
+            {session.sourcePreview ? <SourcePreview candidate={session.sourcePreview.candidate} discovery={session.sourcePreview.discovery} scope={data.scope} /> : active.kind === 'collection' ? <LibraryView collection={active.id} /> : active.kind === 'researchView' && research ? (
               active.id === 'home' ? <ResearchView researchId={research.id} /> : active.id === 'sources' ? <SourcesView researchId={research.id} /> : active.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : active.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={active.id === 'boards' ? 'board' : 'draft'} />
             ) : active.kind !== 'researchView' ? (
-              resourceView(active, 'main')
+              <WorkspaceSplit primary={active} renderResource={resourceView} />
             ) : <div className="empty-state">请先选择研究。</div>}
           </ErrorBoundary>
         </main>

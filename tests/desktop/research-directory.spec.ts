@@ -137,7 +137,7 @@ test('打包桌面：原生目录选择取消无残留，创建后左右沿用�
     expect(modelRequests).toEqual([]);
   } finally {
     if (application) { await close(application); application = undefined; }
-    await rm(f.root, { recursive: true, force: true });
+    await rm(f.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
@@ -201,6 +201,6 @@ test('打包桌面：真实PDF与卡片写入研究目录，UI修改同步，外
   } finally {
     if (restoreCard) await writeFile(cardFile, restoreCard);
     if (application) { await close(application); application = undefined; }
-    await rm(f.root, { recursive: true, force: true });
+    await rm(f.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });

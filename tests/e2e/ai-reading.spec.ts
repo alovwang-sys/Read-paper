@@ -48,7 +48,7 @@ async function start(page: Page) {
 async function openPaper(page: Page) {
   const state = await data(page), document = state.documents['paper-a'];
   await main(page).getByRole('button', { name: new RegExp(document.title) }).click();
-  await expect(main(page).getByRole('region', { name: 'PDF 阅读器 主区' })).toBeVisible();
+  await expect(main(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toBeVisible();
   await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
   await expect.poll(async () => (await data(page)).documents[document.id].hash).toMatch(/^[a-f0-9]{64}$/);

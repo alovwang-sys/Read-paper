@@ -1,0 +1,2 @@
+{"phase":"actual-cli-local-image","cli":"codex-cli 0.162.1","localhostProviderRequests":1,"realModelCalls":0,"userSessionsAccessed":0,"sourceBytes":3147780,"providerImageBytes":3147780,"providerImageHash":"3bcf2a39ea0aec97032c71e0226e019fd3c09db9dc321cd5fd87c16f498af7cc","exactSourceHash":true,"readonlyFile":"0400","readonlyDirectory":"0500","readonlyReadPassed":true,"writeDenied":true,"imageBase64Echo":false,"maximumEventBytes":1348,"pass":true}
+{"phase":"owned-client-and-loopback-server-closed-temporary-state-removed","pass":true}

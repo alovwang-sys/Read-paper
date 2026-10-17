@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { hasFullText } from '../../src/domain/knowledge';
 import { createSeed } from '../../src/data/seed';
+import { paneGroups } from '../../src/services/panes';
 import { linkCard, scopeKey, workspace } from '../../src/services/workspace';
 import {
   appendAIToDraft,
@@ -142,6 +143,48 @@ describe('工作台共享实体与会话', () => {
     workspace.openResource(second, { scope, target: 'main' });
     workspace.back('main');
     expect(workspace.getSession().openItems.filter(ref => ref.id === first.id)).toHaveLength(1);
+  });
+  it('引用定位当前窗格且保留另一阅读位置，研究切换后迟到位置仍归原研究', () => {
+    const scope = { kind: 'research' as const, researchId: 'research-a' };
+    workspace.openResource({ kind: 'document', id: 'paper-a' }, { scope, target: 'main' });
+    const first = paneGroups(workspace.getSession().layout!.root)[0];
+    workspace.setReader('paper-a', { pageIndex: 1, scale: 1.2, offset: 0.4 });
+    workspace.splitPane(first.id, 'right');
+    const second = paneGroups(workspace.getSession().layout!.root)[1], view = second.tabs[0];
+    workspace.setReader('paper-a', { pageIndex: 2, scale: 0.8, offset: 0.7 }, `view:${view.id}`);
+    workspace.activatePane(first.id);
+    workspace.openResource({ kind: 'document', id: 'paper-a' }, { scope, target: 'main', anchor: { pageIndex: 0 } });
+    expect(paneGroups(workspace.getSession().layout!.root)[0].tabs.find(tab => tab.id === first.activeTabId)?.reading).toEqual({ pageIndex: 0, scale: 1.2, offset: 0 });
+    expect(paneGroups(workspace.getSession().layout!.root)[1].tabs[0].reading).toEqual({ pageIndex: 2, scale: 0.8, offset: 0.7 });
+    workspace.switchResearch('research-b');
+    workspace.setReader('paper-a', { pageIndex: 99, scale: 3, offset: -1 }, `view:${view.id}`, scope);
+    expect(workspace.getSession().openItems).toHaveLength(0);
+    workspace.switchResearch('research-a');
+    expect(paneGroups(workspace.getSession().layout!.root)[1].tabs[0].reading).toEqual({ pageIndex: 2, scale: 2, offset: 0 });
+  });
+  it('各窗格复用资料实体、拒绝跨研究，关闭一个标签保留另一个副本和原始资料', () => {
+    const scope = { kind: 'research' as const, researchId: 'research-a' };
+    workspace.openResource({ kind: 'document', id: 'paper-a' }, { scope, target: 'main' });
+    const first = paneGroups(workspace.getSession().layout!.root)[0];
+    const panel = structuredClone(workspace.getSession().panel);
+    workspace.splitPane(first.id, 'down');
+    workspace.openResource({ kind: 'card', id: 'card-a' }, { scope, target: 'main' });
+    expect(paneGroups(workspace.getSession().layout!.root)[0].tabs.find(tab => tab.id === first.activeTabId)?.ref).toEqual({ kind: 'document', id: 'paper-a' });
+    expect(workspace.getSession().panel).toEqual(panel);
+    expect(() => workspace.openResource({ kind: 'card', id: 'card-a' }, { scope: { kind: 'research', researchId: 'research-b' }, target: 'main' })).toThrow();
+    const second = paneGroups(workspace.getSession().layout!.root)[1];
+    const cardTab = second.tabs.find(tab => tab.ref.id === 'card-a')!;
+    workspace.closePaneTab(second.id, cardTab.id);
+    expect(workspace.getState().data.cards['card-a']).toBeDefined();
+    expect(workspace.getState().data.documents['paper-a']).toBeDefined();
+    workspace.openResource({ kind: 'document', id: 'paper-stub' }, { scope, target: 'main' });
+    expect(paneGroups(workspace.getSession().layout!.root)[1].tabs.find(tab => tab.ref.id === 'paper-stub')?.reading).toBeUndefined();
+  });
+  it('首次工作区和恢复备份使用同一默认字段规范，导出再恢复不依赖是否曾打开 AI', async () => {
+    vi.mocked(loadWorkspace).mockResolvedValue(undefined);
+    await workspace.load();
+    expect(workspace.getState().data.conversations['conversation-research-a']).toMatchObject({ title: '阅读对话', historyRange: 'all', createdAt: new Date(0).toISOString() });
+    expect(workspace.getSession().activeConversationId).toBe('conversation-research-a');
   });
   it('来源页索引不合法时拒绝建立证据', () => {
     expect(() =>

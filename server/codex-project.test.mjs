@@ -110,18 +110,110 @@ test('project run uses the actual research cwd plus readonly material root witho
 });
 
 
-test('native writer ownership rejects project resume before turn/start with a static busy message', async (t) => {
+test('native writer ownership forks project history once before sending only to the independent session', async (t) => {
   const f = await fixture(t, (request, { cwd, send }) => {
     if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
     if (request.method === 'thread/resume') {
       send({ id: request.id, error: { code: -32600, message: 'thread locked-thread already has an active writer /private/native/record' } });
       return {};
     }
+    if (request.method === 'thread/fork') return { thread: summary(cwd, 'new-thread', { forkedFromId: 'locked-thread' }), model: 'native' };
   });
-  await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q' }), (error) => {
-    assert.equal(error.code, 'session_busy'); assert.match(error.message, /其他客户端/); assert.doesNotMatch(error.message, /private|writer|locked-thread/); return true;
+  const events = [];
+  const result = await f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q', title: 'Continue the research', codex: { mode: 'chat' }, onEvent: event => events.push(event) });
+  assert.equal(result.nativeSessionId, 'new-thread'); assert.equal(result.nativeTurnId, 'new-turn');
+  assert.equal(f.calls.filter(c => c.method === 'thread/resume').length, 1);
+  assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, 1);
+  const resume = f.calls.find(c => c.method === 'thread/resume').params;
+  const fork = f.calls.find(c => c.method === 'thread/fork').params;
+  const { allowProviderModelFallback: _fallback, ...expected } = resume;
+  assert.deepEqual(fork, { ...expected, ephemeral: false, deferGoalContinuation: true });
+  assert.equal(fork.approvalsReviewer, 'user'); assert.equal(fork.model, 'native');
+  assert.deepEqual(f.calls.find(c => c.method === 'thread/name/set').params, { threadId: 'new-thread', name: 'Continue the research' });
+  assert.deepEqual(f.calls.filter(c => c.method === 'turn/start').map(c => c.params.threadId), ['new-thread']);
+  assert.equal(f.calls.filter(c => c.method === 'turn/start')[0].params.input[0].text, 'Q');
+  const sessions = events.filter(event => event.type === 'session');
+  assert.equal(sessions.length, 2); assert.ok(sessions.every(event => event.nativeSessionId === 'new-thread')); assert.equal(sessions[0].forkedFromId, 'locked-thread'); assert.equal(sessions[1].nativeTurnId, 'new-turn');
+  assert.deepEqual(events.filter(event => event.id === 'session-fork'), [{ type: 'progress', kind: 'status', id: 'session-fork', text: '原会话由 Codex 后台保留，已保留历史并在独立会话继续。原会话不受影响。' }]);
+  assert.ok(!f.calls.some(c => ['thread/start', 'thread/archive', 'thread/delete', 'thread/unsubscribe', 'turn/interrupt'].includes(c.method)));
+  assert.ok(f.children.every(({ child }) => child.killed));
+});
+
+test('failed or invalid project forks preserve a static recovery error without sending the question', async (t) => {
+  for (const invalidFork of ['protocol-error', 'same-id', 'invalid-id', 'wrong-cwd', 'wrong-source', 'exited']) {
+    await t.test(invalidFork, async (t) => {
+      const f = await fixture(t, (request, { cwd, send, child }) => {
+        if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
+        if (request.method === 'thread/resume') { send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {}; }
+        if (request.method === 'thread/fork') {
+          if (invalidFork === 'protocol-error') { send({ id: request.id, error: { code: -32600, message: '/private/failed-fork' } }); return {}; }
+          if (invalidFork === 'exited') { child.exitCode = 1; child.emit('exit', 1); return {}; }
+          return { thread: summary(invalidFork === 'wrong-cwd' ? join(cwd, 'child') : cwd,
+            invalidFork === 'same-id' ? 'locked-thread' : invalidFork === 'invalid-id' ? '../private/invalid-id' : 'new-thread',
+            { forkedFromId: invalidFork === 'wrong-source' ? 'another-thread' : 'locked-thread' }) };
+        }
+      });
+      const events = [];
+      await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q', onEvent: event => events.push(event) }), error => {
+        assert.equal(error.code, 'session_recovery_failed'); assert.doesNotMatch(error.message, /private|writer|locked-thread/); return true;
+      });
+      assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, 1);
+      assert.ok(!f.calls.some(c => c.method === 'turn/start')); assert.ok(!events.some(event => event.type === 'session'));
+      assert.ok(f.children.every(({ child }) => child.exitCode !== null));
+    });
+  }
+});
+
+test('ordinary resume errors and non-project writer conflicts never fork', async (t) => {
+  for (const scenario of ['protocol-error', 'unsupported-method', 'non-project']) {
+    await t.test(scenario, async (t) => {
+      const f = await fixture(t, (request, { cwd, send }) => {
+        if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
+        if (request.method === 'thread/resume') {
+          send({ id: request.id, error: { code: scenario === 'unsupported-method' ? -32601 : -32600, message: scenario === 'non-project' ? 'thread already has an active writer' : 'Other protocol rejection' } }); return {};
+        }
+      });
+      await assert.rejects(f.runtime.run({ cwd: f.cwd, ...(scenario !== 'non-project' ? { materialCwd: f.materials } : {}), nativeSessionId: 'locked-thread', prompt: 'Q' }), { code: scenario === 'non-project' ? 'session_busy' : scenario === 'unsupported-method' ? 'unsupported_method' : 'protocol_error' });
+      assert.ok(!f.calls.some(c => ['thread/fork', 'turn/start'].includes(c.method)));
+      assert.ok(f.children.every(({ child }) => child.killed));
+    });
+  }
+});
+
+test('cancelled recovery never sends a fork or turn after cancellation', async (t) => {
+  for (const phase of ['resume', 'fork', 'session']) {
+    await t.test(phase, async (t) => {
+      const controller = new AbortController();
+      const f = await fixture(t, (request, { cwd, send }) => {
+        if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
+        if (request.method === 'thread/resume') {
+          if (phase === 'resume') controller.abort();
+          send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {};
+        }
+        if (request.method === 'thread/fork') {
+          if (phase === 'fork') controller.abort();
+          return { thread: summary(cwd, 'new-thread', { forkedFromId: 'locked-thread' }) };
+        }
+      });
+      await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q', signal: controller.signal,
+        onEvent: event => { if (phase === 'session' && event.type === 'session') controller.abort(); } }), { code: 'stopped' });
+      assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, phase === 'resume' ? 0 : 1);
+      assert.ok(!f.calls.some(c => c.method === 'turn/start')); assert.ok(f.children.every(({ child }) => child.killed));
+    });
+  }
+});
+
+test('a rejected turn after recovery is never retried or forked again', async (t) => {
+  const f = await fixture(t, (request, { cwd, send }) => {
+    if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
+    if (request.method === 'thread/resume') { send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {}; }
+    if (request.method === 'thread/fork') return { thread: summary(cwd, 'new-thread') };
+    if (request.method === 'turn/start') { send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {}; }
   });
-  assert.ok(!f.calls.some((c) => c.method === 'turn/start')); assert.ok(f.children.every(({ child }) => child.killed));
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q' }), { code: 'session_busy' });
+  assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, 1);
+  assert.deepEqual(f.calls.filter(c => c.method === 'turn/start').map(c => c.params.threadId), ['new-thread']);
+  assert.ok(f.children.every(({ child }) => child.killed));
 });
 
 test('project resume validates the stored cwd before acquiring writer ownership', async (t) => {

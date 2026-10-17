@@ -1,0 +1,39 @@
+{
+  "executablePath": "/Users/amos/.codex/worktrees/source-intake/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "protocol": "papertrail://app/",
+  "mockNativeRequests": 1,
+  "actualModelCalls": 0,
+  "recordingStarted": false,
+  "continuousScrollReachedPage": 2,
+  "paneLayoutRetainedAfterRestart": true,
+  "anchoredViewCloneAndMoveRetainOffset": true,
+  "sourceHighlightRetainedAfterCloneAndMove": true,
+  "readersAfterRestart": [
+    {
+      "viewId": "view-cad31e92-2758-47cc-b8d2-a91fd66e3755",
+      "documentId": "paper-a",
+      "reading": {
+        "pageIndex": 1,
+        "scale": 1,
+        "offset": 0.29535558780841803
+      }
+    },
+    {
+      "viewId": "view-eedc9266-ee11-438d-9c93-c9b59c707851",
+      "documentId": "paper-a",
+      "reading": {
+        "pageIndex": 2,
+        "scale": 1.25,
+        "offset": 0
+      }
+    }
+  ],
+  "model": "vision",
+  "evidencePageIndex": 1,
+  "imageBytes": 15120,
+  "imageHash": "9e749fd90c72e0b753d9865bb9bb48005101dddbb379af3fd6816c2e4144e7d4",
+  "screenshotMatchesFrozenSource": true,
+  "imageAssetRetainedAfterRestart": true,
+  "nextDraftRetained": true,
+  "pageErrors": []
+}

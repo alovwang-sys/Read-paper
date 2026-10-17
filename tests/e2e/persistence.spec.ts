@@ -217,7 +217,7 @@ test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆�
   await expect(
     page.getByRole('main').getByText('文本提取失败', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('main').locator('canvas')).toBeVisible();
+  await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
   await expect(
     page.getByRole('main').getByText('阅读就绪', { exact: true }),
   ).toBeVisible();
