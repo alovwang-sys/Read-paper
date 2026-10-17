@@ -73,6 +73,17 @@ describe('本机聊天发送前的目录保存', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it('目录保存期间编辑出的下一条草稿不会被本次提交清空', async () => {
+    const saving = deferred(); vi.mocked(syncResearchFiles).mockReturnValue(saving.promise);
+    const sending = submitAI('research-a', conversationId, prompt);
+    try {
+      await vi.waitFor(() => expect(syncResearchFiles).toHaveBeenCalledOnce());
+      workspace.updateData(next => { next.conversations[conversationId].input = '继续追问的新草稿'; });
+    } finally { saving.resolve(); await sending; }
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string).prompt).toBe(prompt);
+    expect(data().conversations[conversationId].input).toBe('继续追问的新草稿');
+  });
+
   it.each(['retry', 'regenerate'] as const)('%s 使用同一前置保存，未完成前保留原请求', async action => {
     const original = prior(action === 'retry' ? 'error' : 'done');
     workspace.updateData(next => { next.requests[original.id] = original; next.conversations[conversationId].requestIds = [original.id]; });
@@ -85,6 +96,7 @@ describe('本机聊天发送前的目录保存', () => {
     saving.resolve(); const id = await sending;
     expect(data().requests[id]).toMatchObject({ status: 'done', [action === 'retry' ? 'retryOf' : 'regeneratedFrom']: original.id });
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(data().conversations[conversationId].input).toBe(prompt);
   });
 
   it('前置等待期间切换研究后仍只向原研究发送', async () => {

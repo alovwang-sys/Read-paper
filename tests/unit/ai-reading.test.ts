@@ -61,6 +61,59 @@ afterEach(async () => {
 });
 
 describe('多轮聊天、停止和原始问答', () => {
+  it('超过4000字的问题完整提交，不在页面额外截断或拒绝', async () => {
+    const prompt = '这是需要完整发送的研究问题。'.repeat(500);
+    workspace.updateData(next => { next.conversations[conversationId].input = prompt; });
+    const responder = vi.fn(async (_request: AIRequest) => ({ body: '已收到完整问题', evidenceIds: [] }));
+    const id = await submitAI('research-a', conversationId, prompt, responder);
+    expect(responder.mock.calls[0][0].prompt).toBe(prompt);
+    expect(data().requests[id].status).toBe('done');
+    expect(data().conversations[conversationId].input).toBe('');
+  });
+
+  it.each(['done', 'error'] as const)('请求进入会话即清空输入，%s 后不覆盖下一条草稿', async status => {
+    const prompt = '本次提交的问题';
+    workspace.updateData(next => { next.conversations[conversationId].input = prompt; });
+    let finish!: () => void;
+    const pending = submitAI('research-a', conversationId, prompt, () => new Promise((resolve, reject) => {
+      finish = () => status === 'done' ? resolve({ body: '回答已完成', evidenceIds: [] }) : reject(new Error('连接中断'));
+    }));
+    try {
+      await vi.waitFor(() => expect(finish).toBeDefined());
+      expect(data().conversations[conversationId].input).toBe('');
+      // Repeating the same question is also a new draft, so completion must not clear it again.
+      workspace.updateData(next => { next.conversations[conversationId].input = prompt; });
+    } finally { finish?.(); await pending; }
+    expect(data().conversations[conversationId].input).toBe(prompt);
+  });
+
+  it('发送失败且没有新草稿时恢复原输入，包括首尾空白', async () => {
+    const prompt = '  请保留完整的输入  ';
+    workspace.updateData(next => { next.conversations[conversationId].input = prompt; });
+    const id = await submitAI('research-a', conversationId, prompt, async () => { throw new Error('连接失败'); });
+    expect(data().requests[id].status).toBe('error');
+    expect(data().conversations[conversationId].input).toBe(prompt);
+  });
+
+  it('资产准备期间恢复工作区，不提交旧请求或清空导入的输入', async () => {
+    const prompt = '恢复后继续保留的研究问题';
+    addContext();
+    workspace.updateData(next => { next.conversations[conversationId].input = prompt; });
+    let ready!: (asset: Blob) => void;
+    vi.mocked(getAsset).mockReturnValueOnce(new Promise(resolve => { ready = resolve; }));
+    const responder = vi.fn(async () => ({ body: '不应执行', evidenceIds: [] }));
+    const pending = submitAI('research-a', conversationId, prompt, responder).catch(error => error);
+    try {
+      await vi.waitFor(() => expect(getAsset).toHaveBeenCalled());
+      vi.mocked(loadWorkspace).mockResolvedValue(structuredClone(data()));
+      await workspace.load();
+    } finally { ready(new Blob(['local PDF fixture'])); }
+    expect(await pending).toMatchObject({ message: expect.stringContaining('工作区已改变') });
+    expect(responder).not.toHaveBeenCalled();
+    expect(data().conversations[conversationId].requestIds).toEqual([]);
+    expect(data().conversations[conversationId].input).toBe(prompt);
+  });
+
   it('旧版曾允许编辑的完成回答转为卡片时保留不完整来源标记', () => {
     const legacy = oldRequest('legacy-saved', { legacy: true });
     workspace.updateData(next => { next.requests[legacy.id] = legacy; });

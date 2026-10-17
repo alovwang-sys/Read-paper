@@ -257,14 +257,14 @@ const running = new Map<string, { controller: AbortController; flush: () => void
 const pendingConversations = new Set<string>();
 let stoppingAll = false;
 let preparingRequests = 0;
-async function runChatRequest(request: AIRequest, responder: AIResponder) {
+async function runChatRequest(request: AIRequest, responder: AIResponder, submittedInput?: string) {
   const data = workspace.getState().data;
   if (pendingConversations.has(request.conversationId) || data.conversations[request.conversationId].requestIds.some(id => data.requests[id]?.status === 'generating' && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) throw new Error('当前会话正在回答，请停止或等待完成。');
   pendingConversations.add(request.conversationId);
-  try { return await runRequest(request, responder); }
+  try { return await runRequest(request, responder, submittedInput); }
   finally { pendingConversations.delete(request.conversationId); }
 }
-async function runRequest(request: AIRequest, responder: AIResponder) {
+async function runRequest(request: AIRequest, responder: AIResponder, submittedInput?: string) {
   if (responder === liveResponder && request.connectionId === 'demo') responder = demoResponder;
   if (stoppingAll) throw new Error('正在保存并关闭，请稍后。');
   request.mode = responder === demoResponder ? 'demo' : 'live';
@@ -294,6 +294,7 @@ async function runRequest(request: AIRequest, responder: AIResponder) {
   }
   finally { preparingRequests--; }
   if (stoppingAll) throw new Error('生成已在关闭前取消。');
+  if (workspace.getGeneration() !== generation) throw new Error('工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。');
   if (request.draftId && !workspace.getState().data.cardDrafts[request.draftId]) throw new Error('草稿已放弃，未发送生成请求。');
   request.history = request.history?.map(turn => ({ ...turn, sentBody: remapCitationNumbers(turn.body, turn.evidenceIds, request.context.map(c => c.evidenceId)) }));
   const controller = new AbortController();
@@ -304,12 +305,17 @@ async function runRequest(request: AIRequest, responder: AIResponder) {
       workspace.updateData(data => { data.requests[request.id].body = received; });
   };
   running.set(request.id, { controller, flush });
+  let consumedInput = false;
   workspace.updateData(data => {
     data.requests[request.id] = structuredClone(request);
     if (request.draftId) data.cardDrafts[request.draftId].source.generationRequestIds.push(request.id);
     const conversation = data.conversations[request.conversationId];
     conversation.requestIds.push(request.id);
     conversation.updatedAt = request.createdAt;
+    if (submittedInput !== undefined && conversation.input === submittedInput) {
+      conversation.input = '';
+      consumedInput = true;
+    }
     if ((!request.purpose || request.purpose === 'chat') && !conversation.requestIds.some(id => id !== request.id && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) conversation.title = request.prompt.slice(0, 36);
   });
   const timer = setInterval(flush, 180);
@@ -329,6 +335,8 @@ async function runRequest(request: AIRequest, responder: AIResponder) {
       workspace.updateData(data => {
         data.requests[request.id].status = controller.signal.aborted ? 'stopped' : 'error';
         data.requests[request.id].error = error instanceof Error ? error.message : '生成失败，请重试';
+        const conversation = data.conversations[request.conversationId];
+        if (consumedInput && submittedInput !== undefined && workspace.getGeneration() === generation && conversation?.input === '') conversation.input = submittedInput;
         if (/引用|来源|编号/.test(data.requests[request.id].error!)) data.requests[request.id].validationError = data.requests[request.id].error;
       });
     }
@@ -368,7 +376,6 @@ export async function stopAllAI() {
 }
 export async function submitAI(researchId: string, conversationId: string, prompt: string, responder?: AIResponder) {
   if (!prompt.trim()) throw new Error('请输入问题');
-  if (prompt.length > 4000) throw new Error('问题过长，请限制在 4,000 字以内');
   const data = workspace.getState().data, conversation = data.conversations[conversationId];
   if (!conversation || conversation.archived) throw new Error('请先恢复此会话再继续讨论。');
   const connectionId = responder === demoResponder ? 'demo' : conversationConnection(conversation);
@@ -377,9 +384,7 @@ export async function submitAI(researchId: string, conversationId: string, promp
   const history = historyForConversation(data, conversationId), context = snapshotContext(data, researchId, conversationId, history);
   const request: AIRequest = { id: uid('request'), researchId, conversationId, connectionId, prompt: prompt.trim(), context, history, purpose: 'chat', mode: responder === demoResponder ? 'demo' : 'live', createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [] };
   if (connectionId === 'codex') { request.skills = structuredClone(conversation.skills ?? []); request.codex = structuredClone(conversation.codex ?? {}); }
-  const result = await runChatRequest(request, responder);
-  workspace.updateData(next => { if (next.requests[result]?.status === 'done' && next.conversations[conversationId].input === prompt) next.conversations[conversationId].input = ''; });
-  return result;
+  return runChatRequest(request, responder, prompt);
 }
 export async function retryAI(requestId: string, mode?: 'live' | 'demo') {
   const old = workspace.getState().data.requests[requestId];

@@ -32,6 +32,8 @@
 
 从 `origin/main` 开发，复用既有 AI 与知识保存路径。A0/B0 身份与材料契约、A1 Codex、A2 会话隔离/停止/恢复、A3 Claude Code/OpenCode 的实际交付与验证分开记录于 [本机助手验收](verification/agents/README.md)。认证缺失与未验证能力不得标为已完成；不在此任务展开 issue #2 的项目记忆或 issue #3 的文献检索。体验决策见 [助手设计](agents/design.md)。
 
+2026-10-17 试用修复：移除各助手共用的 4,000 字单问题限制；请求进入会话即清空已提交输入，失败可恢复且不覆盖后续草稿，并隔离准备期间恢复备份的旧请求。已补单元、浏览器和打包桌面回归，结果见[验收](verification/composer-fixes/README.md)。图片本轮核查确认模型直连的 PDF 区域路径已实现；本机助手图片和通用图片上传/粘贴仍未实现，不标记完成。
+
 ## 下一轮 AI 阅读开发入口
 
 2026-10-17 增加[新建研究时关联目录的设计提案](agents/research-directory-design.md)，并提供[可点击原型](agents/research-directory-prototype.html)。已将创建时选一次目录、右侧助手沿用接入生产工作台，并补齐 Papertrail/ 实际资料文件与可读会话；详见[本轮验证](verification/research-directory/README.md)。
