@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { createAgentHandler } from './agents.mjs';
+import { createSourceHandler } from './sources.mjs';
 
 const LIMITS = Object.freeze({ maxInputChars: 120_000, maxImages: 4, maxImageBytes: 8 * 1024 * 1024 });
 const MAX_BODY_BYTES = LIMITS.maxInputChars * 6 + Math.ceil(LIMITS.maxImageBytes / 3) * 4 * LIMITS.maxImages + 4096;
@@ -229,9 +230,10 @@ function upstreamError(status) {
   return new AIError(502, 'upstream_error', '模型服务暂时不可用，请稍后手动重试。');
 }
 
-export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutMs = 120_000, localToken, agentRuntimes } = {}) {
+export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutMs = 120_000, localToken, agentRuntimes, sourceOptions } = {}) {
   const config = settings(env);
   const agents = createAgentHandler({ env, runtimes: agentRuntimes, ports: [...config.ports] });
+  const sources = createSourceHandler(sourceOptions);
   const active = new Set();
   const controllers = new Set();
   const pending = new Set();
@@ -261,6 +263,7 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
     try {
       checkCaller(req, config);
       checkToken(req, localToken);
+      if (await sources(req, res, controller.signal)) return;
       if (await agents(req, res)) return;
       if (req.url === '/api/ai/config' && req.method === 'GET') {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -317,9 +320,9 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
     return task;
   };
   handler.stop = async () => {
-    agents.close();
+    const agentsClosed = agents.close();
     for (const controller of controllers) controller.abort();
-    await Promise.allSettled(pending);
+    await Promise.allSettled([...pending, agentsClosed]);
   };
   return handler;
 }

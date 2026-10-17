@@ -18,6 +18,29 @@ export type Research = {
   cardIds: string[];
   createdAt: string;
   directory?: ResearchDirectory;
+  sourceRecords?: Record<string, { note: string; discoveries: SourceDiscovery[] }>;
+};
+export type SourceAbstract = { text: string; url: string; retrievedAt: string };
+export type SourceCandidate = {
+  url: string;
+  title: string;
+  authors?: string;
+  year?: string;
+  identifiers?: { doi?: string; arxiv?: string; url?: string };
+  kind: 'paper' | 'web';
+  abstract?: SourceAbstract;
+  metadataSource?: string;
+  pdfUrl?: string;
+  resolvedAt?: string;
+  warning?: string;
+};
+export type SourceDiscovery = {
+  url: string;
+  kind: 'ai' | 'link';
+  conversationId?: string;
+  requestId?: string;
+  recommendation?: string;
+  createdAt: string;
 };
 export type ResearchDirectory = { id: string; projectId: string; path: string; name?: string };
 export type NativeAgentId = 'codex' | 'claude' | 'opencode';
@@ -43,6 +66,12 @@ export type PaperDocument = {
   authors: string;
   year: string;
   identifiers?: { doi?: string; arxiv?: string; url?: string };
+  abstract?: SourceAbstract;
+  sourceKind?: 'paper' | 'web';
+  abstractAlternatives?: SourceAbstract[];
+  metadataSource?: string;
+  pdfUrl?: string;
+  acquisition?: { status: 'fetching' | 'unavailable' | 'error' | 'conflict'; message?: string; url?: string; conflictDocumentId?: string };
   filename?: string;
   hash?: string;
   assetId?: string;
@@ -168,6 +197,8 @@ export type ResourceAnchor = {
   citationNumber?: number;
 };
 export type Session = {
+  documentInfoId?: string;
+  sourcePreview?: { candidate: SourceCandidate; discovery?: SourceDiscovery };
   active: ResourceRef | { kind: 'collection'; id: CollectionId } | { kind: 'researchView'; id: ResearchViewId };
   researchView?: ResearchViewId;
   recentItems?: ResourceRef[];

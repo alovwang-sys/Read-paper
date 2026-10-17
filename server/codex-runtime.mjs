@@ -65,6 +65,7 @@ const ARGS = ['app-server', '--stdio', '-c', `default_permissions="${PROFILE}"`,
 
 // JSON-RPC and process ownership stay local; never attach to the user's running Codex daemon.
 export function createCodexClient({ executable = 'codex', spawnImpl = spawn, cwd, env = process.env, signal, onNotification = () => {}, onRequest = () => {}, onFailure = () => {}, rpcTimeoutMs = 15_000 } = {}) {
+  if (signal?.aborted) throw abortError();
   const child = spawnImpl(executable, ARGS, { cwd, env, shell: false, detached: process.platform !== 'win32', stdio: ['pipe', 'pipe', 'pipe'] });
   let id = 0;
   let buffer = '';
@@ -370,13 +371,13 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         return { ...summary, messages: history.messages, truncated: truncated || history.truncated };
       } finally { await client.shutdown(); }
     },
-    async capabilities() {
+    async capabilities({ signal } = {}) {
       const cwd = await mkdtemp(join(tmpdir(), 'read-paper-codex-capabilities-'));
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20_000);
       let client;
       try {
-        client = createCodexClient({ executable, spawnImpl, env, cwd, signal: controller.signal, rpcTimeoutMs });
+        client = createCodexClient({ executable, spawnImpl, env, cwd, signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal, rpcTimeoutMs });
         await client.initialize();
         const catalog = await desktopCatalog(client, cwd, env);
         return {
@@ -387,14 +388,14 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         };
       } finally { clearTimeout(timeout); if (client) await client.shutdown(); await rm(cwd, { recursive: true, force: true }); }
     },
-    async probe() {
+    async probe({ signal } = {}) {
       let client;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10_000);
       const root = await mkdtemp(join(tmpdir(), 'read-paper-codex-probe-'));
       try {
         await writeFile(join(root, 'manifest.json'), '{}');
-        client = createCodexClient({ executable, spawnImpl, env, cwd: root, rpcTimeoutMs, signal: controller.signal });
+        client = createCodexClient({ executable, spawnImpl, env, cwd: root, rpcTimeoutMs, signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal });
         const initialized = await client.initialize();
         const version = initialized.userAgent?.match(/codex[^/]*\/([^ ]+)/i)?.[1] || initialized.version;
         const account = await client.rpc('account/read', { refreshToken: false });

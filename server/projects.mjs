@@ -29,6 +29,8 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
   let registry;
   let writes = Promise.resolve();
   let bindingWrites = Promise.resolve();
+  const queryLifecycle = new AbortController();
+  const queries = new Set();
   const ready = (async () => {
     await mkdir(stateDir, { recursive: true, mode: 0o700 });
     try {
@@ -42,14 +44,22 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
   ready.catch(() => {});
   const save = () => { writes = writes.catch(() => {}).then(() => atomicJSON(registryPath, registry)); return writes; };
   async function nativeQuery(adapter, method, input) {
+    if (queryLifecycle.signal.aborted) throw fail(503, 'service_stopped', '本机助手服务已停止。');
     const controller = new AbortController();
+    const signal = AbortSignal.any([queryLifecycle.signal, controller.signal]);
+    const task = Promise.resolve().then(() => adapter[method]({ ...input, signal }));
+    queries.add(task);
+    task.then(() => queries.delete(task), () => queries.delete(task));
     let timer;
+    let cancel;
     try {
-      return await Promise.race([
-        adapter[method]({ ...input, signal: controller.signal }),
-        new Promise((_, reject) => { timer = setTimeout(() => { reject(fail(504, 'history_timeout', '读取原生记录超时，已保留上次内容，请稍后刷新。')); controller.abort(); }, queryTimeoutMs); }),
-      ]);
-    } finally { clearTimeout(timer); }
+      return await Promise.race([task, new Promise((_, reject) => {
+        cancel = () => reject(queryLifecycle.signal.aborted ? fail(503, 'service_stopped', '本机助手服务已停止。') : fail(504, 'history_timeout', '读取原生记录超时，已保留上次内容，请稍后刷新。'));
+        signal.addEventListener('abort', cancel, { once: true });
+        timer = setTimeout(() => controller.abort(), queryTimeoutMs);
+        if (signal.aborted) cancel();
+      })]);
+    } finally { clearTimeout(timer); signal.removeEventListener('abort', cancel); }
   }
 
   async function canonical(path, allowNew = false, browsing = false, newIntent = false) {
@@ -202,6 +212,10 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     return result;
   }
   return {
+    async close() {
+      queryLifecycle.abort();
+      await Promise.allSettled([...queries, ready, writes, bindingWrites]);
+    },
     binding, remember, read,
     async markUnconfirmed(project, agentId, nativeId) {
       const ref = await remember(project, agentId, nativeId, 'read-paper');

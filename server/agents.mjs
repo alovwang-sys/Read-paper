@@ -140,6 +140,9 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
   const adapters = runtimes || { codex: createCodexRuntime({ env }), claude: createClaudeRuntime({ env }), opencode: createOpenCodeRuntime({ env }) };
   const ports = new Set(allowedPorts || [Number(env.AI_PORT || 8787), Number(env.AI_APP_PORT || 5173), 5173, 5174, 4173]);
   const active = new Map();
+  const lifecycle = new AbortController();
+  const inspections = new Set();
+  let closing;
   const pending = new Map();
   const busy = new Set();
   const nativeBusy = new Map();
@@ -149,15 +152,32 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
   const projects = createProjectStore({ stateDir: directory, runtimes: adapters, isBusy: (agent, id) => nativeBusy.has(`${agent}:${id}`) });
   let probes;
   let probeAt = 0;
+  async function inspectRuntime(adapter, method) {
+    if (lifecycle.signal.aborted) throw failure(503, 'service_stopped', '本机助手服务已停止。');
+    const controller = new AbortController();
+    const signal = AbortSignal.any([lifecycle.signal, controller.signal]);
+    const task = Promise.resolve().then(() => adapter[method]({ signal }));
+    inspections.add(task);
+    task.then(() => inspections.delete(task), () => inspections.delete(task));
+    let timer;
+    let cancel;
+    try {
+      return await Promise.race([task, new Promise((_, reject) => {
+        cancel = () => reject(failure(lifecycle.signal.aborted ? 503 : 504, lifecycle.signal.aborted ? 'service_stopped' : 'timeout', lifecycle.signal.aborted ? '本机助手服务已停止。' : '检测超时，请在终端检查 CLI 登录与配置后重试。'));
+        signal.addEventListener('abort', cancel, { once: true });
+        timer = setTimeout(() => controller.abort(), probeTimeoutMs);
+        if (signal.aborted) cancel();
+      })]);
+    } finally { clearTimeout(timer); signal.removeEventListener('abort', cancel); }
+  }
   async function probeAll() {
     if (probes && Date.now() - probeAt < 15_000) return probes;
     probeAt = Date.now();
     probes = Promise.all(['codex', 'claude', 'opencode'].map(async (id) => {
-      let timer;
       try {
-        const status = await Promise.race([adapters[id]?.probe() || Promise.resolve({ state: 'not-installed' }), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('检测超时，请在终端检查 CLI 登录与配置后重试。')), probeTimeoutMs); })]);
+        const status = adapters[id]?.probe ? await inspectRuntime(adapters[id], 'probe') : { state: 'not-installed' };
         return { id, name: { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id], ...status, installation: INSTALLATION[id], capabilities: { images: false, tools: status.state === 'ready', resume: true, permissions: 'read-only', ...status.capabilities } };
-      } catch { return { id, name: { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id], state: 'error', detail: '检测超时或 CLI 不可用；请在终端检查后重试。', installation: INSTALLATION[id], capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } }; } finally { clearTimeout(timer); }
+      } catch { return { id, name: { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id], state: 'error', detail: '检测超时或 CLI 不可用；请在终端检查后重试。', installation: INSTALLATION[id], capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } }; }
     }));
     return probes;
   }
@@ -228,6 +248,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
     const armTimer = () => { clearTimeout(timer); timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs); };
     try {
       checkCaller(req, ports);
+      if (lifecycle.signal.aborted) throw failure(503, 'service_stopped', '本机助手服务已停止。');
       if (req.url.startsWith('/api/ai/agents/projects/')) {
         if (req.method !== 'POST') throw failure(405, 'method_not_allowed', '研究目录接口须使用 POST。');
         const action = req.url.slice('/api/ai/agents/projects/'.length);
@@ -241,15 +262,13 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       }
       if (req.url === '/api/ai/agents/codex/capabilities' && req.method === 'GET') {
         if (!adapters.codex?.capabilities) throw failure(503, 'capabilities_unavailable', '当前 Codex 版本不能读取 Skills 与模型，请升级后重试。');
-        let capabilityTimer;
-        try {
-          const capabilities = await Promise.race([adapters.codex.capabilities(), new Promise((_, reject) => { capabilityTimer = setTimeout(() => reject(failure(504, 'timeout', '读取 Codex 能力超时，请重试。')), probeTimeoutMs); })]);
-          res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify(capabilities)); return true;
-        } finally { clearTimeout(capabilityTimer); }
+        const capabilities = await inspectRuntime(adapters.codex, 'capabilities');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify(capabilities)); return true;
       }
       if (!['/api/ai/agents/run', '/api/ai/agents/stop', '/api/ai/agents/respond'].includes(req.url)) throw failure(404, 'not_found', 'Agent 接口不存在。');
       if (req.method !== 'POST') throw failure(405, 'method_not_allowed', '此接口仅支持 POST。');
       body = await readBody(req);
+      if (lifecycle.signal.aborted) throw failure(503, 'service_stopped', '本机助手服务已停止。');
       validateIdentity(body);
       request = requestKey(body);
       if (req.url.endsWith('/respond')) {
@@ -387,6 +406,13 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
     }
     return true;
   };
-  handler.close = () => { for (const running of active.values()) running.stop(); };
+  handler.close = () => {
+    closing ??= (async () => {
+      lifecycle.abort();
+      for (const running of active.values()) running.stop();
+      await Promise.allSettled([...inspections, projects.close()]);
+    })();
+    return closing;
+  };
   return handler;
 }

@@ -4,6 +4,7 @@ import type { ResourceRef, Session } from '../domain/types';
 import './resource-tabs.css';
 
 type Props = {
+  preview?: { title: string; onClose: () => void };
   leading?: { title: string; selected: boolean; onOpen: () => void };
   items: ResourceRef[];
   active: Session['active'];
@@ -16,11 +17,11 @@ type Props = {
 };
 const keyOf = (ref: { kind: string; id: string }) => `${ref.kind}:${ref.id}`;
 
-export function ResourceTabs({ leading, items, active, pinnedIds, title, onOpen, onClose, onPin, onMove }: Props) {
+export function ResourceTabs({ preview, leading, items, active, pinnedIds, title, onOpen, onClose, onPin, onMove }: Props) {
   const leadingButton = useRef<HTMLButtonElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const [dragOver, setDragOver] = useState<string>();
-  const selected = keyOf(active);
+  const selected = preview ? 'source-preview' : keyOf(active);
   const selectedIndex = items.findIndex(item => keyOf(item) === selected);
   useEffect(() => {
     buttons.current.get(selected)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -126,6 +127,10 @@ export function ResourceTabs({ leading, items, active, pinnedIds, title, onOpen,
           </div>
         );
       })}
+      {preview && <div className="resource-tab is-active"><button className="resource-tab-select" role="tab" aria-selected="true" onKeyDown={event => {
+        if (event.key === 'Delete') { event.preventDefault(); preview.onClose(); }
+        else if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); if (items.length) select(event.key === 'ArrowRight' || event.key === 'Home' ? 0 : items.length - 1); else selectLeading(); }
+      }}><BookOpen size={14} /><span>{preview.title} · 预览</span></button><button className="resource-tab-action" aria-label={`关闭预览 ${preview.title}`} onClick={preview.onClose}><X size={13} /></button></div>}
     </div>
   );
 }

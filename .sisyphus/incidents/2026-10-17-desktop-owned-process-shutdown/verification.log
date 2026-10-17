@@ -1,0 +1,84 @@
+command: npm run test:server
+exit: 0
+✔ 地址过滤覆盖私有、保留、IPv6 映射和过渡网段 (0.131666ms)
+✔ HTML 元数据提取可追踪原摘要，普通 description 和脚本不冒充作者摘要 (3.180959ms)
+✔ arXiv Atom 保留摘要来源、作者、年份和带版本 PDF (3.6935ms)
+✔ arXiv API 失败回退官方摘要页；均失败时仍返回可收录的线索 (2.893792ms)
+✔ Crossref 来源补全与出版社 PDF 线索合并，不把站点介绍写成摘要 (0.909958ms)
+✔ Crossref 明确 PDF 直接返回；普通网页仅读取明确元数据，失败保留链接 (5.40725ms)
+✔ 每跳先检查 DNS，拒绝混合地址与私网重定向，并将已验证地址绑定到连接 (0.699ms)
+✔ 获取限制覆盖重定向次数、DNS/连接超时、响应状态及声明/流式大小 (25.727667ms)
+✔ PDF 下载检查 magic，拒绝 HTML 冒充、过大文件和内网跳转 (6.634625ms)
+✔ 来源 API 在无模型密钥时可用，主处理器先校验来源/token，错误为 JSON (14.508833ms)
+✔ TikHub inspection finds only in-skill scripts and checks credential permissions without reading values (102.666708ms)
+✔ discovery and approved exact-schema calls use shell-free CLI and JSON stdin; secrets stay out of arguments/events (2.783917ms)
+✔ unknown platform, command injection fields and tools missing discovery never spawn data calls (0.271291ms)
+✔ schema validation rejects missing required, unknown fields, wrong types and out-of-range values before approval (1.253042ms)
+✔ denying approval never invokes the data tool, and unsupported schema constraints fail closed (1.145ms)
+✔ cancellation kills and waits for only the owned process to close (0.550208ms)
+✔ timeout and output bounds stop the owned process without retry (1.657875ms)
+✔ HTTP failures disclose a status only, MCP errors retain isError and content, and large results mark truncation (1.103791ms)
+✔ turn operation cap and complete parameter bound prevent unbounded work and hidden approval arguments (1.753125ms)
+✔ service failures halt later actions this turn, without making another request or approval (0.581875ms)
+✔ unknown constraints in an alternate schema branch reject before approval; oversized schemas are never cached (0.825083ms)
+✔ UTF-8 split across chunks stays intact, and leading-hyphen searches remain argument values (0.492ms)
+ℹ tests 197
+ℹ suites 0
+ℹ pass 197
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1402.517125
+
+command: npm run test:desktop
+exit: 0
+> read-paper@0.1.2 test:desktop
+> node --test desktop/*.test.mjs
+
+✔ desktop server uses an isolated random loopback port and private token for config and streaming (45.345958ms)
+✔ unconfigured desktop server stays in demo mode and tokens differ for every start (28.121875ms)
+✔ stop aborts a pending upstream, destroys an unfinished client connection, and closes the listener (14.463ms)
+✔ stop cancels an active stream and resolves after its reader is released (6.31125ms)
+✔ invalid settings are rejected before a socket can listen, without leaking configuration values (0.342541ms)
+✔ will-quit waits for local service cleanup once, then permits the repeated quit event (1.155ms)
+✔ will-quit keeps the application alive when cleanup fails and allows a later retry (4.745125ms)
+✔ 生产协议仅服务dist与设置文件，阻止路径穿越和未知接口 (64.944583ms)
+✔ AI代理只注入主进程token，不转发Origin/任意头且保留流式与取消 (0.468625ms)
+✔ 桌面原生助手与项目接口按路径和方法逐项放行，未知接口不进入本机服务 (1.762916ms)
+✔ 资料接口仅放行两个 POST 路径，保留 PDF 字节并注入本机凭证 (0.3835ms)
+✔ 安装包白名单排除.env、真实材料、测试和Git文件 (0.23575ms)
+✔ 生产服务的相对模块依赖都包含在安装包中 (25.317625ms)
+✔ 仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝 (0.204292ms)
+✔ 模型设置只返回安全字段，持久化加密密钥且空输入保留原密钥 (50.804708ms)
+✔ 无安全加密或无效连接时拒绝保存，已有设置不变 (3.680167ms)
+✔ 非法密钥不能覆盖已经保存的配置和加密文件 (24.0385ms)
+✔ 合法密钥裁剪外围空白，空输入沿用且重启可以恢复 (21.461375ms)
+✔ 历史文件中的非法密钥被拒绝且原文件保留，重新配置后恢复 (8.653833ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 265.658292
+
+command: node --test server/shutdown.test.mjs
+exit: 0
+✔ discovery timeout cancels its owned CLI and close waits for process exit (47.661333ms)
+✔ closing while a request body is arriving rejects it before starting a native run (3.454167ms)
+✔ AI stop cancels discovery and capabilities and waits for their cleanup (28.928541ms)
+✔ AI stop cancels research-history queries and waits for owned readers (33.729208ms)
+✔ Claude probe cancellation stops only its owned process before settling (26.143667ms)
+✔ OpenCode probe cancellation stops only its owned process before settling (27.531958ms)
+✔ Codex probe cancellation stops only its owned process before settling (28.38525ms)
+✔ Codex capability cancellation waits for its owned client shutdown (25.650958ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 268.93125

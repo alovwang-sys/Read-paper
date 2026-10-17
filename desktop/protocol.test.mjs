@@ -57,9 +57,32 @@ test('桌面原生助手与项目接口按路径和方法逐项放行，未知�
   for (const path of ['/api/ai/agents/arbitrary', '/api/ai/agents/projects/delete', '/api/ai/agents/projects/read/extra', '/api/ai/agents/probe', '/api/ai/agents/codex/capabilities/extra']) assert.equal((await handler(new Request(`papertrail://app${path}`, { method: 'POST', body: '{}' }))).status, 404, path);
   assert.equal(calls.length, permitted);
 });
+test('资料接口仅放行两个 POST 路径，保留 PDF 字节并注入本机凭证', async () => {
+  const calls = [];
+  const pdf = Buffer.from('%PDF-1.7\nlocal-source');
+  const handler = createAppProtocol({ distDirectory: '.', desktopDirectory: '.', getAI: () => ({ baseURL: 'http://127.0.0.1:1234', token: 'source-token' }), fetchImpl: async (url, options) => {
+    calls.push({ url, options });
+    return url.endsWith('/pdf') ? new Response(pdf, { headers: { 'Content-Type': 'application/pdf' } }) : Response.json({ title: 'Source' });
+  } });
+  for (const path of ['/api/sources/resolve', '/api/sources/pdf']) {
+    const response = await handler(new Request(`papertrail://app${path}`, { method: 'POST', body: '{"url":"https://example.com/paper"}' }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(calls.at(-1).options.headers, { 'X-Papertrail-Token': 'source-token', 'Content-Type': 'application/json' });
+    if (path.endsWith('/pdf')) {
+      assert.equal(response.headers.get('content-type'), 'application/pdf');
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), pdf);
+    }
+  }
+  for (const path of ['/api/sources/resolve', '/api/sources/pdf', '/api/sources/arbitrary', '/api/sources/pdf/extra']) {
+    assert.equal((await handler(new Request(`papertrail://app${path}`, { method: 'GET' }))).status, 404);
+    if (path.includes('extra') || path.includes('arbitrary')) assert.equal((await handler(new Request(`papertrail://app${path}`, { method: 'POST', body: '{}' }))).status, 404);
+    assert.equal((await handler(new Request(`papertrail://app${path}?url=https://example.com`, { method: 'POST', body: '{}' }))).status, 404);
+  }
+  assert.equal(calls.length, 2);
+});
 test('安装包白名单排除.env、真实材料、测试和Git文件', () => {
   const ignore = config.packagerConfig.ignore;
-  for (const file of ['/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', ...['ai', 'agents', 'codex-runtime', 'claude-runtime', 'opencode-runtime', 'projects', 'tikhub-tools'].map(name => `/server/${name}.mjs`), '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
+  for (const file of ['/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', ...['ai', 'sources', 'agents', 'codex-runtime', 'claude-runtime', 'opencode-runtime', 'projects', 'tikhub-tools'].map(name => `/server/${name}.mjs`), '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
   for (const file of ['/.env.local', '/desktop/.env.local', '/dist/.env', '/.git/config', '/docs/private.pdf', '/tests/fixtures/a.pdf', '/server/ai.test.mjs', '/server/private.mjs', '/desktop/settings.test.mjs', '/README.md', '/package-lock.json']) assert.equal(ignore(file), true, file);
 });
 test('生产服务的相对模块依赖都包含在安装包中', async () => {
@@ -72,7 +95,7 @@ test('生产服务的相对模块依赖都包含在安装包中', async () => {
     for (const match of source.matchAll(/\bfrom\s+['"](.\/[^'"]+)['"]/g)) await visit(new URL(match[1], url));
   }
   await visit(new URL('../server/ai.mjs', import.meta.url));
-  assert.equal(visited.size, 8);
+  assert.equal(visited.size, 9);
 });
 test('仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝', () => {
   const contents = { getURL: () => APP_URL, isDestroyed: () => false };

@@ -1,0 +1,2 @@
+- root_cause=async_lifecycle_ownership：拥有 CLI 子进程的异步检测，超时必须取消底层工作，应用退出必须等待 owned process 的 close；Promise.race 的响应超时本身不等于资源清理。PMB 不可用，以本项目记录代替；历史计数未知。
+- root_cause=async_native_event_reentry：Electron will-quit 内阻止退出并 await 清理后，需要在下一事件轮重发 quit，微任务立即重入可能被原生退出流程忽略；必须用真实安装包的 quit + close 验收，纯 Promise 单测不足以替代。

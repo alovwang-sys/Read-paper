@@ -21,6 +21,8 @@ import type {
   RegionSource,
   ResearchViewId,
   ResearchDirectory,
+  SourceCandidate,
+  SourceDiscovery,
 } from '../domain/types';
 
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -177,7 +179,7 @@ export const workspace = {
       }
       const saved = journal ? JSON.parse(journal) : database?.schemaVersion === 3 ? database : oldJournal ? JSON.parse(oldJournal) : database;
       const migrated = saved && saved.schemaVersion < 3;
-      const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating'));
+      const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating') || Object.values(saved.documents ?? {}).some(doc => (doc as { acquisition?: { status?: string } }).acquisition?.status === 'fetching'));
       if (migrated) await saveMigrationBackup({ database, recovery: journal ?? oldJournal });
       const data = saved ? migrateWorkspace(saved) : createSeed();
       status({
@@ -265,12 +267,27 @@ export const workspace = {
       if (!data.researches[researchId]) throw new Error('研究不存在。');
       data.scope = { kind: 'research', researchId };
       const session = data.sessions[researchId];
+      session.sourcePreview = undefined;
       if (session.active.kind !== 'researchView' || session.active.id !== view) session.history.push(session.active);
       session.active = { kind: 'researchView', id: view };
       session.researchView = view;
       session.anchor = undefined;
     });
     status({ selection: undefined });
+  },
+  openSourcePreview(candidate: SourceCandidate, scope: WorkspaceScope, discovery?: SourceDiscovery) {
+    const url = new URL(candidate.url);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('请使用有效的公开网页链接。');
+    workspace.updateData(data => {
+      const session = data.sessions[scopeKey(scope)];
+      if (!session) throw new Error('研究不存在。');
+      data.scope = scope;
+      session.sourcePreview = { candidate, discovery };
+    });
+    status({ selection: undefined });
+  },
+  closeSourcePreview(scope = state.data.scope) {
+    workspace.updateData(data => { data.sessions[scopeKey(scope)].sourcePreview = undefined; });
   },
   addSource(input: { kind: 'identifier'; raw: string } | { kind: 'title'; title: string } | { kind: 'library'; documentId: string }, target: WorkspaceScope) {
     let documentId = '', created = false;
@@ -298,13 +315,26 @@ export const workspace = {
   mergeDocuments(stubId: string, intoId: string) {
     workspace.updateData(data => {
       const stub = data.documents[stubId], target = data.documents[intoId];
-      if (!stub || hasFullText(stub) || !hasFullText(target) || stubId === intoId) throw new Error('只能把无全文条目合并到已有全文的资料。');
-      if (Object.entries(stub.identifiers ?? {}).some(([key, value]) => target.identifiers?.[key as 'doi' | 'arxiv' | 'url'] && target.identifiers[key as 'doi' | 'arxiv' | 'url'] !== value)) throw new Error('两条资料的标识不一致，无法安全合并；请先核对来源。');
+      const sameIdentifier = stub && target && (['doi', 'arxiv'] as const).some(key => stub.identifiers?.[key] && stub.identifiers[key] === target.identifiers?.[key]);
+      if (!stub || hasFullText(stub) || !target || !hasFullText(target) && !sameIdentifier || stubId === intoId) throw new Error('只能把无全文条目合并到已有全文或具有相同文献标识的资料。');
+      if ((['doi', 'arxiv'] as const).some(key => stub.identifiers?.[key] && target.identifiers?.[key] && stub.identifiers[key] !== target.identifiers[key]) || stub.identifiers?.url && target.identifiers?.url && stub.identifiers.url !== target.identifiers.url && !sameIdentifier) throw new Error('两条资料的标识不一致，无法安全合并；请先核对来源。');
       if (Object.values(data.evidence).some(e => e.documentId === stubId)) throw new Error('无全文条目已有摘录，无法安全合并。');
-      for (const research of Object.values(data.researches)) research.documentIds = [...new Set(research.documentIds.map(id => id === stubId ? intoId : id))];
+      for (const research of Object.values(data.researches)) {
+        research.documentIds = [...new Set(research.documentIds.map(id => id === stubId ? intoId : id))];
+        const source = research.sourceRecords?.[stubId];
+        if (source && research.sourceRecords) {
+          const targetRecord = research.sourceRecords[intoId];
+          research.sourceRecords[intoId] = {
+            note: [...new Set([targetRecord?.note, source.note].filter(Boolean))].join('\n\n'),
+            discoveries: [...(targetRecord?.discoveries ?? []), ...source.discoveries].filter((item, index, items) => items.findIndex(other => other.url === item.url && other.requestId === item.requestId && other.conversationId === item.conversationId) === index),
+          };
+          delete research.sourceRecords[stubId];
+        }
+      }
       const move = (ref: { kind: string; id: string }) => { if (ref.kind === 'document' && ref.id === stubId) ref.id = intoId; };
       for (const placement of Object.values(data.placements)) move(placement.resourceRef);
       for (const session of Object.values(data.sessions)) {
+        if (session.documentInfoId === stubId) session.documentInfoId = intoId;
         for (const ref of [session.active, ...session.openItems, ...session.history, ...session.panel.history]) move(ref);
         if (session.panel.ref) move(session.panel.ref);
         if (session.panel.sourceReturnRef) move(session.panel.sourceReturnRef);
@@ -313,6 +343,11 @@ export const workspace = {
         session.pinnedIds = [...new Set(session.pinnedIds.map(id => id === stubId ? intoId : id))];
       }
       target.identifiers = { ...stub.identifiers, ...target.identifiers };
+      target.abstract ??= stub.abstract;
+      target.abstractAlternatives = [...(target.abstractAlternatives ?? []), ...(stub.abstractAlternatives ?? []), ...(stub.abstract ? [stub.abstract] : [])].filter((item, index, items) => (item.text !== target.abstract?.text || item.url !== target.abstract?.url) && items.findIndex(other => item.text === other.text && item.url === other.url) === index);
+      target.metadataSource ??= stub.metadataSource;
+      target.sourceKind ??= stub.sourceKind;
+      target.pdfUrl ??= stub.pdfUrl;
       delete data.documents[stubId];
     });
     status({ selection: undefined });
@@ -358,6 +393,7 @@ export const workspace = {
       const session = data.sessions.library;
       if (data.scope.kind === 'research') session.libraryResearchId = data.scope.researchId;
       data.scope = { kind: 'library' };
+      session.sourcePreview = undefined;
       session.history.push(session.active);
       session.active = { kind: 'collection', id: collection };
       session.anchor = undefined;
@@ -395,6 +431,8 @@ export const workspace = {
       data.scope = options.scope;
       const session = data.sessions[scopeKey(options.scope)];
       if (options.target === 'main') {
+        session.sourcePreview = undefined;
+        session.documentInfoId = undefined;
         if (JSON.stringify(session.active) !== JSON.stringify(ref))
           session.history.push(session.active);
         if (ref.kind === 'document' && !options.anchor && !session.panel.pinned && !session.panel.findEvidenceFor && !session.panel.citation && session.panel.mode !== 'ai') { session.panel.open = true; session.panel.mode = 'excerpts'; }
@@ -444,6 +482,7 @@ export const workspace = {
     workspace.updateData((data) => {
       const session = data.sessions[scopeKey(data.scope)];
       if (target === 'main') {
+        if (session.sourcePreview) { session.sourcePreview = undefined; return; }
         const previous = session.history.pop();
         if (previous && (previous.kind === 'collection' || previous.kind === 'researchView' || resourceExists(data, previous))) {
           session.active = previous;

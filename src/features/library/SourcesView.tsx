@@ -6,10 +6,20 @@ import { useWorkspace } from '../../services/workspace';
 import { openAddSource } from './AddSourceDialog';
 import './library.css';
 
-export function sourceUrl(doc: PaperDocument) {
-  const value = doc.identifiers?.url ?? (doc.identifiers?.doi ? `https://doi.org/${doc.identifiers.doi}` : doc.identifiers?.arxiv ? `https://arxiv.org/abs/${doc.identifiers.arxiv}` : undefined);
+export function externalSourceUrl(value?: string) {
   try { const url = new URL(value ?? ''); return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined; }
   catch { return undefined; }
+}
+export function sourceUrl(doc: PaperDocument) {
+  return externalSourceUrl(doc.identifiers?.url ?? (doc.identifiers?.doi ? `https://doi.org/${doc.identifiers.doi}` : doc.identifiers?.arxiv ? `https://arxiv.org/abs/${doc.identifiers.arxiv}` : undefined));
+}
+
+function availability(doc: PaperDocument) {
+  if (hasFullText(doc)) return `${doc.pageCount} 页`;
+  if (doc.acquisition?.status === 'fetching') return '正在获取全文…';
+  if (doc.abstract) return '摘要 · 暂无全文';
+  if (doc.sourceKind === 'web') return '仅链接';
+  return '暂无全文';
 }
 
 const readingNames = { unread: '未读', reading: '在读', skimmed: '略读过', read: '读完' };
@@ -49,7 +59,7 @@ export function SourcesView({ researchId }: { researchId: string }) {
         const excerpts = Object.values(data.evidence).filter(evidence => evidence.documentId === doc.id && (!evidence.researchId || evidence.researchId === researchId));
         const cards = research.cardIds.filter(id => data.cards[id]?.evidenceIds.some(id => data.evidence[id]?.documentId === doc.id));
         const url = sourceUrl(doc);
-        return <article className="paper-row source-row" key={doc.id}><span className="paper-icon tint-0"><FileText size={21}/></span><div className="paper-details"><button className="source-title" onClick={() => open(doc)}>{doc.title}</button><small>{[doc.authors, doc.year, hasFullText(doc) ? `${doc.pageCount} 页` : '无全文'].filter(Boolean).join(' · ')}</small><small>摘录 {excerpts.length} · 卡片 {cards.length}</small>{!hasFullText(doc) && <div className="source-row-actions"><button className="text-button" onClick={() => open(doc)}>添加 PDF</button>{url && <a href={url} target="_blank" rel="noreferrer">打开原链接</a>}</div>}</div><select className="source-status" aria-label={`${doc.title} 的阅读状态`} value={doc.readingStatus} onChange={event => actions.updateData(data => { data.documents[doc.id].readingStatus = event.target.value as PaperDocument['readingStatus']; data.documents[doc.id].updatedAt = new Date().toISOString(); })}>{Object.entries(readingNames).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></article>;
+        return <article className="paper-row source-row" key={doc.id}><span className="paper-icon tint-0"><FileText size={21}/></span><div className="paper-details"><button className="source-title" onClick={() => open(doc)}>{doc.title}</button><small>{[doc.authors, doc.year, availability(doc)].filter(Boolean).join(' · ')}</small><small>摘录 {excerpts.length} · 卡片 {cards.length}</small>{!hasFullText(doc) && <div className="source-row-actions"><button className="text-button" onClick={() => open(doc)}>添加 PDF</button>{url && <a href={url} target="_blank" rel="noreferrer">打开原链接</a>}</div>}</div><select className="source-status" aria-label={`${doc.title} 的阅读状态`} value={doc.readingStatus} onChange={event => actions.updateData(data => { data.documents[doc.id].readingStatus = event.target.value as PaperDocument['readingStatus']; data.documents[doc.id].updatedAt = new Date().toISOString(); })}>{Object.entries(readingNames).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></article>;
       })}</div></section> : null;
     })}
   </div>;

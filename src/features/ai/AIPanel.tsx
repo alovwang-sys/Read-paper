@@ -47,6 +47,7 @@ import { AgentInteractionCard } from './AgentInteractionCard';
 import { ComposerMaterials } from './ComposerMaterials';
 import { VoiceInput } from './VoiceInput';
 import { ReportedChanges } from './ReportedChanges';
+import { SourceRecommendations } from './SourceRecommendations';
 import {
   ContextDetails,
   RegionPreview,
@@ -677,6 +678,7 @@ export function AIPanel() {
               >
                 <MarkdownContent text={request.body} />
               </div>
+              {request.status !== 'generating' && <SourceRecommendations request={request}/>}
               {request.status === 'generating' && (
                 <div className="ai-generating">
                   <span />

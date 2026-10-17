@@ -8,6 +8,10 @@
 
 2026-10-16 的 [产品需求](ai-reading/requirements.md)、[UX 交互设计](ai-reading/ux-design.md)与[可点击原型](ai-reading/prototype.html)是设计基线。AR0–AR8 的实际交付见下表；现有 T0–T7 保留为首版基线及回归要求。原型不能替代实际功能验收。
 
+## 来源收录增量（issue #3 的主动收录切片）
+
+从最新 `origin/main` 的 `8ab3d76` 创建 `codex/source-intake`。本轮完成 AI 回答中的链接预览/收录、链接元数据与原摘要、全文获取与失败保留、原条目补 PDF 接续，以及研究独立的发现记录；沿用现有工作区、资产与关联服务。交互与技术见[来源收录设计](source-intake/README.md)，测试、公网冒烟和三尺寸截图见[验收](verification/source-intake/README.md)。Agent 自动批量收集、浏览器扩展和网页正文快照仍不在本轮范围，不能据此关闭 issue #3 的全部后续项。
+
 ## 知识链路增量（KF0–KF6）
 
 2026-10-17 用户认可[知识链路设计](knowledge-flow/README.md) v2，并要求以研究内入口取代五个全局集合入口。需求为 [KR01–KR10](knowledge-flow/requirements.md)；依赖、契约、文件所有权和 KV01–KV16 验证矩阵见[开发计划](knowledge-flow/development-plan.md)。首版不联网识别元数据；AI 推荐资料依赖 issue #3，不在本组任务中实现。

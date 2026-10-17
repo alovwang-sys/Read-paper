@@ -95,6 +95,6 @@ test('打包桌面：目录取消、确认、项目列表与重启恢复，不�
     expect(modelRequests).toEqual([]); expect(pageErrors).toEqual([]);
   } finally {
     if (application) await close(application);
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });

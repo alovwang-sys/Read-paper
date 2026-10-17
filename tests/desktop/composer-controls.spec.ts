@@ -162,6 +162,6 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     }, null, 2) + '\n');
   } finally {
     if (application) await close(application);
-    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
