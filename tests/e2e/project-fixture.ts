@@ -9,7 +9,7 @@ export const fixtureSessionRef = (nativeSessionId: string) => `fixture-${nativeS
 export async function mockProjectService(page: Page, options: { bound?: boolean; sessions?: NativeSessionSnapshot[]; seed?: ReturnType<typeof createSeed>; names?: Record<string, string> } = {}) {
   const seed = options.seed ?? createSeed();
   if (options.bound !== false) for (const research of Object.values(seed.researches)) research.directory = { id: `binding-${research.id}`, projectId: `project-${research.id}`, path: `/fixture/${research.id}` };
-  await page.addInitScript(value => { if (!sessionStorage.getItem('papertrail-project-fixture-ready')) { localStorage.setItem('papertrail-recovery-v2', JSON.stringify(value)); sessionStorage.setItem('papertrail-project-fixture-ready', 'true'); } }, seed);
+  await page.addInitScript(value => { if (!sessionStorage.getItem('papertrail-project-fixture-ready')) { localStorage.setItem('papertrail-recovery-v3', JSON.stringify(value)); sessionStorage.setItem('papertrail-project-fixture-ready', 'true'); } }, seed);
   const state = { names: { ...options.names } as Record<string, string>, bound: options.bound !== false, sessions: options.sessions ?? [], calls: [] as { action: string; body: Record<string, unknown> }[], errors: [] as { agentId: string; error: string }[], failList: false, failDirectory: false };
   await page.route('**/api/ai/agents/projects/*', async route => {
     const body = route.request().postDataJSON() as Record<string, unknown>;
@@ -17,6 +17,11 @@ export async function mockProjectService(page: Page, options: { bound?: boolean;
     state.calls.push({ action, body });
     const name = state.names[String(body.researchId)];
     const directory = { id: `binding-${body.researchId}`, projectId: `project-${body.researchId}`, path: `/fixture/${body.researchId}`, ...(name ? { name } : {}) };
+    if (action === 'defaults') return route.fulfill({ json: { parentPath: '/fixture' } });
+    if (action === 'sync') {
+      const files = Array.isArray(body.files) ? body.files as { content?: string; encoding?: string }[] : [];
+      return route.fulfill({ json: { updatedAt: '2026-10-17T12:00:00.000Z', files: files.length, bytes: files.reduce((size, file) => size + Buffer.byteLength(file.content ?? '', file.encoding === 'base64' ? 'base64' : 'utf8'), 0) } });
+    }
     if (action === 'status') return route.fulfill(state.failDirectory ? { status: 409, json: { error: '研究目录暂时不可用，请重新连接。' } } : { json: state.bound ? directory : null });
     if (action === 'browse') return route.fulfill({ json: { path: body.path || '/fixture', parent: body.path === '/fixture' || !body.path ? '/' : '/fixture', directories: body.path === '/fixture/research-a' ? [] : [{ name: 'research-a', path: '/fixture/research-a' }] } });
     if (action === 'preview') return route.fulfill({ json: { path: body.path, name: String(body.path).split('/').at(-1) } });

@@ -6,6 +6,7 @@ import { createCodexRuntime, sanitizeAgentProgress } from './codex-runtime.mjs';
 import { createClaudeRuntime } from './claude-runtime.mjs';
 import { createOpenCodeRuntime } from './opencode-runtime.mjs';
 import { createProjectStore } from './projects.mjs';
+import { writeProjectFiles } from './project-files.mjs';
 
 const MAX_BYTES = 1_000_000;
 const MAX_CHARS = 120_000;
@@ -79,12 +80,12 @@ function checkCaller(req, ports) {
   const { host, origin } = req.headers;
   if (!host || !localURL(`http://${host}`, ports) || (origin !== undefined && (!localURL(origin, ports) || new URL(origin).origin !== origin)) || req.headers['sec-fetch-site'] === 'cross-site') throw failure(403, 'forbidden_origin', 'Agent 服务仅允许本机工作台访问。');
 }
-async function readBody(req) {
+async function readBody(req, limit = MAX_BYTES) {
   if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] || '')) throw failure(415, 'unsupported_media_type', '请求须使用 application/json。');
-  if (Number(req.headers['content-length']) > MAX_BYTES) throw failure(413, 'request_too_large', '发送内容过大，请缩小材料范围。');
+  if (Number(req.headers['content-length']) > limit) throw failure(413, 'request_too_large', '发送内容过大，请缩小材料范围。');
   let size = 0;
   const chunks = [];
-  for await (const chunk of req) { size += chunk.length; if (size > MAX_BYTES) throw failure(413, 'request_too_large', '发送内容过大，请缩小材料范围。'); chunks.push(chunk); }
+  for await (const chunk of req) { size += chunk.length; if (size > limit) throw failure(413, 'request_too_large', '发送内容过大，请缩小材料范围。'); chunks.push(chunk); }
   try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); } catch { throw invalid('请求不是有效的 JSON。'); }
 }
 
@@ -229,10 +230,10 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       checkCaller(req, ports);
       if (req.url.startsWith('/api/ai/agents/projects/')) {
         if (req.method !== 'POST') throw failure(405, 'method_not_allowed', '研究目录接口须使用 POST。');
-        const input = await readBody(req);
         const action = req.url.slice('/api/ai/agents/projects/'.length);
-        if (!['browse', 'preview', 'bind', 'status', 'list', 'read'].includes(action)) throw failure(404, 'not_found', '研究目录接口不存在。');
-        const result = await projects[action](input);
+        if (!['defaults', 'browse', 'preview', 'bind', 'status', 'list', 'read', 'sync'].includes(action)) throw failure(404, 'not_found', '研究目录接口不存在。');
+        const input = await readBody(req, action === 'sync' ? 360_000_000 : MAX_BYTES);
+        const result = action === 'sync' ? await writeProjectFiles(await projects.binding(input), input) : await projects[action](input);
         res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify(result ?? null)); return true;
       }
       if (req.url === '/api/ai/agents' && req.method === 'GET') {
@@ -376,7 +377,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       if (body && record(body)) {
         eventQueue = eventQueue.catch(() => {});
         await send({ type: 'error', code: unconfirmed ? 'stop_unconfirmed' : timedOut ? 'timeout' : stopped ? 'stopped' : error.code || 'agent_failed', error: message }).catch(() => {});
-      } else { res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify({ type: 'error', code: error.code || 'agent_failed', error: message })); }
+      } else { res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify({ type: 'error', code: error.code || 'agent_failed', error: message, ...(typeof error.ownerResearchId === 'string' ? { ownerResearchId: error.ownerResearchId } : {}) })); }
       res.end();
     } finally {
       clearTimeout(timer); if (controller?.signal.aborted && runCompletion) await runCompletion; await mappingWrites.catch(() => {});

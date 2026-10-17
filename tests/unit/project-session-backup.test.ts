@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hasFullText } from '../../src/domain/knowledge';
 import { createSeed } from '../../src/data/seed';
 import { contentHash, loadWorkspace, restoreWorkspaceBackup, saveWorkspace } from '../../src/data/storage';
 import { createWorkspaceBackup, readWorkspaceBackup, type BackupAsset } from '../../src/services/backup';
@@ -25,7 +26,7 @@ beforeEach(async () => {
   initial.requests.own = { id: 'own', researchId: 'research-a', conversationId, connectionId: 'codex', nativeSessionId: 'native-original', purpose: 'chat', prompt: 'Original question', body: 'Original app answer', context: [], evidenceIds: [], history: [], status: 'done', createdAt: '2026-10-17T00:00:00Z' };
   initial.requests.imported = { id: 'imported', researchId: 'research-a', conversationId, connectionId: 'codex', nativeSessionId: 'native-original', nativeImported: true, nativeMessageId: 'native-user', purpose: 'chat', prompt: 'Imported question', body: 'Cached native answer', context: [], evidenceIds: [], history: [], status: 'done', createdAt: '2026-10-17T00:00:00Z' };
   assets = [];
-  for (const document of Object.values(initial.documents)) {
+  for (const document of Object.values(initial.documents).filter(hasFullText)) {
     const blob = new Blob([`%PDF-1.7\n${document.id}`], { type: 'application/pdf' });
     document.hash = await contentHash(await blob.arrayBuffer()); assets.push({ id: document.assetId, blob });
   }

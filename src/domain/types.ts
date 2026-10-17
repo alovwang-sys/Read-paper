@@ -6,13 +6,10 @@ export type ResourceRef = {
 export type WorkspaceScope =
   | { kind: 'research'; researchId: string }
   | { kind: 'library' };
-export type CollectionId =
-  | 'inbox'
-  | 'documents'
-  | 'researches'
-  | 'cards'
-  | 'drafts';
-export type PanelMode = 'evidence' | 'references' | 'info' | 'ai';
+export type CollectionId = 'documents' | 'cards';
+export type ResearchViewId = 'home' | 'sources' | 'excerpts' | 'cards' | 'boards' | 'drafts';
+export type LibraryFilter = 'all' | 'unassigned' | 'research';
+export type PanelMode = 'excerpts' | 'cards' | 'ai';
 export type Research = {
   id: string;
   title: string;
@@ -45,16 +42,23 @@ export type PaperDocument = {
   title: string;
   authors: string;
   year: string;
-  filename: string;
-  hash: string;
-  assetId: string;
+  identifiers?: { doi?: string; arxiv?: string; url?: string };
+  filename?: string;
+  hash?: string;
+  assetId?: string;
   assetRevision?: number;
   sampleUrl?: string;
-  pageCount: number;
-  readingStatus: 'unread' | 'reading' | 'read';
+  pageCount?: number;
+  finishPromptShown?: boolean;
+  updatedAt?: string;
+  readingStatus: 'unread' | 'reading' | 'skimmed' | 'read';
   textStatus: 'pending' | 'ready' | 'empty' | 'error';
 };
 export type Evidence = {
+  researchId?: string;
+  dismissed?: boolean;
+  note?: string;
+  createdAt?: string;
   id: string;
   documentId: string;
   pageIndex: number;
@@ -77,9 +81,11 @@ export type Card = {
   body: string;
   evidenceIds: string[];
   needsReview: boolean;
+  evidenceUpdatedAt?: string;
   provenance?: CardProvenance;
 };
 export type CardProvenance = {
+  origin?: 'conversation' | 'excerpts';
   researchId: string;
   conversationId: string;
   conversationTitle: string;
@@ -134,6 +140,8 @@ export type Draft = {
   title: string;
   body: string;
   evidenceIds: string[];
+  updatedAt?: string;
+  cardRefs?: { cardId: string; insertedAt: string; evidenceIds?: string[] }[];
   cardSources?: { cardId: string; title: string; provenance: CardProvenance }[];
 };
 export type ReadingPosition = { pageIndex: number; scale: number };
@@ -149,15 +157,22 @@ export type PanelState = {
   aiMode?: 'live' | 'demo';
   aiDraftId?: string;
   conversationSource?: CardProvenance;
+  findEvidenceFor?: string;
+  citation?: { draftId: string; evidenceId: string };
   sourceReturnRef?: ResourceRef;
 };
 export type ResourceAnchor = {
   evidenceId?: string;
   pageIndex?: number;
   placementId?: string;
+  citationNumber?: number;
 };
 export type Session = {
-  active: ResourceRef | { kind: 'collection'; id: CollectionId };
+  active: ResourceRef | { kind: 'collection'; id: CollectionId } | { kind: 'researchView'; id: ResearchViewId };
+  researchView?: ResearchViewId;
+  recentItems?: ResourceRef[];
+  libraryFilter?: LibraryFilter;
+  libraryResearchId?: string;
   openItems: ResourceRef[];
   pinnedIds: string[];
   history: Session['active'][];
@@ -288,7 +303,7 @@ export type Conversation = {
   codex?: CodexSettings;
 };
 export type WorkspaceData = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   agentWorkspaceId?: string;
   researches: Record<string, Research>;
   documents: Record<string, PaperDocument>;

@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile, rename, realpath, lstat, readdir, access, chmod } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { homedir } from 'node:os';
-import { resolve, join, dirname, basename, parse } from 'node:path';
+import { join, dirname, basename, parse } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { sanitizeAgentProgress } from './codex-runtime.mjs';
 
@@ -15,6 +15,8 @@ const identity = body => {
   if (!object(body) || !validId(body.workspaceId) || !validId(body.researchId)) throw fail(400, 'invalid_request', '研究身份无效。');
 };
 const safeText = (value, limit = 200) => typeof value === 'string' ? value.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '').slice(0, limit) : '';
+const present = path => lstat(path).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
+const creationUnknown = () => fail(409, 'creation_unconfirmed', '目录可能已创建，但尚不能核实完整关联。请保留当前表单并检查目录，不要重复创建或删除其中内容。');
 
 async function atomicJSON(path, value) {
   const temporary = `${path}.${randomUUID()}.tmp`;
@@ -31,7 +33,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     await mkdir(stateDir, { recursive: true, mode: 0o700 });
     try {
       registry = JSON.parse(await readFile(registryPath, 'utf8'));
-      if (registry.version !== 1 || !object(registry.bindings) || !object(registry.sessions)) throw new Error();
+      if (registry.version !== 1 || !object(registry.bindings) || !object(registry.sessions) || registry.operations !== undefined && !object(registry.operations)) throw new Error();
     } catch (error) {
       if (error.code !== 'ENOENT') throw fail(500, 'project_read_failed', '无法读取研究目录关联；已有记录未覆盖。');
       registry = { version: 1, bindings: {}, sessions: {} };
@@ -50,7 +52,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     } finally { clearTimeout(timer); }
   }
 
-  async function canonical(path, allowNew = false, browsing = false) {
+  async function canonical(path, allowNew = false, browsing = false, newIntent = false) {
     if (typeof path !== 'string' || path.length > 4096 || path.includes('\0') || !path.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(path)) throw fail(400, 'invalid_directory', '请选择有效的绝对目录。');
     let actual;
     try { actual = await realpath(path); }
@@ -60,9 +62,17 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     }
     const home = await realpath(homedir());
     if (!browsing && (actual === parse(actual).root || actual === home) || /(?:^|[\\/])(?:\.codex|\.claude|\.ssh|\.git|\.read-paper|secrets)(?:[\\/]|$)/i.test(actual)) throw fail(400, 'invalid_directory', '请选择具体研究文件夹，不能使用系统根目录、整个用户目录或配置目录。');
-    try { if (!(await lstat(actual)).isDirectory()) throw new Error(); }
-    catch (error) { if (!(allowNew && error.code === 'ENOENT')) throw fail(400, 'invalid_directory', '所选位置不是可用目录。'); }
+    try { if (!(await lstat(actual)).isDirectory()) throw fail(newIntent ? 409 : 400, newIntent ? 'directory_exists' : 'invalid_directory', newIntent ? '此位置已存在同名文件，请更改名称或位置。' : '所选位置不是可用目录。'); }
+    catch (error) { if (!(allowNew && error.code === 'ENOENT')) throw error.status ? error : fail(400, 'invalid_directory', '所选位置不是可用目录。'); }
     return actual;
+  }
+  function intent(body) {
+    identity(body);
+    if (body.mode !== undefined && !['new', 'existing'].includes(body.mode) || body.operationId !== undefined && !validId(body.operationId) || body.mode !== undefined && !validId(body.operationId)) throw fail(400, 'invalid_operation', '目录创建方式或操作标识无效，请重新打开表单。');
+    if (body.mode === 'new') {
+      const name = typeof body.path === 'string' ? basename(body.path) : '';
+      if (!name || name !== name.trim() || ['.', '..'].includes(name) || /[\\/\x00-\x1f\x7f]/.test(name) || Buffer.byteLength(name) > 255 || process.platform === 'win32' && (/[<>:"|?*]/.test(name) || /[. ]$/.test(name) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name))) throw fail(400, 'invalid_name', '请输入有效的目录名称，不要使用路径分隔符或系统保留名称。');
+    }
   }
   async function managed(path, create = false) {
     const directory = join(path, '.read-paper');
@@ -84,12 +94,45 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       const info = await lstat(file);
       if (!info.isFile() || info.isSymbolicLink() || info.size > 65_536) throw new Error();
       const manifest = JSON.parse(await readFile(file, 'utf8'));
-      if (manifest.version !== 1 || !validId(manifest.projectId) || !validId(manifest.researchId)) throw new Error();
+      if (manifest.version !== 1 || !validId(manifest.projectId) || !validId(manifest.researchId) || manifest.workspaceId !== undefined && !validId(manifest.workspaceId) || manifest.operationId !== undefined && !validId(manifest.operationId)) throw new Error();
       return manifest;
     } catch (error) {
       if (error.code === 'ENOENT') return undefined;
       throw fail(400, 'invalid_project', '已有研究清单无法识别，未覆盖文件。');
     }
+  }
+  const sameIdentity = (item, body) => item.researchId === body.researchId && (!item.workspaceId || item.workspaceId === body.workspaceId);
+  function occupied(body, path, manifest) {
+    const owner = Object.entries(registry.bindings).find(([scope, item]) => scope !== key(body) && item.path === path);
+    const manifestConflict = manifest && !sameIdentity(manifest, body);
+    if (!owner && !manifestConflict) return;
+    const error = fail(409, 'directory_in_use', '该目录已关联其他研究，请选择其他目录。');
+    if (owner) {
+      const [workspaceId, researchId] = JSON.parse(owner[0]);
+      if (workspaceId === body.workspaceId && manifest?.workspaceId === workspaceId && manifest.researchId === researchId && manifest.projectId === owner[1].projectId) error.ownerResearchId = researchId;
+    }
+    throw error;
+  }
+  function operation(body, path) {
+    const item = body.operationId && Object.hasOwn(registry.operations || {}, body.operationId) ? registry.operations[body.operationId] : undefined;
+    if (item && (item.workspaceId !== body.workspaceId || item.researchId !== body.researchId || item.path !== path || item.mode !== body.mode)) throw fail(409, 'operation_mismatch', '本次创建标识已用于其他目录，请恢复原表单或重新开始。');
+    return item;
+  }
+  const matchesOperation = (manifest, item) => manifest && item && manifest.projectId === item.projectId && manifest.workspaceId === item.manifestWorkspaceId && manifest.researchId === item.researchId && manifest.operationId === item.manifestOperationId;
+  async function preview(body) {
+    intent(body); await ready;
+    const path = await canonical(body.path, body.mode !== 'existing', false, body.mode === 'new');
+    const item = operation(body, path);
+    let manifest;
+    try { manifest = await projectManifest(path); }
+    catch (error) { if (item && body.mode === 'new') throw creationUnknown(); throw error; }
+    occupied(body, path, manifest);
+    if (item && manifest && !matchesOperation(manifest, item)) throw creationUnknown();
+    if (body.mode === 'new' && await present(path)) {
+      if (!item) throw fail(409, 'directory_exists', '此位置已存在同名文件或文件夹，请改名，或选择使用已有目录。');
+      if (!matchesOperation(manifest, item)) throw creationUnknown();
+    }
+    return { path, name: basename(path) };
   }
   async function binding(body) {
     identity(body); await ready;
@@ -97,7 +140,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     if (!item || body.bindingId && body.bindingId !== item.id) throw fail(409, 'project_required', '请先为当前研究选择目录。');
     if (await canonical(item.path) !== item.path) throw fail(409, 'directory_changed', '研究目录位置已改变，请重新连接。');
     const manifest = await projectManifest(item.path);
-    if (manifest?.projectId !== item.projectId) throw fail(409, 'directory_changed', '研究目录标识不匹配，已有会话未改动。');
+    if (manifest?.projectId !== item.projectId || !sameIdentity(manifest, body)) throw fail(409, 'directory_changed', '研究目录标识不匹配，已有会话未改动。');
     return item;
   }
   const summary = (item, ref, origin) => ({ id: ref, agentId: item.agentId, nativeSessionId: item.id, title: safeText(item.title) || '原生对话', updatedAt: safeText(item.updatedAt, 40),
@@ -165,12 +208,13 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       registry.sessions[ref].stopUnconfirmed = true;
       await save();
     },
-    async preview(body) {
-      identity(body); await ready;
-      const path = await canonical(body.path, true);
-      const manifest = await projectManifest(path);
-      if (manifest && (manifest.researchId !== body.researchId || manifest.workspaceId && manifest.workspaceId !== body.workspaceId)) throw fail(409, 'directory_in_use', `该目录已关联研究“${safeText(manifest.title) || manifest.researchId}”，请选择其他目录或打开已有研究。`);
-      return { path, name: basename(path) };
+    preview,
+    async defaults(body) {
+      identity(body);
+      let parentPath;
+      try { parentPath = await canonical(join(homedir(), 'Documents'), false, true); }
+      catch { parentPath = await canonical(homedir(), false, true); }
+      return { parentPath };
     },
     async browse(body) {
       identity(body);
@@ -186,19 +230,49 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     },
     async bind(body) {
       const work = async () => {
-      const preview = await this.preview(body);
+      const target = await preview(body);
       const existing = registry.bindings[key(body)];
-      if (existing && existing.path !== preview.path) throw fail(409, 'directory_changed', '此研究已绑定另一目录。请重新定位原研究目录，不能覆盖原生会话归属。');
-      const duplicate = Object.entries(registry.bindings).find(([owner, b]) => b.path === preview.path && owner !== key(body));
-      if (duplicate) throw fail(409, 'directory_in_use', '该目录已经关联其他研究。');
-      await mkdir(preview.path, { mode: 0o700 }).catch(error => { if (error.code !== 'EEXIST') throw error; });
-      await access(preview.path, constants.W_OK).catch(() => { throw fail(400, 'directory_unwritable', '此目录不可写，不能保存研究清单；请选择可写的研究目录。'); });
-      const previous = await projectManifest(preview.path);
-      const projectId = previous?.projectId || randomUUID();
-      const directory = await managed(preview.path, true);
-      if (!previous || previous.title !== preview.name) await atomicJSON(join(directory, 'project.json'), previous ? { ...previous, title: preview.name } : { version: 1, projectId, workspaceId: body.workspaceId, researchId: body.researchId, title: preview.name, createdAt: new Date().toISOString() });
-      const result = { id: existing?.id || randomUUID(), projectId, path: preview.path, name: preview.name, researchId: body.researchId };
-      registry.bindings[key(body)] = result; await save();
+      if (existing && existing.path !== target.path) throw fail(409, 'directory_changed', '此研究已绑定另一目录。请重新定位原研究目录，不能覆盖原生会话归属。');
+      let previous = await projectManifest(target.path);
+      occupied(body, target.path, previous);
+      let item = operation(body, target.path);
+      if (body.mode !== undefined && !item) await access(body.mode === 'new' ? dirname(target.path) : target.path, constants.W_OK).catch(() => { throw fail(400, 'directory_unwritable', '所选位置不可写，请更换位置或检查权限。'); });
+      if (body.operationId && !item) {
+        item = { workspaceId: body.workspaceId, researchId: body.researchId, mode: body.mode, path: target.path, projectId: previous?.projectId || randomUUID(), bindingId: existing?.id || randomUUID(), manifestOperationId: previous ? previous.operationId : body.operationId, manifestWorkspaceId: previous ? previous.workspaceId : body.workspaceId, createdAt: new Date().toISOString() };
+        registry.operations ??= {};
+        registry.operations[body.operationId] = item;
+        try { await save(); } catch { delete registry.operations[body.operationId]; throw fail(500, 'project_write_failed', '无法保存创建记录，尚未开始创建目录；请检查本机存储后重试。'); }
+      }
+      if (body.mode === 'new' && !previous) {
+        try { await mkdir(target.path, { mode: 0o700 }); }
+        catch (error) {
+          if (error.code === 'EEXIST') throw creationUnknown();
+          delete registry.operations[body.operationId];
+          try { await save(); } catch { throw creationUnknown(); }
+          throw fail(400, 'directory_unwritable', '无法在此位置创建目录，请更换位置或检查权限。');
+        }
+      } else if (body.mode === undefined) {
+        await mkdir(target.path, { mode: 0o700 }).catch(error => { if (error.code !== 'EEXIST') throw error; });
+      }
+      try {
+        if (await canonical(target.path) !== target.path) throw fail(409, 'directory_changed', '目录位置已改变，请重新选择。');
+        await access(target.path, constants.W_OK).catch(() => { throw fail(400, 'directory_unwritable', '此目录不可写，不能保存研究清单；请选择可写的研究目录。'); });
+        previous = await projectManifest(target.path);
+        occupied(body, target.path, previous);
+        if (item && previous && !matchesOperation(previous, item)) throw creationUnknown();
+      } catch (error) { if (body.operationId) throw creationUnknown(); throw error; }
+      const projectId = item?.projectId || previous?.projectId || randomUUID();
+      try {
+        const directory = await managed(target.path, true);
+        if (!previous) await writeFile(join(directory, 'project.json'), JSON.stringify({ version: 1, projectId, workspaceId: body.workspaceId, researchId: body.researchId, title: target.name, createdAt: item?.createdAt || new Date().toISOString(), ...(body.operationId ? { operationId: body.operationId } : {}) }, null, 2), { mode: 0o600, flag: 'wx' });
+        else if (previous.title !== target.name) await atomicJSON(join(directory, 'project.json'), { ...previous, title: target.name });
+      } catch (error) { if (body.operationId) throw creationUnknown(); throw error.status ? error : fail(400, 'directory_unwritable', '无法保存研究清单；已有文件未覆盖，请检查权限后重试。'); }
+      const result = { id: existing?.id || item?.bindingId || randomUUID(), projectId, path: target.path, name: target.name, researchId: body.researchId };
+      registry.bindings[key(body)] = result;
+      try { await save(); } catch {
+        if (existing) registry.bindings[key(body)] = existing; else delete registry.bindings[key(body)];
+        throw fail(500, 'binding_unconfirmed', '研究目录已保存，但本机关联尚未确认。请保留表单并重试同一次创建。');
+      }
       return result;
       };
       const result = bindingWrites.catch(() => {}).then(work);

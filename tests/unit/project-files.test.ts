@@ -1,0 +1,63 @@
+import { createHash } from 'node:crypto';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createSeed } from '../../src/data/seed';
+import { getAsset } from '../../src/data/storage';
+import { buildResearchFiles, researchFileData } from '../../src/services/project-files';
+const digest = (bytes: ArrayBuffer | Uint8Array) => createHash('sha256').update(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)).digest('hex');
+vi.mock('../../src/data/storage', () => ({ getAsset: vi.fn(), contentHash: async (bytes: ArrayBuffer) => createHash('sha256').update(new Uint8Array(bytes)).digest('hex') }));
+const pdf = new Blob(['%PDF-1.4\nsynthetic fixture\n%%EOF'], { type: 'application/pdf' });
+beforeEach(() => { vi.mocked(getAsset).mockReset().mockResolvedValue(pdf); });
+describe('研究目录的完整可读文件集', () => {
+  it('包含实际PDF、卡片、摘录、文稿、白板、对话和稳定ID的结构化数据', async () => {
+    const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
+    Object.assign(seed.conversations['conversation-research-a'], { connectionId: 'codex', nativeSessionId: 'native-session-a' });
+    const { files } = await buildResearchFiles(seed, 'research-a');
+    const map = Object.fromEntries(files.map(file => [file.path, file]));
+    expect(Buffer.from(map['library/paper-a.pdf'].content, 'base64')).toEqual(Buffer.from(await pdf.arrayBuffer()));
+    expect(map['cards/card-a.md'].content).toContain(seed.cards['card-a'].body);
+    expect(map['cards/card-a.md'].content).toContain('PDF 第');
+    expect(map['library/paper-stub.md'].content).toContain('尚未添加全文');
+    expect(map['sessions/conversation-research-a.md'].content).toContain('codex resume native-session-a');
+    const saved = JSON.parse(map['research.json'].content);
+    expect(saved.format).toBe('papertrail-research');
+    expect(Object.keys(saved.entities.research)).toContain('documentIds');
+    expect(saved.entities.research.id).toBe('research-a');
+    expect(map['README.md'].content).toContain('原生会话');
+    for (const file of files) expect(file.hash).toBe(digest(file.encoding === 'base64' ? Buffer.from(file.content, 'base64') : new TextEncoder().encode(file.content).buffer));
+  });
+  it('不复制其他研究的私有对话，仍包含共享卡片所必需的原文', () => {
+    const seed = createSeed();
+    seed.conversations['conversation-research-b'].input = '研究B的私人输入';
+    seed.researches['research-b'].cardIds = ['card-a'];
+    const a = researchFileData(seed, 'research-a'), b = researchFileData(seed, 'research-b');
+    expect(JSON.stringify(a)).not.toContain('研究B的私人输入');
+    expect(b.cards['card-a']).toBeDefined();
+    expect(b.documents['paper-a']).toBeDefined();
+    expect(b.evidence['evidence-a']).toBeDefined();
+  });
+  it('缺失原资产或hash不一致时拒绝假成功', async () => {
+    const seed = createSeed(); seed.documents['paper-a'].hash = 'f'.repeat(64);
+    await expect(buildResearchFiles(seed, 'research-a')).rejects.toThrow('hash');
+    const missing = createSeed(); missing.documents['paper-a'].sampleUrl = undefined; missing.documents['paper-a'].assetId = 'missing-unique';
+    vi.mocked(getAsset).mockResolvedValue(undefined);
+    await expect(buildResearchFiles(missing, 'research-a')).rejects.toThrow('缺失');
+  });
+  it('JPEG区域导出为jpg，图片字节、Markdown引用与JSON资产路径保持一致', async () => {
+    const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
+    const jpeg = new Blob(['jpeg region fixture'], { type: 'image/jpeg' }), imageHash = digest(await jpeg.arrayBuffer());
+    const assetId = 'region-jpeg-fixture';
+    seed.evidence['evidence-a'].kind = 'region';
+    seed.evidence['evidence-a'].region = { assetId, hash: imageHash, rect: { x: 0, y: 0, width: 0.5, height: 0.5 }, rotation: 0, width: 50, height: 50 };
+    vi.mocked(getAsset).mockImplementation(async id => id === assetId ? jpeg : pdf);
+    const { files } = await buildResearchFiles(seed, 'research-a');
+    const map = Object.fromEntries(files.map(file => [file.path, file]));
+    const imagePath = `images/${assetId}.jpg`;
+    expect(Buffer.from(map[imagePath].content, 'base64')).toEqual(Buffer.from(await jpeg.arrayBuffer()));
+    expect(map[`images/${assetId}.png`]).toBeUndefined();
+    expect(map['excerpts/evidence-a.md'].content).toContain(`(../${imagePath})`);
+    expect(map['cards/card-a.md'].content).toContain(`(../${imagePath})`);
+    expect(JSON.parse(map['research.json'].content).assets[assetId]).toEqual({ path: imagePath, hash: imageHash, type: 'image/jpeg' });
+  });
+});

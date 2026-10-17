@@ -1,7 +1,8 @@
 import { strFromU8, strToU8, unzipSync, zipSync, type UnzipFileInfo } from 'fflate';
 import { migrateWorkspace } from '../data/migrations';
 import { contentHash } from '../data/storage';
-import type { CardProvenance, ContextSnapshot, RegionSource, ResourceRef, WorkspaceData } from '../domain/types';
+import { hasFullText } from '../domain/knowledge';
+import type { CardProvenance, ContextSnapshot, RegionSource, Session, WorkspaceData } from '../domain/types';
 
 export type BackupAsset = { id: string; blob: Blob };
 export type WorkspaceBackup = {
@@ -77,15 +78,19 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
     expected.add(hash);
     hashes.set(id, expected);
   };
-  const ref = (value: ResourceRef | { kind: 'collection'; id: string }) => {
+  const views = ['home', 'sources', 'excerpts', 'cards', 'boards', 'drafts'];
+  const ref = (value: Session['active']) => {
     requireValid(object(value) && typeof value.kind === 'string', '资源入口损坏');
     const collections = { research: data.researches, document: data.documents, card: data.cards, board: data.boards, draft: data.drafts };
-    if (value.kind === 'collection') requireValid(['inbox', 'documents', 'researches', 'cards', 'drafts'].includes(value.id), '集合入口损坏');
+    if (value.kind === 'researchView') requireValid(views.includes(value.id), '研究页面入口损坏');
+    else if (value.kind === 'collection') requireValid(['documents', 'cards'].includes(value.id), '集合入口损坏');
     else requireValid(has(collections, value.kind) && has(collections[value.kind], value.id), '引用的资源缺失');
   };
   const page = (documentId: string, pageIndex: number) => {
     requireValid(has(data.documents, documentId), '引用的原论文缺失');
-    requireValid(Number.isInteger(pageIndex) && pageIndex >= 0 && pageIndex < data.documents[documentId].pageCount, '引用页码无效');
+    const document = data.documents[documentId];
+    requireValid(hasFullText(document), '引用的原论文没有全文');
+    requireValid(Number.isInteger(pageIndex) && pageIndex >= 0 && pageIndex < document.pageCount, '引用页码无效');
   };
   const region = (value?: RegionSource) => {
     requireValid(object(value) && object(value.rect), '区域图片来源损坏');
@@ -109,6 +114,7 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
   };
   const source = (value: CardProvenance) => {
     requireValid(object(value) && typeof value.prompt === 'string' && typeof value.answer === 'string' && typeof value.selection === 'string', '卡片对话来源损坏');
+    requireValid(value.origin === undefined || ['conversation', 'excerpts'].includes(value.origin), '卡片来源类型损坏');
     context(value.context);
     ids(value.generationRequestIds);
     if (value.answerEvidenceIds) {
@@ -123,7 +129,10 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
   }
   requireValid(has(data.sessions, 'library'), '全局资料会话缺失');
   requireValid(data.scope.kind === 'library' || data.scope.kind === 'research' && has(data.researches, data.scope.researchId), '当前研究缺失');
-  for (const doc of Object.values(data.documents)) asset(doc.assetId, doc.hash);
+  for (const doc of Object.values(data.documents)) {
+    if (hasFullText(doc)) asset(doc.assetId, doc.hash);
+    requireValid(doc.finishPromptShown === undefined || typeof doc.finishPromptShown === 'boolean', '阅读提示状态损坏');
+  }
   for (const item of Object.values(data.evidence)) {
     page(item.documentId, item.pageIndex);
     if (item.kind === 'region') region(item.region);
@@ -148,6 +157,10 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
   for (const draft of Object.values(data.drafts)) {
     requireValid(has(data.researches, draft.researchId), '结论所属研究缺失');
     evidenceIds(draft.evidenceIds);
+    for (const item of draft.cardRefs ?? []) {
+      requireValid(has(data.cards, item.cardId) && Number.isFinite(Date.parse(item.insertedAt)), '文稿插入的卡片缺失或时间损坏');
+      if (item.evidenceIds !== undefined) evidenceIds(item.evidenceIds);
+    }
     if (draft.cardSources) {
       requireValid(Array.isArray(draft.cardSources), '结论来源快照损坏');
       for (const item of draft.cardSources) source(item.provenance);
@@ -180,10 +193,19 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
   for (const [key, session] of Object.entries(data.sessions)) {
     requireValid(key === 'library' || has(data.researches, key), '工作区所属研究缺失');
     ref(session.active);
-    for (const item of [...session.openItems, ...session.history, ...session.panel.history]) ref(item);
+    requireValid(session.researchView === undefined || views.includes(session.researchView), '研究页面损坏');
+    requireValid(session.libraryFilter === undefined || ['all', 'unassigned', 'research'].includes(session.libraryFilter), '资料库筛选损坏');
+    requireValid(session.libraryResearchId === undefined || has(data.researches, session.libraryResearchId), '资料库关联研究缺失');
+    requireValid(session.recentItems === undefined || Array.isArray(session.recentItems), '最近资源列表损坏');
+    for (const item of [...session.openItems, ...session.history, ...session.panel.history, ...(session.recentItems ?? [])]) ref(item);
     if (session.panel.ref) ref(session.panel.ref);
     if (session.panel.sourceReturnRef) ref(session.panel.sourceReturnRef);
     if (session.panel.conversationSource) source(session.panel.conversationSource);
+    if (session.panel.findEvidenceFor !== undefined) requireValid(key !== 'library' && data.researches[key].cardIds.includes(session.panel.findEvidenceFor), '找依据卡片缺失或跨研究');
+    if (session.panel.citation !== undefined) {
+      const citation = session.panel.citation;
+      requireValid(object(citation) && has(data.drafts, citation.draftId) && data.drafts[citation.draftId].researchId === key && data.drafts[citation.draftId].evidenceIds.includes(citation.evidenceId), '出处链缺失或跨研究');
+    }
     for (const [reader, position] of Object.entries(session.readers)) page(reader.replace(/^(main|inspector):/, ''), position.pageIndex);
     if (session.activeConversationId) requireValid(has(data.conversations, session.activeConversationId) && data.conversations[session.activeConversationId].researchId === key, '活动会话跨研究');
   }
@@ -199,6 +221,7 @@ export async function createWorkspaceBackup(original: WorkspaceData, originalAss
     assets.set(item.id, item.blob);
   }
   for (const doc of Object.values(data.documents)) {
+    if (!hasFullText(doc)) continue;
     if (!assets.has(doc.assetId) && doc.sampleUrl) {
       requireValid(/^\/samples\/[a-zA-Z0-9._-]+\.pdf$/i.test(doc.sampleUrl), '示例 PDF 路径无效');
       const response = await fetch(doc.sampleUrl);
@@ -284,7 +307,7 @@ export async function readWorkspaceBackup(file: Blob): Promise<WorkspaceBackup> 
   }
   requireValid([...expectedHashes.keys()].every(id => seenIds.has(id)), '缺少原文件或历史区域图片');
   const assetMap = new Map(assets.map(asset => [asset.id, asset.blob]));
-  for (const doc of Object.values(data.documents)) await checkPdfAsset(assetMap.get(doc.assetId)!, doc.filename);
+  for (const doc of Object.values(data.documents)) if (hasFullText(doc)) await checkPdfAsset(assetMap.get(doc.assetId)!, doc.filename);
   return { data, assets, createdAt: manifest.createdAt, summary: { researches: Object.keys(data.researches).length, documents: Object.keys(data.documents).length, cards: Object.keys(data.cards).length, assets: assets.length, bytes: total } };
 }
 

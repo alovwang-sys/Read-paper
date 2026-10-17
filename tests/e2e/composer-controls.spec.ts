@@ -43,7 +43,7 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
 const input = (page: Page) => panel(page).getByLabel('向 AI 提问');
 const menu = (page: Page) => panel(page).getByRole('dialog', { name: 'Codex 操作与技能', exact: true });
-async function state(page: Page): Promise<WorkspaceData> { return page.evaluate(async () => { const journal = localStorage.getItem('papertrail-recovery-v2'); if (journal) return JSON.parse(journal); const path = '/src/data/storage.ts'; return (await import(path)).loadWorkspace(); }); }
+async function state(page: Page): Promise<WorkspaceData> { return page.evaluate(async () => { const journal = localStorage.getItem('papertrail-recovery-v3'); if (journal) return JSON.parse(journal); const path = '/src/data/storage.ts'; return (await import(path)).loadWorkspace(); }); }
 async function start(page: Page, api: API) {
   const seed = createSeed(); for (const conversation of Object.values(seed.conversations)) conversation.connectionId = 'codex';
   await mockProjectService(page, { seed });
@@ -96,7 +96,7 @@ test('加号从当前研究加入原文证据，保留输入且不发送', async
   await start(page, api); await input(page).fill('带着原文再提问'); await panel(page).getByRole('button', { name: '添加材料', exact: true }).click();
   const dialog = panel(page).getByRole('dialog', { name: '添加对话材料', exact: true }); await dialog.getByLabel('搜索研究证据').fill('Retrieval improves');
   const evidence = dialog.getByRole('button', { name: /Adaptive Retrieval.*PDF 第 3 页/ }); await evidence.click(); await expect(evidence).toContainText('已加入本轮');
-  await expect(dialog.getByRole('button', { name: '导入 PDF', exact: true })).toBeVisible(); await dialog.getByRole('button', { name: '完成', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: '添加资料', exact: true })).toBeVisible(); await dialog.getByRole('button', { name: '完成', exact: true }).click();
   await expect(input(page)).toHaveValue('带着原文再提问'); expect((await state(page)).conversations['conversation-research-a'].contextIds).toContain('evidence-a'); expect(api.runs).toHaveLength(0);
 });
 

@@ -12,7 +12,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'";
 const readableAPI = new Set(['/api/ai/config', '/api/ai/agents', '/api/ai/agents/codex/capabilities']);
 const writableAPI = new Set(['/api/ai/chat', '/api/ai/agents/run', '/api/ai/agents/respond', '/api/ai/agents/stop',
-  ...['browse', 'preview', 'bind', 'status', 'list', 'read'].map(action => `/api/ai/agents/projects/${action}`)]);
+  ...['browse', 'preview', 'bind', 'status', 'list', 'read', 'defaults', 'sync'].map(action => `/api/ai/agents/projects/${action}`)]);
 
 export function createAppProtocol({ distDirectory, desktopDirectory, getAI, fetchImpl = fetch }) {
   return async (request) => {

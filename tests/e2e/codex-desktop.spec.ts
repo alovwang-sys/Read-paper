@@ -43,7 +43,7 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
   for (const response of pending.values()) response.end(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()));
 } });
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
-async function state(page: Page): Promise<WorkspaceData> { return page.evaluate(() => JSON.parse(localStorage.getItem('papertrail-recovery-v2')!)); }
+async function state(page: Page): Promise<WorkspaceData> { return page.evaluate(() => JSON.parse(localStorage.getItem('papertrail-recovery-v3')!)); }
 async function start(page: Page, api: API) {
   await page.route('**/api/ai/**', route => route.continue({ url: api.url + new URL(route.request().url()).pathname }));
   await mockProjectService(page);

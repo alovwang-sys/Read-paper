@@ -1,8 +1,10 @@
 import type { AgentInteraction, AgentReply, AIHistoryTurn, AIRequest, CardDraft, CardProvenance, ContextSnapshot, WorkspaceData } from '../domain/types';
 import { contentHash, getAsset } from '../data/storage';
+import { hasFullText } from '../domain/knowledge';
 import { mapCitationNumbers, remapCitationNumbers } from '../domain/citations';
 import { linkCard, uid, validateEvidence, workspace } from './workspace';
 import { conversationConnection } from './agents';
+import { syncResearchFiles } from './project-files';
 
 export type AIConfig = {
   configured: boolean; model: string; provider: string; images: boolean; mode: 'live' | 'demo';
@@ -65,7 +67,7 @@ export function appendAIToDraft(data: WorkspaceData, draftId: string, request: A
 async function ensureAssets(context: ContextSnapshot[]) {
   for (const item of context) {
     const document = workspace.getState().data.documents[item.documentId];
-    if (!document || !(await getAsset(document.assetId))) throw new Error('上下文的原 PDF 文件缺失，请重新导入同一文件后重试');
+    if (!hasFullText(document) || !(await getAsset(document.assetId))) throw new Error('上下文的原 PDF 文件缺失，请重新导入同一文件后重试');
     if (item.kind === 'region') {
       const asset = item.region && await getAsset(item.region.assetId);
       if (!asset || await contentHash(await asset.arrayBuffer()) !== item.region?.hash) throw new Error('区域图片缺失或已变化，请重新框选。');
@@ -266,8 +268,30 @@ async function runRequest(request: AIRequest, responder: AIResponder) {
   if (responder === liveResponder && request.connectionId === 'demo') responder = demoResponder;
   if (stoppingAll) throw new Error('正在保存并关闭，请稍后。');
   request.mode = responder === demoResponder ? 'demo' : 'live';
+  const data = workspace.getState().data;
+  const syncDirectory = responder === liveResponder && ['codex', 'claude', 'opencode'].includes(request.connectionId ?? '')
+    && (!request.purpose || request.purpose === 'chat') && data.researches[request.researchId]?.directory;
+  const generation = workspace.getGeneration();
+  const scope = () => {
+    const current = workspace.getState().data, directory = current.researches[request.researchId]?.directory;
+    const conversation = current.conversations[request.conversationId];
+    return JSON.stringify([current.agentWorkspaceId, directory?.id, directory?.projectId, directory?.path,
+      conversation?.researchId, conversation?.connectionId, conversation?.nativeSessionId, conversation?.nativeSessionRef, conversation?.archived]);
+  };
+  const submittedScope = scope();
+  const verifyDirectoryScope = () => {
+    if (stoppingAll) throw new Error('生成已在关闭前取消。');
+    if (workspace.getGeneration() !== generation || scope() !== submittedScope) throw new Error('研究目录或工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。');
+  };
   preparingRequests++;
-  try { await ensureAssets(request.context); }
+  try {
+    await ensureAssets(request.context);
+    if (syncDirectory) {
+      verifyDirectoryScope();
+      await syncResearchFiles(request.researchId);
+      verifyDirectoryScope();
+    }
+  }
   finally { preparingRequests--; }
   if (stoppingAll) throw new Error('生成已在关闭前取消。');
   if (request.draftId && !workspace.getState().data.cardDrafts[request.draftId]) throw new Error('草稿已放弃，未发送生成请求。');
@@ -391,7 +415,7 @@ async function cardGeneration(draftId: string, instruction: string | undefined, 
   const source = draft.source;
   const contextIds = source.context.map(item => item.evidenceId);
   const answerIds = source.answerEvidenceIds ?? contextIds;
-  const selection = source.incomplete ? mapCitationNumbers(source.selection, () => '') : remapCitationNumbers(source.selection, answerIds, contextIds);
+  const selection = source.origin === 'excerpts' ? source.selection : source.incomplete ? mapCitationNumbers(source.selection, () => '') : remapCitationNumbers(source.selection, answerIds, contextIds);
   const answer = source.incomplete ? mapCitationNumbers(source.answer, () => '') : remapCitationNumbers(source.answer, answerIds, contextIds);
   const currentBody = instruction ? remapCitationNumbers(draft.body, draft.evidenceIds, contextIds) : '';
   const request: AIRequest = { id: uid('request'), draftId, researchId: draft.researchId, conversationId: draft.conversationId, connectionId: source.connectionId ?? workspace.getState().data.requests[source.requestId]?.connectionId, purpose: instruction ? 'revision' : 'card', context: structuredClone(source.context), history: [], prompt: `${instruction ? `修订要求：${instruction}\n当前标题：${draft.title}\n当前正文：${currentBody}\n` : '将以下选中内容整理为一张独立可读的知识卡片，保留适用条件与限制。\n'}选中内容：\n${selection}\n\n所属原始问题：${source.prompt}\n完整原始回答（辅助理解，围绕选中内容整理）：\n${answer}`, createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [] };
@@ -417,6 +441,29 @@ export async function generateCardDraft(requestId: string, selection?: string, r
   const request = workspace.getState().data.requests[requestId];
   if (!request || request.status !== 'done' || request.validationError) throw new Error('请等待完整且引用有效的回答，或转为人工待核查草稿。');
   const id = createDraft(request, selection || request.body);
+  await cardGeneration(id, undefined, responder);
+  return id;
+}
+export async function generateCardDraftFromExcerpts(researchId: string, evidenceIds: string[], responder: AIResponder = liveResponder) {
+  const data = workspace.getState().data, research = data.researches[researchId];
+  const ids = [...new Set(evidenceIds)];
+  if (!research || !ids.length) throw new Error('请先选择摘录。');
+  const context = ids.map(id => evidenceSnapshot(data, id));
+  if (context.some(item => !research.documentIds.includes(item.documentId))) throw new Error('摘录的资料尚未加入本研究。');
+  if (context.length > 16 || context.reduce((count, item) => count + item.quote.length, 0) > 24000) throw new Error('材料过多，请选择最多 16 条、24,000 字摘录。');
+  const conversation = workspace.getActiveConversation(researchId);
+  const id = uid('card-draft');
+  const source: CardProvenance = {
+    origin: 'excerpts', researchId, conversationId: conversation.id, conversationTitle: '所选摘录', requestId: id,
+    prompt: '将所选摘录整理为一张独立可读的知识卡片，保留适用条件与限制。', answer: '', answerEvidenceIds: [],
+    selection: context.map((item, index) => `摘录 ${index + 1}：${item.quote || '保存的 PDF 区域'}`).join('\n\n'),
+    context: structuredClone(context), createdAt: new Date().toISOString(), connectionId: conversation.connectionId,
+    generationRequestIds: [],
+  };
+  workspace.updateData(next => {
+    next.cardDrafts[id] = { id, researchId, conversationId: conversation.id, source, title: '', body: '', evidenceIds: ids, needsReview: true, status: 'generating', revision: 0 };
+    Object.assign(next.sessions[researchId].panel, { open: true, mode: 'ai', aiView: 'draft', aiDraftId: id });
+  });
   await cardGeneration(id, undefined, responder);
   return id;
 }

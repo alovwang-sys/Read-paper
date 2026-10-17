@@ -7,6 +7,8 @@ const listen = (channel, callback) => {
 };
 contextBridge.exposeInMainWorld('papertrailDesktop', {
   openAISettings: () => ipcRenderer.invoke('papertrail:open-ai-settings'),
+  getProjectLocation: () => ipcRenderer.invoke('papertrail:project-location'),
+  chooseDirectory: (defaultPath) => ipcRenderer.invoke('papertrail:choose-directory', defaultPath),
   getAISettings: () => ipcRenderer.invoke('papertrail:get-ai-settings'),
   saveAISettings: (settings) => ipcRenderer.invoke('papertrail:save-ai-settings', settings),
   onAISettingsChanged: (callback) => listen('papertrail:ai-settings-changed', callback),

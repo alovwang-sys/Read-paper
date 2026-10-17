@@ -1,193 +1,39 @@
-import {
-  ArrowRight,
-  BookOpen,
-  FileText,
-  Network,
-  Plus,
-  Quote,
-  Target,
-} from 'lucide-react';
-import { useWorkspace } from '../../services/workspace';
+import { BookOpen, Target } from 'lucide-react';
+import type { ResourceRef } from '../../domain/types';
+import { conclusionIssues, hasFullText, researchEvidence } from '../../domain/knowledge';
+import { resourceTitle, useWorkspace } from '../../services/workspace';
+import { ImportPDFButton } from '../reader/ImportPDFButton';
 
 export function ResearchView({ researchId }: { researchId: string }) {
   const { data, actions } = useWorkspace();
-  const research = data.researches[researchId];
-  if (!research)
-    return (
-      <div className="empty-state">研究已缺失，请从研究空间重新打开。</div>
-    );
-  const documents = research.documentIds
-    .map((id) => data.documents[id])
-    .filter(Boolean);
-  const boards = Object.values(data.boards).filter(
-    (item) => item.researchId === researchId,
-  );
-  const drafts = Object.values(data.drafts).filter(
-    (item) => item.researchId === researchId,
-  );
+  const research = data.researches[researchId], session = data.sessions[researchId];
+  if (!research || !session) return <div className="empty-state">研究已缺失，请切换研究。</div>;
   const scope = { kind: 'research' as const, researchId };
-  const evidence = Object.values(data.evidence).filter((item) =>
-    research.documentIds.includes(item.documentId),
-  );
-  const readCount = documents.filter(
-    (item) => item.readingStatus === 'read',
-  ).length;
-  return (
-    <div className="overview page-content">
-      <div className="eyebrow">
-        <span className="status-dot" /> RESEARCH WORKSPACE
-      </div>
-      <h1>{research.title}</h1>
-      <p className="page-lead">让每一个观点，都有迹可循。</p>
-      <section className="question-box">
-        <Target size={19} />
-        <div>
-          <span className="section-heading">核心研究问题</span>
-          <textarea
-            aria-label="核心研究问题"
-            value={research.question}
-            onChange={(event) =>
-              actions.updateData((data) => {
-                data.researches[researchId].question = event.target.value;
-              })
-            }
-          />
-        </div>
-      </section>
-      <div className="stat-grid">
-        <div>
-          <BookOpen size={18} />
-          <strong>{documents.length}</strong>
-          <span>篇论文</span>
-        </div>
-        <div>
-          <Quote size={18} />
-          <strong>{evidence.length}</strong>
-          <span>条原文证据</span>
-        </div>
-        <div>
-          <FileText size={18} />
-          <strong>{research.cardIds.length}</strong>
-          <span>张观点卡片</span>
-        </div>
-      </div>
-      <div className="section-title">
-        <h2>研究材料</h2>
-        <span className="muted">
-          {readCount} / {documents.length} 已读
-        </span>
-      </div>
-      {documents.length ? (
-        <div className="paper-list">
-          {documents.map((doc, index) => (
-            <button
-              className="paper-row"
-              key={doc.id}
-              onClick={() =>
-                actions.openResource(
-                  { kind: 'document', id: doc.id },
-                  { scope, target: 'main' },
-                )
-              }
-            >
-              <span className={`paper-icon tint-${index % 3}`}>
-                <FileText size={21} />
-              </span>
-              <span className="paper-details">
-                <strong>{doc.title}</strong>
-                <small>
-                  {doc.authors} · {doc.year} · {doc.pageCount} 页
-                </small>
-              </span>
-              <span
-                className={`badge ${doc.readingStatus === 'reading' ? 'teal' : ''}`}
-              >
-                {doc.readingStatus === 'read'
-                  ? '已读'
-                  : doc.readingStatus === 'reading'
-                    ? '在读'
-                    : '待读'}
-              </span>
-              <ArrowRight size={15} />
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="empty-state compact">
-          <BookOpen />
-          <h3>从第一篇论文开始</h3>
-          <p>导入 PDF，留下证据，再形成自己的观点。</p>
-          <button
-            className="button"
-            onClick={() => actions.openCollection('documents')}
-          >
-            前往论文库
-          </button>
-        </div>
-      )}
-      <div className="section-title">
-        <h2>思考与产出</h2>
-      </div>
-      <div className="workspace-shortcuts">
-        {boards.map((board) => (
-          <button
-            key={board.id}
-            className="workspace-shortcut"
-            onClick={() =>
-              actions.openResource(
-                { kind: 'board', id: board.id },
-                { scope, target: 'main' },
-              )
-            }
-          >
-            <span className="shortcut-symbol green">
-              <Network size={23} />
-            </span>
-            <strong>{board.title}</strong>
-            <small>组织卡片，连接证据与论证</small>
-            <ArrowRight size={16} />
-          </button>
-        ))}
-        {drafts.map((draft) => (
-          <button
-            key={draft.id}
-            className="workspace-shortcut"
-            onClick={() =>
-              actions.openResource(
-                { kind: 'draft', id: draft.id },
-                { scope, target: 'main' },
-              )
-            }
-          >
-            <span className="shortcut-symbol purple">
-              <FileText size={23} />
-            </span>
-            <strong>{draft.title}</strong>
-            <small>写下结论，导出带来源的笔记</small>
-            <ArrowRight size={16} />
-          </button>
-        ))}
-      </div>
-      <button
-        className="text-button add-board"
-        onClick={() =>
-          actions.updateData((data) => {
-            const id = `board-${crypto.randomUUID()}`;
-            data.boards[id] = {
-              id,
-              researchId,
-              title: `研究白板 ${boards.length + 1}`,
-            };
-          })
-        }
-      >
-        <Plus size={14} />
-        新建白板
-      </button>
-      <div className="overview-note">
-        <span>从材料到理解</span>
-        <p>阅读原文 → 留下证据 → 形成观点 → 组织论证 → 写出结论</p>
-      </div>
-    </div>
-  );
+  const issues = conclusionIssues(data, researchId);
+  const hasWriting = Object.values(data.drafts).some(draft => draft.researchId === researchId && draft.body.trim());
+  const recent: ResourceRef[] = (session.recentItems ?? session.openItems.slice().reverse()).filter(ref => ['document', 'board', 'draft'].includes(ref.kind)).slice(0, 3);
+  const continuing = recent.length ? recent : [
+    ...research.documentIds.filter(id => hasFullText(data.documents[id]) && data.documents[id].readingStatus === 'reading').slice(0, 1).map(id => ({ kind: 'document' as const, id })),
+    ...Object.values(data.drafts).filter(d => d.researchId === researchId).slice(0, 1).map(d => ({ kind: 'draft' as const, id: d.id })),
+    ...Object.values(data.boards).filter(b => b.researchId === researchId).slice(0, 1).map(b => ({ kind: 'board' as const, id: b.id })),
+  ];
+  const activities = [
+    ...research.cardIds.map(id => data.cards[id]).filter(c => c?.evidenceUpdatedAt).map(c => ({ id: c.id, date: c.evidenceUpdatedAt!, text: `补依据 · ${c.title}`, ref: { kind: 'card' as const, id: c.id }, evidenceId: undefined })),
+    ...researchEvidence(data, researchId).filter(e => e.createdAt).map(e => ({ id: e.id, date: e.createdAt!, text: `摘录 · ${data.documents[e.documentId]?.title}`, ref: { kind: 'document' as const, id: e.documentId }, evidenceId: e.id })),
+    ...research.documentIds.map(id => data.documents[id]).filter(d => d?.updatedAt).map(d => ({ id: d.id, date: d.updatedAt!, text: `${d.readingStatus === 'read' ? '读完' : d.readingStatus === 'skimmed' ? '略读过' : '收录资料'} · ${d.title}`, ref: { kind: 'document' as const, id: d.id }, evidenceId: undefined })),
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  return <div className="overview page-content">
+    <div className="eyebrow">RESEARCH WORKSPACE</div><h1>{research.title}</h1>
+    <section className="question-box"><Target size={19} /><div><span className="section-heading">我想回答的问题</span><textarea aria-label="核心研究问题" value={research.question} onChange={event => actions.updateData(next => { next.researches[researchId].question = event.target.value; })} /><small className="muted">问题会随阅读变得更具体，随时可以修改。</small></div></section>
+    <section><div className="section-title"><h2>接着上次</h2></div><div className="paper-list">{continuing.map(ref => <button key={`${ref.kind}:${ref.id}`} className="paper-row" onClick={() => actions.openResource(ref, { scope, target: 'main' })}><BookOpen size={18} /><span className="paper-details"><strong>{resourceTitle(data, ref)}</strong><small>{ref.kind === 'document' ? `PDF 第 ${(session.readers[`main:${ref.id}`]?.pageIndex ?? 0) + 1} 页` : ref.kind === 'draft' ? '继续写作' : '回到白板'}</small></span><span>打开 ↗</span></button>)}</div>{!research.documentIds.length && <div className="empty-state compact"><h3>收下一份与你的问题有关的资料</h3><ImportPDFButton /></div>}</section>
+    <section aria-label="结论站得住吗"><div className="section-title"><h2>结论站得住吗</h2></div>{!hasWriting ? <p className="muted">写下第一段文稿后，在这里核查引用与出处。</p> : !issues.length ? <p className="healthy-citations">文稿里的每处引用都能回到原文。</p> : <div className="conclusion-issues">{issues.map((issue, i) => <article className="conclusion-issue" key={`${issue.draftId}:${issue.cardId}:${issue.kind}:${i}`}><div><strong>{issue.message}</strong><small className="muted">文稿：{data.drafts[issue.draftId]?.title}</small></div><button className="button" onClick={() => {
+      if (issue.kind === 'no-evidence' && issue.cardId && data.cards[issue.cardId]) actions.findEvidence(issue.cardId);
+      else if (issue.kind === 'needs-review' && issue.cardId) { actions.updateData(next => { next.sessions[researchId].panel.findEvidenceFor = undefined; next.sessions[researchId].panel.citation = undefined; }); actions.openResource({ kind: 'card', id: issue.cardId }, { scope, target: 'inspector' }); }
+      else {
+        actions.openResource({ kind: 'draft', id: issue.draftId }, { scope, target: 'main', anchor: issue.kind === 'invalid-citation' ? { citationNumber: issue.citationNumber } : undefined });
+        if (issue.cardId) { actions.openResource({ kind: 'card', id: issue.cardId }, { scope, target: 'inspector' }); actions.updateData(next => { next.sessions[researchId].panel.findEvidenceFor = undefined; next.sessions[researchId].panel.citation = undefined; }); }
+      }
+    }}>{issue.kind === 'no-evidence' ? '找依据' : issue.kind === 'needs-review' ? '去核对' : issue.kind === 'missing-citation' ? '补引用' : '打开文稿'}</button></article>)}</div>}</section>
+    <section><div className="section-title"><h2>最近</h2></div>{activities.length ? <div className="recent-activity">{activities.map(activity => <button className="paper-row" key={activity.id} onClick={() => actions.openResource(activity.ref, { scope, target: 'main', anchor: activity.evidenceId ? { evidenceId: activity.evidenceId } : undefined })}><span>{activity.text}</span><time className="muted" dateTime={activity.date}>{new Date(activity.date).toLocaleString('zh-CN')}</time></button>)}</div> : <p className="muted">阅读、摘录和收录资料的记录会出现在这里。</p>}</section>
+  </div>;
 }

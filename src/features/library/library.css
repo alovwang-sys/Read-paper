@@ -1,0 +1,28 @@
+.source-target { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 12px; color: var(--muted); }
+.source-target select { min-width: 0; max-width: 100%; flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: white; }
+.add-source-dialog .search-input { width: 100%; }
+.add-source-dialog .search-input input { width: 100%; min-width: 0; }
+.add-source-dialog .muted { font-size: 11px; }
+.source-matches { display: grid; gap: 6px; margin: 14px 0; }
+.source-match { display: grid; gap: 5px; padding: 11px; text-align: left; background: #f4f8f6; border-radius: 6px; }
+.source-match strong, .source-create { overflow-wrap: anywhere; }
+.source-match small { color: #6e7f7a; font-size: 11px; }
+.source-create { justify-content: flex-start; text-align: left; }
+.source-file-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 130px; padding: 22px; border: 1px dashed #afc6bc; border-radius: 8px; color: #4f6d60; background: #f8fbf9; }
+.source-file-drop span { color: #819087; font-size: 11px; }
+.source-file-drop:disabled { opacity: .65; cursor: wait; }
+.source-fulltext-drop { min-height: 220px; margin-top: 26px; }
+.source-window-drop { position: fixed; inset: 10px; z-index: 60; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: #eaf6eef0; border: 3px dashed #65947b; border-radius: 12px; color: #37634a; }
+.source-error { color: #a73d36; font-size: 12px; overflow-wrap: anywhere; }
+.source-row { cursor: default; }
+.source-row .paper-details { min-width: 0; }
+.source-title { display: block; padding: 0; text-align: left; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+.source-title:hover { color: #438569; }
+.source-row-actions { display: flex; gap: 15px; margin-top: 7px; font-size: 11px; }
+.source-row-actions a { color: #547c68; }
+.source-status { flex-shrink: 0; max-width: 90px; padding: 6px; border: 1px solid #e2ebe6; border-radius: 5px; background: white; color: #5e7569; font-size: 11px; }
+.document-fields { max-width: 700px; display: grid; gap: 8px; }
+.source-identifiers { font-size: 12px; color: #687f72; overflow-wrap: anywhere; }
+.source-conflict { margin-top: 22px; padding: 20px; border: 1px solid #e4d4b3; border-radius: 8px; background: #fffaf0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.source-conflict h2 { margin-top: 0; font-size: 16px; }
+@media (max-width: 700px) { .source-row { gap: 9px; padding: 14px 10px; }.source-row > .paper-icon { display: none; }.source-target { display: grid; }.source-status { max-width: 72px; } }

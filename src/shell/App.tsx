@@ -6,7 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
-  Inbox,
+  Home,
   Layers,
   Menu,
   Network,
@@ -20,7 +20,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import type { CollectionId, PanelMode, ResourceRef } from '../domain/types';
+import type { PanelMode, ResearchViewId, ResourceRef } from '../domain/types';
 import {
   resourceExists,
   resourceTitle,
@@ -30,7 +30,18 @@ import {
 } from '../services/workspace';
 import { ResearchView } from '../features/research/ResearchView';
 import { ResearchDirectory } from '../features/research/ResearchDirectory';
+import { CreateResearchDialog } from '../features/research/CreateResearchDialog';
+import { PendingResearchRecovery } from '../features/research/PendingResearchRecovery';
+import { ProjectFileStatus } from '../features/research/ProjectFileStatus';
 import { LibraryView } from '../features/library/LibraryView';
+import { SourcesView } from '../features/library/SourcesView';
+import { DocumentDetail } from '../features/library/DocumentDetail';
+import { AddSourceDialog, SourceDropZone } from '../features/library/AddSourceDialog';
+import { ResourceListView } from '../features/research/ResourceListView';
+import { CardsView } from '../features/cards/CardsView';
+import { ExcerptsView } from '../features/evidence/ExcerptsView';
+import { FindEvidencePanel, TraceChain } from '../features/evidence/KnowledgePanel';
+import { hasFullText } from '../domain/knowledge';
 import { PdfReader } from '../features/reader/PdfReader';
 import { ImportPDFButton } from '../features/reader/ImportPDFButton';
 import { EvidenceList } from '../features/evidence/EvidenceList';
@@ -42,18 +53,16 @@ import { getAIConfig } from '../services/ai';
 import { ResourceTabs } from './ResourceTabs';
 import { BackupControls } from '../features/settings/BackupControls';
 
-const collections: { id: CollectionId; name: string; icon: typeof Inbox }[] = [
-  { id: 'inbox', name: '收件箱', icon: Inbox },
-  { id: 'documents', name: '论文库', icon: BookOpen },
-  { id: 'researches', name: '研究空间', icon: Network },
-  { id: 'cards', name: '卡片库', icon: Layers },
-  { id: 'drafts', name: '研究产出', icon: FileText },
+const researchViews: { id: ResearchViewId; name: string; icon: typeof Home; group?: string }[] = [
+  { id: 'home', name: '研究主页', icon: Home },
+  { id: 'sources', name: '资料', icon: BookOpen, group: '阅读' },
+  { id: 'excerpts', name: '摘录', icon: FileText },
+  { id: 'cards', name: '卡片', icon: Layers, group: '思考与写作' },
+  { id: 'boards', name: '白板', icon: Network },
+  { id: 'drafts', name: '文稿', icon: FileText },
 ];
 const modes: { id: PanelMode; name: string }[] = [
-  { id: 'evidence', name: '证据' },
-  { id: 'references', name: '参考' },
-  { id: 'info', name: '信息' },
-  { id: 'ai', name: 'AI' },
+  { id: 'excerpts', name: '摘录' }, { id: 'cards', name: '卡片' }, { id: 'ai', name: 'AI' },
 ];
 function ModelConnection() {
   const [message, setMessage] = useState('正在检查模型连接…');
@@ -116,27 +125,24 @@ export function App() {
     notice,
     actions,
   } = useWorkspace();
-  const [narrow, setNarrow] = useState(window.innerWidth <= 1200);
+  const [narrow, setNarrow] = useState(window.innerWidth <= 1024);
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [dialog, setDialog] = useState<'new' | 'search' | 'settings' | null>(
     null,
   );
   useEffect(() => window.papertrailDesktop?.onOpenStorage(() => setDialog('settings')), []);
   const [search, setSearch] = useState('');
-  const [title, setTitle] = useState('');
-  const [question, setQuestion] = useState('');
   const lastFocus = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const active = session.active;
-  const activeTitle =
-    active.kind === 'collection'
-      ? collections.find((item) => item.id === active.id)!.name
-      : resourceTitle(data, active);
+  const activeTitle = active.kind === 'researchView' ? researchViews.find(item => item.id === active.id)?.name ?? '研究主页' : active.kind === 'collection' ? '资料库' : resourceTitle(data, active);
+  const navigationTrigger = useRef<HTMLElement | null>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
   useEffect(() => {
     void workspace.load();
   }, []);
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 1200px)');
+    const media = window.matchMedia('(max-width: 1024px)');
     const change = () => {
       setNarrow(media.matches);
       setNavigationOpen(false);
@@ -146,18 +152,20 @@ export function App() {
   }, []);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (document.querySelector('dialog[open]')) return;
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
         showDialog('search');
       }
       if (event.key === 'Escape') {
         if (dialog) closeDialog();
+        else if (navigationOpen) closeNavigation();
         else actions.setPanel(session.panel.mode, false);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [dialog, session.panel.mode]);
+  }, [dialog, navigationOpen, session.panel.mode]);
   useEffect(() => {
     if (dialog)
       dialogRef.current?.querySelector<HTMLInputElement>('input')?.focus();
@@ -167,6 +175,9 @@ export function App() {
     const timer = setTimeout(() => actions.notice(), 3500);
     return () => clearTimeout(timer);
   }, [notice]);
+  useEffect(() => { if (navigationOpen) sidebarRef.current?.querySelector<HTMLElement>('select,button')?.focus(); }, [navigationOpen]);
+  function closeNavigation() { setNavigationOpen(false); navigationTrigger.current?.focus(); }
+  function navigate(view: ResearchViewId) { if (research) actions.openResearchView(research.id, view); if (narrow) closeNavigation(); }
   function showDialog(kind: typeof dialog) {
     lastFocus.current = document.activeElement as HTMLElement;
     setDialog(kind);
@@ -186,9 +197,11 @@ export function App() {
           <p>原文件或来源不在本地数据中，请重新导入或从资料库打开。</p>
         </div>
       );
+    if (ref.kind === 'document' && !hasFullText(data.documents[ref.id])) return <DocumentDetail key={ref.id} documentId={ref.id} />;
     if (ref.kind === 'document')
       return (
         <PdfReader
+          key={`${target}:${ref.id}`}
           documentId={ref.id}
           target={target}
           anchor={target === 'main' ? session.anchor : session.panel.anchor}
@@ -237,14 +250,21 @@ export function App() {
       className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''} ${session.panel.open && session.panel.mode === 'ai' ? 'ai-panel-open' : ''}`}
       style={{ '--panel-width': `${data.panelWidth}px` } as React.CSSProperties}
     >
+      <PendingResearchRecovery key={workspace.getGeneration()} />
       {narrow && navigationOpen && (
         <button
           className="navigation-backdrop"
           aria-label="关闭导航抽屉"
-          onClick={() => setNavigationOpen(false)}
+          onClick={closeNavigation}
         />
       )}
-      <aside className="sidebar" aria-label="左侧导航">
+      <aside className="sidebar" ref={sidebarRef} aria-label="左侧导航" role={narrow && navigationOpen ? 'dialog' : undefined} aria-modal={narrow && navigationOpen || undefined} onKeyDown={event => {
+        if (!narrow || !navigationOpen || event.key !== 'Tab') return;
+        const elements = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled),select,input'));
+        const first = elements[0], last = elements.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }}>
         <div className="brand">
           <span className="brand-mark">
             <BookOpen size={20} />
@@ -256,7 +276,7 @@ export function App() {
             className="icon-button"
             aria-label="收起左栏"
             onClick={() => {
-              if (narrow) setNavigationOpen(false);
+              if (narrow) closeNavigation();
               else
                 actions.updateData((data) => {
                   data.sidebarCollapsed = true;
@@ -266,137 +286,19 @@ export function App() {
             <PanelLeftClose size={16} />
           </button>
         </div>
-        <div className="sidebar-actions">
-          <button className="new-research" onClick={() => showDialog('new')}>
-            <Plus size={16} />
-            新建研究
-          </button>
-          <button
-            className="icon-button search-trigger"
-            aria-label="全局搜索"
-            onClick={() => showDialog('search')}
-          >
-            <Search size={18} />
-          </button>
-        </div>
-        <nav className="collection-nav">
-          {collections.map(({ id, name, icon: Icon }) => (
-            <button
-              key={id}
-              className={`nav-item ${active.kind === 'collection' && active.id === id ? 'active' : ''}`}
-              onClick={() => actions.openCollection(id)}
-            >
-              <Icon size={17} />
-              {name}
-              {id === 'inbox' && (
-                <span className="nav-count">
-                  {
-                    Object.values(data.documents).filter(
-                      (doc) =>
-                        !Object.values(data.researches).some((r) =>
-                          r.documentIds.includes(doc.id),
-                        ),
-                    ).length
-                  }
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-divider" />
-        <div className="sidebar-section-label">研究项目</div>
         <div className="research-project-row">
-          <label className="research-switcher" title={research?.title ?? '切换研究'}>
-            <span className="research-dot" />
-            <select
-              aria-label="切换研究"
-              value={research?.id ?? ''}
-              onChange={(event) => actions.switchResearch(event.target.value)}
-            >
-              <option value="" disabled>
-                全局资料浏览
-              </option>
-              {Object.values(data.researches).map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.title}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={13} />
-          </label>
+          <label className="research-switcher" title={research?.title ?? '切换研究'}><span className="research-dot" /><select aria-label="切换研究" value={research?.id ?? ''} onChange={event => { actions.switchResearch(event.target.value); if (narrow) closeNavigation(); }}><option value="" disabled>全局资料浏览</option>{Object.values(data.researches).map(r => <option key={r.id} value={r.id}>{r.title}</option>)}</select><ChevronDown size={13} /></label>
           {research && <ResearchDirectory researchId={research.id} settings />}
         </div>
-        {research && (
-          <div className="research-nav">
-            <button
-              className={`nav-item ${active.kind === 'research' ? 'active' : ''}`}
-              onClick={() => open({ kind: 'research', id: research.id })}
-            >
-              <Network size={16} />
-              研究概览
-            </button>
-            {Object.values(data.boards)
-              .filter((b) => b.researchId === research.id)
-              .map((b) => (
-                <button
-                  key={b.id}
-                  className={`nav-item ${active.kind === 'board' && active.id === b.id ? 'active' : ''}`}
-                  onClick={() => open({ kind: 'board', id: b.id })}
-                >
-                  <Layers size={16} />
-                  {b.title}
-                </button>
-              ))}
-            {Object.values(data.drafts)
-              .filter((d) => d.researchId === research.id)
-              .map((d) => (
-                <button
-                  key={d.id}
-                  className={`nav-item ${active.kind === 'draft' && active.id === d.id ? 'active' : ''}`}
-                  onClick={() => open({ kind: 'draft', id: d.id })}
-                >
-                  <FileText size={16} />
-                  结论与导出
-                </button>
-              ))}
-          </div>
-        )}
-        <div className="sidebar-section-label opened-label">
-          打开的资源 <span>{session.openItems.length}</span>
-        </div>
-        <div className="open-items">
-          {[...session.openItems]
-            .sort(
-              (a, b) =>
-                Number(session.pinnedIds.includes(b.id)) -
-                Number(session.pinnedIds.includes(a.id)),
-            )
-            .map((ref) => (
-              <div
-                key={`${ref.kind}:${ref.id}`}
-                className={`open-item ${active.kind !== 'collection' && active.id === ref.id ? 'active' : ''}`}
-              >
-                <button className="open-item-link" onClick={() => open(ref)}>
-                  <ResourceIcon kind={ref.kind} />
-                  <span>{resourceTitle(data, ref)}</span>
-                </button>
-                <button
-                  className={`icon-button pin ${session.pinnedIds.includes(ref.id) ? 'pinned' : ''}`}
-                  aria-label={`固定 ${resourceTitle(data, ref)}`}
-                  onClick={() => actions.pinResource(ref)}
-                >
-                  <Pin size={12} />
-                </button>
-                {ref.kind !== 'research' && <button
-                  className="icon-button close"
-                  aria-label={`关闭 ${resourceTitle(data, ref)}`}
-                  onClick={() => actions.closeResource(ref)}
-                >
-                  <X size={12} />
-                </button>}
-              </div>
-            ))}
-        </div>
+        <div className="sidebar-actions"><button className="new-research" onClick={() => showDialog('new')}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
+        <nav className="research-nav" aria-label="研究内导航">
+          {research && researchViews.map(({ id, name, icon: Icon, group }) => <div key={id}>
+            {group && <div className="sidebar-section-label">{group}</div>}
+            <button className={`nav-item ${active.kind === 'researchView' && active.id === id ? 'active' : ''}`} onClick={() => navigate(id)}><Icon size={17} />{name}</button>
+            {(id === 'boards' || id === 'drafts') && Object.values(id === 'boards' ? data.boards : data.drafts).filter(item => item.researchId === research.id).map(item => <button key={item.id} className={`nav-item nested-nav ${active.id === item.id ? 'active' : ''}`} onClick={() => { open({ kind: id === 'boards' ? 'board' : 'draft', id: item.id }); if (narrow) closeNavigation(); }}><span>{item.title}</span></button>)}
+          </div>)}
+        </nav>
+        <div className="sidebar-bottom-nav"><button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
         <div className="sidebar-footer">
           <span
             className={`status-dot ${saveStatus === 'error' ? 'error' : ''}`}
@@ -418,6 +320,7 @@ export function App() {
             <Settings2 size={16} />
           </button>
         </div>
+        {research?.directory && <ProjectFileStatus key={`${research.id}:${actions.getGeneration()}`} researchId={research.id} compact />}
       </aside>
       <div className="main-column">
         <header className="workspace-header">
@@ -427,7 +330,7 @@ export function App() {
                 className="icon-button"
                 aria-label="展开左栏"
                 onClick={() => {
-                  if (narrow) setNavigationOpen(true);
+                  if (narrow) { navigationTrigger.current = document.activeElement as HTMLElement; setNavigationOpen(true); }
                   else
                     actions.updateData((data) => {
                       data.sidebarCollapsed = false;
@@ -492,7 +395,7 @@ export function App() {
             </button>
           </div>
         )}
-        <ResourceTabs items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
+        <ResourceTabs leading={{ title: data.scope.kind === 'research' ? researchViews.find(item => item.id === (session.researchView ?? 'home'))?.name ?? '研究主页' : '资料库', selected: active.kind === 'researchView' || active.kind === 'collection', onOpen: () => { if (data.scope.kind === 'research') actions.openResearchView(data.scope.researchId, session.researchView ?? 'home'); else actions.openCollection('documents'); } }} items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
           title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)}
           onClose={ref => actions.closeResource(ref)} onPin={ref => actions.pinResource(ref)}
           onMove={(from, to) => actions.updateData(next => {
@@ -501,15 +404,12 @@ export function App() {
             items.splice(to, 0, items.splice(from, 1)[0]);
           })} />
         <main aria-label="主工作区" className="main-workspace">
-          <ErrorBoundary key={`${active.kind}:${active.id}`}>
-            {active.kind === 'collection' ? (
-              <LibraryView
-                collection={active.id}
-                onNewResearch={() => showDialog('new')}
-              />
-            ) : (
+          <ErrorBoundary key={`${scopeKey(data.scope)}:${active.kind}:${active.id}`}>
+            {active.kind === 'collection' ? <LibraryView collection={active.id} /> : active.kind === 'researchView' && research ? (
+              active.id === 'home' ? <ResearchView researchId={research.id} /> : active.id === 'sources' ? <SourcesView researchId={research.id} /> : active.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : active.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={active.id === 'boards' ? 'board' : 'draft'} />
+            ) : active.kind !== 'researchView' ? (
               resourceView(active, 'main')
-            )}
+            ) : <div className="empty-state">请先选择研究。</div>}
           </ErrorBoundary>
         </main>
         <footer className="workspace-footer">
@@ -604,79 +504,18 @@ export function App() {
           </div>
           <div className={`inspector-content mode-${session.panel.mode}`}>
             <ErrorBoundary
-              key={`${session.panel.mode}:${session.panel.ref?.id}`}
+              key={`${scopeKey(data.scope)}:${session.panel.mode}:${session.panel.ref?.id}:${session.panel.findEvidenceFor}:${session.panel.citation?.evidenceId}`}
             >
               {session.panel.mode === 'ai' ? (
                 <AIPanel />
-              ) : session.panel.mode === 'evidence' ? (
+              ) : session.panel.mode === 'excerpts' ? (
                 <EvidenceList
                   documentId={documentId}
                   evidenceIds={evidenceIds}
                   target="inspector"
+                  heading={documentId ? "本篇摘录" : "研究摘录"}
                 />
-              ) : session.panel.mode === 'info' ? (
-                <div className="info-panel">
-                  <span className="section-heading">当前资料</span>
-                  <h3>{activeTitle}</h3>
-                  {active.kind === 'document' ? (
-                    <>
-                      <label className="field">
-                        作者
-                        <input
-                          value={data.documents[active.id].authors}
-                          onChange={(event) =>
-                            actions.updateData((data) => {
-                              data.documents[active.id].authors =
-                                event.target.value;
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="field">
-                        年份
-                        <input
-                          value={data.documents[active.id].year}
-                          onChange={(event) =>
-                            actions.updateData((data) => {
-                              data.documents[active.id].year =
-                                event.target.value;
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="field">
-                        阅读状态
-                        <select
-                          value={data.documents[active.id].readingStatus}
-                          onChange={(event) =>
-                            actions.updateData((data) => {
-                              data.documents[active.id].readingStatus = event
-                                .target.value as 'unread' | 'reading' | 'read';
-                            })
-                          }
-                        >
-                          <option value="unread">待读</option>
-                          <option value="reading">在读</option>
-                          <option value="read">已读</option>
-                        </select>
-                      </label>
-                      <p>文件：{data.documents[active.id].filename}</p>
-                      <p>PDF 共 {data.documents[active.id].pageCount} 页</p>
-                      <small className="hash-info">
-                        SHA-256：
-                        {data.documents[active.id].hash || '打开文件后计算'}
-                      </small>
-                      <p className="muted">
-                        PDF 页码从第 1 页显示，印刷页码独立记录。
-                      </p>
-                    </>
-                  ) : (
-                    <p className="muted">
-                      在此核对资料信息。引用会保留原文、来源与 PDF 页码。
-                    </p>
-                  )}
-                </div>
-              ) : session.panel.ref ? (
+              ) : session.panel.findEvidenceFor ? <FindEvidencePanel cardId={session.panel.findEvidenceFor} /> : session.panel.citation ? <TraceChain {...session.panel.citation} /> : session.panel.ref ? (
                 <>
                   <div className="reference-title">
                     <span>{resourceTitle(data, session.panel.ref)}</span>
@@ -742,6 +581,7 @@ export function App() {
           </div>
         </aside>
       )}
+      <AddSourceDialog /><SourceDropZone />
       {notice && (
         <div className="toast" role="status">
           <Check size={15} />
@@ -755,7 +595,8 @@ export function App() {
           </button>
         </div>
       )}
-      {dialog && (
+      {dialog === 'new' && <CreateResearchDialog onClose={closeDialog} />}
+      {dialog && dialog !== 'new' && (
         <div
           className="modal-backdrop"
           onMouseDown={(event) => {
@@ -768,9 +609,7 @@ export function App() {
             role="dialog"
             aria-modal="true"
             aria-label={
-              dialog === 'new'
-                ? '新建研究'
-                : dialog === 'search'
+              dialog === 'search'
                   ? '全局搜索'
                   : '存储与设置'
             }
@@ -794,9 +633,7 @@ export function App() {
           >
             <div className="modal-heading">
               <h2>
-                {dialog === 'new'
-                  ? '开启一个研究问题'
-                  : dialog === 'search'
+                {dialog === 'search'
                     ? '搜索你的资料'
                     : '本地存储与连接'}
               </h2>
@@ -808,40 +645,7 @@ export function App() {
                 <X size={18} />
               </button>
             </div>
-            {dialog === 'new' ? (
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  actions.createResearch(title, question);
-                  setTitle('');
-                  setQuestion('');
-                  closeDialog();
-                }}
-              >
-                <label className="field">
-                  研究名称
-                  <input
-                    aria-label="研究名称"
-                    required
-                    value={title}
-                    placeholder="例如：检索增强的适用条件"
-                    onChange={(event) => setTitle(event.target.value)}
-                  />
-                </label>
-                <label className="field">
-                  核心问题
-                  <textarea
-                    aria-label="新研究核心问题"
-                    value={question}
-                    placeholder="你希望通过阅读回答什么？"
-                    onChange={(event) => setQuestion(event.target.value)}
-                  />
-                </label>
-                <button className="primary" type="submit">
-                  创建研究 <ArrowLeft size={14} />
-                </button>
-              </form>
-            ) : dialog === 'search' ? (
+            {dialog === 'search' ? (
               <>
                 <label className="search-input">
                   <Search size={18} />

@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { mkdtemp, mkdir, readFile, realpath, readdir, chmod, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { createAgentHandler } from './agents.mjs';
 
 const identity = researchId => ({ workspaceId: 'integration-workspace', researchId });
@@ -158,4 +159,33 @@ test('selecting another owned native session does not carry over the previous pr
   const history = [{ requestId: 'request-1', prompt: 'Earlier question', body: 'Answer', context: [], evidenceIds: [] }];
   const selected = await finish(await f.post('run', body('a', project.id, { requestId: 'select-other', connectionId: 'opencode', sessionRef: ref, history })));
   assert.equal(selected.at(-1).type, 'done'); assert.equal(calls[2].nativeSessionId, 'ses_owned2'); assert.notEqual(calls[2].nativeModel, 'provider-a/model-a');
+});
+
+test('directory creation routes accept a new draft identity and return only locally verified conflict owners', async t => {
+  const f = await fixture(t);
+  const input = { ...identity('not-created-yet'), path: join(f.root, 'new-draft'), mode: 'new', operationId: 'operation-draft' };
+  const defaults = await (await f.post('projects/defaults', identity('not-created-yet'))).json(); assert.equal(typeof defaults.parentPath, 'string');
+  assert.equal((await f.post('projects/preview', input)).status, 200);
+  const firstResponse = await f.post('projects/bind', input); assert.equal(firstResponse.status, 200); const first = await firstResponse.json();
+  f.restart(); assert.deepEqual(await (await f.post('projects/bind', input)).json(), first);
+  const conflict = await f.post('projects/preview', { ...identity('another'), path: input.path, mode: 'existing', operationId: 'other' });
+  assert.equal(conflict.status, 409); assert.equal((await conflict.json()).ownerResearchId, input.researchId);
+  const foreign = await (await f.post('projects/preview', { ...identity('another'), workspaceId: 'foreign-workspace', path: input.path, mode: 'existing', operationId: 'other' })).json();
+  assert.equal(foreign.code, 'directory_in_use'); assert.equal(foreign.ownerResearchId, undefined); assert.ok(!foreign.error.includes(input.researchId));
+  assert.deepEqual(f.calls, []);
+});
+
+test('sync accepts research files above the normal request limit only after binding and cannot cross research', async t => {
+  const f = await fixture(t); const binding = await f.bind('a');
+  const file = (path, content) => ({ path, content, encoding: 'utf8', hash: createHash('sha256').update(content).digest('hex') });
+  const content = JSON.stringify({ text: 'a'.repeat(1_010_000) });
+  const files = [file('README.md', '# Research files'), file('research.json', content)];
+  const response = await f.post('projects/sync', { ...identity('a'), bindingId: binding.id, files });
+  assert.equal(response.status, 200); const result = await response.json(); assert.equal(result.files, 2); assert.ok(result.bytes > 1_000_000);
+  assert.equal(await readFile(join(f.paths.a, 'Papertrail', 'research.json'), 'utf8'), content);
+  const wrong = await f.post('projects/sync', { ...identity('b'), bindingId: binding.id, files });
+  assert.equal(wrong.status, 409); assert.equal((await wrong.json()).code, 'project_required');
+  const normal = await f.post('projects/preview', { ...identity('a'), path: f.paths.a, padding: content });
+  assert.equal(normal.status, 413); assert.equal((await normal.json()).code, 'request_too_large');
+  assert.deepEqual(f.calls, []);
 });

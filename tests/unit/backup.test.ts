@@ -3,6 +3,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { createSeed } from '../../src/data/seed';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { contentHash } from '../../src/data/storage';
+import { hasFullText } from '../../src/domain/knowledge';
 import type { CardProvenance, ContextSnapshot, RegionSource } from '../../src/domain/types';
 import { createWorkspaceBackup, MAX_BACKUP_BYTES, MAX_BACKUP_ENTRY_BYTES, readWorkspaceBackup, type BackupAsset } from '../../src/services/backup';
 
@@ -10,6 +11,7 @@ async function fixture() {
   const data = createSeed();
   const assets: BackupAsset[] = [];
   for (const doc of Object.values(data.documents)) {
+    if (!hasFullText(doc)) continue;
     const blob = new Blob([`%PDF-1.7\n${doc.id}`], { type: 'application/pdf' });
     doc.hash = await contentHash(await blob.arrayBuffer());
     assets.push({ id: doc.assetId, blob });
@@ -49,7 +51,7 @@ describe('完整工作区备份', () => {
     const restored = await readWorkspaceBackup(backup);
     expect(data).toEqual(original);
     expect(restored.data).toEqual(migrateWorkspace(data));
-    expect(restored.summary).toMatchObject({ researches: 2, documents: 3, cards: 3, assets: 3 });
+    expect(restored.summary).toMatchObject({ researches: 2, documents: 4, cards: 4, assets: 3 });
     for (const asset of assets) {
       const actual = restored.assets.find(item => item.id === asset.id)!;
       expect(actual.blob.type).toBe('application/pdf');
@@ -60,13 +62,84 @@ describe('完整工作区备份', () => {
     expect(Object.keys(zip)).toContain('manifest.json');
   });
 
+  it('无全文条目无需资产，新摘录、文稿卡片记录和面板子视图完整往返', async () => {
+    const { data, assets } = await fixture();
+    data.documents['paper-c'].finishPromptShown = true;
+    data.drafts['draft-a'].cardRefs = [{ cardId: 'card-a', insertedAt: '2026-10-17T00:00:00Z', evidenceIds: ['evidence-a'] }];
+    data.evidence['evidence-a'] = { ...data.evidence['evidence-a'], researchId: 'research-a', dismissed: true, note: '后续核对', createdAt: '2026-10-17T00:00:00Z' };
+    const session = data.sessions['research-a'];
+    session.researchView = 'excerpts';
+    session.active = { kind: 'researchView', id: 'excerpts' };
+    session.recentItems = [{ kind: 'document', id: 'paper-stub' }];
+    session.panel = { ...session.panel, mode: 'cards', findEvidenceFor: 'card-unverified', citation: { draftId: 'draft-a', evidenceId: 'evidence-a' } };
+    data.sessions.library.libraryFilter = 'research';
+    data.sessions.library.libraryResearchId = 'research-a';
+    const restored = await readWorkspaceBackup(await createWorkspaceBackup(data, assets));
+    expect(restored.data).toEqual(migrateWorkspace(data));
+    expect(restored.data.documents['paper-stub'].assetId).toBeUndefined();
+    expect(restored.assets).toHaveLength(3);
+  });
+
+  it('schema 2 旧备份先迁移页面、面板和摘录，不接受伪装成旧版的无全文条目', async () => {
+    const { data, assets } = await fixture();
+    const backup = await createWorkspaceBackup(data, assets);
+    const legacy = await editWorkspace(backup, value => {
+      Object.assign(value, { schemaVersion: 2 });
+      delete value.documents['paper-stub'];
+      value.researches['research-a'].documentIds = value.researches['research-a'].documentIds.filter(id => id !== 'paper-stub');
+      value.documents['paper-c'].readingStatus = 'read';
+      for (const draft of Object.values(value.drafts)) delete draft.cardRefs;
+      for (const [key, session] of Object.entries(value.sessions)) {
+        session.active = key === 'library' ? { kind: 'collection', id: 'documents' } : { kind: 'research', id: key };
+        Object.assign(session.panel, { mode: key === 'library' ? 'info' : 'references' });
+      }
+    });
+    const restored = await readWorkspaceBackup(legacy);
+    expect(restored.data.schemaVersion).toBe(3);
+    expect(Object.keys(restored.data.documents)).toEqual(['paper-a', 'paper-b', 'paper-c']);
+    expect(restored.data.sessions['research-a'].active).toEqual({ kind: 'researchView', id: 'home' });
+    expect(restored.data.sessions['research-a'].panel.mode).toBe('cards');
+    expect(restored.data.sessions.library.panel.mode).toBe('excerpts');
+    expect(restored.data.evidence['evidence-a'].researchId).toBe('research-a');
+    expect(restored.assets).toHaveLength(3);
+    const invalid = await editWorkspace(backup, value => { Object.assign(value, { schemaVersion: 2 }); });
+    await expect(readWorkspaceBackup(invalid)).rejects.toThrow(/论文来源/);
+  });
+
+  it.each(['stub-evidence', 'stub-snapshot', 'card-ref', 'card-ref-time', 'card-ref-evidence', 'card-ref-evidence-format', 'find-evidence', 'cross-research-find', 'citation', 'cross-research-citation', 'recent', 'research-view', 'library-filter', 'library-research', 'finish-prompt', 'excerpt-research', 'excerpt-dismissed', 'excerpt-note'])('拒绝新字段及子视图的悬空引用：%s', async problem => {
+    const { data, assets } = await fixture();
+    const backup = await createWorkspaceBackup(data, assets);
+    const broken = await editWorkspace(backup, value => {
+      const session = value.sessions['research-a'];
+      if (problem === 'stub-evidence') value.evidence['evidence-a'].documentId = 'paper-stub';
+      if (problem === 'stub-snapshot') value.cards['card-a'].provenance = { researchId: 'research-a', conversationId: 'conversation-research-a', conversationTitle: '对话', requestId: 'historical', prompt: '', answer: '', selection: '', createdAt: '', generationRequestIds: [], context: [{ evidenceId: 'historical', documentId: 'paper-stub', documentHash: '', title: '无全文', pageIndex: 0, quote: '伪造原文' }] };
+      if (problem === 'card-ref') value.drafts['draft-a'].cardRefs = [{ cardId: 'missing', insertedAt: '2026-10-17T00:00:00Z' }];
+      if (problem === 'card-ref-time') value.drafts['draft-a'].cardRefs = [{ cardId: 'card-a', insertedAt: 'not-a-date' }];
+      if (problem === 'card-ref-evidence') value.drafts['draft-a'].cardRefs = [{ cardId: 'card-a', insertedAt: '2026-10-17T00:00:00Z', evidenceIds: ['missing'] }];
+      if (problem === 'card-ref-evidence-format') Object.assign(value.drafts['draft-a'].cardRefs![0], { evidenceIds: [42] });
+      if (problem === 'find-evidence') session.panel.findEvidenceFor = 'missing';
+      if (problem === 'cross-research-find') value.sessions['research-b'].panel.findEvidenceFor = 'card-a';
+      if (problem === 'citation') session.panel.citation = { draftId: 'draft-a', evidenceId: 'missing' };
+      if (problem === 'cross-research-citation') value.sessions['research-b'].panel.citation = { draftId: 'draft-a', evidenceId: 'evidence-a' };
+      if (problem === 'recent') session.recentItems = [{ kind: 'document', id: 'missing' }];
+      if (problem === 'research-view') Object.assign(session, { researchView: 'missing' });
+      if (problem === 'library-filter') Object.assign(value.sessions.library, { libraryFilter: 'missing' });
+      if (problem === 'library-research') value.sessions.library.libraryResearchId = 'missing';
+      if (problem === 'finish-prompt') Object.assign(value.documents['paper-a'], { finishPromptShown: 'yes' });
+      if (problem === 'excerpt-research') value.evidence['evidence-a'].researchId = 'missing';
+      if (problem === 'excerpt-dismissed') Object.assign(value.evidence['evidence-a'], { dismissed: 'yes' });
+      if (problem === 'excerpt-note') Object.assign(value.evidence['evidence-a'], { note: {} });
+    });
+    await expect(readWorkspaceBackup(broken)).rejects.toThrow(/备份|损坏/);
+  });
+
   it('保留仅被历史问答、卡片来源、结论来源和面板快照引用的区域图片', async () => {
     const { data, assets } = await fixture();
     async function snapshot(id: string): Promise<ContextSnapshot> {
       const blob = new Blob([`historical image ${id}`], { type: 'image/png' });
       const region: RegionSource = { assetId: id, hash: await contentHash(await blob.arrayBuffer()), rect: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 }, rotation: 90, width: 400, height: 300 };
       assets.push({ id, blob });
-      return { evidenceId: 'historical-evidence', documentId: 'paper-a', documentHash: data.documents['paper-a'].hash, title: '历史来源', pageIndex: 1, quote: '', kind: 'region', region };
+      return { evidenceId: 'historical-evidence', documentId: 'paper-a', documentHash: data.documents['paper-a'].hash!, title: '历史来源', pageIndex: 1, quote: '', kind: 'region', region };
     }
     async function source(id: string): Promise<CardProvenance> {
       return { researchId: 'research-a', conversationId: 'conversation-research-a', conversationTitle: '对话', requestId: 'frozen-request', prompt: '问题', answer: '回答', selection: '回答', context: [await snapshot(id)], createdAt: '2026-10-16T00:00:00Z', generationRequestIds: [] };
@@ -135,7 +208,7 @@ describe('完整工作区备份', () => {
       if (problem === 'board-edge') value.edges['edge-a'].toPlacementId = 'missing';
       if (problem === 'cross-research') value.conversations['conversation-research-a'].researchId = 'missing';
       if (problem === 'missing-card') delete value.cards['card-a'];
-      if (problem === 'history-region-hash') value.cards['card-a'].provenance = { researchId: 'research-a', conversationId: 'conversation-research-a', conversationTitle: '对话', requestId: 'old', prompt: '', answer: '', selection: '', createdAt: '', generationRequestIds: [], context: [{ evidenceId: 'old-region', documentId: 'paper-a', documentHash: value.documents['paper-a'].hash, title: '旧来源', pageIndex: 1, quote: '', kind: 'region', region: { assetId: assets[0].id, hash: '0'.repeat(64), rect: { x: 0, y: 0, width: 0.5, height: 0.5 }, rotation: 0, width: 20, height: 20 } }] };
+      if (problem === 'history-region-hash') value.cards['card-a'].provenance = { researchId: 'research-a', conversationId: 'conversation-research-a', conversationTitle: '对话', requestId: 'old', prompt: '', answer: '', selection: '', createdAt: '', generationRequestIds: [], context: [{ evidenceId: 'old-region', documentId: 'paper-a', documentHash: value.documents['paper-a'].hash!, title: '旧来源', pageIndex: 1, quote: '', kind: 'region', region: { assetId: assets[0].id, hash: '0'.repeat(64), rect: { x: 0, y: 0, width: 0.5, height: 0.5 }, rotation: 0, width: 20, height: 20 } }] };
     });
     await expect(readWorkspaceBackup(broken)).rejects.toThrow(/备份/);
     expect(data).toEqual((await fixture()).data);

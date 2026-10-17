@@ -5,12 +5,12 @@ import type { WorkspaceData } from '../../src/domain/types';
 
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
-const nav = (page: Page) => page.getByRole('complementary', { name: '左侧导航' });
+const nav = (page: Page) => page.locator('.sidebar');
 const saved = (page: Page) => expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
 
 async function data(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => {
-    const journal = localStorage.getItem('papertrail-recovery-v2');
+    const journal = localStorage.getItem('papertrail-recovery-v3');
     if (journal) return JSON.parse(journal);
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('papertrail', 1);
@@ -72,6 +72,7 @@ test('区域拖框、演示对话、片段卡片、刷新来源与真实 Markdow
   await expect(main(page).getByAltText('所选区域预览，PDF 第 1 页')).toBeVisible();
   await expect(main(page).locator('.pdf-region-box')).toBeVisible();
   expect(Object.values((await data(page)).evidence).filter(item => item.kind === 'region')).toHaveLength(0);
+  await main(page).getByText('问 AI', { exact: true }).click();
   await main(page).getByRole('button', { name: '加入当前对话', exact: true }).click();
   await expect(panel(page).locator('.ai-material')).toHaveCount(1);
   let state = await data(page);
@@ -130,11 +131,11 @@ test('区域拖框、演示对话、片段卡片、刷新来源与真实 Markdow
   expect(asset!.size).toBeGreaterThan(0);
   await panel(page).getByRole('button', { name: '查看卡片', exact: true }).click();
   await expect(panel(page).getByAltText('保存的 PDF 框选区域')).toBeVisible();
-  await panel(page).getByRole('button', { name: '主区查看原文', exact: true }).click();
+  await panel(page).getByRole('button', { name: '定位原文', exact: true }).click();
   await expect(main(page).getByLabel('来源区域高亮')).toBeVisible();
   expect((await data(page)).sessions['research-a'].anchor?.evidenceId).toBe(evidence.id);
 
-  await nav(page).getByRole('button', { name: '结论与导出', exact: true }).click();
+  await nav(page).getByRole('button', { name: '检索增强的适用条件', exact: true }).click();
   await main(page).getByLabel('结论标题').fill('E2E 区域阅读与双来源记录');
   await main(page).getByLabel('结论正文').fill('以下结论保留框选图像和讨论过程。');
   await main(page).getByRole('button', { name: '插入卡片引用', exact: true }).click();
@@ -166,7 +167,7 @@ test('区域拖框、演示对话、片段卡片、刷新来源与真实 Markdow
 test('干净新会话、历史搜索重命名、归档恢复及刷新持久化', async ({ page }) => {
   const assertNoLiveCalls = await start(page);
   await openPaper(page);
-  await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
+  await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
   await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
   await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
   await panel(page).getByRole('button', { name: '演示模式', exact: true }).click();

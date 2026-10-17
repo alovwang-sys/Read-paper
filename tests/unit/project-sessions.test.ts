@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hasFullText } from '../../src/domain/knowledge';
 import { createSeed } from '../../src/data/seed';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { getAsset, loadWorkspace, saveMigrationBackup, saveWorkspace } from '../../src/data/storage';
@@ -15,7 +16,7 @@ const snapshot = (overrides: Partial<NativeSessionSnapshot> = {}): NativeSession
 const mockSnapshot = (value: NativeSessionSnapshot) => { const mock = vi.fn(async () => Response.json(value)); vi.stubGlobal('fetch', mock); return mock; };
 function source(): ContextSnapshot {
   const evidence = data().evidence['evidence-a']; const document = data().documents[evidence.documentId];
-  return { evidenceId: evidence.id, documentId: document.id, documentHash: document.hash, title: document.title, pageIndex: evidence.pageIndex, quote: evidence.quote };
+  return { evidenceId: evidence.id, documentId: document.id, documentHash: document.hash!, title: document.title, pageIndex: evidence.pageIndex, quote: evidence.quote };
 }
 function ownRequest(conversationId: string): AIRequest {
   return { id: 'own-request', researchId: 'research-a', conversationId, prompt: 'Original app question', body: 'Original app answer [1]', status: 'done', purpose: 'chat', connectionId: 'codex', mode: 'live', context: [source()], evidenceIds: ['evidence-a'], history: [], createdAt: '2026-10-17T00:00:00.000Z' };
@@ -28,7 +29,7 @@ beforeEach(async () => {
   vi.mocked(saveWorkspace).mockReset().mockResolvedValue(undefined); vi.mocked(saveMigrationBackup).mockReset().mockResolvedValue(undefined); vi.mocked(getAsset).mockReset().mockResolvedValue(new Blob(['fixture']));
   const seed = createSeed(); seed.agentWorkspaceId = 'workspace-existing';
   seed.researches['research-a'].directory = directory;
-  Object.values(seed.documents).forEach(document => { document.hash = 'a'.repeat(64); });
+  Object.values(seed.documents).filter(hasFullText).forEach(document => { document.hash = 'a'.repeat(64); });
   vi.mocked(loadWorkspace).mockReset().mockResolvedValue(seed);
   await workspace.load();
 });

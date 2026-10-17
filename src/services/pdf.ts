@@ -6,6 +6,7 @@ import {
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { contentHash, getAsset, putAsset } from '../data/storage';
 import type { PaperDocument, WorkspaceScope } from '../domain/types';
+import { hasFullText } from '../domain/knowledge';
 import { scopeKey, workspace } from './workspace';
 
 GlobalWorkerOptions.workerSrc = workerUrl;
@@ -45,6 +46,7 @@ async function parsePdf(bytes: ArrayBuffer) {
 }
 
 export function loadPdfDocument(doc: PaperDocument, retry = false) {
+  if (!hasFullText(doc)) return Promise.reject(new Error('这条资料尚无全文，请先添加 PDF。'));
   if (retry) cache.delete(doc.assetId);
   const saved = cache.get(doc.assetId);
   if (saved) return saved;
@@ -86,29 +88,59 @@ export function loadPdfDocument(doc: PaperDocument, retry = false) {
   return loading;
 }
 
-export async function importPdf(file: File, scope: WorkspaceScope) {
+async function preparePdf(file: File) {
   if (file.size > MAX_PDF_BYTES)
     throw new Error('PDF 超过 50 MB，请拆分文件后导入。');
   const bytes = await file.arrayBuffer();
   checkPdfBytes(bytes);
   const hash = await contentHash(bytes);
   const pdf = await parsePdf(bytes);
-  try {
-    // Unopened bundled samples participate in the same content-hash deduplication.
-    const samples = Object.values(workspace.getState().data.documents).filter(
-      (doc) => !doc.hash && doc.sampleUrl,
-    );
-    for (const sample of samples) {
-      try {
-        const loaded = await loadPdfDocument(sample);
-        workspace.updateData((data) => {
-          if (data.documents[sample.id] && !data.documents[sample.id].hash)
-            data.documents[sample.id].hash = loaded.hash;
-        });
-      } catch {
-        /* A missing sample must not prevent importing a user's valid file. */
-      }
+  return { bytes, hash, pdf };
+}
+
+async function resolveSampleHashes() {
+  // Unopened bundled samples participate in content-hash deduplication.
+  for (const sample of Object.values(workspace.getState().data.documents).filter(doc => !doc.hash && doc.sampleUrl)) {
+    try {
+      const loaded = await loadPdfDocument(sample);
+      workspace.updateData(data => {
+        if (data.documents[sample.id] && !data.documents[sample.id].hash) data.documents[sample.id].hash = loaded.hash;
+      });
+    } catch {
+      /* A missing sample must not prevent importing a user's valid file. */
     }
+  }
+}
+
+export async function attachPdf(documentId: string, file: File): Promise<{ conflict?: { into: string } }> {
+  const document = workspace.getState().data.documents[documentId];
+  if (!document || hasFullText(document)) throw new Error('只能给无全文资料添加 PDF。');
+  const { bytes, hash, pdf } = await preparePdf(file);
+  try {
+    await resolveSampleHashes();
+    const existing = Object.values(workspace.getState().data.documents).find(doc => doc.id !== documentId && doc.hash === hash);
+    if (existing) return { conflict: { into: existing.id } };
+    const current = workspace.getState().data.documents[documentId];
+    if (!current || hasFullText(current)) throw new Error('资料状态已变化，请重新打开后重试。');
+    const assetId = `pdf-${hash}`;
+    await putAsset(assetId, new Blob([bytes], { type: 'application/pdf' }));
+    workspace.updateData(data => {
+      const doc = data.documents[documentId];
+      if (!doc || hasFullText(doc)) throw new Error('资料状态已变化，请重新打开后重试。');
+      Object.assign(doc, { filename: file.name, hash, assetId, assetRevision: 1, pageCount: pdf.numPages, textStatus: 'pending', updatedAt: new Date().toISOString() });
+    });
+    cache.delete(assetId);
+    workspace.notice('PDF 已添加，可以继续阅读；资料 ID 和研究关联保持不变。');
+    return {};
+  } finally {
+    await pdf.loadingTask.destroy();
+  }
+}
+
+export async function importPdf(file: File, scope: WorkspaceScope) {
+  const { bytes, hash, pdf } = await preparePdf(file);
+  try {
+    await resolveSampleHashes();
     const existing = Object.values(workspace.getState().data.documents).find(
       (doc) => doc.hash === hash,
     );
@@ -144,6 +176,7 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
           pageCount: pdf.numPages,
           readingStatus: 'unread',
           textStatus: 'pending',
+          updatedAt: new Date().toISOString(),
         };
       });
     }
@@ -164,4 +197,21 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
   } finally {
     await pdf.loadingTask.destroy();
   }
+}
+
+export async function importPdfFiles(files: File[], scope: WorkspaceScope) {
+  const result = { created: 0, reused: 0, failures: [] as { filename: string; message: string }[], documentIds: [] as string[] };
+  for (const file of files) {
+    const ids = new Set(Object.keys(workspace.getState().data.documents));
+    try {
+      const id = await importPdf(file, scope);
+      result.documentIds.push(id);
+      if (ids.has(id)) result.reused++;
+      else result.created++;
+    } catch (error) {
+      result.failures.push({ filename: file.name, message: error instanceof Error ? error.message : '导入失败，请重试。' });
+    }
+  }
+  workspace.notice(`导入完成：新建 ${result.created} 条，复用 ${result.reused} 条，失败 ${result.failures.length} 个。`);
+  return result;
 }

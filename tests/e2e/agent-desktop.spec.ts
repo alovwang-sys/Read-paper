@@ -1,3 +1,4 @@
+import { openResearchPage } from './knowledge-helpers';
 import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
@@ -38,10 +39,10 @@ async function setup(page: Page, withEvidence = false) {
   if (withEvidence) {
     await main(page).getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
     await expect(main(page).locator('canvas')).toBeVisible(); await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
-    await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
+    await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
     await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
     await page.getByRole('button', { name: '主区返回', exact: true }).click();
-    await main(page).getByRole('button', { name: /检索增强的适用条件 写下结论/ }).click();
+    await openResearchPage(page, '检索增强的适用条件');
     await main(page).getByLabel('结论正文').fill('尚未完成的研究结论，等待核查原文。');
   } else await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await select(page, 'Codex');

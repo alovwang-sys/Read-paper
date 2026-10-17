@@ -1,3 +1,4 @@
+import { openResearchPage } from './knowledge-helpers';
 import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
@@ -12,7 +13,7 @@ const agents: AgentConnection[] = [
 ];
 async function state(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => {
-    const journal = localStorage.getItem('papertrail-recovery-v2');
+    const journal = localStorage.getItem('papertrail-recovery-v3');
     if (journal) return JSON.parse(journal);
     const modulePath = '/src/data/storage.ts';
     return (await import(modulePath)).loadWorkspace();
@@ -144,7 +145,7 @@ test('显式材料、原生累计提示与收缩前序范围', async ({ page }) 
   await page.getByRole('main').getByRole('button', { name: new RegExp(title) }).click();
   await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
   await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
-  await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
+  await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
   await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
   await select(page, 'Codex');
   await panel(page).getByLabel('向 AI 提问').fill('解释这条论文证据');
@@ -200,6 +201,7 @@ test('演示模式经历史返回 Codex 后，PDF 快捷解释仍使用原助手
     const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
     element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, view: window }));
   });
+  await main.getByText('问 AI', { exact: true }).click();
   await main.getByRole('button', { name: '解释这段', exact: true }).click();
   await expect(panel(page).locator('.ai-answer')).toContainText('Codex 对所选原文的解释');
   expect(calls).toHaveLength(1);
@@ -214,7 +216,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await page.setViewportSize(viewport);
     await start(page);
     await select(page, 'Codex');
-    await page.getByRole('main').getByRole('button', { name: /检索增强的适用条件 写下结论/ }).click();
+    await openResearchPage(page, '检索增强的适用条件');
     await expect(page.getByRole('main').getByLabel('结论正文')).toBeVisible();
     await panel(page).getByLabel('向 AI 提问').fill('比较这些材料的适用条件，并保留可以回查的出处。');
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');

@@ -5,7 +5,7 @@ import { mkdir } from 'node:fs/promises';
 async function readData(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => {
     const journal =
-      localStorage.getItem('papertrail-recovery-v2') ??
+      localStorage.getItem('papertrail-recovery-v3') ??
       localStorage.getItem('papertrail-recovery-v1');
     if (journal) return JSON.parse(journal);
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -63,16 +63,12 @@ test('保存失败后关闭资源、切换研究、切换面板和刷新恢复�
     .getByRole('button', { name: '在主区打开 ↗' })
     .click();
   await page
-    .locator('.open-item')
-    .filter({ hasText: '相关性是检索收益的前提' })
-    .hover();
-  await page
-    .getByRole('button', { name: '关闭 相关性是检索收益的前提', exact: true })
+    .getByRole('button', { name: '关闭标签 相关性是检索收益的前提', exact: true })
     .click();
   await page.getByRole('tab', { name: 'AI', exact: true }).click();
   await page.getByLabel('切换研究').selectOption('research-b');
   await page.getByLabel('切换研究').selectOption('research-a');
-  await page.getByRole('tab', { name: '参考', exact: true }).click();
+  await page.getByRole('tab', { name: '卡片', exact: true }).click();
   await expect(page.getByLabel('卡片正文')).toHaveValue(
     '保存失败后，这段观点仍必须恢复。',
   );
@@ -113,6 +109,7 @@ test('不支持的存储版本加载失败后不覆盖已有数据', async ({ pa
       };
     });
     localStorage.removeItem('papertrail-recovery-v1');
+    localStorage.removeItem('papertrail-recovery-v3');
     localStorage.removeItem('papertrail-recovery-v2');
   });
   await page.reload();
@@ -152,17 +149,17 @@ test('不支持的存储版本加载失败后不覆盖已有数据', async ({ pa
 test('1024px 导航抽屉、右侧关闭、键盘搜索均可操作', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 800 });
   await expect(
-    page.getByRole('complementary', { name: '左侧导航' }),
+    page.locator('.sidebar'),
   ).toBeHidden();
   await page.getByRole('button', { name: '关闭右侧面板' }).click();
   await page.getByRole('button', { name: '展开左栏' }).click();
   await expect(
-    page.getByRole('complementary', { name: '左侧导航' }),
+    page.locator('.sidebar'),
   ).toBeVisible();
-  await page.getByRole('button', { name: '论文库', exact: true }).click();
-  await page.getByRole('button', { name: '关闭导航抽屉' }).click();
+  await page.getByRole('button', { name: '资料库', exact: true }).click();
+  await expect(page.locator('.sidebar')).toBeHidden();
   await expect(
-    page.getByRole('heading', { name: '论文库', exact: true }),
+    page.getByRole('heading', { name: '资料库', exact: true }),
   ).toBeVisible();
   await page.keyboard.press('Meta+k');
   await expect(page.getByRole('dialog', { name: '全局搜索' })).toBeVisible();
@@ -235,7 +232,7 @@ test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆�
   );
   await page.getByRole('button', { name: '重试文本提取' }).click();
   await expect(page.getByRole('main')).toContainText('文本已就绪');
-  await page.getByRole('tab', { name: '证据', exact: true }).click();
+  await page.getByRole('tab', { name: '摘录', exact: true }).click();
   await page
     .locator('[data-evidence-id="evidence-a"]')
     .getByRole('button', { name: '加入 AI', exact: true })
@@ -266,7 +263,7 @@ test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆�
 test('未发送的 AI 输入按研究保留，切换面板和刷新后恢复', async ({ page }) => {
   await page.getByRole('tab', { name: 'AI', exact: true }).click();
   await page.getByLabel('向 AI 提问').fill('研究 A 尚未发送的问题');
-  await page.getByRole('tab', { name: '参考', exact: true }).click();
+  await page.getByRole('tab', { name: '卡片', exact: true }).click();
   await page.getByRole('tab', { name: 'AI', exact: true }).click();
   await expect(page.getByLabel('向 AI 提问')).toHaveValue(
     '研究 A 尚未发送的问题',

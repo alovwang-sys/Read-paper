@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react';
 import { createSeed, emptySession } from '../data/seed';
 import { loadWorkspace, saveWorkspace, saveMigrationBackup, restoreWorkspaceBackup } from '../data/storage';
 import { migrateWorkspace } from '../data/migrations';
+import { hasFullText, normalizeIdentifier } from '../domain/knowledge';
+export { hasFullText, normalizeIdentifier, conclusionIssues } from '../domain/knowledge';
 import type {
   BoardPlacement,
   CollectionId,
@@ -17,12 +19,14 @@ import type {
   Conversation,
   CardProvenance,
   RegionSource,
+  ResearchViewId,
+  ResearchDirectory,
 } from '../domain/types';
 
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 export const scopeKey = (scope: WorkspaceScope) =>
   scope.kind === 'research' ? scope.researchId : 'library';
-export const sameRef = (a: ResourceRef, b: ResourceRef) =>
+export const sameRef = (a: { kind: string; id: string }, b: { kind: string; id: string }) =>
   a.kind === b.kind && a.id === b.id;
 export function resourceTitle(data: WorkspaceData, ref: ResourceRef) {
   const entities =
@@ -54,7 +58,7 @@ export function validateEvidence(data: WorkspaceData, ids: string[]) {
     const doc = evidence && data.documents[evidence.documentId];
     if (
       !evidence ||
-      !doc ||
+      !hasFullText(doc) ||
       (evidence.kind === 'region' ? !validRegion(evidence.region) : !evidence.quote.trim()) ||
       !Number.isInteger(evidence.pageIndex) ||
       evidence.pageIndex < 0 ||
@@ -107,7 +111,9 @@ let revision = 0,
   saving = false;
 let inFlightSave: Promise<void> | undefined;
 let restoring = false;
-const JOURNAL = 'papertrail-recovery-v2';
+let loadGeneration = 0;
+const JOURNAL = 'papertrail-recovery-v3';
+const PREVIOUS_JOURNAL = 'papertrail-recovery-v2';
 const LEGACY_JOURNAL = 'papertrail-recovery-v1';
 function emit() {
   listeners.forEach((listener) => listener());
@@ -131,6 +137,7 @@ async function saveSnapshot() {
     await saveWorkspace(snapshot);
     if (journalRevision <= currentRevision) localStorage.removeItem(JOURNAL);
     localStorage.removeItem(LEGACY_JOURNAL);
+    localStorage.removeItem(PREVIOUS_JOURNAL);
     if (revision === currentRevision) {
       status({ saveStatus: 'saved', saveError: undefined });
     } else status({ saveStatus: 'dirty' });
@@ -147,6 +154,7 @@ async function saveSnapshot() {
 
 export const workspace = {
   getState: () => state,
+  getGeneration: () => loadGeneration,
   getSession: (scope = state.data.scope): Session =>
     state.data.sessions[scopeKey(scope)],
   subscribe(listener: () => void) {
@@ -156,18 +164,21 @@ export const workspace = {
     };
   },
   async load() {
+    loadGeneration++;
     try {
       if (inFlightSave) await inFlightSave;
-      const journal = localStorage.getItem(JOURNAL);
+      const currentJournal = localStorage.getItem(JOURNAL);
+      const previousJournal = localStorage.getItem(PREVIOUS_JOURNAL);
+      const journal = currentJournal ?? previousJournal;
       const oldJournal = localStorage.getItem(LEGACY_JOURNAL);
       const database = await loadWorkspace();
       for (const candidate of [database, journal && JSON.parse(journal), oldJournal && JSON.parse(oldJournal)]) {
-        if (candidate && typeof candidate.schemaVersion === 'number' && candidate.schemaVersion > 2) throw new Error('存储版本不受支持，未覆盖现有数据。请使用创建这些数据的新版应用。');
+        if (candidate && typeof candidate.schemaVersion === 'number' && candidate.schemaVersion > 3) throw new Error('存储版本不受支持，未覆盖现有数据。请使用创建这些数据的新版应用。');
       }
-      const saved = journal ? JSON.parse(journal) : database?.schemaVersion === 2 ? database : oldJournal ? JSON.parse(oldJournal) : database;
-      const migrated = saved && saved.schemaVersion === 1;
+      const saved = journal ? JSON.parse(journal) : database?.schemaVersion === 3 ? database : oldJournal ? JSON.parse(oldJournal) : database;
+      const migrated = saved && saved.schemaVersion < 3;
       const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating'));
-      if (migrated) await saveMigrationBackup({ database, recovery: oldJournal });
+      if (migrated) await saveMigrationBackup({ database, recovery: journal ?? oldJournal });
       const data = saved ? migrateWorkspace(saved) : createSeed();
       status({
         data,
@@ -234,11 +245,13 @@ export const workspace = {
   async restoreBackup(data: WorkspaceData, assets: Array<{ id: string; blob: Blob }>) {
     if (restoring) throw new Error('已有恢复任务正在进行。');
     restoring = true;
+    loadGeneration++;
     try {
       await workspace.flushSave();
       // Refuse the restore if stale recovery buffers cannot be removed first.
       localStorage.removeItem(JOURNAL);
       localStorage.removeItem(LEGACY_JOURNAL);
+      localStorage.removeItem(PREVIOUS_JOURNAL);
       await restoreWorkspaceBackup(data, assets);
       await workspace.load();
       if (state.loadError) throw new Error(state.loadError);
@@ -247,10 +260,104 @@ export const workspace = {
   notice(message?: string) {
     status({ notice: message });
   },
+  openResearchView(researchId: string, view: ResearchViewId) {
+    workspace.updateData(data => {
+      if (!data.researches[researchId]) throw new Error('研究不存在。');
+      data.scope = { kind: 'research', researchId };
+      const session = data.sessions[researchId];
+      if (session.active.kind !== 'researchView' || session.active.id !== view) session.history.push(session.active);
+      session.active = { kind: 'researchView', id: view };
+      session.researchView = view;
+      session.anchor = undefined;
+    });
+    status({ selection: undefined });
+  },
+  addSource(input: { kind: 'identifier'; raw: string } | { kind: 'title'; title: string } | { kind: 'library'; documentId: string }, target: WorkspaceScope) {
+    let documentId = '', created = false;
+    workspace.updateData(data => {
+      if (target.kind === 'research' && !data.researches[target.researchId]) throw new Error('研究不存在。');
+      if (input.kind === 'library') {
+        if (!data.documents[input.documentId]) throw new Error('资料不存在。');
+        documentId = input.documentId;
+      } else {
+        const identifier = input.kind === 'identifier' ? normalizeIdentifier(input.raw) : undefined;
+        if (input.kind === 'identifier' && !identifier) throw new Error('无法识别标识，请按标题新建。');
+        const title = input.kind === 'title' ? input.title.trim() : identifier!.kind === 'url' ? new URL(identifier!.value).hostname : identifier!.value;
+        if (!title) throw new Error('请填写标题。');
+        const existing = identifier && Object.values(data.documents).find(doc => doc.identifiers?.[identifier.kind] === identifier.value);
+        documentId = existing?.id ?? uid('document');
+        if (!existing) {
+          created = true;
+          data.documents[documentId] = { id: documentId, title, authors: '', year: '', identifiers: identifier ? { [identifier.kind]: identifier.value } : undefined, readingStatus: 'unread', textStatus: 'pending', updatedAt: new Date().toISOString() };
+        }
+      }
+      if (target.kind === 'research') data.researches[target.researchId].documentIds = [...new Set([...data.researches[target.researchId].documentIds, documentId])];
+    });
+    return { documentId, created };
+  },
+  mergeDocuments(stubId: string, intoId: string) {
+    workspace.updateData(data => {
+      const stub = data.documents[stubId], target = data.documents[intoId];
+      if (!stub || hasFullText(stub) || !hasFullText(target) || stubId === intoId) throw new Error('只能把无全文条目合并到已有全文的资料。');
+      if (Object.entries(stub.identifiers ?? {}).some(([key, value]) => target.identifiers?.[key as 'doi' | 'arxiv' | 'url'] && target.identifiers[key as 'doi' | 'arxiv' | 'url'] !== value)) throw new Error('两条资料的标识不一致，无法安全合并；请先核对来源。');
+      if (Object.values(data.evidence).some(e => e.documentId === stubId)) throw new Error('无全文条目已有摘录，无法安全合并。');
+      for (const research of Object.values(data.researches)) research.documentIds = [...new Set(research.documentIds.map(id => id === stubId ? intoId : id))];
+      const move = (ref: { kind: string; id: string }) => { if (ref.kind === 'document' && ref.id === stubId) ref.id = intoId; };
+      for (const placement of Object.values(data.placements)) move(placement.resourceRef);
+      for (const session of Object.values(data.sessions)) {
+        for (const ref of [session.active, ...session.openItems, ...session.history, ...session.panel.history]) move(ref);
+        if (session.panel.ref) move(session.panel.ref);
+        if (session.panel.sourceReturnRef) move(session.panel.sourceReturnRef);
+        for (const ref of session.recentItems ?? []) move(ref);
+        session.openItems = session.openItems.filter((ref, index, items) => items.findIndex(other => sameRef(ref, other)) === index);
+        session.pinnedIds = [...new Set(session.pinnedIds.map(id => id === stubId ? intoId : id))];
+      }
+      target.identifiers = { ...stub.identifiers, ...target.identifiers };
+      delete data.documents[stubId];
+    });
+    status({ selection: undefined });
+  },
+  captureExcerpt(researchId: string, range: { documentId: string; pageIndex: number; quote: string }) {
+    const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.researchId === researchId && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim());
+    if (existing) return existing.id;
+    const id = uid('evidence');
+    workspace.updateData(data => {
+      if (!data.researches[researchId]?.documentIds.includes(range.documentId)) throw new Error('请先把资料加入该研究。');
+      data.evidence[id] = { id, ...range, quote: range.quote.trim(), researchId, createdAt: new Date().toISOString() };
+      validateEvidence(data, [id]);
+    });
+    return id;
+  },
+  removeExcerpt(evidenceId: string) {
+    workspace.updateData(data => {
+      if (Object.values(data.cards).some(c => c.evidenceIds.includes(evidenceId)) || Object.values(data.drafts).some(d => d.evidenceIds.includes(evidenceId)) || Object.values(data.conversations).some(c => c.contextIds.includes(evidenceId)) || Object.values(data.requests).some(r => r.context.some(c => c.evidenceId === evidenceId)) || Object.values(data.cardDrafts).some(d => d.evidenceIds.includes(evidenceId))) throw new Error('摘录已被引用，请先移除引用。');
+      delete data.evidence[evidenceId];
+    });
+  },
+  attachEvidenceToCard(cardId: string, evidenceId: string) {
+    workspace.updateData(data => {
+      const card = data.cards[cardId];
+      if (!card) throw new Error('卡片不存在。');
+      validateEvidence(data, [evidenceId]);
+      card.evidenceIds = [...new Set([...card.evidenceIds, evidenceId])];
+      card.needsReview = true;
+      card.evidenceUpdatedAt = new Date().toISOString();
+      for (const research of Object.values(data.researches)) if (research.cardIds.includes(cardId)) linkCard(data, research.id, cardId);
+    });
+    workspace.notice('已添加依据；确认原文确实支持后再标为已核查。');
+  },
+  findEvidence(cardId: string) {
+    workspace.updateData(data => {
+      if (data.scope.kind !== 'research' || !data.researches[data.scope.researchId].cardIds.includes(cardId)) throw new Error('请先在卡片所在研究中找依据。');
+      const panel = data.sessions[data.scope.researchId].panel;
+      panel.open = true; panel.mode = 'cards'; panel.findEvidenceFor = cardId; panel.citation = undefined;
+    });
+  },
   openCollection(collection: CollectionId) {
     workspace.updateData((data) => {
-      data.scope = { kind: 'library' };
       const session = data.sessions.library;
+      if (data.scope.kind === 'research') session.libraryResearchId = data.scope.researchId;
+      data.scope = { kind: 'library' };
       session.history.push(session.active);
       session.active = { kind: 'collection', id: collection };
       session.anchor = undefined;
@@ -265,6 +372,7 @@ export const workspace = {
       anchor?: ResourceAnchor;
     },
   ) {
+    if (ref.kind === 'research') { workspace.openResearchView(ref.id, 'home'); return; }
     workspace.updateData((data) => {
       if (!resourceExists(data, ref))
         throw new Error('资源不存在，请从资料库重新打开。');
@@ -289,7 +397,9 @@ export const workspace = {
       if (options.target === 'main') {
         if (JSON.stringify(session.active) !== JSON.stringify(ref))
           session.history.push(session.active);
+        if (ref.kind === 'document' && !options.anchor && !session.panel.pinned && !session.panel.findEvidenceFor && !session.panel.citation && session.panel.mode !== 'ai') { session.panel.open = true; session.panel.mode = 'excerpts'; }
         session.active = ref;
+        session.recentItems = [ref, ...(session.recentItems ?? []).filter(item => !sameRef(item, ref))].slice(0, 8);
         session.anchor = options.anchor;
         if (!session.openItems.some((item) => sameRef(item, ref)))
           session.openItems.push(ref);
@@ -298,7 +408,7 @@ export const workspace = {
         session.panel = {
           ...session.panel,
           open: true,
-          mode: 'references',
+          mode: 'cards',
           ref,
           anchor: options.anchor,
         };
@@ -317,7 +427,7 @@ export const workspace = {
           if (
             !Number.isInteger(pageIndex) ||
             pageIndex < 0 ||
-            pageIndex >= data.documents[ref.id].pageCount
+            (!hasFullText(data.documents[ref.id]) || pageIndex >= data.documents[ref.id].pageCount!)
           )
             throw new Error('来源页码无效。');
           const readerKey = `${options.target}:${ref.id}`;
@@ -335,9 +445,10 @@ export const workspace = {
       const session = data.sessions[scopeKey(data.scope)];
       if (target === 'main') {
         const previous = session.history.pop();
-        if (previous && (previous.kind === 'collection' || resourceExists(data, previous))) {
+        if (previous && (previous.kind === 'collection' || previous.kind === 'researchView' || resourceExists(data, previous))) {
           session.active = previous;
-          if (previous.kind !== 'collection' && !session.openItems.some(ref => sameRef(ref, previous))) session.openItems.push(previous);
+          if (previous.kind === 'researchView') session.researchView = previous.id;
+          if (previous.kind !== 'collection' && previous.kind !== 'researchView' && !session.openItems.some(ref => sameRef(ref, previous))) session.openItems.push(previous);
         }
         session.anchor = undefined;
       } else {
@@ -353,11 +464,11 @@ export const workspace = {
         (item) => !sameRef(item, ref),
       );
       session.pinnedIds = session.pinnedIds.filter((id) => id !== ref.id);
-      if (session.active.kind !== 'collection' && sameRef(session.active, ref))
+      if (session.active.kind !== 'collection' && session.active.kind !== 'researchView' && sameRef(session.active, ref))
         session.active =
           session.openItems.at(-1) ??
           (data.scope.kind === 'research'
-            ? { kind: 'research', id: data.scope.researchId }
+            ? { kind: 'researchView', id: session.researchView ?? 'home' }
             : { kind: 'collection', id: 'documents' });
     });
   },
@@ -376,13 +487,14 @@ export const workspace = {
     });
     status({ selection: undefined });
   },
-  createResearch(title: string, question: string) {
+  createResearch(title: string, question: string, prepared?: { id: string; directory?: ResearchDirectory }) {
     if (!title.trim()) throw new Error('请填写研究名称');
-    const id = uid('research'),
+    const id = prepared?.id ?? uid('research'),
       boardId = uid('board'),
       draftId = uid('draft'),
       conversationId = `conversation-${id}`;
     workspace.updateData((data) => {
+      if (data.researches[id]) throw new Error('研究已存在，请恢复原来的创建操作。');
       data.researches[id] = {
         id,
         title: title.trim(),
@@ -390,6 +502,7 @@ export const workspace = {
         documentIds: [],
         cardIds: [],
         createdAt: new Date().toISOString(),
+        ...(prepared?.directory ? { directory: prepared.directory } : {}),
       };
       data.boards[boardId] = {
         id: boardId,
@@ -409,7 +522,7 @@ export const workspace = {
         contextIds: [],
         requestIds: [],
       };
-      data.sessions[id] = emptySession({ kind: 'research', id });
+      data.sessions[id] = emptySession({ kind: 'researchView', id: 'home' });
       data.sessions[id].activeConversationId = conversationId;
       data.scope = { kind: 'research', researchId: id };
     });
@@ -436,7 +549,7 @@ export const workspace = {
     if (existing) return existing.id;
     const id = uid('evidence');
     workspace.updateData((data) => {
-      data.evidence[id] = { id, ...range, quote: range.quote.trim() };
+      data.evidence[id] = { id, ...range, quote: range.quote.trim(), researchId: data.scope.kind === 'research' ? data.scope.researchId : undefined, createdAt: new Date().toISOString() };
       validateEvidence(data, [id]);
     });
     return id;
@@ -444,7 +557,7 @@ export const workspace = {
   createRegionEvidence(range: { documentId: string; pageIndex: number; quote: string; region: RegionSource }): string {
     const id = uid('evidence');
     workspace.updateData(data => {
-      data.evidence[id] = { ...range, id, kind: 'region' };
+      data.evidence[id] = { ...range, id, kind: 'region', researchId: data.scope.kind === 'research' ? data.scope.researchId : undefined, createdAt: new Date().toISOString() };
       validateEvidence(data, [id]);
     });
     return id;
@@ -542,7 +655,7 @@ export const workspace = {
   ) {
     workspace.updateData((data) => {
       const doc = data.documents[documentId];
-      if (!doc) return;
+      if (!hasFullText(doc)) return;
       data.sessions[scopeKey(data.scope)].readers[`${target}:${documentId}`] = {
         pageIndex: Math.max(0, Math.min(doc.pageCount - 1, position.pageIndex)),
         scale: Math.max(0.5, Math.min(2, position.scale)),

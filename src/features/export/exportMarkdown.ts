@@ -1,5 +1,6 @@
 import type { CardProvenance, Draft, Evidence, WorkspaceData } from '../../domain/types';
 import { remapCitationNumbers } from '../../domain/citations';
+import { hasFullText } from '../../domain/knowledge';
 import { linkCard, validateEvidence } from '../../services/workspace';
 export { remapCitationNumbers } from '../../domain/citations';
 
@@ -12,8 +13,6 @@ export function insertCardReference(
 ): number {
   const draft = data.drafts[draftId], card = data.cards[cardId];
   if (!draft || !card) throw new Error('结论稿或卡片已缺失。');
-  if (!card.evidenceIds.length && !card.provenance)
-    throw new Error('这张卡片尚无论文或对话来源，请先为卡片添加来源。');
   const evidenceIds = [...new Set([...draft.evidenceIds, ...card.evidenceIds])];
   const body = remapCitationNumbers(card.body.trim() || card.title, card.evidenceIds, evidenceIds);
   const markers = [...new Set(card.evidenceIds)]
@@ -23,15 +22,31 @@ export function insertCardReference(
   const insertion = `${first > 0 ? '\n\n' : ''}${body}${markers ? ` ${markers}` : ''}${last < draft.body.length ? '\n\n' : ''}`;
   const source = card.provenance && { cardId, title: card.title, provenance: structuredClone(card.provenance) };
   linkCard(data, draft.researchId, cardId);
+  draft.cardRefs = [...(draft.cardRefs ?? []), { cardId, insertedAt: new Date().toISOString(), evidenceIds: [...card.evidenceIds] }];
+  draft.updatedAt = new Date().toISOString();
   draft.evidenceIds = evidenceIds;
   draft.body = draft.body.slice(0, first) + insertion + draft.body.slice(last);
   if (source) draft.cardSources = [...(draft.cardSources ?? []), source];
   return first + insertion.length;
 }
 
+export function insertEvidenceReferences(data: WorkspaceData, draftId: string, evidenceIds: string[], start?: number, end = start) {
+  const draft = data.drafts[draftId];
+  if (!draft) throw new Error('文稿已缺失。');
+  const evidence = validateEvidence(data, evidenceIds);
+  if (evidence.some(e => !data.researches[draft.researchId]?.documentIds.includes(e.documentId))) throw new Error('请先将来源加入本研究。');
+  draft.evidenceIds = [...new Set([...draft.evidenceIds, ...evidenceIds])];
+  const insertion = [...new Set(evidenceIds)].map(id => `[${draft.evidenceIds.indexOf(id) + 1}]`).join('');
+  const first = start ?? draft.body.length, last = end ?? first;
+  draft.body = draft.body.slice(0, first) + insertion + draft.body.slice(last);
+  draft.updatedAt = new Date().toISOString();
+  return first + insertion.length;
+}
+
 export function draftConversationSources(draft: Draft) {
   const sources = new Map<string, { provenance: CardProvenance; cardIds: string[]; titles: string[] }>();
   for (const source of draft.cardSources ?? []) {
+    if (source.provenance.origin === 'excerpts') continue;
     const key = JSON.stringify([source.provenance.requestId, source.provenance.selection || source.provenance.answer]);
     const existing = sources.get(key);
     if (existing) {
@@ -60,7 +75,7 @@ export function draftSources(data: WorkspaceData, draftId: string): Evidence[] {
   return ids.map((id) => {
     const evidence = data.evidence[id];
     const document = evidence && data.documents[evidence.documentId];
-    if (!evidence || !document)
+    if (!evidence || !hasFullText(document))
       throw new Error(`引用 ${id} 的原文或文献已缺失，请修复来源后导出。`);
     if (
       !Number.isInteger(evidence.pageIndex) ||

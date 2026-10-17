@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   BookOpen,
@@ -15,17 +15,31 @@ import {
   draftSources,
   exportMarkdown,
   insertCardReference,
+  insertEvidenceReferences,
 } from '../export/exportMarkdown';
+import { MarkdownContent } from '../ai/MarkdownContent';
+import { mapCitationNumbers } from '../../domain/citations';
 import '../evidence/evidence.css';
 import './writing.css';
 
 export function WritingView({ draftId }: { draftId: string }) {
-  const { data, actions } = useWorkspace();
+  const { data, session, actions } = useWorkspace();
   const draft = data.drafts[draftId];
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState(false);
   const editor = useRef<HTMLTextAreaElement>(null);
+  const citationNumber = session.anchor?.citationNumber;
+  useEffect(() => {
+    if (citationNumber === undefined) return;
+    setPreview(false);
+    requestAnimationFrame(() => {
+      const text = editor.current?.value ?? '';
+      const marker = `[${citationNumber}]`, at = text.indexOf(marker);
+      if (at >= 0) { editor.current?.focus(); editor.current?.setSelectionRange(at, at + marker.length); }
+    });
+  }, [draftId, citationNumber]);
   if (!draft)
     return (
       <div className="empty-state">
@@ -49,6 +63,16 @@ export function WritingView({ draftId }: { draftId: string }) {
   const conversationSources = draftConversationSources(draft);
   const scope = { kind: 'research' as const, researchId: draft.researchId };
 
+  const activeCard = session.panel.ref?.kind === 'card' ? data.cards[session.panel.ref.id] : undefined;
+  const numbers = new Set<number>();
+  mapCitationNumbers(draft.body, number => { numbers.add(number); return ''; });
+  const missingEvidence = activeCard?.evidenceIds.filter(id => !draft.evidenceIds.includes(id) || !numbers.has(draft.evidenceIds.indexOf(id) + 1)) ?? [];
+  function showCitation(number: number) {
+    if (!data.evidence[draft.evidenceIds[number - 1]]) { setError(`正文引用 [${number}] 没有对应的原文证据，请修复引用编号。`); return; }
+    setError('');
+    actions.updateData(next => { const panel = next.sessions[draft.researchId].panel; panel.open = true; panel.mode = 'cards'; panel.findEvidenceFor = undefined; panel.citation = { draftId, evidenceId: draft.evidenceIds[number - 1] ?? '' }; });
+  }
+
   function insertCard(cardId: string) {
     try {
       const start = editor.current?.selectionStart ?? draft.body.length;
@@ -58,6 +82,7 @@ export function WritingView({ draftId }: { draftId: string }) {
         cursor = insertCardReference(next, draftId, cardId, start, end);
       });
       setPickerOpen(false);
+      setPreview(false);
       setError('');
       requestAnimationFrame(() => {
         editor.current?.focus();
@@ -111,6 +136,7 @@ export function WritingView({ draftId }: { draftId: string }) {
           <Plus size={15} />
           插入卡片引用
         </button>
+        <button className="button" aria-pressed={preview} onClick={() => setPreview(!preview)}>{preview ? '编辑正文' : '预览引用'}</button>
         <button
           className="button primary"
           onClick={download}
@@ -203,7 +229,10 @@ export function WritingView({ draftId }: { draftId: string }) {
             <span>研究结论</span>
             <span className="muted">{draft.body.length} 字符</span>
           </div>
+          {activeCard && !!missingEvidence.length && <section className="supplement-citations" aria-label="补引用"><strong>「{activeCard.title}」还有依据未引用到文稿</strong><p className="muted">在正文放置光标后，插入这些依据的引用编号。</p>{missingEvidence.map(id => <blockquote key={id}>{data.evidence[id]?.quote || '区域或失效依据'}</blockquote>)}<button className="primary" onClick={() => { try { const start = editor.current?.selectionStart ?? draft.body.length; const end = editor.current?.selectionEnd ?? start; let cursor = start; actions.updateData(next => { cursor = insertEvidenceReferences(next, draftId, missingEvidence, start, end); }); setPreview(false); requestAnimationFrame(() => { editor.current?.focus(); editor.current?.setSelectionRange(cursor, cursor); }); } catch (error) { setError((error as Error).message); } }}>在光标处补引用</button></section>}
+          {preview && <section className="writing-preview" aria-label="文稿预览"><MarkdownContent text={draft.body || '尚未撰写结论。'} onCitation={showCitation} /></section>}
           <textarea
+            hidden={preview}
             ref={editor}
             aria-label="结论正文"
             className="writing-editor"
@@ -211,6 +240,7 @@ export function WritingView({ draftId }: { draftId: string }) {
             onChange={(event) =>
               actions.updateData((next) => {
                 next.drafts[draftId].body = event.target.value;
+                next.drafts[draftId].updatedAt = new Date().toISOString();
               })
             }
             placeholder="写下研究结论、适用条件与仍待验证的问题。使用「插入卡片引用」保留支持观点的证据。"
@@ -238,7 +268,7 @@ export function WritingView({ draftId }: { draftId: string }) {
                   className={`writing-source ${valid ? '' : 'is-invalid'}`}
                   key={id}
                 >
-                  <div className="writing-source-number">[{index + 1}]</div>
+                  <button className="writing-source-number text-button" aria-label={`查看出处链 [${index + 1}]`} onClick={() => showCitation(index + 1)}>[{index + 1}]</button>
                   <div className="writing-source-content">
                     <strong>{document?.title ?? '文献或证据已缺失'}</strong>
                     <div className="muted">
@@ -256,6 +286,7 @@ export function WritingView({ draftId }: { draftId: string }) {
                         className="button"
                         onClick={() => {
                           try {
+                            actions.updateData(next => { next.sessions[draft.researchId].panel.citation = undefined; next.sessions[draft.researchId].panel.findEvidenceFor = undefined; });
                             actions.openResource(
                               { kind: 'document', id: document.id },
                               {

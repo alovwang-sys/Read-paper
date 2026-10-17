@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "executedAt": "2026-10-17T04:23:29.650Z",
+  "status": "passed",
+  "runtime": "server/codex-runtime.mjs production createCodexRuntime adapter",
+  "fixture": {
+    "data": "synthetic-only",
+    "directory": "<temporary-research-directory>",
+    "entry": "Papertrail/README.md",
+    "card": "Papertrail/cards/card-probe.md",
+    "expectedTitle": "Papertrail Directory Probe 259ac08f",
+    "removedAfterVerification": true
+  },
+  "request": {
+    "attemptedModelCalls": 1,
+    "timeoutMs": 60000,
+    "access": "read-only",
+    "network": "disabled",
+    "skills": "none",
+    "externalDesktopUI": "not-checked"
+  },
+  "checks": {
+    "filesMaterialized": true,
+    "realAnswerMatchesCard": true,
+    "nativeSessionReturned": true,
+    "sameCwdListed": true,
+    "sameCwdRead": true,
+    "nativeHistoryAnswerMatches": true,
+    "originalFilesUnchanged": true,
+    "realReadCommandSucceeded": true
+  },
+  "toolEvidence": [
+    {
+      "toolName": "commandExecution",
+      "status": "running",
+      "command": "/bin/zsh -lc 'head -n 1 Papertrail/cards/card-probe.md'"
+    },
+    {
+      "toolName": "commandExecution",
+      "status": "done",
+      "command": "/bin/zsh -lc 'head -n 1 Papertrail/cards/card-probe.md'",
+      "exitCode": 0,
+      "outputContainsExpectedTitle": true
+    }
+  ],
+  "nativeSessionId": "01a14819-c1a1-7e22-984d-df71e95ddade",
+  "nativeTurnId": "01a14819-cdb6-7551-bb0e-b4a9582be1f2",
+  "localCliVersion": "codex-cli 0.162.1",
+  "answer": "我会只读取指定卡片的第一行。Papertrail Directory Probe 259ac08f",
+  "model": "gpt-6.1-sol",
+  "nativeHistoryMessageCount": 3,
+  "timedOut": false,
+  "durationMs": 17676,
+  "observations": {
+    "streamedBodyExactlyTitle": false
+  }
+}

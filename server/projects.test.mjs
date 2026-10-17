@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readdir, readFile, writeFile, realpath, rm, symlink, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, writeFile, realpath, rm, symlink, stat, chmod } from 'node:fs/promises';
 import { tmpdir, homedir } from 'node:os';
 import { join, parse } from 'node:path';
 import { createProjectStore } from './projects.mjs';
@@ -268,4 +268,114 @@ test('status derives the canonical name for legacy bindings without rewriting ma
     assert.equal(await readFile(file, 'utf8'), before[index].text);
     const after = await stat(file); assert.equal(after.ino, before[index].info.ino); assert.equal(after.mtimeMs, before[index].info.mtimeMs);
   }
+});
+
+const createIntent = (path, extra = {}) => ({ ...identity(), path, mode: 'new', operationId: 'create-operation-1', ...extra });
+
+test('explicit creation preview, defaults and cancellation never write proposed project files', async (t) => {
+  const f = await fixture(t); const path = join(f.root, '新研究');
+  assert.deepEqual(await f.store.preview(createIntent(path)), { path, name: '新研究' });
+  assert.deepEqual(await f.store.preview(createIntent(f.first, { mode: 'existing' })), { path: f.first, name: 'first' });
+  const defaults = await f.store.defaults(identity());
+  assert.equal((await stat(defaults.parentPath)).isDirectory(), true);
+  assert.equal(await exists(path), false);
+  assert.deepEqual(await readdir(f.first), []);
+  assert.deepEqual(await readdir(f.stateDir), []);
+  assert.equal(await f.store.status(identity()), undefined);
+});
+
+test('new mode strictly rejects existing files and folders, missing parents and invalid names', async (t) => {
+  const f = await fixture(t); const file = join(f.root, 'existing-file'); await writeFile(file, 'keep');
+  for (const path of [f.first, file]) await assert.rejects(f.store.bind(createIntent(path)), { code: 'directory_exists' });
+  await assert.rejects(f.store.bind(createIntent(join(f.root, 'missing', 'nested'))), { code: 'directory_unavailable' });
+  for (const name of ['..', '.', ' trailing ', 'a\\b', `control${String.fromCharCode(1)}`, 'x'.repeat(256)]) await assert.rejects(f.store.preview(createIntent(`${f.root}/${name}`)), { code: 'invalid_name' });
+  await assert.rejects(f.store.preview({ ...identity(), path: join(f.root, 'new'), mode: 'new' }), { code: 'invalid_operation' });
+  await assert.rejects(f.store.preview(createIntent(f.first, { mode: 'unknown' })), { code: 'invalid_operation' });
+  assert.equal(await readFile(file, 'utf8'), 'keep'); assert.deepEqual(await readdir(f.first), []);
+});
+
+test('new creation confirms once with a durable operation and repeated responses keep the same identity', async (t) => {
+  const f = await fixture(t); const input = createIntent(join(f.root, '新研究'));
+  const responses = await Promise.all([f.store.bind(input), f.store.bind(input)]);
+  assert.deepEqual(responses[0], responses[1]);
+  f.restart(); assert.deepEqual(await f.store.bind(input), responses[0]);
+  const manifest = JSON.parse(await readFile(join(input.path, '.read-paper', 'project.json'), 'utf8'));
+  const registry = JSON.parse(await readFile(join(f.stateDir, 'projects.json'), 'utf8'));
+  assert.equal(manifest.operationId, input.operationId); assert.equal(manifest.projectId, responses[0].projectId);
+  assert.equal(registry.operations[input.operationId].bindingId, responses[0].id);
+  assert.equal((await stat(input.path)).mode & 0o777, 0o700);
+  await assert.rejects(f.store.bind({ ...input, path: join(f.root, 'another') }), { code: 'operation_mismatch' });
+  await assert.rejects(f.store.bind({ ...input, ...identity('research-b') }), { code: 'operation_mismatch' });
+});
+
+test('existing mode requires a real directory, preserves its contents and keeps operation retries stable', async (t) => {
+  const f = await fixture(t); await writeFile(join(f.first, 'notes.md'), 'My original notes');
+  const input = createIntent(f.first, { mode: 'existing' });
+  const result = await f.store.bind(input); f.restart();
+  assert.deepEqual(await f.store.bind(input), result);
+  assert.equal(await readFile(join(f.first, 'notes.md'), 'utf8'), 'My original notes');
+  await assert.rejects(f.store.bind(createIntent(join(f.root, 'missing'), { mode: 'existing', researchId: 'research-b', operationId: 'other' })), { code: 'directory_unavailable' });
+});
+
+test('only a matching durable operation and project manifest can recover a missing final registry binding', async (t) => {
+  const f = await fixture(t); const input = createIntent(join(f.root, 'recoverable')); const result = await f.store.bind(input);
+  const file = join(f.stateDir, 'projects.json'); const registry = JSON.parse(await readFile(file, 'utf8'));
+  delete registry.bindings[JSON.stringify(['workspace-a', 'research-a'])]; await writeFile(file, JSON.stringify(registry)); f.restart();
+  assert.equal(await f.store.status(identity()), undefined);
+  assert.deepEqual(await f.store.bind(input), result);
+  delete registry.operations[input.operationId]; await writeFile(file, JSON.stringify(registry)); f.restart();
+  await assert.rejects(f.store.bind(input), { code: 'directory_exists' });
+  assert.equal(JSON.parse(await readFile(join(input.path, '.read-paper', 'project.json'), 'utf8')).projectId, result.projectId);
+});
+
+test('incomplete directory creation and damaged manifests remain explicitly unconfirmed and untouched', async (t) => {
+  const f = await fixture(t); const input = createIntent(join(f.root, 'incomplete')); await f.store.bind(input);
+  const file = join(f.stateDir, 'projects.json'); const registry = JSON.parse(await readFile(file, 'utf8')); registry.bindings = {};
+  await writeFile(file, JSON.stringify(registry)); await rm(join(input.path, '.read-paper'), { recursive: true }); f.restart();
+  await assert.rejects(f.store.bind(input), { code: 'creation_unconfirmed' });
+  assert.deepEqual(await readdir(input.path), []);
+  await mkdir(join(input.path, '.read-paper')); const manifest = join(input.path, '.read-paper', 'project.json'); await writeFile(manifest, '{partial');
+  await assert.rejects(f.store.bind(input), { code: 'creation_unconfirmed' });
+  assert.equal(await readFile(manifest, 'utf8'), '{partial'); assert.equal(await f.store.status(identity()), undefined);
+});
+
+test('creation intent persistence fails before touching the proposed directory', async (t) => {
+  const f = await fixture(t); const input = createIntent(join(f.root, 'never-created'));
+  await f.store.preview(input); await mkdir(join(f.stateDir, 'projects.json'));
+  await assert.rejects(f.store.bind(input), { code: 'project_write_failed' });
+  assert.equal(await exists(input.path), false);
+  assert.equal(await f.store.status(identity()), undefined);
+});
+
+test('permission rejection before creation allows changing the target under the same draft operation', async (t) => {
+  if (process.platform === 'win32' || process.getuid?.() === 0) return t.skip('POSIX directory permissions require a non-root test user');
+  const f = await fixture(t); const parent = join(f.root, 'read-only'); await mkdir(parent); await chmod(parent, 0o500);
+  t.after(() => chmod(parent, 0o700).catch(error => { if (error.code !== 'ENOENT') throw error; }));
+  await assert.rejects(f.store.bind(createIntent(join(parent, 'cannot-create'))), { code: 'directory_unwritable' });
+  const available = createIntent(join(f.root, 'available'));
+  assert.equal((await f.store.bind(available)).path, available.path);
+  assert.deepEqual(await readdir(parent), []);
+  await chmod(parent, 0o700);
+});
+
+test('a manifest write failure keeps its operation pending and retries without losing existing directory contents', async (t) => {
+  if (process.platform === 'win32' || process.getuid?.() === 0) return t.skip('POSIX directory permissions require a non-root test user');
+  const f = await fixture(t); const metadata = join(f.first, '.read-paper'); await mkdir(metadata); await chmod(metadata, 0o500);
+  t.after(() => chmod(metadata, 0o700).catch(error => { if (error.code !== 'ENOENT') throw error; }));
+  await writeFile(join(f.first, 'notes.md'), 'keep my notes');
+  const input = createIntent(f.first, { mode: 'existing' });
+  await assert.rejects(f.store.bind(input), { code: 'creation_unconfirmed' });
+  assert.equal(await f.store.status(identity()), undefined);
+  assert.equal(await readFile(join(f.first, 'notes.md'), 'utf8'), 'keep my notes');
+  await chmod(metadata, 0o700); f.restart();
+  assert.equal((await f.store.bind(input)).path, f.first);
+});
+
+test('conflicts expose an owner only when the same workspace registry and manifest verify it', async (t) => {
+  const f = await fixture(t); await f.bind();
+  await assert.rejects(f.store.preview({ ...identity('research-b'), path: f.first }), error => error.code === 'directory_in_use' && error.ownerResearchId === 'research-a');
+  await assert.rejects(f.store.preview({ ...identity('research-b', 'another-workspace'), path: f.first }), error => error.code === 'directory_in_use' && error.ownerResearchId === undefined && !error.message.includes('research-a'));
+  const file = join(f.stateDir, 'projects.json'); const registry = JSON.parse(await readFile(file, 'utf8')); registry.bindings = {};
+  await writeFile(file, JSON.stringify(registry)); f.restart();
+  await assert.rejects(f.store.preview({ ...identity('research-b'), path: f.first }), error => error.code === 'directory_in_use' && error.ownerResearchId === undefined);
 });

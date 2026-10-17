@@ -5,6 +5,7 @@ import {
   draftConversationSources,
   exportMarkdown,
   insertCardReference,
+  insertEvidenceReferences,
   remapCitationNumbers,
 } from '../../src/features/export/exportMarkdown';
 
@@ -232,4 +233,24 @@ describe('Markdown 研究笔记导出', () => {
     delete data.evidence['evidence-a'].region;
     expect(() => exportMarkdown(data, 'draft-a')).toThrow(/引用.*区域来源/);
   });
+});
+
+it('补引用只在光标处插入去重编号，保留正文、卡片使用记录与研究关联', () => {
+  const data = createSeed();
+  const draft = data.drafts['draft-a'];
+  draft.body = '前文，后文。';
+  const refs = structuredClone(draft.cardRefs);
+  const cursor = insertEvidenceReferences(data, draft.id, ['evidence-a', 'evidence-c', 'evidence-a'], 3);
+  expect(draft.body).toBe('前文，[1][3]后文。');
+  expect(cursor).toBe(9);
+  expect(draft.evidenceIds).toEqual(['evidence-a', 'evidence-b', 'evidence-c']);
+  expect(draft.cardRefs).toEqual(refs);
+  expect(() => insertEvidenceReferences(data, draft.id, ['missing'])).toThrow(/引用/);
+});
+it('插入无依据卡片也记录卡片，供结论问题推导，不伪造原文编号', () => {
+  const data = createSeed();
+  insertCardReference(data, 'draft-b', 'card-unverified');
+  expect(data.drafts['draft-b'].cardRefs).toEqual([{ cardId: 'card-unverified', insertedAt: expect.any(String), evidenceIds: [] }]);
+  expect(data.drafts['draft-b'].evidenceIds).toEqual([]);
+  expect(data.drafts['draft-b'].body).toBe(data.cards['card-unverified'].body);
 });

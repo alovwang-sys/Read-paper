@@ -236,7 +236,7 @@ export function CardDraftEditor({
                     execute(() => {
                       if (!snapshot || !hasOriginalDocument(data, snapshot))
                         throw new Error(
-                          '原文证据缺失，仍可查阅相关对话中的摘录',
+                          '原文证据缺失，仍可查阅来源快照中的摘录',
                         );
                       actions.openResource(
                         { kind: 'document', id: snapshot.documentId },
@@ -264,7 +264,7 @@ export function CardDraftEditor({
               );
             })
           ) : (
-            <p className="ai-info">仅对话来源 · 尚未建立直接论文依据。</p>
+            <p className="ai-info">{draft.source.origin === 'excerpts' ? '当前草稿未采用论文依据，可在来源快照中核对所选摘录。' : '仅对话来源 · 尚未建立直接论文依据。'}</p>
           )}
           <button
             className="ai-source-item"
@@ -272,10 +272,10 @@ export function CardDraftEditor({
           >
             <strong>
               <History size={14} />
-              相关对话
+              {draft.source.origin === 'excerpts' ? '所选摘录' : '相关对话'}
             </strong>
             <span>{draft.source.prompt}</span>
-            <em>查看原始问答{draft.source.selection ? '与整理片段' : ''} →</em>
+            <em>{draft.source.origin === 'excerpts' ? '查看起草时的摘录快照' : `查看原始问答${draft.source.selection ? '与整理片段' : ''}`} →</em>
           </button>
         </div>
         {!saved && (

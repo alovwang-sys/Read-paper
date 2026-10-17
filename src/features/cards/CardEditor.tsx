@@ -5,7 +5,7 @@ import { conversationAnswerSources } from '../export/exportMarkdown';
 import './cards.css';
 
 export function CardEditor({ cardId }: { cardId: string }) {
-  const { data, actions, saveStatus } = useWorkspace();
+  const { data, research, actions, saveStatus } = useWorkspace();
   const card = data.cards[cardId];
   if (!card)
     return (
@@ -85,14 +85,16 @@ export function CardEditor({ cardId }: { cardId: string }) {
             : '尚未加入研究，可从卡片库关联。'}
         </p>
       </div>
-      {source && !hasPaperSource && <p className="card-unsourced">仅对话来源{card.needsReview ? ' · 待核查' : ''}</p>}
+      {source && source.origin !== 'excerpts' && !hasPaperSource && <p className="card-unsourced">仅对话来源{card.needsReview ? ' · 待核查' : ''}</p>}
+      {!hasPaperSource && research?.cardIds.includes(cardId) && <button className="primary" onClick={() => actions.findEvidence(cardId)}>找依据</button>}
       <EvidenceList evidenceIds={card.evidenceIds} target="inspector" heading="论文依据" snapshots={source?.context} />
+      {!!card.evidenceIds.length && <details className="card-manage-sources"><summary>管理依据</summary>{card.evidenceIds.map(id => <div className="button-row" key={id}><small>{data.evidence[id]?.quote.slice(0, 70) || '区域或失效摘录'}</small><button className="text-button" aria-label={`移除依据 ${id}`} onClick={() => actions.updateData(next => { next.cards[cardId].evidenceIds = next.cards[cardId].evidenceIds.filter(e => e !== id); next.cards[cardId].needsReview = true; })}>移除依据</button></div>)}</details>}
       {!card.evidenceIds.length && !source && (
         <p className="card-unsourced">
           此卡片暂无结构化来源。核查观点时请从 PDF 原文创建证据。
         </p>
       )}
-      <section className="conversation-source" aria-label="卡片相关对话">
+      {source?.origin === 'excerpts' ? <section className="conversation-source"><h3>摘录起草来源</h3><p className="muted">以明确选择的摘录起草，核对后再标为已核查。</p><blockquote>{source.selection}</blockquote><p className="muted">{source.createdAt}{source.model ? ` · ${source.model}` : ''}</p></section> : <section className="conversation-source" aria-label="卡片相关对话">
         <h3><History size={15} />相关对话</h3>
         {source ? <>
           <strong>{source.conversationTitle || '阅读对话'}</strong>
@@ -116,7 +118,7 @@ export function CardEditor({ cardId }: { cardId: string }) {
             <History size={14} />查看相关对话
           </button>
         </> : <p className="muted">此卡片未关联对话。手工卡片与旧版卡片不会自动推断聊天来源。</p>}
-      </section>
+      </section>}
     </section>
   );
 }

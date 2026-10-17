@@ -32,7 +32,7 @@ Squash 后新提交的编号与开发分支不同是正常行为。不能仅凭�
 
 首次 CI 真正通过后，建议维护者在 GitHub 的 main ruleset 中要求 PR 和实际显示的 `Required checks` 状态，禁止 force push 与删除主分支。单维护者无需强制“另一人批准”，也无需引入长期 `develop`、`mac`、`windows` 分支。仓库保护和自动合并属于远程设置，本次没有代为启用；不要在检查尚未出现时配置错误名称锁住维护者。
 
-推荐从仓库网页 **Actions → Desktop release draft → Run workflow** 发行：分支选择 `main`，输入 `v<package.json.version>`（当前为 `v0.1.0`）。不存在的 tag 会固定到本次工作流启动时的 main SHA；已有 tag 保留原指向，可重跑旧版本。也可由获授权维护者从已合入 main 的提交手动推送版本 tag。工作流重验来源，对固定 SHA 重跑全部 CI 和三目标打包应用 E2E，成功后才汇总完整附件及 `SHA256SUMS`，建立 **Draft + Pre-release**。已发布版本不覆盖，修复使用新版本。
+推荐从仓库网页 **Actions → Desktop release draft → Run workflow** 发行：分支选择 `main`，输入 `v<package.json.version>`，以目标提交的实际版本为准。不存在的 tag 会固定到本次工作流启动时的 main SHA；已有 tag 保留原指向，可重跑旧版本。也可由获授权维护者从已合入 main 的提交手动推送版本 tag。工作流重验来源，对固定 SHA 重跑全部 CI 和三目标打包应用 E2E，成功后才汇总完整附件及 `SHA256SUMS`，建立 **Draft + Pre-release**。已发布版本不覆盖，修复使用新版本。
 
 Draft 尚不公开；Pre-release 标记只有在发布草稿后才成为公开技术预览，供用户从 Releases 下载。获授权的维护者或 agent 应先核对附件、校验和与实际验证记录，再发布；工作流不会自动公开。未签名或 Windows / Intel 安装器人工验收未完成时，可以在说明中如实列出并发布技术预览。稳定版需完成各系统安装、升级、签名与公证验收，再取消 Pre-release 标记。四层测试、网页与命令行步骤、下载及验收清单见[桌面分发说明](desktop-distribution.md)。
 
