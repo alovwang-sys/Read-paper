@@ -195,7 +195,8 @@ const agentResponder: AIResponder = async (request, options) => {
         current.nativeSessionId = event.nativeSessionId;
         if (request.purpose === 'chat') {
           const target = data.conversations[request.conversationId];
-          const previous = target.nativeSessionId === event.nativeSessionId ? target.sentContext ?? [] : [];
+          const continuesHistory = target.nativeSessionId === event.nativeSessionId || typeof event.forkedFromId === 'string' && event.forkedFromId === target.nativeSessionId;
+          const previous = continuesHistory ? target.sentContext ?? [] : [];
           target.nativeSessionId = event.nativeSessionId;
           if (typeof event.nativeSessionRef === 'string') {
             target.nativeSessionRef = event.nativeSessionRef;

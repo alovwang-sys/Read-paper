@@ -79,6 +79,30 @@ describe('研究与助手会话', () => {
     expect(data().requests[id].events).toEqual([{ kind: 'tool', id: 'tool-1', toolName: 'commandExecution', command: 'cat materials.md', status: 'done', output: '工具的实际输出', text: '读取完成' }]);
     expect(data().requests[id].body).toBe('这是原始回答。');
   });
+
+  it('写锁恢复改用副本后保留原生累计材料与旧消息来源，下一轮沿用新关联', async () => {
+    const conversation = selectAgent('research-a', 'codex');
+    workspace.addContext({ researchId: 'research-a', conversationId: conversation, evidenceIds: ['evidence-a'] });
+    const mock = vi.fn(async (_url: string, _init?: RequestInit) => done('前一轮未引用材料的回答。'));
+    vi.stubGlobal('fetch', mock);
+    const original = await submitAI('research-a', conversation, '原来的问题');
+    workspace.updateData(next => { next.conversations[conversation].contextIds = ['evidence-b']; });
+    mock.mockImplementation(async () => frames([
+      { type: 'session', nativeSessionId: 'native-fork', nativeSessionRef: 'ref-fork', forkedFromId: 'native-1' },
+      { type: 'progress', kind: 'status', id: 'session-fork', text: '原会话由 Codex 后台保留，已保留历史并在独立会话继续。原会话不受影响。' },
+      { type: 'delta', text: '继续核对本轮材料 [1]' },
+      { type: 'done', nativeSessionId: 'native-fork', nativeSessionRef: 'ref-fork', model: 'runtime-model' },
+    ]));
+    const recovered = await submitAI('research-a', conversation, '继续讨论');
+    expect(data().requests[recovered].context.map(item => item.evidenceId)).toEqual(['evidence-b']);
+    expect(data().conversations[conversation].sentContext?.map(item => item.evidenceId)).toEqual(['evidence-a', 'evidence-b']);
+    expect(data().requests[original].nativeSessionId).toBe('native-1');
+    expect(data().requests[recovered]).toMatchObject({ nativeSessionId: 'native-fork', status: 'done', events: [expect.objectContaining({ id: 'session-fork' })] });
+    expect(data().conversations[conversation]).toMatchObject({ nativeSessionId: 'native-fork', nativeSessionRef: 'ref-fork', nativeState: 'idle', nativeCanResume: true });
+    await submitAI('research-a', conversation, '下一轮');
+    expect(JSON.parse(mock.mock.calls[2][1]!.body as string).sessionRef).toBe('ref-fork');
+    expect(mock).toHaveBeenCalledTimes(3);
+  });
   it('切换复用各自对话与输入，首次只带显式材料，干净会话继承助手而无材料', () => {
     const original = workspace.getActiveConversation('research-a').id;
     workspace.addContext({ researchId: 'research-a', conversationId: original, evidenceIds: ['evidence-a'] });

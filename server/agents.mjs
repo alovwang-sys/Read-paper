@@ -131,7 +131,8 @@ const runtimeMessages = {
   'invalid_access': '所选 Codex 访问权限无效，请重新选择。',
   'capability_unavailable': '当前 Codex 版本或配置不提供所选能力，请重新读取能力或升级后重试。',
   'stopped': '生成已停止。',
-  'session_busy': '此原生会话正在其他客户端使用，请在原生端结束占用后再继续。',
+  'session_busy': '此会话暂时被原生后台占用，本次问题未发送。输入已保留，请稍后重试。',
+  'session_recovery_failed': '暂时无法恢复这条对话，本次问题未发送。原对话、历史和输入已保留，请重试或重新连接 Codex。',
   'stop_unconfirmed': '本轮停止尚未得到原生服务确认，请在原生应用核对记录；输入已保留，请勿直接重复发送。',
 };
 const requestKey = (body) => hash(JSON.stringify(identityKeys.map((key) => body[key])));
@@ -327,17 +328,21 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       }
       if (project) await projects.archiveRequest(project, body);
       const persist = (value, selectedModel) => {
-        nativeSessionId = value;
         if (typeof selectedModel === 'string' && selectedModel.length <= 200) nativeModel = selectedModel;
-        if (body.purpose !== 'chat') return Promise.resolve();
+        if (body.purpose !== 'chat') { nativeSessionId = value; return Promise.resolve(); }
+        const candidate = `${body.agentId}:${value}`;
+        if (nativeLock !== candidate) {
+          if (nativeBusy.has(candidate) && nativeBusy.get(candidate) !== request) return Promise.reject(failure(409, 'session_busy', '此原生会话已在其他窗口生成。'));
+          nativeBusy.set(candidate, request);
+          unlockNative(); nativeLock = candidate;
+        }
+        nativeSessionId = value;
+        const modelToSave = nativeModel;
         mappingWrites = mappingWrites.then(async () => {
-          if (project) sessionRef = await projects.remember(project, body.agentId, value, 'read-paper');
-          if (!nativeLock) {
-            const candidate = `${body.agentId}:${value}`;
-            if (nativeBusy.has(candidate) && nativeBusy.get(candidate) !== request) throw failure(409, 'session_busy', '此原生会话已在其他窗口生成。');
-            nativeLock = candidate; nativeBusy.set(nativeLock, request);
-          }
-          await saveMapping(key, { version: 1, nativeSessionId, ...(body.bindingId ? { bindingId: body.bindingId, sessionRef } : {}), ...(nativeModel ? { model: nativeModel } : {}), scope: { ...scope, history: [...scope.history, body.requestId] }, updatedAt: new Date().toISOString() });
+          const savedRef = project ? await projects.remember(project, body.agentId, value, 'read-paper') : undefined;
+          sessionRef = savedRef;
+          await saveMapping(key, { version: 1, nativeSessionId: value, ...(body.bindingId ? { bindingId: body.bindingId, sessionRef: savedRef } : {}), ...(modelToSave ? { model: modelToSave } : {}), scope: { ...scope, history: [...scope.history, body.requestId] }, updatedAt: new Date().toISOString() });
+          return savedRef;
         });
         return mappingWrites;
       };
@@ -362,7 +367,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
         } } : {}),
         onEvent(event) {
           if (controller.signal.aborted) return;
-          if (event.type === 'session' && typeof event.nativeSessionId === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(event.nativeSessionId)) persist(event.nativeSessionId, event.model).then(() => send({ ...event, ...(sessionRef ? { nativeSessionRef: sessionRef } : {}) })).catch(() => controller.abort());
+          if (event.type === 'session' && typeof event.nativeSessionId === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(event.nativeSessionId)) persist(event.nativeSessionId, event.model).then(savedRef => send({ ...event, ...(savedRef ? { nativeSessionRef: savedRef } : {}) })).catch(() => controller.abort());
           else if (event.type === 'delta' && typeof event.text === 'string') send({ type: 'delta', text: event.text }).catch(() => controller.abort());
           else if (event.type === 'progress') {
             const progress = sanitizeAgentProgress(event, env);

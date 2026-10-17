@@ -115,6 +115,43 @@ test('two local conversation IDs cannot run the same native project session conc
   assert.equal(after.at(-1).type, 'done'); assert.equal(started, 2);
 });
 
+test('fork recovery protects the new native writer, releases the original and persists the new ref across restart', async t => {
+  let release;
+  const starts = [];
+  const f = await fixture(t, { codex: {
+    async listSessions() { return { sessions: [native('original-native')] }; },
+    async run(input) {
+      starts.push(input.nativeSessionId);
+      const id = starts.length === 1 ? 'fork-native' : input.nativeSessionId;
+      input.onEvent({ type: 'session', nativeSessionId: id, ...(starts.length === 1 ? { forkedFromId: input.nativeSessionId } : {}) });
+      if (starts.length === 1) await new Promise((resolve, reject) => {
+        release = resolve;
+        input.signal.addEventListener('abort', () => reject(Object.assign(new Error('stopped'), { code: 'stopped' })), { once: true });
+      });
+      return { body: 'Finished', nativeSessionId: id };
+    },
+  } });
+  const project = await f.bind('a');
+  const listed = await (await f.post('projects/list', identity('a'))).json();
+  const originalRef = listed.sessions[0].id;
+  const first = await runningStream(await f.post('run', body('a', project.id, { sessionRef: originalRef })));
+  try {
+    assert.notEqual(first.sessionRef, originalRef);
+    const duplicate = await finish(await f.post('run', body('a', project.id, { requestId: 'same-fork', conversationId: 'second-conversation', sessionRef: first.sessionRef })));
+    assert.equal(duplicate.at(-1).code, 'session_busy');
+    assert.deepEqual(starts, ['original-native']);
+    const original = await finish(await f.post('run', body('a', project.id, { requestId: 'use-original', conversationId: 'other-conversation', sessionRef: originalRef })));
+    assert.equal(original.at(-1).type, 'done');
+    assert.deepEqual(starts, ['original-native', 'original-native']);
+  } finally { release(); await first.finish(); }
+  f.restart();
+  const history = [{ requestId: 'request-1', prompt: 'Earlier question', body: 'Finished', evidenceIds: [], context: [] }];
+  const after = await finish(await f.post('run', body('a', project.id, { requestId: 'after-restart', history })));
+  assert.equal(after.at(-1).type, 'done');
+  assert.equal(after.at(-1).nativeSessionRef, first.sessionRef);
+  assert.equal(starts.at(-1), 'fork-native');
+});
+
 test('unconfirmed OpenCode stop reaches HTTP clients and persists a read-only native session after restart', async t => {
   let starts = 0;
   const f = await fixture(t, { opencode: {

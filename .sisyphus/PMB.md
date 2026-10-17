@@ -1,5 +1,7 @@
 # 本地故障经验
 
+- 2026-10-17 | native-session-recovery | root_cause=session_ownership | 后台持有 writer 不等于用户打开会话；仅在 turn/start 前的精确占用拒绝允许保留历史 fork 一次，随后原子迁移 ID 保护与引用。结果未知禁止自动重发，复制 goal 必须延迟继续。证据：[事件记录](incidents/2026-10-17-native-session-recovery/record.md)。
+
 - 2026-10-17 | windows-research-directory | root_cause=test_environment | 隔离 HOME / USERPROFILE 的桌面测试需同时提供真实 Documents 并用 app.setPath 明确配置；保留原生 IPC 与全部业务断言。macOS arm64 目标测试 2/2 通过，Windows 新 head CI 待主 agent 复核；原 artifact 缺少 IPC 错误文本。证据：[事件记录](incidents/2026-10-17-windows-research-directory/record.md)。
 
 - 2026-10-17 | desktop-package-input-type | root_cause=process_invocation | `node --input-type=module` 会经 `fork()` 传给文件入口子进程，导致 Forge rebuilder 启动前报 ERR_INPUT_TYPE_NOT_ALLOWED；改用普通 Node 动态 import 后真实 macOS arm64 打包 exit 0。未改依赖或放宽安装策略。证据：[事件记录](incidents/2026-10-17-desktop-package-input-type/record.md)。
