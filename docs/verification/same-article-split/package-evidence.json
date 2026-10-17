@@ -1,0 +1,59 @@
+{
+  "checkedAt": "2026-10-17T18:15:14.885Z",
+  "version": "0.1.2",
+  "architecture": "arm64",
+  "comparisonBasis": "Current worktree files on disk, including uncommitted changes; no HEAD comparison.",
+  "runtime": {
+    "fileCount": 104,
+    "fileCountsByArea": {
+      "desktop": 14,
+      "server": 10,
+      "dist": 80
+    },
+    "byteForByteMatch": true,
+    "mismatches": [],
+    "sourceTreeSha256": "df7735ff1b6446da0a9e95d541e03f9ab1afc2359190492b6a249fbd3763397b",
+    "archiveTreeSha256": "df7735ff1b6446da0a9e95d541e03f9ab1afc2359190492b6a249fbd3763397b",
+    "treeHashFormat": "Sorted runtime path UTF-8, NUL, file bytes, NUL; SHA-256 over concatenation.",
+    "requiredFiles": {
+      "desktop/window-shortcuts.mjs": {
+        "present": true,
+        "sha256": "2916768ea739b57210a64c3c9d639ce6d61ee7acbd135a70a16cc90f2f57108e"
+      },
+      "desktop/main.mjs": {
+        "present": true,
+        "sha256": "ecf8663c53f36750776cb6dd76ad72ecc2bcbc33c73cd4e4cbc66187ec1db445"
+      },
+      "desktop/preload.cjs": {
+        "present": true,
+        "sha256": "d8a0ac4a66866329044243019e6186d9a04283b84cc1f590b8b71928e8ec6852"
+      },
+      "server/images.mjs": {
+        "present": true,
+        "sha256": "a493f794e330d88f5cf4304fcf5a9f84e91b2fa64dbb19736284cf9e0280f64c"
+      },
+      "desktop/dictation.mjs": {
+        "present": true,
+        "sha256": "952b80e4fcb2d7fd36afa92075ff24acc5efabf584cc7081be956a688359773a"
+      }
+    },
+    "testOrEnvEntries": []
+  },
+  "asar": {
+    "path": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar",
+    "sizeBytes": 108198121,
+    "sha256": "4f6390e906aff6e8edba64cdddf580e29b04b020bd850c5d381f6584f94d1fb6",
+    "mountedDmgSha256": "4f6390e906aff6e8edba64cdddf580e29b04b020bd850c5d381f6584f94d1fb6",
+    "mountedDmgMatches": true
+  },
+  "dmg": {
+    "path": "out/make/dmg/arm64/Papertrail-0.1.2-macos-arm64.dmg",
+    "sizeBytes": 157991916,
+    "sha256": "44088d39efd8b2d773c98dda3c673bbd65761d80d8125f95dfea6ba5c186f73b",
+    "modifiedAt": "2026-10-17T18:14:13.004Z",
+    "hdiutilVerify": "VALID",
+    "mountMode": "readonly",
+    "temporaryMountDetached": true
+  },
+  "conclusion": "PASS: current desktop/server/dist runtime files match the arm64 application and the verified DMG; the window shortcuts module is included; test and .env files are absent."
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type DragEvent, type KeyboardEvent } from 'react';
-import { BookOpen, FileText, Layers, MoreHorizontal, Network, Pin, X } from 'lucide-react';
+import { BookOpen, FileText, Layers, Network, PanelsTopLeft, Pin, X } from 'lucide-react';
 import type { PaneNode, ResourceRef } from '../domain/types';
 import './pane-tabs.css';
 
@@ -55,6 +55,6 @@ export function PaneTabs({ group, number, title, pinnedIds, menuOpen, onActivate
       {dropIndex === group.tabs.length && <span className="pane-tab-end-drop" aria-hidden="true" />}
       {!group.tabs.length && <span className="pane-tabs-empty">空窗格</span>}
     </div>
-    <button className={`pane-menu-trigger ${menuOpen ? 'is-active' : ''}`} aria-label={`窗格 ${number} 操作`} aria-haspopup="menu" aria-expanded={menuOpen} data-pane-menu-trigger={group.id} title="窗格操作" onClick={() => onMenu()}><MoreHorizontal size={17} /></button>
+    <button className={`pane-menu-trigger ${menuOpen ? 'is-active' : ''}`} aria-label={`窗格 ${number} 操作`} aria-haspopup="menu" aria-expanded={menuOpen} data-pane-menu-trigger={group.id} title="分屏与窗格操作" onClick={() => onMenu()}><PanelsTopLeft size={14} /><span>分屏</span></button>
   </div>;
 }

@@ -91,7 +91,7 @@ export async function openCard(page: Page, title: string) {
   await expect(focusedPane(page).getByLabel('卡片标题')).toHaveValue(title);
 }
 
-export async function dragView(page: Page, tabId: string, target: Locator, side: 'left' | 'right' | 'up' | 'down' | 'center', copy = false, beforeDrop?: () => Promise<void>) {
+export async function dragView(page: Page, tabId: string, target: Locator, side: 'left' | 'right' | 'up' | 'down' | 'center', copy = false, beforeDrop?: () => Promise<void>, expectedPreview = copy ? '复制' : '移动') {
   const tab = main(page).getByRole('tab').and(main(page).locator(`[data-tab-id="${tabId}"]`));
   await tab.scrollIntoViewIfNeeded();
   const from = (await tab.boundingBox())!;
@@ -110,7 +110,7 @@ export async function dragView(page: Page, tabId: string, target: Locator, side:
     await page.mouse.move(point.x, point.y);
     const preview = target.locator(`.pane-drop-preview[data-drop-side="${side}"]`);
     await expect(preview).toBeVisible();
-    await expect(preview).toContainText(copy ? '复制' : '移动');
+    await expect(preview).toContainText(expectedPreview);
     await beforeDrop?.();
     await expect(preview).toBeVisible();
     await page.mouse.up();

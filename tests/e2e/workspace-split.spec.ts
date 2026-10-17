@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
+import { createSeed } from '../../src/data/seed';
 import type { WorkspaceLayout } from '../../src/domain/types';
 import { openResearchPage, openSource, switchResearch } from './knowledge-helpers';
 import { dragView, goTo, groups, layout, main, openCard, pane, paneAction, paneById, panes, panel, saved, split, start, state, waitForPdf } from './workspace-split-helpers';
@@ -23,6 +25,72 @@ function expectRestored(actual: WorkspaceLayout, expected: WorkspaceLayout) {
   expect(comparable).toEqual(expected);
 }
 
+test('仅一个论文标签无Alt拖向自身右边缘复制同篇，保留页内位置且两窗独立恢复', async ({ page }) => {
+  const seed = createSeed();
+  seed.documents['paper-a'].hash = createHash('sha256').update(await readFile('public/samples/adaptive-retrieval.pdf')).digest('hex');
+  await start(page, seed);
+  const initial = groups((await layout(page)).root);
+  expect(initial).toHaveLength(1);
+  expect(initial[0].tabs).toHaveLength(1);
+  const first = paneById(page, initial[0].id), originalView = initial[0].tabs[0];
+  expect(originalView.ref).toEqual({ kind: 'document', id: 'paper-a' });
+  const originalData = await state(page);
+  await goTo(first, 2);
+  await first.getByRole('button', { name: '放大 PDF', exact: true }).click();
+  await expect(first.locator('.pdf-zoom')).toContainText('125%');
+  await first.locator('.pdf-scroll').evaluate(async node => {
+    const sheet = node.querySelector<HTMLElement>('.pdf-sheet[data-page-index="1"]')!;
+    node.scrollTop += Math.round(sheet.getBoundingClientRect().height * .18);
+    await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+  });
+  await expect.poll(async () => groups((await layout(page)).root)[0].tabs[0].reading?.offset ?? 0).toBeGreaterThan(.1);
+  const before = groups((await layout(page)).root)[0].tabs[0].reading!;
+  expect(before).toMatchObject({ pageIndex: 1, scale: 1.25 });
+  await page.evaluate(() => window.addEventListener('drop', event => {
+    const drag = event as DragEvent;
+    (window as unknown as { nativePaneDrop: { alt: boolean; trusted: boolean } }).nativePaneDrop = { alt: drag.altKey, trusted: drag.isTrusted };
+  }, true));
+  await dragView(page, originalView.id, first, 'right', false, async () => {
+    await mkdir('docs/verification/same-article-split', { recursive: true });
+    await page.screenshot({ path: 'docs/verification/same-article-split/native-copy-preview-1440.png' });
+  }, '复制');
+  await expect(panes(page)).toHaveCount(2);
+  expect(await page.evaluate(() => (window as unknown as { nativePaneDrop: unknown }).nativePaneDrop)).toEqual({ alt: false, trusted: true });
+  const duplicated = groups((await layout(page)).root);
+  const views = duplicated.flatMap(group => group.tabs);
+  expect(views).toHaveLength(2);
+  expect(new Set(views.map(tab => tab.id)).size).toBe(2);
+  expect(views.map(tab => tab.ref)).toEqual([originalView.ref, originalView.ref]);
+  expect(views[0].id).toBe(originalView.id);
+  for (const view of views) {
+    expect(view.reading).toMatchObject({ pageIndex: 1, scale: 1.25 });
+    expect(Math.abs((view.reading!.offset ?? 0) - before.offset!)).toBeLessThanOrEqual(.002);
+  }
+  const second = paneById(page, duplicated[1].id);
+  for (const target of [first, second]) {
+    await waitForPdf(target);
+    await expect(target.getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
+    await expect(target.locator('.pdf-zoom')).toContainText('125%');
+  }
+  await saved(page);
+  await page.screenshot({ path: 'docs/verification/same-article-split/same-article-drag-1440.png' });
+  await goTo(first, 1); await goTo(second, 3);
+  await second.getByRole('button', { name: '放大 PDF', exact: true }).click();
+  await expect(first.getByLabel('PDF 页码', { exact: true })).toHaveValue('1');
+  await expect(first.locator('.pdf-zoom')).toContainText('125%');
+  await expect(second.locator('.pdf-zoom')).toContainText('150%');
+  await saved(page); await page.reload();
+  await expect(first.getByLabel('PDF 页码', { exact: true })).toHaveValue('1');
+  await expect(second.getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
+  await expect(first.locator('.pdf-zoom')).toContainText('125%');
+  await expect(second.locator('.pdf-zoom')).toContainText('150%');
+  expect(groups((await layout(page)).root).flatMap(group => group.tabs).map(tab => tab.id)).toEqual(views.map(tab => tab.id));
+  const restored = await state(page);
+  expect(Object.keys(restored.documents).sort()).toEqual(Object.keys(originalData.documents).sort());
+  expect(restored.documents['paper-a'].hash).toMatch(/^[a-f0-9]{64}$/);
+  expect(restored.documents['paper-a']).toMatchObject({ assetId: originalData.documents['paper-a'].assetId, hash: originalData.documents['paper-a'].hash });
+});
+
 test('窗格可递归分成三到六个不均匀区域，分隔条键盘/指针调整并放大还原', async ({ page }) => {
   await start(page);
   const originalId = await pane(page, 1).getAttribute('data-pane-id');
@@ -44,8 +112,8 @@ test('窗格可递归分成三到六个不均匀区域，分隔条键盘/指针�
   await expect(lastAction).toBeFocused();
   const menuBox = (await menu.boundingBox())!, lastBox = (await lastAction.boundingBox())!;
   expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(menuBox.y + menuBox.height + 1);
-  await mkdir('docs/verification/workspace-panes', { recursive: true });
-  await page.screenshot({ path: 'docs/verification/workspace-panes/six-panes-menu.png' });
+  await mkdir('docs/verification/same-article-split', { recursive: true });
+  await page.screenshot({ path: 'docs/verification/same-article-split/six-panes-menu.png' });
   await lastAction.press('Escape');
   const areas = await panes(page).evaluateAll(nodes => nodes.map(node => { const box = node.getBoundingClientRect(); return box.width * box.height; }));
   expect(Math.max(...areas)).toBeGreaterThan(Math.min(...areas) * 1.5);
@@ -201,8 +269,12 @@ test('多窗格与聚焦状态按研究隔离，刷新后恢复原布局和每�
 for (const width of [1440, 1280, 1024]) test(`三窗格布局在 ${width}px 保持结构，放大后可恢复且右侧AI可用`, async ({ page }) => {
   await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
   await start(page);
+  await expect(pane(page, 1).getByRole('button', { name: '窗格 1 操作', exact: true }).getByText('分屏', { exact: true })).toBeVisible();
   const firstId = await pane(page, 1).getAttribute('data-pane-id');
   const right = await split(page, pane(page, 1), '右');
+  const copiedViews = groups((await layout(page)).root).flatMap(group => group.tabs);
+  expect(copiedViews.map(tab => tab.ref)).toEqual([{ kind: 'document', id: 'paper-a' }, { kind: 'document', id: 'paper-a' }]);
+  expect(new Set(copiedViews.map(tab => tab.id)).size).toBe(2);
   await openCard(page, cardA);
   const below = await split(page, right, '下');
   await openResearchPage(page, draftA);
@@ -216,8 +288,8 @@ for (const width of [1440, 1280, 1024]) test(`三窗格布局在 ${width}px 保�
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   await expect(panel(page).getByLabel('向 AI 提问')).toBeVisible();
   await saved(page); await page.evaluate(() => document.fonts.ready);
-  await mkdir('docs/verification/workspace-panes', { recursive: true });
-  await page.screenshot({ path: `docs/verification/workspace-panes/three-panes-${width}.png` });
+  await mkdir('docs/verification/same-article-split', { recursive: true });
+  await page.screenshot({ path: `docs/verification/same-article-split/three-panes-${width}.png` });
   await paneAction(page, below, '放大当前窗格');
   await expect(below.getByLabel('结论正文')).toHaveValue('窄屏保留多窗格，通过放大查看当前内容。');
   await expect(paneById(page, firstId!)).toBeHidden();

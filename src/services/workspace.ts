@@ -811,13 +811,13 @@ export const workspace = {
       const session = data.sessions[scopeKey(data.scope)], layout = ensurePaneLayout(session);
       const source = findPaneTab(layout, tabId), destination = paneGroups(layout.root).find(pane => pane.id === paneId);
       if (!source || !destination || !['center', 'left', 'right', 'up', 'down'].includes(side)) return;
-      if (!copy && source.pane === destination && side !== 'center' && source.pane.tabs.length === 1) return;
+      const copying = copy || source.pane === destination && side !== 'center' && source.pane.tabs.length === 1;
       const oldIndex = source.pane.tabs.indexOf(source.tab);
-      const tab = copy ? { ...structuredClone(source.tab), id: uid('view') } : source.tab;
-      if (!copy) { source.pane.tabs.splice(oldIndex, 1); if (source.pane.activeTabId === tabId) source.pane.activeTabId = source.pane.tabs[Math.min(oldIndex, source.pane.tabs.length - 1)]?.id; }
+      const tab = copying ? { ...structuredClone(source.tab), id: uid('view') } : source.tab;
+      if (!copying) { source.pane.tabs.splice(oldIndex, 1); if (source.pane.activeTabId === tabId) source.pane.activeTabId = source.pane.tabs[Math.min(oldIndex, source.pane.tabs.length - 1)]?.id; }
       if (side === 'center') {
         const raw = Number.isInteger(index) ? index! : destination.tabs.length;
-        const at = source.pane === destination && !copy && index !== undefined && oldIndex < raw ? raw - 1 : raw;
+        const at = source.pane === destination && !copying && index !== undefined && oldIndex < raw ? raw - 1 : raw;
         destination.tabs.splice(Math.max(0, Math.min(destination.tabs.length, at)), 0, tab);
         destination.activeTabId = tab.id; layout.focusedPaneId = destination.id;
         if (layout.zoomedPaneId) layout.zoomedPaneId = destination.id;

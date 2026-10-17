@@ -7,7 +7,7 @@ import { createSeed } from '../../src/data/seed';
 import type { ContextSnapshot, WorkspaceData } from '../../src/domain/types';
 import { fixtureSessionRef, mockProjectService } from '../e2e/project-fixture';
 import { openSource } from '../e2e/knowledge-helpers';
-import { groups, paneAction, paneById, split } from '../e2e/workspace-split-helpers';
+import { dragView, groups, paneAction, paneById, split } from '../e2e/workspace-split-helpers';
 
 const packageRoot = resolve(`out/Papertrail-${process.platform}-${process.arch}`);
 const executablePath = process.env.PAPERTRAIL_EXECUTABLE || (process.platform === 'darwin'
@@ -70,7 +70,7 @@ async function viewportPosition(pane: Locator) {
 }
 
 // PDF rendering, cropping, IndexedDB and shutdown are real; only the native service uses fixtures.
-test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退出重启后保留', async () => {
+test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区域图片在正常退出重启后保留', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'papertrail-desktop-reader-images-'));
   const userData = join(directory, 'app-data'), home = join(directory, 'isolated-home');
   await Promise.all([mkdir(userData), mkdir(home)]);
@@ -115,7 +115,22 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
     await expect.poll(() => scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(pageStep);
     const beforeSplit = await scroller.evaluate(node => node.scrollTop);
-    await paneAction(page, primary(page), '向下分屏');
+    const initialGroups = groups((await state(page)).sessions['research-a'].layout!.root);
+    expect(initialGroups).toHaveLength(1); expect(initialGroups[0].tabs).toHaveLength(1);
+    const originalView = initialGroups[0].tabs[0];
+    expect(originalView.ref).toEqual({ kind: 'document', id: 'paper-a' });
+    await expect(primary(page).getByRole('tab')).toHaveCount(1);
+    await expect(primary(page).getByRole('button', { name: '窗格 1 操作', exact: true })).toContainText('分屏');
+    await page.evaluate(() => window.addEventListener('drop', event => {
+      const drag = event as DragEvent;
+      (window as unknown as { nativePaneDrop: { alt: boolean; trusted: boolean } }).nativePaneDrop = { alt: drag.altKey, trusted: drag.isTrusted };
+    }, true));
+    await dragView(page, originalView.id, primary(page), 'down', false, async () => {
+      await mkdir('docs/verification/same-article-split', { recursive: true });
+      await page.screenshot({ path: 'docs/verification/same-article-split/desktop-copy-preview.png' });
+    }, '复制');
+    const nativeDrop = await page.evaluate(() => (window as unknown as { nativePaneDrop: { alt: boolean; trusted: boolean } }).nativePaneDrop);
+    expect(nativeDrop).toEqual({ alt: false, trusted: true });
     await expect(secondary(page)).toBeVisible();
     await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
     await expect.poll(() => scroller.evaluate((node, savedTop) => Math.abs(node.scrollTop - savedTop), beforeSplit)).toBeLessThanOrEqual(2);
@@ -222,6 +237,7 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     await writeFile('docs/verification/reader-images/desktop-reader-images.json', JSON.stringify({
       executablePath, protocol: 'papertrail://app/', mockNativeRequests: runs.length, actualModelCalls: 0, recordingStarted: false,
       continuousScrollReachedPage: 2, paneLayoutRetainedAfterRestart: true,
+      soleTabEdgeDrag: { direction: 'down', ...nativeDrop, copyPreview: true },
       anchoredViewCloneAndMoveRetainOffset: true, sourceHighlightRetainedAfterCloneAndMove: true,
       readersAfterRestart: restoredViews.map(tab => ({ viewId: tab.id, documentId: tab.ref.id, reading: tab.reading })),
       model: run.codex.model, evidencePageIndex: run.context[0].pageIndex, imageBytes: bytes.length, imageHash,

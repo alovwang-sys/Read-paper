@@ -107,8 +107,10 @@ export function WorkspaceSplit({ renderResource }: {
     const edges: [Side, number][] = [['left', x], ['right', 1 - x], ['up', y], ['down', 1 - y]];
     edges.sort((a, b) => a[1] - b[1]);
     const side = edges[0][1] < .23 ? edges[0][0] : 'center';
-    event.dataTransfer.dropEffect = event.altKey ? 'copy' : 'move';
-    setPreview({ paneId, side, copy: event.altKey });
+    const source = groups.find(group => group.tabs.some(tab => tab.id === draggedTab?.id));
+    const copy = event.altKey || side !== 'center' && source?.id === paneId && source.tabs.length === 1;
+    event.dataTransfer.dropEffect = copy ? 'copy' : 'move';
+    setPreview({ paneId, side, copy });
   }
   function openMenu(paneId: string, tabId?: string) {
     if (tabId) actions.activatePane(paneId, tabId);

@@ -19,6 +19,20 @@ const layout = () => workspace.getSession().layout!;
 const groups = () => paneGroups(layout().root);
 
 describe('窗格与独立阅读视图', () => {
+  it('唯一标签直接拖到自身边缘时复制同篇视图，原位置保留', () => {
+    const first = groups()[0], original = first.tabs[0];
+    expect(first.tabs).toHaveLength(1);
+    workspace.setReader('paper-a', { pageIndex: 1, scale: 1.25, offset: .34 }, `view:${original.id}`);
+    workspace.movePaneTab(original.id, first.id, 'right');
+    expect(groups()).toHaveLength(2);
+    const views = groups().flatMap(pane => pane.tabs);
+    expect(views).toHaveLength(2);
+    expect(views[0].id).toBe(original.id);
+    expect(views[1].id).not.toBe(original.id);
+    expect(views.every(tab => tab.ref.id === 'paper-a' && tab.reading?.pageIndex === 1 && tab.reading.offset === .34)).toBe(true);
+    workspace.setReader('paper-a', { pageIndex: 2, scale: .75, offset: .2 }, `view:${views[1].id}`);
+    expect(getReaderPosition(workspace.getSession(), 'paper-a', `view:${original.id}`)).toEqual({ pageIndex: 1, scale: 1.25, offset: .34 });
+  });
   it('任意窗格可继续拆分，复制视图保留位置且不复制文献', () => {
     const first = groups()[0], tab = first.tabs.find(tab => tab.id === first.activeTabId)!;
     workspace.setReader('paper-a', { pageIndex: 1, scale: 1.25, offset: 0.4 }, `view:${tab.id}`);

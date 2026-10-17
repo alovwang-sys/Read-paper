@@ -13,7 +13,7 @@
 .pane-tab-pin { color: #71947c; }
 .pane-tab-close { display: grid; place-items: center; flex: 0 0 23px; align-self: center; width: 23px; height: 25px; margin: 0 2px 0 0; color: #92a094; border-radius: 4px; }
 .pane-tab-close:hover { background: #e6ece7; color: #456553; }
-.pane-menu-trigger { display: grid; place-items: center; flex: 0 0 31px; align-self: center; height: 29px; margin: 0 3px; border-radius: 4px; color: #84988a; }
+.pane-menu-trigger { display: flex; align-items: center; justify-content: center; gap: 4px; flex: 0 0 auto; align-self: center; height: 29px; padding: 0 7px; margin: 0 3px; border-radius: 4px; color: #84988a; font-size: 11px; white-space: nowrap; }
 .pane-menu-trigger:hover, .pane-menu-trigger.is-active { color: #42684f; background: #e3ece3; }
 .pane-tab.has-drop-before::before { content: ''; position: absolute; left: -1px; top: 3px; bottom: 2px; z-index: 2; width: 3px; border-radius: 2px; background: #4b9479; pointer-events: none; }
 .pane-tab-end-drop { align-self: stretch; flex: 0 0 3px; background: #4b9479; margin: 3px 0; }
