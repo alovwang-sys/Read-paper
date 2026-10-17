@@ -1,4 +1,5 @@
-import type { WorkspaceData } from '../domain/types';
+import { hasFullText } from '../domain/knowledge';
+import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
@@ -6,7 +7,7 @@ const strings = (value: unknown): value is string[] => Array.isArray(value) && v
 const connectionIds = ['model', 'demo', 'codex', 'claude', 'opencode'];
 
 export function migrateWorkspace(value: unknown): WorkspaceData {
-  if (!record(value) || ![1, 2].includes(value.schemaVersion as number))
+  if (!record(value) || ![1, 2, 3].includes(value.schemaVersion as number))
     throw new Error('存储版本不受支持，未覆盖现有数据。');
   const data = structuredClone(value) as unknown as WorkspaceData;
   const legacy = value.schemaVersion === 1;
@@ -31,8 +32,12 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (research.directory !== undefined && (!record(research.directory) || ['id', 'projectId', 'path'].some(key => typeof research.directory?.[key as keyof typeof research.directory] !== 'string' || !research.directory[key as keyof typeof research.directory]))) throw new Error('研究目录关联损坏，未覆盖现有数据。');
   for (const research of Object.values(data.researches))
     if (research.directory?.name !== undefined && (typeof research.directory.name !== 'string' || !research.directory.name)) throw new Error('研究目录名称损坏，未覆盖现有数据。');
-  for (const doc of Object.values(data.documents))
-    if (typeof doc.assetId !== 'string' || typeof doc.hash !== 'string' || typeof doc.filename !== 'string' || !Number.isInteger(doc.pageCount) || doc.pageCount < 1) throw new Error('论文来源损坏，未覆盖现有数据。');
+  for (const doc of Object.values(data.documents)) {
+    const fields = [doc.assetId, doc.hash, doc.filename, doc.pageCount];
+    if (fields.some(field => field !== undefined) && !hasFullText(doc) || value.schemaVersion !== 3 && !hasFullText(doc)) throw new Error('论文来源损坏，未覆盖现有数据。');
+    if (!['unread', 'reading', 'skimmed', 'read'].includes(doc.readingStatus)) throw new Error('阅读状态损坏。');
+    if (doc.identifiers !== undefined && (!record(doc.identifiers) || Object.entries(doc.identifiers).some(([key, value]) => !['doi', 'arxiv', 'url'].includes(key) || typeof value !== 'string'))) throw new Error('资料标识损坏。');
+  }
   for (const item of [...Object.values(data.cards), ...Object.values(data.drafts)])
     if (typeof item.body !== 'string' || !strings(item.evidenceIds)) throw new Error('正文或引用损坏，未覆盖现有数据。');
   for (const evidence of Object.values(data.evidence))
@@ -91,6 +96,44 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       session.activeConversationId = conversation?.id;
     }
   }
-  data.schemaVersion = 2;
+  if (value.schemaVersion !== 3) {
+    for (const evidence of Object.values(data.evidence)) {
+      const owners = new Set<string>();
+      for (const card of Object.values(data.cards)) if (card.evidenceIds.includes(evidence.id))
+        for (const research of Object.values(data.researches)) if (research.cardIds.includes(card.id)) owners.add(research.id);
+      for (const item of [...Object.values(data.drafts), ...Object.values(data.conversations)])
+        if (('evidenceIds' in item ? item.evidenceIds : item.contextIds).includes(evidence.id)) owners.add(item.researchId);
+      for (const request of Object.values(data.requests)) if (request.context.some(context => context.evidenceId === evidence.id)) owners.add(request.researchId);
+      if (owners.size === 1) evidence.researchId = [...owners][0];
+    }
+    for (const draft of Object.values(data.drafts)) draft.cardRefs ??= [...new Set((draft.cardSources ?? []).map(source => source.cardId))].map(cardId => ({ cardId, insertedAt: new Date(0).toISOString() }));
+    for (const [key, session] of Object.entries(data.sessions)) {
+      if (session.active.kind === 'collection' && (session.active.id as string) === 'inbox') session.libraryFilter = 'unassigned';
+      const convert = (ref: Session['active']): Session['active'] => {
+        if (ref.kind === 'research') return key === 'library' ? { kind: 'collection', id: 'documents' } : { kind: 'researchView', id: 'home' };
+        if (ref.kind === 'collection') {
+          return { kind: 'collection', id: ref.id === 'cards' ? 'cards' : 'documents' };
+        }
+        return ref;
+      };
+      session.active = convert(session.active);
+      session.history = session.history.map(convert);
+      session.openItems = session.openItems.filter(ref => ref.kind !== 'research');
+      session.researchView ??= 'home';
+      if (key !== 'library' && session.active.kind === 'collection') session.active = { kind: 'researchView', id: 'sources' };
+      if (session.active.kind === 'researchView') session.researchView = session.active.id;
+      const mode = session.panel.mode as string;
+      session.panel.mode = mode === 'ai' ? 'ai' : mode === 'references' ? 'cards' : 'excerpts';
+    }
+  }
+  const views: ResearchViewId[] = ['home', 'sources', 'excerpts', 'cards', 'boards', 'drafts'];
+  for (const session of Object.values(data.sessions)) {
+    if (session.active.kind === 'researchView' && !views.includes(session.active.id) || session.researchView !== undefined && !views.includes(session.researchView) || !['excerpts', 'cards', 'ai'].includes(session.panel.mode)) throw new Error('工作区页面或面板模式损坏。');
+  }
+  for (const evidence of Object.values(data.evidence)) {
+    if (evidence.researchId !== undefined && !data.researches[evidence.researchId] || evidence.note !== undefined && typeof evidence.note !== 'string' || evidence.dismissed !== undefined && typeof evidence.dismissed !== 'boolean') throw new Error('摘录信息损坏。');
+  }
+  for (const draft of Object.values(data.drafts)) if (draft.cardRefs !== undefined && (!Array.isArray(draft.cardRefs) || draft.cardRefs.some(ref => !record(ref) || typeof ref.cardId !== 'string' || typeof ref.insertedAt !== 'string' || ref.evidenceIds !== undefined && !strings(ref.evidenceIds)))) throw new Error('文稿卡片记录损坏。');
+  data.schemaVersion = 3;
   return data;
 }

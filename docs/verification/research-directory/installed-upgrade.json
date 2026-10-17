@@ -1,0 +1,13 @@
+{
+  "version": "0.1.2",
+  "bundleId": "io.github.alovwang-sys.papertrail",
+  "platform": "macOS arm64",
+  "appAsarSha256": "e52aeac375b6d2c8519303f3594ae769c560fc06bc76a1bdaa8aab05ac8dc73a",
+  "dmgSha256": "7418d55b742541886bab7eaecc69729e069946de16b51fbc1710759d6702ea2e",
+  "installedAppMatchesInstaller": true,
+  "originalUserDataKept": true,
+  "backedUpFiles": 69,
+  "oldVersionRecoverableInTrash": true,
+  "originalResearchVerifiedInUI": "learn-english",
+  "nativeSessionStoresMoved": false
+}

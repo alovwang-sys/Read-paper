@@ -39,12 +39,16 @@ vi.mock('../../src/services/workspace', () => ({
 }));
 import {
   checkPdfBytes,
+  attachPdf,
   importPdf,
+  importPdfFiles,
+  loadPdfDocument,
   MAX_PDF_BYTES,
 } from '../../src/services/pdf';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.putAsset.mockResolvedValue(undefined);
   mocks.data.documents = {};
   mocks.data.scope = { kind: 'library' };
   const loadingTask = { destroy: mocks.destroy };
@@ -104,5 +108,57 @@ describe('PDF import boundaries', () => {
     expect(mocks.notice).toHaveBeenCalledWith(
       expect.stringContaining('开始导入时'),
     );
+  });
+
+  it('attaches a first PDF without changing a stub ID or edited metadata', async () => {
+    mocks.data.documents['document-stub'] = { id: 'document-stub', title: 'My title', authors: 'My author', year: '2026', identifiers: { doi: '10.1234/test' }, readingStatus: 'skimmed', textStatus: 'pending' };
+    const result = await attachPdf('document-stub', new File(['%PDF-1.7\nattach fixture'], 'fulltext.pdf'));
+    expect(result.conflict).toBeUndefined();
+    expect(Object.keys(mocks.data.documents)).toEqual(['document-stub']);
+    expect(mocks.data.documents['document-stub']).toMatchObject({ id: 'document-stub', title: 'My title', authors: 'My author', year: '2026', readingStatus: 'skimmed', identifiers: { doi: '10.1234/test' }, filename: 'fulltext.pdf', pageCount: 3, assetRevision: 1 });
+    expect(mocks.data.documents['document-stub'].hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(mocks.associateDocument).not.toHaveBeenCalled();
+    expect(mocks.destroy).toHaveBeenCalled();
+    await expect(attachPdf('document-stub', new File(['%PDF-1.7\nreplace'], 'replacement.pdf'))).rejects.toThrow('只能给无全文');
+  });
+
+  it('reports an existing hash without saving an asset or changing either document', async () => {
+    const file = new File(['%PDF-1.7\nconflict'], 'existing.pdf');
+    const existingId = await importPdf(file, { kind: 'library' });
+    mocks.data.documents.stub = { id: 'stub', title: 'Stub', authors: '', year: '', readingStatus: 'unread', textStatus: 'pending' };
+    const before = structuredClone(mocks.data.documents);
+    mocks.putAsset.mockClear();
+    const result = await attachPdf('stub', file);
+    expect(result).toEqual({ conflict: { into: existingId } });
+    expect(mocks.putAsset).not.toHaveBeenCalled();
+    expect(mocks.data.documents).toEqual(before);
+  });
+
+  it('leaves a stub unchanged when saving its asset fails, allowing retry', async () => {
+    mocks.data.documents.stub = { id: 'stub', title: 'Stub', authors: '', year: '', readingStatus: 'unread', textStatus: 'pending' };
+    const before = structuredClone(mocks.data.documents.stub);
+    mocks.putAsset.mockRejectedValueOnce(new Error('磁盘已满'));
+    const file = new File(['%PDF-1.7\nretry'], 'retry.pdf');
+    await expect(attachPdf('stub', file)).rejects.toThrow('磁盘已满');
+    expect(mocks.data.documents.stub).toEqual(before);
+    await expect(attachPdf('stub', file)).resolves.toEqual({});
+    expect(mocks.data.documents.stub.filename).toBe('retry.pdf');
+  });
+
+  it('imports files sequentially, counts reuse and keeps valid files after an individual failure', async () => {
+    const result = await importPdfFiles([
+      new File(['%PDF-1.7\none'], 'one.pdf'),
+      new File(['broken'], 'broken.pdf'),
+      new File(['%PDF-1.7\none'], 'duplicate.pdf'),
+      new File(['%PDF-1.7\ntwo'], 'two.pdf'),
+    ], { kind: 'library' });
+    expect(result).toMatchObject({ created: 2, reused: 1, failures: [{ filename: 'broken.pdf', message: expect.stringContaining('不是 PDF') }] });
+    expect(Object.keys(mocks.data.documents)).toHaveLength(2);
+    expect(result.documentIds).toHaveLength(3);
+  });
+
+  it('rejects opening a stub before accessing or parsing assets', async () => {
+    await expect(loadPdfDocument({ id: 'stub', title: 'Stub', authors: '', year: '', readingStatus: 'unread', textStatus: 'pending' })).rejects.toThrow('尚无全文');
+    expect(mocks.getDocument).not.toHaveBeenCalled();
   });
 });

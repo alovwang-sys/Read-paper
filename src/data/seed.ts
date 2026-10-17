@@ -3,10 +3,10 @@ import type { Session, WorkspaceData } from '../domain/types';
 export function emptySession(active: Session['active']): Session {
   return {
     active,
-    openItems: active.kind === 'collection' ? [] : [active],
+    openItems: active.kind === 'collection' || active.kind === 'researchView' ? [] : [active],
     pinnedIds: [],
     history: [],
-    panel: { open: true, mode: 'references', pinned: false, history: [] },
+    panel: { open: true, mode: 'cards', pinned: false, history: [] },
     readers: {},
     viewports: {},
   };
@@ -14,15 +14,15 @@ export function emptySession(active: Session['active']): Session {
 
 export function createSeed(): WorkspaceData {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     cardDrafts: {},
     researches: {
       'research-a': {
         id: 'research-a',
         title: '检索增强，何时有效？',
         question: '在什么条件下，检索增强能改善模型回答的可靠性？',
-        documentIds: ['paper-a', 'paper-b', 'paper-c'],
-        cardIds: ['card-a', 'card-b', 'card-c'],
+        documentIds: ['paper-a', 'paper-b', 'paper-c', 'paper-stub'],
+        cardIds: ['card-a', 'card-b', 'card-c', 'card-unverified'],
         createdAt: '2026-10-15',
       },
       'research-b': {
@@ -35,6 +35,7 @@ export function createSeed(): WorkspaceData {
       },
     },
     documents: {
+      'paper-stub': { id: 'paper-stub', title: 'Attention Is All You Need', authors: '', year: '2017', identifiers: { arxiv: '1706.03762' }, readingStatus: 'unread', textStatus: 'pending' },
       'paper-a': {
         id: 'paper-a',
         title: 'Adaptive Retrieval: Evidence & Reliability',
@@ -71,7 +72,7 @@ export function createSeed(): WorkspaceData {
         assetId: 'sample-c',
         sampleUrl: '/samples/scanned-note.pdf',
         pageCount: 1,
-        readingStatus: 'unread',
+        readingStatus: 'skimmed',
         textStatus: 'empty',
       },
     },
@@ -99,6 +100,7 @@ export function createSeed(): WorkspaceData {
       },
     },
     cards: {
+      'card-unverified': { id: 'card-unverified', title: '检索的边界仍需补充实验', body: '需要核对不同任务下的适用边界。', evidenceIds: [], needsReview: true },
       'card-a': {
         id: 'card-a',
         title: '相关性是检索收益的前提',
@@ -188,6 +190,7 @@ export function createSeed(): WorkspaceData {
         title: '检索增强的适用条件',
         body: '检索增强的收益依赖证据相关性。无关语料可能增加不确定性，因此评估需要同时报告语料条件与来源可追踪性。',
         evidenceIds: ['evidence-a', 'evidence-b'],
+        cardRefs: [{ cardId: 'card-unverified', insertedAt: '2026-10-17T00:00:00.000Z' }],
       },
       'draft-b': {
         id: 'draft-b',
@@ -213,8 +216,8 @@ export function createSeed(): WorkspaceData {
     },
     requests: {},
     sessions: {
-      'research-a': emptySession({ kind: 'research', id: 'research-a' }),
-      'research-b': emptySession({ kind: 'research', id: 'research-b' }),
+      'research-a': emptySession({ kind: 'researchView', id: 'home' }),
+      'research-b': emptySession({ kind: 'researchView', id: 'home' }),
       library: emptySession({ kind: 'collection', id: 'documents' }),
     },
     scope: { kind: 'research', researchId: 'research-a' },

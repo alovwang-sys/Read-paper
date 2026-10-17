@@ -895,6 +895,7 @@ export function AIPanel() {
                 : ''}
       </div>
       <div className="ai-composer-new">
+        {native && directoryReady && <ResearchDirectory researchId={research.id} inherited />}
         <div className="ai-composer-options">
         {native && !directoryReady && <div className="ai-directory-needed" role="status"><strong>{research.directory ? refreshingNative ? '正在检查研究目录…' : '研究目录暂不可用' : '为这个研究选择目录'}</strong><ResearchDirectory researchId={research.id} label={research.directory ? '重新连接目录' : '选择研究目录'} />{directoryError && <p>{directoryError}</p>}</div>}
         {legacyNative && directoryReady && <div className="ai-scope-notice"><strong>旧版阅读对话</strong><p>此记录仍属于旧目录，可继续查看；在研究目录中开始新对话，原记录和输入会保留。</p><button className="text-button" onClick={() => { rememberScroll(); actions.createConversation(research.id); }}>在研究目录开始新对话</button></div>}

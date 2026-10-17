@@ -68,7 +68,7 @@ test('导出、校验预览、明确替换和刷新恢复，原资料与文件�
   expect((await stored(page)).previous).toBeUndefined();
   await page.getByLabel('选择工作区备份').setInputFiles(backupPath);
   const preview = page.getByLabel('备份预览');
-  await expect(preview).toContainText('2 个研究 · 3 篇论文 · 3 张卡片 · 3 个文件');
+  await expect(preview).toContainText('2 个研究 · 4 篇论文 · 4 张卡片 · 3 个文件');
   const restore = page.getByRole('button', { name: '确认替换并恢复' });
   await expect(restore).toBeDisabled();
   expect((await stored(page)).current.cards['card-a'].body).toContain('导出后继续写入');

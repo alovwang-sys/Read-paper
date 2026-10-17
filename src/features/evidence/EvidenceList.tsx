@@ -34,12 +34,14 @@ export function EvidenceList({
   target = 'inspector',
   heading = '原文证据',
   snapshots,
+  showNote = false,
 }: {
   documentId?: string;
   evidenceIds?: string[];
   target?: 'main' | 'inspector';
   heading?: string;
   snapshots?: ContextSnapshot[];
+  showNote?: boolean;
 }) {
   const { data, research, actions } = useWorkspace();
   const ids =
@@ -48,7 +50,7 @@ export function EvidenceList({
       .filter(
         (item) =>
           (!documentId || item.documentId === documentId) &&
-          (!research || research.documentIds.includes(item.documentId)),
+          (!research || (research.documentIds.includes(item.documentId) && (!item.researchId || item.researchId === research.id))),
       )
       .map((item) => item.id);
   function execute(action: () => void) {
@@ -62,15 +64,15 @@ export function EvidenceList({
   }
   return (
     <div className="evidence-list">
-      <div className="evidence-list-heading">
+      {heading && <div className="evidence-list-heading">
         <span className="section-heading">{heading}</span>
         <span className="muted">{ids.length} 条</span>
-      </div>
+      </div>}
       {!ids.length && (
         <div className="empty-state compact">
           <Quote size={28} />
           <h3>让观点有据可查</h3>
-          <p>在 PDF 中选中原文，创建证据卡片或明确加入 AI 上下文。</p>
+          <p>在 PDF 中选中原文，点击“摘录”或按 H，摘录会显示在这里。</p>
         </div>
       )}
       {ids.map((id) => {
@@ -122,6 +124,8 @@ export function EvidenceList({
               <span>
                 PDF 第 {item.pageIndex + 1} 页
                 {item.printedPage ? ` · 印刷页 ${item.printedPage}` : ''}
+                {!item.researchId && ' · 来源研究未记录'}
+                {item.researchId && item.researchId !== research?.id && ` · ${data.researches[item.researchId]?.title ?? '其他研究'}`}
               </span>
             </div>
             {item.kind === 'region' && item.region && <>
@@ -129,6 +133,10 @@ export function EvidenceList({
               <RegionPreview region={item.region} />
             </>}
             {item.quote && <blockquote>{item.quote}</blockquote>}
+            {Object.values(data.cards).filter(card => (!research || research.cardIds.includes(card.id)) && card.evidenceIds.includes(id)).map(card => <button className="text-button evidence-card-link" key={card.id} onClick={() => execute(() => actions.openResource({ kind: 'card', id: card.id }, { scope: data.scope, target: 'inspector' }))}>→ 卡片「{card.title}」</button>)}
+            {showNote && <label className="excerpt-note">随手记<textarea aria-label={`摘录随手记：${id}`} value={item.note ?? ''} placeholder="记下这段与你的问题有什么关系…" onChange={event => execute(() => actions.updateData(next => { next.evidence[id].note = event.target.value; }))} /></label>}
+            {item.dismissed && <p className="muted">已标为不需要 <button className="text-button" onClick={() => execute(() => actions.updateData(next => { next.evidence[id].dismissed = false; }))}>恢复摘录</button></p>}
+
             <button
               className="evidence-document-link"
               onClick={() => open(target)}
@@ -138,7 +146,7 @@ export function EvidenceList({
             </button>
             <div className="evidence-actions">
               <button className="text-button" onClick={() => open('main')}>
-                主区查看原文
+                定位原文
               </button>
               <button
                 className="text-button"
@@ -154,7 +162,7 @@ export function EvidenceList({
                 }
               >
                 <Layers size={12} />
-                形成卡片
+                写成卡片
               </button>
               {research && (
                 <button

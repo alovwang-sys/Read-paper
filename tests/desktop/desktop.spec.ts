@@ -3,15 +3,16 @@ import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { listPackage } from '@electron/asar';
+import { choosePdf, openResearchNavigation } from '../e2e/knowledge-helpers';
 
 const root = resolve(`out/Papertrail-${process.platform}-${process.arch}`);
 const executablePath = process.env.PAPERTRAIL_EXECUTABLE || (process.platform === 'darwin'
   ? join(root, 'Papertrail.app/Contents/MacOS/Papertrail') : join(root, 'Papertrail.exe'));
-const screenshots = resolve('test-results-desktop/screenshots');
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
 const navigation = (page: Page) => page.getByRole('complementary', { name: '左侧导航' });
 async function openNav(page: Page, name: string) {
+  await openResearchNavigation(page);
   await navigation(page).getByRole('button', { name, exact: true }).first().click();
 }
 async function saved(page: Page) {
@@ -41,12 +42,12 @@ async function close(application: ElectronApplication) {
 async function screenshot(page: Page, name: string) {
   await saved(page);
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: join(screenshots, name), fullPage: false });
+  await page.screenshot({ path: test.info().outputPath('screenshots', name), fullPage: false });
 }
 
 test('安装产物：独立运行、PDF与双栏、模型设置、关闭保存及重启恢复', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'papertrail-desktop-e2e-'));
-  await mkdir(screenshots, { recursive: true });
+  await mkdir(test.info().outputPath('screenshots'), { recursive: true });
   let application: ElectronApplication | undefined;
   const pageErrors: string[] = [];
   try {
@@ -63,9 +64,9 @@ test('安装产物：独立运行、PDF与双栏、模型设置、关闭保存�
     await expect(page.evaluate(() => (window.papertrailDesktop as unknown as { getAISettings(): Promise<unknown> }).getAISettings())).rejects.toThrow();
     expect(await page.evaluate(async () => (await fetch('/api/ai/config')).json())).toMatchObject({ configured: false });
 
-    await page.getByLabel('选择 PDF 文件').first().setInputFiles(resolve('public/samples/adaptive-retrieval.pdf'));
+    await choosePdf(page, resolve('public/samples/adaptive-retrieval.pdf'));
     await expect(main(page).locator('.pdf-text-layer').first()).toContainText('Retrieval');
-    await panel(page).getByRole('tab', { name: '参考', exact: true }).click();
+    await panel(page).getByRole('tab', { name: '卡片', exact: true }).click();
     await panel(page).getByRole('button', { name: /相关性是检索收益的前提/ }).first().click();
     await expect(panel(page).getByLabel('卡片正文')).toBeVisible();
     await screenshot(page, '01-pdf-card-1440x900.png');
@@ -78,7 +79,7 @@ test('安装产物：独立运行、PDF与双栏、模型设置、关闭保存�
     await page.setViewportSize({ width: 1280, height: 800 });
     await screenshot(page, '02-board-source-1280x800.png');
 
-    await openNav(page, '结论与导出');
+    await openNav(page, '检索增强的适用条件');
     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
     await expect(panel(page).getByRole('button', { name: '配置模型连接' })).toBeVisible();
     const settingsEvent = application.waitForEvent('window');
@@ -153,7 +154,7 @@ test('保存失败保留窗口与最新修改，重试后允许退出', async ()
     application = session.application;
     const page = session.page;
     await application.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false }); });
-    await openNav(page, '结论与导出');
+    await openNav(page, '检索增强的适用条件');
     await saved(page);
     await page.evaluate(() => {
       const original = IDBObjectStore.prototype.put;

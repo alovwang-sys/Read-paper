@@ -1,0 +1,30 @@
+2026-10-17T05:18:21.8947010Z       - Expect "toBeEnabled" getByRole('dialog', { name: '新建研究', exact: true }).getByRole('button', { name: '创建并关联', exact: true }) with timeout 15000ms
+2026-10-17T05:18:21.8948407Z       - waiting for getByRole('dialog', { name: '新建研究', exact: true }).getByRole('button', { name: '创建并关联', exact: true })
+2026-10-17T05:18:21.8949340Z         33 × locator resolved to <button disabled type="submit" class="directory-primary">…</button>
+2026-10-17T05:18:21.8949851Z            - unexpected value "disabled"
+2026-10-17T05:18:21.8950039Z 
+2026-10-17T05:18:21.8950046Z 
+2026-10-17T05:18:21.8950372Z       80 |   await dialog.getByLabel('研究名称', { exact: true }).fill(title);
+2026-10-17T05:18:21.8950973Z       81 |   await dialog.getByLabel('新研究核心问题').fill('一次选择目录，保留研究材料与会话。');
+2026-10-17T05:18:21.8951610Z     > 82 |   await expect(dialog.getByRole('button', { name: '创建并关联', exact: true })).toBeEnabled();
+2026-10-17T05:18:21.8952177Z          |                                                                            ^
+2026-10-17T05:18:21.8952574Z       83 |   return dialog;
+2026-10-17T05:18:21.8952848Z       84 | }
+2026-10-17T05:18:21.8953191Z       85 | async function screenshot(page: Page, name: string) {
+2026-10-17T05:18:21.8953782Z         at openNew (D:\a\Read-paper\Read-paper\tests\desktop\research-directory.spec.ts:82:76)
+2026-10-17T05:18:21.8956917Z         at D:\a\Read-paper\Read-paper\tests\desktop\research-directory.spec.ts:96:51
+2026-10-17T05:18:21.8957409Z 
+2026-10-17T05:18:21.8958446Z     Error Context: test-results-desktop\research-directory-打包桌面：原生目录选择取消无残留，创建后左右沿用同一目录且重启恢复\error-context.md
+2026-10-17T05:18:21.8959217Z 
+2026-10-17T05:18:21.8959972Z     attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+2026-10-17T05:18:21.8961403Z     test-results-desktop\research-directory-打包桌面：原生目录选择取消无残留，创建后左右沿用同一目录且重启恢复\trace.zip
+2026-10-17T05:18:21.8962317Z     Usage:
+2026-10-17T05:18:21.8962585Z 
+2026-10-17T05:18:21.8963632Z         npx playwright show-trace test-results-desktop\research-directory-打包桌面：原生目录选择取消无残留，创建后左右沿用同一目录且重启恢复\trace.zip
+2026-10-17T05:18:21.8964884Z 
+2026-10-17T05:18:21.8965574Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-17T05:18:21.8966175Z 
+2026-10-17T05:18:21.8966336Z   1 failed
+2026-10-17T05:18:21.8967376Z     tests\desktop\research-directory.spec.ts:90:1 › 打包桌面：原生目录选择取消无残留，创建后左右沿用同一目录且重启恢复 ──────────────
+2026-10-17T05:18:21.8968713Z   8 passed (1.3m)
+2026-10-17T05:18:22.0616201Z ##[error]Process completed with exit code 1.

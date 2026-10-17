@@ -6,6 +6,7 @@ import type {
   WorkspaceData,
 } from '../../domain/types';
 import { getAsset } from '../../data/storage';
+import { hasFullText } from '../../domain/knowledge';
 import { useWorkspace } from '../../services/workspace';
 
 export function originalAnswerContext(turn: AIHistoryTurn): ContextSnapshot[] {
@@ -20,6 +21,7 @@ export function hasOriginalDocument(
 ): boolean {
   return (
     !!snapshot?.documentHash &&
+    hasFullText(data.documents[snapshot.documentId]) &&
     data.documents[snapshot.documentId]?.hash === snapshot.documentHash
   );
 }

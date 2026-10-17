@@ -1,3 +1,4 @@
+import { openResearchPage } from './knowledge-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import type { WorkspaceData } from '../../src/domain/types';
@@ -10,7 +11,7 @@ const writing = '尚未完成的研究结论：核对原文后继续写作。';
 
 async function state(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => {
-    const journal = localStorage.getItem('papertrail-recovery-v2');
+    const journal = localStorage.getItem('papertrail-recovery-v3');
     if (journal) return JSON.parse(journal);
     const modulePath = '/src/data/storage.ts';
     return (await import(modulePath)).loadWorkspace();
@@ -46,10 +47,10 @@ async function setup(page: Page) {
   await main(page).getByRole('button', { name: new RegExp(title) }).click();
   await expect(main(page).locator('canvas')).toBeVisible();
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
-  await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
+  await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
   await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
   await page.getByRole('button', { name: '主区返回', exact: true }).click();
-  await main(page).getByRole('button', { name: /检索增强的适用条件 写下结论/ }).click();
+  await openResearchPage(page, '检索增强的适用条件');
   await main(page).getByLabel('结论正文').fill(writing);
   for (const question of ['先解释这条材料的适用条件', '进一步核查推断与论文依据']) {
     await panel(page).getByLabel('向 AI 提问').fill(question);

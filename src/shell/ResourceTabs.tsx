@@ -4,6 +4,7 @@ import type { ResourceRef, Session } from '../domain/types';
 import './resource-tabs.css';
 
 type Props = {
+  leading?: { title: string; selected: boolean; onOpen: () => void };
   items: ResourceRef[];
   active: Session['active'];
   pinnedIds: string[];
@@ -15,7 +16,8 @@ type Props = {
 };
 const keyOf = (ref: { kind: string; id: string }) => `${ref.kind}:${ref.id}`;
 
-export function ResourceTabs({ items, active, pinnedIds, title, onOpen, onClose, onPin, onMove }: Props) {
+export function ResourceTabs({ leading, items, active, pinnedIds, title, onOpen, onClose, onPin, onMove }: Props) {
+  const leadingButton = useRef<HTMLButtonElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const [dragOver, setDragOver] = useState<string>();
   const selected = keyOf(active);
@@ -30,6 +32,7 @@ export function ResourceTabs({ items, active, pinnedIds, title, onOpen, onClose,
     onOpen(item);
     buttons.current.get(keyOf(item))?.focus();
   }
+  function selectLeading() { leading?.onOpen(); leadingButton.current?.focus(); }
   function keyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const item = items[index];
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -37,10 +40,12 @@ export function ResourceTabs({ items, active, pinnedIds, title, onOpen, onClose,
       const next = index + (event.key === 'ArrowLeft' ? -1 : 1);
       if (event.altKey) {
         if (next >= 0 && next < items.length) onMove(index, next);
-      } else select((next + items.length) % items.length);
+      } else if (leading && (next < 0 || next >= items.length)) selectLeading();
+      else select((next + items.length) % items.length);
     } else if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault();
-      select(event.key === 'Home' ? 0 : items.length - 1);
+      if (event.key === 'Home' && leading) selectLeading();
+      else select(event.key === 'Home' ? 0 : items.length - 1);
     } else if (event.key === 'Delete' && item.kind !== 'research') {
       event.preventDefault();
       onClose(item);
@@ -49,11 +54,18 @@ export function ResourceTabs({ items, active, pinnedIds, title, onOpen, onClose,
     }
   }
 
-  if (!items.length) return null;
+  if (!items.length && !leading) return null;
   return (
     <div className="resource-tabs" role="tablist" aria-label="中央资源标签" onKeyDown={event => {
       if (event.key === 'Escape') event.stopPropagation();
     }}>
+      {leading && <div className={`resource-tab research-page-tab ${leading.selected ? 'is-active' : ''}`}><button className="resource-tab-select" ref={leadingButton} role="tab" aria-selected={leading.selected} tabIndex={leading.selected ? 0 : -1} onClick={leading.onOpen} onKeyDown={event => {
+        if (['ArrowLeft', 'ArrowRight', 'End', 'Home'].includes(event.key)) {
+          event.preventDefault();
+          if (event.key === 'Home' || !items.length) selectLeading();
+          else select(event.key === 'ArrowRight' ? 0 : items.length - 1);
+        }
+      }}><Network size={14} /><span>{leading.title}</span></button></div>}
       {items.map((item, index) => {
         const key = keyOf(item);
         const label = title(item);
@@ -89,7 +101,7 @@ export function ResourceTabs({ items, active, pinnedIds, title, onOpen, onClose,
               aria-label={label}
               aria-selected={selected === key}
               aria-keyshortcuts="ArrowLeft ArrowRight Home End Delete Alt+ArrowLeft Alt+ArrowRight"
-              tabIndex={selected === key || (selectedIndex < 0 && index === 0) ? 0 : -1}
+              tabIndex={selected === key || (!leading && selectedIndex < 0 && index === 0) ? 0 : -1}
               title={label}
               ref={element => { if (element) buttons.current.set(key, element); else buttons.current.delete(key); }}
               onClick={() => onOpen(item)}

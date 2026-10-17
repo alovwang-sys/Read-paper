@@ -34,6 +34,30 @@ export function ConversationSource({
     : -1;
   const answerEvidenceIds =
     source.answerEvidenceIds ?? source.context.map((item) => item.evidenceId);
+  if (source.origin === 'excerpts') return (
+    <section className="ai-source-view" aria-label="摘录起草来源">
+      <div className="ai-subhead">
+        <button className="icon-button" aria-label="返回来源入口" onClick={onBack}><ArrowLeft size={17} /></button>
+        <h3>所选摘录</h3><span className="ai-badge">起草时快照</span>
+      </div>
+      <div className="ai-content-scroll">
+        <p className="ai-footnote">{data.researches[source.researchId]?.title ?? '原研究'} · {new Date(source.createdAt).toLocaleString('zh-CN')}</p>
+        <p>这张卡片由以下显式选择的摘录起草。后来改变选区不会改变本次材料。</p>
+        <ContextDetails items={source.context} />
+        {!!source.generationRequestIds.length && <details className="ai-details">
+          <summary>卡片整理与修订记录 · {source.generationRequestIds.length}</summary>
+          {source.generationRequestIds.map(id => {
+            const generation = data.requests[id];
+            return <article key={id} className="ai-generation-record">
+              <strong>{generation?.purpose === 'revision' ? 'AI 修订' : '整理卡片'} · {generation ? requestStatus[generation.status] : '记录暂不可用'}</strong>
+              {generation && <><p className="ai-footnote">{generation.mode === 'demo' ? '演示模式' : '真实模型'} · {generation.model ?? '未记录模型'}</p><MarkdownContent text={generation.body} /></>}
+            </article>;
+          })}
+        </details>}
+      </div>
+      <div className="ai-panel-footer"><small>只读摘录快照</small><button className="button" onClick={onBack}>返回</button></div>
+    </section>
+  );
   return (
     <section className="ai-source-view">
       <div className="ai-subhead">

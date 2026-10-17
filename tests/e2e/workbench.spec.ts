@@ -1,3 +1,4 @@
+import { choosePdf, openResearchPage, openSource } from './knowledge-helpers';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -14,7 +15,7 @@ const cardBody = '检索的收益需要相关证据支持，并应保留可核�
 async function data(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => {
     const journal =
-      localStorage.getItem('papertrail-recovery-v2') ??
+      localStorage.getItem('papertrail-recovery-v3') ??
       localStorage.getItem('papertrail-recovery-v1');
     if (journal) return JSON.parse(journal);
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -43,8 +44,6 @@ async function saved(page: Page) {
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
 const panel = (page: Page) =>
   page.getByRole('complementary', { name: '参考面板' });
-const navigation = (page: Page) =>
-  page.getByRole('complementary', { name: '左侧导航' });
 async function start(page: Page) {
   await page.goto('/');
   await expect(
@@ -62,7 +61,7 @@ async function screenshot(page: Page, name: string) {
     }),
   );
   const toastClose = page.locator('.toast button[aria-label="关闭提示"]');
-  if (await toastClose.isVisible()) await toastClose.click();
+  if (!await page.getByRole('dialog').count() && await toastClose.isVisible()) await toastClose.click();
   await saved(page);
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({
@@ -74,19 +73,16 @@ async function createResearch(page: Page, title: string, question: string) {
   await page.getByRole('button', { name: '新建研究', exact: true }).click();
   await page.getByLabel('研究名称', { exact: true }).fill(title);
   await page.getByLabel('新研究核心问题').fill(question);
-  await page.getByRole('button', { name: '创建研究', exact: true }).click();
+  await page.getByRole('button', { name: '稍后设置目录', exact: true }).click();
   await expect(main(page).getByRole('heading', { name: title })).toBeVisible();
   const state = await data(page);
   return state.scope.kind === 'research' ? state.scope.researchId : '';
 }
 async function importSample(page: Page, filename: string) {
   await expect(
-    page.getByRole('button', { name: '导入 PDF', exact: true }).first(),
+    page.getByRole('button', { name: '添加资料', exact: true }).first(),
   ).toBeEnabled();
-  await page
-    .getByLabel('选择 PDF 文件')
-    .first()
-    .setInputFiles(resolve(samples, filename));
+  await choosePdf(page, resolve(samples, filename));
   await expect
     .poll(async () => {
       const state = await data(page),
@@ -101,7 +97,7 @@ async function importSample(page: Page, filename: string) {
     .toBe(filename);
   await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '导入 PDF', exact: true }).first(),
+    page.getByRole('button', { name: '添加资料', exact: true }).first(),
   ).toBeEnabled();
 }
 async function selectText(
@@ -174,10 +170,7 @@ async function addToBoard(
     .click();
 }
 async function openNav(page: Page, name: string) {
-  await navigation(page)
-    .getByRole('button', { name, exact: true })
-    .first()
-    .click();
+  await openResearchPage(page, name);
 }
 
 test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用导出与恢复', async ({
@@ -199,18 +192,15 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
     await importSample(page, filename);
   let state = await data(page);
   expect(state.researches[researchId].documentIds).toHaveLength(3);
-  expect(Object.keys(state.documents)).toHaveLength(3);
+  expect(Object.keys(state.documents)).toHaveLength(4);
   const doc = Object.values(state.documents).find(
     (item) => item.filename === 'adaptive-retrieval.pdf',
   )!;
-  await navigation(page)
-    .locator('.open-item-link')
-    .filter({ hasText: doc.title })
-    .click();
+  await page.getByRole('tablist', { name: '中央资源标签' }).getByRole('tab', { name: doc.title, exact: true }).click();
   await setPdfPage(page, 3);
   await selectText(page, quote);
   await main(page)
-    .getByRole('button', { name: '创建卡片', exact: true })
+    .getByRole('button', { name: '写成卡片', exact: true })
     .click();
   await expect(panel(page).getByLabel('卡片正文')).toBeVisible();
   await panel(page).getByLabel('卡片标题').fill(cardTitle);
@@ -219,8 +209,8 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
     quote,
   );
   await expect(
-    panel(page).getByText('PDF 第 3 页', { exact: true }),
-  ).toBeVisible();
+    panel(page).locator('.evidence-source-label').first(),
+  ).toContainText('PDF 第 3 页');
   await screenshot(page, '01-pdf-card-1440x900');
   state = await data(page);
   const card = Object.values(state.cards).find(
@@ -266,7 +256,7 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   await screenshot(page, '02-board-source-1280x800');
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  await openNav(page, '结论与导出');
+  await openNav(page, '研究结论');
   await main(page).getByLabel('结论标题').fill('E2E 检索增强的适用条件');
   await main(page).getByLabel('结论正文').fill('研究结论需要保留条件与出处。');
   await main(page)
@@ -339,10 +329,7 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   expect(state.sessions[researchId].readers[`main:${doc.id}`].pageIndex).toBe(
     2,
   );
-  await navigation(page)
-    .locator('.open-item-link')
-    .filter({ hasText: doc.title })
-    .click();
+  await page.getByRole('tablist', { name: '中央资源标签' }).getByRole('tab', { name: doc.title, exact: true }).click();
   await expect(main(page).locator('.pdf-text-layer').first()).toContainText(
     quote,
   );
@@ -436,20 +423,18 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
   await start(page);
   const research = await data(page);
   for (const id of ['paper-a', 'paper-b']) {
-    await main(page)
-      .getByRole('button', { name: new RegExp(research.documents[id].title) })
-      .click();
+    await openSource(page, research.documents[id].title);
     await expect(main(page).locator('canvas').first()).toBeVisible();
-    await openNav(page, '研究概览');
+    await openNav(page, '研究主页');
   }
-  await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
+  await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
   for (const id of ['evidence-b', 'evidence-c']) {
     await panel(page)
       .locator(`[data-evidence-id="${id}"]`)
       .getByRole('button', { name: '加入 AI', exact: true })
       .click();
     if (id === 'evidence-b')
-      await panel(page).getByRole('tab', { name: '证据', exact: true }).click();
+      await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
   }
   await expect(panel(page).locator('.ai-material')).toHaveCount(2);
   await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
@@ -560,7 +545,7 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
   await panel(page)
     .getByRole('button', { name: '返回来源入口', exact: true })
     .click();
-  await openNav(page, '结论与导出');
+  await openNav(page, '检索增强的适用条件');
   await main(page)
     .getByRole('button', { name: '插入卡片引用', exact: true })
     .click();
@@ -589,9 +574,7 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
 
 test('双栏与扫描边界、损坏 PDF 导入、来源及返回恢复', async ({ page }) => {
   await start(page);
-  await main(page)
-    .getByRole('button', { name: /Retrieval Baselines/ })
-    .click();
+  await openSource(page, /Retrieval Baselines/);
   await main(page).getByRole('button', { name: '目录与全文搜索' }).click();
   await main(page)
     .getByLabel('搜索 PDF 全文')
@@ -613,7 +596,7 @@ test('双栏与扫描边界、损坏 PDF 导入、来源及返回恢复', async 
     'A fixed retrieval budget does not guarantee relevant evidence.',
   );
   await expect(
-    main(page).getByRole('button', { name: '创建卡片', exact: true }),
+    main(page).getByRole('button', { name: '写成卡片', exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(() =>
@@ -622,26 +605,18 @@ test('双栏与扫描边界、损坏 PDF 导入、来源及返回恢复', async 
   ).toBe('A fixed retrieval budget does not guarantee relevant evidence.');
   await screenshot(page, '06-two-column-selection-1440x900');
   await page.getByRole('button', { name: '主区返回', exact: true }).click();
-  await main(page)
-    .getByRole('button', { name: /Scanned Research Note/ })
-    .click();
+  await openSource(page, /Scanned Research Note/);
   await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(main(page)).toContainText(/扫描|无文本|没有可选择/);
   expect(await main(page).locator('.pdf-text-layer span').count()).toBe(0);
   await screenshot(page, '07-scanned-pdf-1440x900');
-  await page
-    .getByLabel('选择 PDF 文件')
-    .first()
-    .setInputFiles(resolve('tests/fixtures/malformed.pdf'));
+  await choosePdf(page, resolve('tests/fixtures/malformed.pdf'));
   await expect(
     page.getByRole('alert').filter({ hasText: '文件内容不是 PDF' }),
   ).toBeVisible();
   await screenshot(page, '08-pdf-import-error-1440x900');
-  await page.getByRole('button', { name: '关闭', exact: true }).click();
-  await page
-    .getByLabel('选择 PDF 文件')
-    .first()
-    .setInputFiles({
+  await page.getByRole('button', { name: '关闭添加资料', exact: true }).click();
+  await choosePdf(page, {
       name: 'broken-document.pdf',
       mimeType: 'application/pdf',
       buffer: Buffer.from('%PDF-1.7\nBroken xref and missing objects\n%%EOF'),
@@ -649,7 +624,7 @@ test('双栏与扫描边界、损坏 PDF 导入、来源及返回恢复', async 
   await expect(
     page.getByRole('alert').filter({ hasText: 'PDF 无法解析' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: '关闭', exact: true }).click();
+  await page.getByRole('button', { name: '关闭添加资料', exact: true }).click();
   await openNav(page, '证据与论证');
   await main(page)
     .locator('[data-placement-id="placement-a"]')
@@ -701,12 +676,12 @@ test('原 PDF 资产缺失后同 hash 重导入修复，保留文档与证据身
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save({ useObjectStreams: false })),
   };
-  await page.getByLabel('选择 PDF 文件').first().setInputFiles(file);
+  await choosePdf(page, file);
   await expect(main(page).locator('canvas').first()).toBeVisible();
   await setPdfPage(page, 3);
   await selectText(page, quote);
   await main(page)
-    .getByRole('button', { name: '创建卡片', exact: true })
+    .getByRole('button', { name: '写成卡片', exact: true })
     .click();
   await expect(panel(page).getByLabel('卡片正文')).toBeVisible();
   await saved(page);
@@ -731,14 +706,14 @@ test('原 PDF 资产缺失后同 hash 重导入修复，保留文档与证据身
       transaction.onerror = () => reject(transaction.error);
     });
     db.close();
-  }, doc.assetId);
+  }, doc.assetId!);
   await page.reload();
   await expect(
     main(page).getByRole('heading', { name: 'PDF 暂时无法打开' }),
   ).toBeVisible();
   await expect(main(page)).toContainText('原 PDF 文件缺失');
   await screenshot(page, '09-missing-source-1440x900');
-  await page.getByLabel('选择 PDF 文件').first().setInputFiles(file);
+  await choosePdf(page, file);
   await expect(main(page).locator('.pdf-text-layer').first()).toContainText(
     quote,
   );
@@ -773,14 +748,12 @@ test('延迟 PDF 导入绑定提交研究，切换研究后保持目标工作区
     await readFile(resolve(samples, 'retrieval-baseline.pdf')),
   );
   pdf.setTitle('E2E 延迟导入论文');
-  await page
-    .getByLabel('选择 PDF 文件')
-    .first()
-    .setInputFiles({
+  await choosePdf(page, {
       name: 'delayed-source.pdf',
       mimeType: 'application/pdf',
       buffer: Buffer.from(await pdf.save({ useObjectStreams: false })),
     });
+  await page.getByRole('button', { name: '关闭添加资料', exact: true }).click();
   await page.getByLabel('切换研究').selectOption('research-b');
   await expect
     .poll(async () =>
@@ -805,7 +778,7 @@ test('桌面导航、论文库与窄屏折叠的稳定截图', async ({ page }) 
   await start(page);
   await screenshot(page, '10-overview-1440x900');
   await page.setViewportSize({ width: 1280, height: 800 });
-  await openNav(page, '论文库');
+  await openNav(page, '资料库');
   await screenshot(page, '11-library-1280x800');
   await page.getByRole('button', { name: '收起左栏', exact: true }).click();
   await expect(page.locator('.sidebar')).toHaveCount(1);

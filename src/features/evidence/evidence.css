@@ -101,3 +101,24 @@
   overflow: auto;
   white-space: pre-wrap;
 }
+.excerpts-view { height: 100%; overflow: auto; padding: 30px 36px 100px; box-sizing: border-box; position: relative; }
+.excerpts-heading { display: flex; align-items: center; justify-content: space-between; color: var(--text); }
+.excerpts-heading h1 { margin: 0; font-size: 25px; font-weight: 600; }
+.excerpts-heading p { font-size: 13px; margin: 9px 0 22px; }
+.excerpts-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.excerpts-filters .active { color: #436139; background: #edf2e8; border-color: #b9ccae; }
+.excerpts-show-dismissed { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.excerpt-group { margin-bottom: 25px; }
+.excerpt-group h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.excerpt-selectable { border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin: 12px 0; background: var(--surface, #fff); }
+.excerpt-selectable.selected { border-color: #a6bd94; background: #f5f8f0; }
+.excerpt-checkbox { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 11px; }
+.excerpt-selectable .evidence-list { padding: 0; }
+.excerpt-selectable .evidence-entry { border: 0; padding-bottom: 2px; }
+.excerpt-note { display: grid; gap: 6px; color: var(--muted); font-size: 11px; margin: 12px 0; }
+.excerpt-note textarea { resize: vertical; width: 100%; min-height: 52px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 5px; padding: 8px; font: inherit; font-size: 12px; background: #fff; color: var(--text); }
+.evidence-card-link { display: block; margin: 6px 0; font-size: 12px; text-align: left; }
+.other-research-excerpts { font-size: 12px; color: var(--muted); }
+.other-research-excerpts summary { cursor: pointer; padding: 10px 0; }
+.excerpts-selection-bar { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; position: sticky; bottom: 0; padding: 13px 15px; border: 1px solid #c6d5bd; border-radius: 8px; background: #fafdf7; box-shadow: 0 3px 18px #38482a14; font-size: 12px; z-index: 2; }
+@media (max-width: 1100px) { .excerpts-view { padding: 24px 20px 90px; } }

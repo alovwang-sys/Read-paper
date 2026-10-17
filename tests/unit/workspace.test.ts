@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { hasFullText } from '../../src/domain/knowledge';
 import { createSeed } from '../../src/data/seed';
 import { linkCard, scopeKey, workspace } from '../../src/services/workspace';
 import {
@@ -30,7 +31,7 @@ beforeEach(async () => {
     .mockReset()
     .mockResolvedValue(new Blob(['test asset']));
   const data = createSeed();
-  Object.values(data.documents).forEach((doc) => {
+  Object.values(data.documents).filter(hasFullText).forEach((doc) => {
     doc.hash = 'a'.repeat(64);
   });
   vi.mocked(loadWorkspace).mockReset().mockResolvedValue(data);
@@ -107,7 +108,7 @@ describe('工作台共享实体与会话', () => {
     );
     workspace.setPanel('ai');
     workspace.switchResearch('research-b');
-    workspace.setPanel('info');
+    workspace.setPanel('excerpts');
     workspace.switchResearch('research-a');
     const session = workspace.getSession();
     expect(

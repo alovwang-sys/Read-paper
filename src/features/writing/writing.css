@@ -238,3 +238,9 @@
     font-size: 25px;
   }
 }
+
+.supplement-citations { padding: 18px; border: 1px solid var(--border); border-radius: 8px; margin: 20px 0; background: var(--surface); }
+.supplement-citations blockquote { margin: 12px 0; padding-left: 12px; border-left: 3px solid var(--border); }
+.writing-preview { min-height: 280px; padding: 12px 0; }
+.citation-link { display: inline; padding: 0 2px; vertical-align: baseline; }
+.writing-editor[hidden] { display: none; }

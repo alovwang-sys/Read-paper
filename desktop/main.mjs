@@ -114,6 +114,16 @@ else {
   try { await store.load(); } catch (error) { dialog.showErrorBox('模型设置需要重新配置', error.message); }
   ai = await startDesktopAI({ env: runtimeEnvironment() });
   protocol.handle('papertrail', createAppProtocol({ distDirectory: join(directory, '..', 'dist'), desktopDirectory: directory, getAI: () => ai }));
+  ipcMain.handle('papertrail:project-location', event => {
+    if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面读取研究位置。');
+    return app.getPath('documents');
+  });
+  ipcMain.handle('papertrail:choose-directory', async (event, defaultPath) => {
+    if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面选择研究目录。');
+    if (defaultPath !== undefined && (typeof defaultPath !== 'string' || defaultPath.length > 4096 || defaultPath.includes('\0'))) throw new Error('目录路径无效。');
+    const result = await dialog.showOpenDialog(mainWindow, { title: '选择研究位置', properties: ['openDirectory'], ...(defaultPath ? { defaultPath } : {}) });
+    return result.canceled ? undefined : result.filePaths[0];
+  });
   ipcMain.handle('papertrail:open-ai-settings', event => {
     if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面打开设置。');
     showAISettings();

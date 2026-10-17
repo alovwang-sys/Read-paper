@@ -3,11 +3,12 @@ import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveMigrationBackup, saveWorkspace } from '../../src/data/storage';
 import type { AIRequest, ContextSnapshot, WorkspaceData } from '../../src/domain/types';
 import {
-  applyCardRevision, commitCardDraft, createManualCardDraft, discardCardDraft, generateCardDraft,
+  applyCardRevision, commitCardDraft, createManualCardDraft, discardCardDraft, generateCardDraft, generateCardDraftFromExcerpts,
   historyForConversation, retryAI, reviseCardDraft, stopAI, submitAI, undoCardRevision,
   type AIResponder,
 } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
+import { hasFullText } from '../../src/domain/knowledge';
 
 vi.mock('../../src/data/storage', () => ({
   loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), contentHash: vi.fn(),
@@ -18,7 +19,7 @@ const data = () => workspace.getState().data;
 
 function snapshot(evidenceId: string): ContextSnapshot {
   const evidence = data().evidence[evidenceId], document = data().documents[evidence.documentId];
-  return { evidenceId, documentId: document.id, documentHash: document.hash, title: document.title, pageIndex: evidence.pageIndex, quote: evidence.quote };
+  return { evidenceId, documentId: document.id, documentHash: document.hash ?? '', title: document.title, pageIndex: evidence.pageIndex, quote: evidence.quote };
 }
 function oldRequest(id: string, overrides: Partial<AIRequest> = {}): AIRequest {
   return {
@@ -49,7 +50,7 @@ beforeEach(async () => {
   vi.mocked(saveMigrationBackup).mockReset().mockResolvedValue(undefined);
   vi.mocked(getAsset).mockReset().mockResolvedValue(new Blob(['local PDF fixture']));
   const seed = createSeed();
-  Object.values(seed.documents).forEach(document => { document.hash = 'a'.repeat(64); });
+  Object.values(seed.documents).filter(hasFullText).forEach(document => { document.hash = 'a'.repeat(64); });
   vi.mocked(loadWorkspace).mockReset().mockResolvedValue(seed);
   await workspace.load();
 });
@@ -220,7 +221,7 @@ describe('多轮聊天、停止和原始问答', () => {
   it('未来数据库版本存在时，即使有旧恢复缓冲也禁止自动覆盖', async () => {
     const recovery = JSON.stringify(createSeed());
     memory.set('papertrail-recovery-v2', recovery);
-    const future = { ...createSeed(), schemaVersion: 3 } as unknown as WorkspaceData;
+    const future = { ...createSeed(), schemaVersion: 4 } as unknown as WorkspaceData;
     vi.mocked(loadWorkspace).mockResolvedValue(future);
     vi.mocked(saveWorkspace).mockClear();
     await workspace.load();
@@ -228,7 +229,7 @@ describe('多轮聊天、停止和原始问答', () => {
     expect(workspace.getState().loadError).toMatch(/版本/);
     expect(saveWorkspace).not.toHaveBeenCalled();
     expect(memory.get('papertrail-recovery-v2')).toBe(recovery);
-    expect(future.schemaVersion).toBe(3);
+    expect(future.schemaVersion).toBe(4);
   });
 });
 
@@ -348,5 +349,42 @@ describe('独立卡片草稿与来源', () => {
     expect(data().cardDrafts[draftId]).toMatchObject({ title: '生成时手写', body: '保留我的文字', status: 'editing' });
     expect(data().cardDrafts[draftId].suggestion?.body).toBe(card.body);
     expect(() => applyCardRevision(draftId)).toThrow(/旧版本/);
+  });
+});
+
+describe('从显式摘录起草卡片', () => {
+  it('只发送所选摘录，保留摘录来源且不改变对话材料，确认入库仍幂等', async () => {
+    addContext(['evidence-a']);
+    let submitted!: AIRequest;
+    const draftId = await generateCardDraftFromExcerpts('research-a', ['evidence-b', 'evidence-b'], async request => {
+      submitted = request;
+      return cardResponder(request);
+    });
+    expect(submitted.context.map(item => item.evidenceId)).toEqual(['evidence-b']);
+    expect(submitted.history).toEqual([]);
+    expect(data().conversations[conversationId].contextIds).toContain('evidence-a');
+    expect(data().conversations[conversationId].contextIds).not.toContain('evidence-b');
+    expect(data().cardDrafts[draftId].source).toMatchObject({ origin: 'excerpts', answer: '', answerEvidenceIds: [] });
+    expect(data().cardDrafts[draftId].source.context).toEqual(submitted.context);
+    const cardId = commitCardDraft(draftId);
+    expect(commitCardDraft(draftId)).toBe(cardId);
+    expect(data().cards[cardId]).toMatchObject({ needsReview: true, evidenceIds: ['evidence-b'], provenance: { origin: 'excerpts' } });
+  });
+  it('拒绝选择范围外的引用，并保留可重试草稿', async () => {
+    await expect(generateCardDraftFromExcerpts('research-a', ['evidence-a'], cardResponder)).rejects.toThrow(/引用/);
+    const draft = Object.values(data().cardDrafts).find(item => item.source.origin === 'excerpts');
+    expect(draft).toMatchObject({ status: 'error', evidenceIds: ['evidence-a'] });
+  });
+  it('切换研究后迟到结果仍归原研究，摘录中的方括号数字不重映射为对话引用', async () => {
+    workspace.updateData(next => { next.evidence['evidence-b'].quote = '实验设置 [42] 应逐项核对。'; });
+    const draftId = await generateCardDraftFromExcerpts('research-a', ['evidence-b'], async request => {
+      expect(request.prompt).toContain('[42]');
+      workspace.switchResearch('research-b');
+      return cardResponder(request);
+    });
+    expect(data().scope).toEqual({ kind: 'research', researchId: 'research-b' });
+    expect(data().cardDrafts[draftId].researchId).toBe('research-a');
+    expect(data().sessions['research-a'].panel.aiDraftId).toBe(draftId);
+    expect(data().sessions['research-b'].panel.aiDraftId).not.toBe(draftId);
   });
 });

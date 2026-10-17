@@ -44,7 +44,7 @@ test('桌面原生助手与项目接口按路径和方法逐项放行，未知�
     return Response.json({ ready: true });
   } });
   const getPaths = ['/api/ai/agents', '/api/ai/agents/codex/capabilities'];
-  const postPaths = ['/api/ai/agents/run', '/api/ai/agents/respond', '/api/ai/agents/stop', ...['browse', 'preview', 'bind', 'status', 'list', 'read'].map(action => `/api/ai/agents/projects/${action}`)];
+  const postPaths = ['/api/ai/agents/run', '/api/ai/agents/respond', '/api/ai/agents/stop', ...['browse', 'preview', 'bind', 'status', 'list', 'read', 'defaults', 'sync'].map(action => `/api/ai/agents/projects/${action}`)];
   for (const method of ['GET', 'POST']) for (const path of method === 'GET' ? getPaths : postPaths) {
     const response = await handler(new Request(`papertrail://app${path}`, { method, ...(method === 'POST' ? { body: '{"researchId":"fixture"}' } : {}), headers: { Origin: 'https://untrusted.example', Authorization: 'never-forward' } }));
     assert.equal(response.status, 200, path);
@@ -72,7 +72,7 @@ test('生产服务的相对模块依赖都包含在安装包中', async () => {
     for (const match of source.matchAll(/\bfrom\s+['"](.\/[^'"]+)['"]/g)) await visit(new URL(match[1], url));
   }
   await visit(new URL('../server/ai.mjs', import.meta.url));
-  assert.equal(visited.size, 7);
+  assert.equal(visited.size, 8);
 });
 test('仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝', () => {
   const contents = { getURL: () => APP_URL, isDestroyed: () => false };

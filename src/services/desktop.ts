@@ -1,5 +1,6 @@
 import { stopAllAI } from './ai';
 import { workspace } from './workspace';
+import { flushProjectFiles } from './project-files';
 
 declare global {
   interface Window {
@@ -10,6 +11,8 @@ declare global {
       onPrepareClose(callback: (id: string) => void): () => void;
       onCloseCancelled(callback: () => void): () => void;
       closePrepared(id: string, error?: string): void;
+      getProjectLocation?(): Promise<string>;
+      chooseDirectory?(defaultPath?: string): Promise<string | undefined>;
     };
   }
 }
@@ -23,6 +26,7 @@ export function installDesktopLifecycle() {
     try {
       await stopAllAI();
       await workspace.flushSave();
+      await flushProjectFiles();
       if (current === id) window.papertrailDesktop?.closePrepared(id);
     } catch (error) {
       if (current === id) {

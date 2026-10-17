@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hasFullText } from '../../src/domain/knowledge';
 import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
@@ -7,6 +8,7 @@ import { commitCardDraft, generateCardDraft, respondToAgent, retryAI, stopAI, su
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), contentHash: vi.fn() }));
+vi.mock('../../src/services/project-files', () => ({ syncResearchFiles: vi.fn(async () => {}) }));
 const data = () => workspace.getState().data;
 const frames = (events: unknown[]) => new Response(events.map(event => JSON.stringify(event)).join('\n') + '\n');
 const done = (text = '回答来自所选证据 [1]') => frames([{ type: 'session', nativeSessionId: 'native-1', nativeSessionRef: 'ref-native-1' }, { type: 'progress', kind: 'tool', text: '读取材料快照' }, { type: 'delta', text }, { type: 'done', model: 'runtime-model', nativeSessionId: 'native-1', nativeSessionRef: 'ref-native-1' }]);
@@ -16,7 +18,7 @@ beforeEach(async () => {
   vi.stubGlobal('localStorage', { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => memory.set(key, value), removeItem: (key: string) => memory.delete(key) });
   const seed = createSeed();
   Object.values(seed.researches).forEach(research => { research.directory = { id: `binding-${research.id}`, projectId: `project-${research.id}`, path: `/fixture/${research.id}` }; });
-  Object.values(seed.documents).forEach(doc => { doc.hash = 'a'.repeat(64); });
+  Object.values(seed.documents).filter(hasFullText).forEach(doc => { doc.hash = 'a'.repeat(64); });
   vi.mocked(loadWorkspace).mockResolvedValue(seed);
   vi.mocked(saveWorkspace).mockResolvedValue(undefined);
   vi.mocked(getAsset).mockResolvedValue(new Blob(['fixture']));

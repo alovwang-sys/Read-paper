@@ -2,6 +2,7 @@ import { test, expect, _electron, type ElectronApplication, type Page } from '@p
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { openSource } from '../e2e/knowledge-helpers';
 
 const packageRoot = resolve(`out/Papertrail-${process.platform}-${process.arch}`);
 const executablePath = process.env.PAPERTRAIL_EXECUTABLE || (process.platform === 'darwin'
@@ -121,7 +122,7 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     await expect(input(page)).toHaveValue(draft);
     expect(await page.evaluate(() => Reflect.get(window, '__composerMediaRequests'))).toBe(0);
 
-    await page.getByRole('main', { name: '主工作区' }).getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
+    await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
     await expect(page.getByRole('main', { name: '主工作区' }).locator('canvas')).toBeVisible();
     const notice = page.getByRole('button', { name: '关闭提示', exact: true });
     await expect(notice).not.toBeVisible();
@@ -141,8 +142,8 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     await expect(panel(page).getByRole('button', { name: '语音输入', exact: true })).toBeEnabled();
     await panel(page).getByRole('button', { name: '语音输入', exact: true }).click(); await expect(input(page)).toBeFocused(); await input(page).press('Escape');
     await expect(input(page)).toHaveValue(draft); await saved(page);
-    await mkdir('docs/verification/native-composer', { recursive: true });
-    await page.screenshot({ path: 'docs/verification/native-composer/desktop-composer.png' });
+    await mkdir(test.info().outputPath('composer'), { recursive: true });
+    await page.screenshot({ path: test.info().outputPath('composer', 'desktop-composer.png') });
     expect(await page.evaluate(() => Reflect.get(window, '__composerMediaRequests'))).toBe(0);
     await close(application); application = undefined;
 
@@ -152,7 +153,7 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeDisabled();
     expect(modelRequests).toEqual([]); expect(pageErrors).toEqual([]);
     expect(await page.evaluate(() => Reflect.get(window, '__composerMediaRequests'))).toBe(0);
-    await writeFile('docs/verification/native-composer/desktop-composer-evidence.json', JSON.stringify({
+    await writeFile(test.info().outputPath('composer', 'desktop-composer-evidence.json'), JSON.stringify({
       executablePath, capabilityStatus, capabilityBranch, capabilityError: capabilityStatus === 200 ? null : capability.error,
       capabilityErrorCode: capabilityStatus === 200 ? null : capability.code, modelCount: capability.models?.length ?? null,
       fullAccessConfirmationCancelled, fullAccessEnabled: false, materialDialogCancelled: true,

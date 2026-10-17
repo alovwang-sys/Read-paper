@@ -1,10 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowUp, Check, ChevronRight, Ellipsis, Folder, FolderOpen, RefreshCw, X } from 'lucide-react';
+import { Check, Ellipsis, FolderOpen, LoaderCircle, X } from 'lucide-react';
 import { bindResearchDirectory, browseResearchDirectories, getResearchDirectory, previewResearchDirectory } from '../../services/agents';
+import { chooseDirectory } from '../../services/research-directory';
 import { useWorkspace } from '../../services/workspace';
+import { DirectoryBrowser } from './DirectoryPicker';
+import { ProjectFileStatus } from './ProjectFileStatus';
 import './research-directory.css';
 
-export function ResearchDirectory({ researchId, settings = false, label = '选择研究目录' }: { researchId: string; settings?: boolean; label?: string }) {
+export function ResearchDirectory({ researchId, settings = false, inherited = false, label = '选择研究目录' }: { researchId: string; settings?: boolean; inherited?: boolean; label?: string }) {
   const { data, actions } = useWorkspace();
   const research = data.researches[researchId];
   const directory = research?.directory;
@@ -17,6 +20,7 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
   const [busy, setBusy] = useState(false);
   const [binding, setBinding] = useState(false);
   const [error, setError] = useState('');
+  const [ownerResearchId, setOwnerResearchId] = useState<string>();
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const version = useRef(0);
@@ -47,6 +51,7 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
     const request = ++version.current;
     setBusy(true);
     setError('');
+    setOwnerResearchId(undefined);
     setCandidate(undefined);
     try {
       const result = await browseResearchDirectories(nextPath, researchId);
@@ -67,6 +72,7 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
     setListing(undefined);
     setCandidate(undefined);
     setError('');
+    setOwnerResearchId(undefined);
     setOpen(true);
     void browse(directory?.path);
   }
@@ -87,35 +93,36 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
       actions.notice('项目已连接，名称已与文件夹保持一致。');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '目录连接失败，请重试。');
+      if (caught instanceof Error) setOwnerResearchId((caught as Error & { ownerResearchId?: string }).ownerResearchId);
     } finally { setBusy(false); setBinding(false); }
+  }
+  async function selectDirectory() {
+    setBusy(true); setError('');
+    try {
+      const result = await chooseDirectory(path || undefined);
+      if (result.path) { await browse(result.path); return; }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : '无法打开目录选择器，请重试。'); }
+    finally { setBusy(false); }
   }
   if (!research) return null;
   const status = directory ? checking ? '正在检查' : connected ? '已连接' : '需要重新连接' : '尚未选择目录';
   return <>
-    <button ref={trigger} type="button" className={`research-directory-trigger ${settings ? 'is-settings' : ''}`} title={settings ? `项目设置 · ${status}${directory ? `\n${directory.path}` : ''}` : label} aria-label={settings ? `项目设置 · ${research.title}` : label} aria-haspopup="dialog" onClick={show}>
-      {settings ? <Ellipsis size={18} /> : <><FolderOpen size={16} /><span>{label}</span></>}
+    <button ref={trigger} type="button" className={`research-directory-trigger ${settings ? 'is-settings' : ''} ${inherited ? 'is-inherited' : ''}`} title={settings || inherited ? `项目设置 · ${status}${directory ? `\n${directory.path}` : ''}` : label} aria-label={settings || inherited ? `项目设置 · ${research.title}` : label} aria-haspopup="dialog" onClick={show}>
+      {settings ? <Ellipsis size={18} /> : inherited ? <><FolderOpen size={16} /><span><strong>{research.title}</strong><small>{!directory ? '关联研究目录' : checking ? '正在检查目录…' : connected ? '沿用研究目录' : '目录需要重新连接'}</small></span></> : <><FolderOpen size={16} /><span>{label}</span></>}
     </button>
     <dialog ref={dialog} className="research-directory-dialog" aria-labelledby={titleId} onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }} onCancel={event => { event.preventDefault(); if (!binding) close(); }} onClose={() => { setOpen(false); trigger.current?.focus(); }}>
       <header><div><h2 id={titleId}>项目设置</h2><p>{research.title}</p></div><button type="button" className="directory-icon-button" aria-label="关闭项目设置" disabled={binding} onClick={close}><X size={18} /></button></header>
       <div className="directory-dialog-content">
-        <p className="directory-description">项目使用所在文件夹的名称，原生 AI 对话也归到这个目录。</p>
-        <p className="directory-connection" role="status"><FolderOpen size={15} />{status}</p>
-        <form className="directory-path-form" onSubmit={event => { event.preventDefault(); if (!busy) void browse(path.trim() || undefined); }}>
-          <label htmlFor={`${titleId}-path`}>{directory ? '项目位置' : '本机目录路径'}</label>
-          <div><input id={`${titleId}-path`} value={path} disabled={busy} onChange={event => { setPath(event.target.value); setCandidate(undefined); }} placeholder="输入绝对路径，或浏览下方目录" readOnly={!!directory} spellCheck={false} /><button type="submit" disabled={busy}><RefreshCw size={14} />{directory ? '重新检查' : '打开路径'}</button></div>
-        </form>
+        <p className="directory-description">一个研究，一个工作位置。Codex 和其他本机助手沿用此目录，无需在右侧重复选择。</p>
+        <p className="directory-connection" role="status">{checking ? <LoaderCircle className="directory-spinner" size={15} /> : <FolderOpen size={15} />}{status}</p>
+        {!directory && <button type="button" className="directory-native-picker" disabled={busy} onClick={() => void selectDirectory()}><FolderOpen size={15} />选择文件夹…</button>}
+        <DirectoryBrowser path={path} onPathChange={value => { setPath(value); setCandidate(undefined); }} listing={listing} busy={busy} onBrowse={nextPath => void browse(nextPath)} readOnly={!!directory} />
         {directory && <p className="directory-location-note">可重新连接原目录，论文、卡片和已有对话会保留。</p>}
-        {!directory && <div className="directory-browser" aria-busy={busy}>
-          <div className="directory-browser-heading"><span>选择已有目录</span><button type="button" disabled={busy || !listing?.parent} onClick={() => void browse(listing?.parent)}><ArrowUp size={14} />上一级</button></div>
-          <div className="directory-folders">
-            {listing?.directories.map(item => <button type="button" key={item.path} disabled={busy} onClick={() => void browse(item.path)}><Folder size={17} /><span>{item.name}</span><ChevronRight size={15} /></button>)}
-            {!busy && listing && !listing.directories.length && <p>这个目录没有子目录，可以直接使用当前目录。</p>}
-            {busy && !listing && <p role="status">正在读取本机目录…</p>}
-          </div>
-        </div>}
         {!directory && candidate && <div className="directory-preview"><Check size={16} /><div><strong>项目将命名为「{candidate.name || candidate.path}」</strong><p>{candidate.path}</p><small>点击“使用这个目录”后生效，原有资料和输入会保留。</small></div></div>}
-        {error && <p className="directory-error" role="alert">{error}</p>}
-        <details className="directory-storage-note"><summary>资料与对话保存在什么位置？</summary><p>研究目录用于项目归属，原生记录仍由各助手保存。当前浏览器中的论文、卡片和笔记不会因绑定目录自动迁移。</p></details>
+        {error && <div className="directory-error" role="alert"><p>{error}</p>{ownerResearchId && data.researches[ownerResearchId] && <button type="button" disabled={busy} onClick={() => { actions.switchResearch(ownerResearchId); close(); }}>打开已有研究</button>}</div>}
+        {directory && <ProjectFileStatus key={`${researchId}:${actions.getGeneration()}`} researchId={researchId} />}
+        <details className="directory-storage-note"><summary>资料与对话保存在什么位置？</summary><p>目录中的 Papertrail/ 自动保存本研究关联的论文、摘录、卡片、白板和文稿，供本机助手读取。应用同时保留本地恢复副本，完整工作区备份仍使用 ZIP。</p><p>原生会话由各助手保存。打开同一个目录可以读取研究文件；能否直接接续同一条会话，取决于助手原生记录和当前占用状态。</p></details>
+        <p className="directory-location-note">目录关联和助手连接分别检查。更换为其他目录需新建研究，已有原生会话不会被迁移。</p>
       </div>
       <footer><button type="button" disabled={binding} onClick={close}>取消</button><button type="button" className="directory-primary" disabled={busy || !candidate || (!!directory && candidate.path !== directory.path)} onClick={() => void bind()}>{binding ? '正在连接…' : busy ? '正在检查…' : directory ? '重新连接目录' : '使用这个目录'}</button></footer>
     </dialog>
