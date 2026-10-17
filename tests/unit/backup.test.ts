@@ -40,6 +40,16 @@ async function editWorkspace(blob: Blob, edit: (data: ReturnType<typeof createSe
 afterEach(() => vi.unstubAllGlobals());
 
 describe('完整工作区备份', () => {
+  it('无全文资料可对照和备份，迁移移除无效的界面阅读位置而保留资料', async () => {
+    const { data, assets } = await fixture();
+    data.sessions['research-a'].mainSplit = { layout: 'vertical', ref: { kind: 'document', id: 'paper-stub' } };
+    data.sessions['research-a'].readers['main-secondary:paper-stub'] = { pageIndex: 0, scale: 1 };
+    const normalized = migrateWorkspace(data);
+    expect(normalized.sessions['research-a'].readers['main-secondary:paper-stub']).toBeUndefined();
+    const restored = await readWorkspaceBackup(await createWorkspaceBackup(normalized, assets));
+    expect(restored.data.sessions['research-a'].mainSplit).toEqual(normalized.sessions['research-a'].mainSplit);
+    expect(restored.data.documents['paper-stub']).toEqual(normalized.documents['paper-stub']);
+  });
   it('无损往返全部资料、阅读位置、未发送内容和 PDF 字节，不改写输入', async () => {
     const { data, assets } = await fixture();
     data.cards['card-a'].body = '迁移时保留的编辑内容';
@@ -49,7 +59,7 @@ describe('完整工作区备份', () => {
     data.conversations['conversation-research-a'].input = '尚未发送的问题';
     data.sessions['research-a'].readers['main:paper-a'] = { pageIndex: 2, scale: 1.5, offset: 0.6 };
     data.sessions['research-a'].readers['main-secondary:paper-a'] = { pageIndex: 0, scale: 0.8, offset: 0.3 };
-    data.sessions['research-a'].readerSplits = { 'paper-a': 'horizontal' };
+    data.sessions['research-a'].mainSplit = { layout: 'horizontal', ref: { kind: 'card', id: 'card-a' } };
     data.sessions['research-a'].viewports['board-a'] = { x: 30, y: -40, scale: 0.75 };
     const original = structuredClone(data);
     const backup = await createWorkspaceBackup(data, assets);

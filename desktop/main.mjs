@@ -8,6 +8,7 @@ import { startDesktopAI, createQuitHandler } from './local-ai.mjs';
 import { createSettingsStore } from './settings.mjs';
 import { APP_URL, SETTINGS_URL, createAppProtocol, canWriteClipboard } from './protocol.mjs';
 import { startSystemDictation } from './dictation.mjs';
+import { installFullscreenShortcut } from './window-shortcuts.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 app.setName('Papertrail');
@@ -77,6 +78,9 @@ function createWindow() {
   let rendererUnavailable = false;
   mainWindow = new BrowserWindow({ width: 1440, height: 940, minWidth: 900, minHeight: 640, title: 'Papertrail', backgroundColor: '#f6f7f9', show: false, webPreferences: { preload: join(directory, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   secureWindow(mainWindow);
+  installFullscreenShortcut(mainWindow, process.platform);
+  mainWindow.on('enter-full-screen', () => mainWindow?.webContents.send('papertrail:fullscreen-changed', true));
+  mainWindow.on('leave-full-screen', () => mainWindow?.webContents.send('papertrail:fullscreen-changed', false));
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.webContents.on('render-process-gone', () => { rendererUnavailable = true; if (closing) void unconfirmedClose('工作台进程已停止响应。'); });
   mainWindow.webContents.on('did-fail-load', (_event, code, _description, _url, isMainFrame) => {
@@ -128,6 +132,14 @@ else {
   ai = await startDesktopAI({ env: runtimeEnvironment() });
   protocol.handle('papertrail', createAppProtocol({ distDirectory: join(directory, '..', 'dist'), desktopDirectory: directory, getAI: () => ai }));
   ipcMain.handle('papertrail:start-dictation', event => startSystemDictation({ event, window: mainWindow, url: APP_URL, platform: process.platform, sendAction: action => Menu.sendActionToFirstResponder(action) }));
+  ipcMain.handle('papertrail:get-fullscreen', event => {
+    if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面读取工作台窗口状态。');
+    return mainWindow.isFullScreen();
+  });
+  ipcMain.handle('papertrail:exit-fullscreen', event => {
+    if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面修改工作台窗口状态。');
+    mainWindow.setFullScreen(false);
+  });
   ipcMain.handle('papertrail:project-location', event => {
     if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面读取研究位置。');
     return app.getPath('documents');

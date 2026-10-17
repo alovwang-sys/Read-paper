@@ -558,6 +558,6 @@
 .pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-pane-label { padding-top: 2px; padding-bottom: 2px; }
 .pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-toolbar { padding-top: 4px; padding-bottom: 4px; }
 .pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-status-ready,
-.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-footer,
-.pdf-reader-main-secondary .pdf-reading-status { display: none; }
+.pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-footer { display: none; }
+
 .pdf-reader-layout:is(.pdf-split-horizontal, .pdf-split-vertical) .pdf-scroll { padding-top: 12px; padding-bottom: 12px; }

@@ -3,6 +3,7 @@ export type ResourceRef = {
   kind: 'research' | 'document' | 'card' | 'board' | 'draft';
   id: string;
 };
+export type SecondaryResourceRef = { kind: 'document' | 'card'; id: string };
 export type WorkspaceScope =
   | { kind: 'research'; researchId: string }
   | { kind: 'library' };
@@ -211,6 +212,8 @@ export type Session = {
   history: Session['active'][];
   panel: PanelState;
   readers: Record<string, ReadingPosition>;
+  mainSplit?: { open?: boolean; layout: 'horizontal' | 'vertical'; ref: SecondaryResourceRef; anchor?: ResourceAnchor };
+  /** Legacy per-paper layout, consumed on load. */
   readerSplits?: Record<string, 'horizontal' | 'vertical'>;
   viewports: Record<string, BoardViewport>;
   anchor?: ResourceAnchor;

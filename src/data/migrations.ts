@@ -59,9 +59,29 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions)) {
-    for (const position of Object.values(session.readers))
+    for (const [key, position] of Object.entries(session.readers)) {
       if (!record(position) || !Number.isInteger(position.pageIndex) || position.pageIndex < 0 || !Number.isFinite(position.scale) || position.scale < 0.5 || position.scale > 2 || position.offset !== undefined && (!Number.isFinite(position.offset) || position.offset < 0 || position.offset > 1)) throw new Error('阅读位置损坏，未覆盖现有数据。');
+      const id = key.replace(/^(main|main-secondary|inspector):/, '');
+      if (id !== key && data.documents[id] && !hasFullText(data.documents[id])) delete session.readers[key];
+    }
     if (session.readerSplits !== undefined && (!record(session.readerSplits) || Object.entries(session.readerSplits).some(([id, layout]) => !hasFullText(data.documents[id]) || !['horizontal', 'vertical'].includes(layout)))) throw new Error('阅读分屏状态损坏，未覆盖现有数据。');
+    if (!session.mainSplit && session.readerSplits) {
+      const id = session.active.kind === 'document' && session.readerSplits[session.active.id] ? session.active.id : session.openItems.find(ref => ref.kind === 'document' && session.readerSplits?.[ref.id])?.id;
+      if (id) session.mainSplit = { layout: session.readerSplits[id], ref: { kind: 'document', id } };
+    }
+    delete session.readerSplits;
+    if (session.mainSplit !== undefined) {
+      const split = session.mainSplit;
+      const ref = split?.ref;
+      const exists = ref?.kind === 'document' ? !!data.documents[ref.id] : ref?.kind === 'card' && !!data.cards[ref.id];
+      if (!record(split) || split.open !== undefined && typeof split.open !== 'boolean' || !['horizontal', 'vertical'].includes(split.layout) || !record(ref) || !exists) throw new Error('工作区分屏资源损坏，未覆盖现有数据。');
+      if (split.anchor !== undefined && (!record(split.anchor) || ref.kind !== 'document' || split.anchor.pageIndex !== undefined && (!Number.isInteger(split.anchor.pageIndex) || split.anchor.pageIndex < 0 || !hasFullText(data.documents[ref.id]) || split.anchor.pageIndex >= data.documents[ref.id].pageCount!))) throw new Error('对照来源定位损坏，未覆盖现有数据。');
+      if (split.anchor?.evidenceId !== undefined && (typeof split.anchor.evidenceId !== 'string' || data.evidence[split.anchor.evidenceId]?.documentId !== ref.id)) throw new Error('对照来源不属于该文献，未覆盖现有数据。');
+    }
+  }
+  for (const [key, session] of Object.entries(data.sessions)) {
+    const ref = session.mainSplit?.ref;
+    if (ref && key !== 'library' && !(ref.kind === 'document' ? data.researches[key]?.documentIds : data.researches[key]?.cardIds)?.includes(ref.id)) throw new Error('对照资源不属于本研究，未覆盖现有数据。');
   }
   for (const item of [...Object.values(data.conversations), ...Object.values(data.requests)]) {
     const settings = item.codex;

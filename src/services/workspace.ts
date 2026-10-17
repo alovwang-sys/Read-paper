@@ -183,7 +183,7 @@ export const workspace = {
       const migrated = saved && saved.schemaVersion < 3;
       const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating') || Object.values(saved.documents ?? {}).some(doc => (doc as { acquisition?: { status?: string } }).acquisition?.status === 'fetching'));
       if (migrated) await saveMigrationBackup({ database, recovery: journal ?? oldJournal });
-      const data = saved ? migrateWorkspace(saved) : createSeed();
+      const data = migrateWorkspace(saved ?? createSeed());
       status({
         data,
         loaded: true,
@@ -339,6 +339,7 @@ export const workspace = {
         if (session.documentInfoId === stubId) session.documentInfoId = intoId;
         for (const ref of [session.active, ...session.openItems, ...session.history, ...session.panel.history]) move(ref);
         if (session.panel.ref) move(session.panel.ref);
+        if (session.mainSplit) move(session.mainSplit.ref);
         if (session.panel.sourceReturnRef) move(session.panel.sourceReturnRef);
         for (const ref of session.recentItems ?? []) move(ref);
         session.openItems = session.openItems.filter((ref, index, items) => items.findIndex(other => sameRef(ref, other)) === index);
@@ -406,10 +407,11 @@ export const workspace = {
     ref: ResourceRef,
     options: {
       scope: WorkspaceScope;
-      target: 'main' | 'inspector';
+      target: ReaderTarget;
       anchor?: ResourceAnchor;
     },
   ) {
+    if (options.target === 'main-secondary' && !['document', 'card'].includes(ref.kind)) throw new Error('对照窗支持论文和知识卡片。');
     if (ref.kind === 'research') { workspace.openResearchView(ref.id, 'home'); return; }
     workspace.updateData((data) => {
       if (!resourceExists(data, ref))
@@ -443,6 +445,10 @@ export const workspace = {
         session.anchor = options.anchor;
         if (!session.openItems.some((item) => sameRef(item, ref)))
           session.openItems.push(ref);
+      } else if (options.target === 'main-secondary' && (ref.kind === 'document' || ref.kind === 'card')) {
+        session.mainSplit = { open: true, layout: session.mainSplit?.layout ?? 'vertical', ref: { kind: ref.kind, id: ref.id }, anchor: options.anchor };
+        if (ref.kind === 'document' && hasFullText(data.documents[ref.id])) session.readers[`main-secondary:${ref.id}`] ??= structuredClone(session.readers[`main:${ref.id}`] ?? { pageIndex: 0, scale: 1 });
+        if (!session.openItems.some(item => sameRef(item, ref))) session.openItems.push(ref);
       } else {
         if (session.panel.ref) session.panel.history.push(session.panel.ref);
         session.panel = {
@@ -506,6 +512,7 @@ export const workspace = {
         (item) => !sameRef(item, ref),
       );
       session.pinnedIds = session.pinnedIds.filter((id) => id !== ref.id);
+      if (session.mainSplit && sameRef(session.mainSplit.ref, ref)) session.mainSplit = undefined;
       if (session.active.kind !== 'collection' && session.active.kind !== 'researchView' && sameRef(session.active, ref))
         session.active =
           session.openItems.at(-1) ??
@@ -708,16 +715,14 @@ export const workspace = {
       };
     });
   },
-  setReaderSplit(documentId: string, layout?: 'horizontal' | 'vertical') {
+  setMainSplitLayout(layout: 'horizontal' | 'vertical') {
     workspace.updateData(data => {
-      if (!hasFullText(data.documents[documentId])) return;
-      const session = data.sessions[scopeKey(data.scope)];
-      if (layout) {
-        session.readerSplits ??= {};
-        session.readerSplits[documentId] = layout;
-        session.readers[`main-secondary:${documentId}`] ??= structuredClone(session.readers[`main:${documentId}`] ?? { pageIndex: 0, scale: 1 });
-      } else if (session.readerSplits) delete session.readerSplits[documentId];
+      const split = data.sessions[scopeKey(data.scope)].mainSplit;
+      if (split && ['horizontal', 'vertical'].includes(layout)) split.layout = layout;
     });
+  },
+  closeMainSplit() {
+    workspace.updateData(data => { const split = data.sessions[scopeKey(data.scope)].mainSplit; if (split) split.open = false; });
   },
   addPlacement(boardId: string, ref: ResourceRef): BoardPlacement {
     const id = uid('placement');

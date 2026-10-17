@@ -1,0 +1,323 @@
+{
+  "fixture": "Isolated desktop sample PDF, no user data or actual model request",
+  "beforeFixAsarSha256": "2983f1f5ae8a290bf3d14e3bf323e83e11e919e9073d1dacff50321b1320b756",
+  "debounceMs": 180,
+  "finding": "Split layout restore scrolls current page 2 to top 0 before the pending scroll position is saved; later input may mask the defect.",
+  "beforeFixEvents": [
+    {
+      "t": 306.70000000298023,
+      "kind": "scroll",
+      "value": {
+        "pane": "PDF 阅读器 主区",
+        "top": 926,
+        "w": 745,
+        "h": 632,
+        "page": "1"
+      }
+    },
+    {
+      "t": 338.70000000298023,
+      "kind": "journal",
+      "value": {
+        "split": {
+          "open": true,
+          "layout": "vertical",
+          "ref": {
+            "kind": "document",
+            "id": "paper-a"
+          }
+        }
+      }
+    },
+    {
+      "t": 341,
+      "kind": "journal",
+      "value": {
+        "split": {
+          "open": true,
+          "layout": "vertical",
+          "ref": {
+            "kind": "document",
+            "id": "paper-a"
+          }
+        }
+      }
+    },
+    {
+      "t": 341.90000000596046,
+      "kind": "scrollTo",
+      "value": {
+        "before": {
+          "pane": "PDF 阅读器 对照位置",
+          "top": 0,
+          "w": 745,
+          "h": 282,
+          "page": "1"
+        },
+        "args": [
+          {
+            "top": 0,
+            "left": 0
+          }
+        ]
+      }
+    },
+    {
+      "t": 341.90000000596046,
+      "kind": "scrollToDone",
+      "value": {
+        "pane": "PDF 阅读器 对照位置",
+        "top": 0,
+        "w": 745,
+        "h": 282,
+        "page": "1"
+      }
+    },
+    {
+      "t": 349.09999999403954,
+      "kind": "resize",
+      "value": {
+        "pane": "PDF 阅读器 主区",
+        "top": 926,
+        "w": 745,
+        "h": 306,
+        "page": "2"
+      }
+    },
+    {
+      "t": 349.09999999403954,
+      "kind": "resize",
+      "value": {
+        "pane": "PDF 阅读器 对照位置",
+        "top": 0,
+        "w": 745,
+        "h": 282,
+        "page": "1"
+      }
+    },
+    {
+      "t": 358.29999999701977,
+      "kind": "scrollTo",
+      "value": {
+        "before": {
+          "pane": "PDF 阅读器 主区",
+          "top": 926,
+          "w": 745,
+          "h": 306,
+          "page": "2"
+        },
+        "args": [
+          {
+            "top": 0,
+            "left": 0
+          }
+        ]
+      }
+    },
+    {
+      "t": 358.40000000596046,
+      "kind": "scrollToDone",
+      "value": {
+        "pane": "PDF 阅读器 主区",
+        "top": 0,
+        "w": 745,
+        "h": 306,
+        "page": "2"
+      }
+    },
+    {
+      "t": 358.40000000596046,
+      "kind": "scrollTo",
+      "value": {
+        "before": {
+          "pane": "PDF 阅读器 对照位置",
+          "top": 0,
+          "w": 745,
+          "h": 282,
+          "page": "1"
+        },
+        "args": [
+          {
+            "top": 0,
+            "left": 0
+          }
+        ]
+      }
+    },
+    {
+      "t": 358.40000000596046,
+      "kind": "scrollToDone",
+      "value": {
+        "pane": "PDF 阅读器 对照位置",
+        "top": 0,
+        "w": 745,
+        "h": 282,
+        "page": "1"
+      }
+    },
+    {
+      "t": 361.09999999403954,
+      "kind": "journal",
+      "value": {
+        "split": {
+          "open": true,
+          "layout": "vertical",
+          "ref": {
+            "kind": "document",
+            "id": "paper-a"
+          }
+        }
+      }
+    },
+    {
+      "t": 362,
+      "kind": "scrollTo",
+      "value": {
+        "before": {
+          "pane": "PDF 阅读器 对照位置",
+          "top": 0,
+          "w": 745,
+          "h": 282,
+          "page": "1"
+        },
+        "args": [
+          {
+            "top": 0,
+            "left": 0
+          }
+        ]
+      }
+    },
+    {
+      "t": 362,
+      "kind": "scrollToDone",
+      "value": {
+        "pane": "PDF 阅读器 对照位置",
+        "top": 0,
+        "w": 745,
+        "h": 282,
+        "page": "1"
+      }
+    },
+    {
+      "t": 365.29999999701977,
+      "kind": "input",
+      "value": {
+        "pane": "PDF 阅读器 主区",
+        "top": 0,
+        "w": 745,
+        "h": 306,
+        "page": "2"
+      }
+    },
+    {
+      "t": 365.70000000298023,
+      "kind": "journal",
+      "value": {
+        "position": {
+          "pageIndex": 1,
+          "scale": 1,
+          "offset": 0
+        },
+        "split": {
+          "open": true,
+          "layout": "vertical",
+          "ref": {
+            "kind": "document",
+            "id": "paper-a"
+          }
+        }
+      }
+    },
+    {
+      "t": 366.79999999701977,
+      "kind": "scrollTo",
+      "value": {
+        "before": {
+          "pane": "PDF 阅读器 主区",
+          "top": 0,
+          "w": 745,
+          "h": 306,
+          "page": "1"
+        },
+        "args": [
+          {
+            "top": 915.6470588235294,
+            "left": 0
+          }
+        ]
+      }
+    },
+    {
+      "t": 366.79999999701977,
+      "kind": "scrollToDone",
+      "value": {
+        "pane": "PDF 阅读器 主区",
+        "top": 916,
+        "w": 745,
+        "h": 306,
+        "page": "1"
+      }
+    },
+    {
+      "t": 367.40000000596046,
+      "kind": "scroll",
+      "value": {
+        "pane": "PDF 阅读器 主区",
+        "top": 916,
+        "w": 745,
+        "h": 306,
+        "page": "1"
+      }
+    },
+    {
+      "t": 378.90000000596046,
+      "kind": "resize",
+      "value": {
+        "pane": "PDF 阅读器 对照位置",
+        "top": 0,
+        "w": 745,
+        "h": 306,
+        "page": "1"
+      }
+    },
+    {
+      "t": 380.70000000298023,
+      "kind": "scrollTo",
+      "value": {
+        "before": {
+          "pane": "PDF 阅读器 对照位置",
+          "top": 0,
+          "w": 745,
+          "h": 306,
+          "page": "1"
+        },
+        "args": [
+          {
+            "top": 0,
+            "left": 0
+          }
+        ]
+      }
+    },
+    {
+      "t": 380.70000000298023,
+      "kind": "scrollToDone",
+      "value": {
+        "pane": "PDF 阅读器 对照位置",
+        "top": 0,
+        "w": 745,
+        "h": 306,
+        "page": "1"
+      }
+    }
+  ],
+  "afterFixVerification": {
+    "packagedDesktopCase": "tests/desktop/reader-images.spec.ts",
+    "consecutivePasses": 3,
+    "scrollPositionAfterImmediateSplitAsserted": true,
+    "primaryAndSecondaryPositionAfterRestartAsserted": true,
+    "actualModelCalls": 0,
+    "asarSha256": "88f81ad7c85aa5d1fa9bab63629bbdfebae14c2a146bcf2914430ff072243c65"
+  }
+}

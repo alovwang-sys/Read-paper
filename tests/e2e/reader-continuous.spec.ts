@@ -61,6 +61,15 @@ test('滚动连续跨页，第二页原文摘录仍保存正确页索引与引�
   await scroller.hover(); await page.mouse.wheel(0, 1000);
   await expect.poll(() => scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(top + 300);
   await expect(pane.getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
+  const beforeSplit = await scroller.evaluate(async node => {
+    node.scrollTop += 90;
+    await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    return node.scrollTop;
+  });
+  await main(page).getByRole('button', { name: '分屏阅读', exact: true }).click();
+  await expect(pane.getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
+  await expect.poll(() => scroller.evaluate((node, savedTop) => Math.abs(node.scrollTop - savedTop), beforeSplit)).toBeLessThanOrEqual(2);
+  await expect(secondary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
   const second = pane.locator('.pdf-sheet[data-page-index="1"]');
   const span = second.locator('.pdf-text-layer span').filter({ hasText: 'The fixed baseline always selects' }).first();
   await span.scrollIntoViewIfNeeded();

@@ -1,0 +1,17 @@
+{
+  "status": "pending",
+  "reason": "Mac locked; user app was still generating at the last unlocked observation. Do not interrupt or replace running app.",
+  "stagedAppVerified": true,
+  "stagedBundleEntries": 586,
+  "newAsarSha256": "88f81ad7c85aa5d1fa9bab63629bbdfebae14c2a146bcf2914430ff072243c65",
+  "exportedDmg": {
+    "path": "/Users/amos/Downloads/Papertrail-0.1.2-workspace-fullscreen-arm64.dmg",
+    "bytes": 157985240,
+    "sha256": "002ec289ee10fec974a58d8b268bf4ae3cfd979ad876a7b773afbac6b8d9828f"
+  },
+  "currentInstalledAsarSha256": "c7f566f9c2c03125f231ddbe5a73e4f4f8527ca07eb9290db594a9866a0c9077",
+  "runningUserAppReplaced": false,
+  "latestUserAppUIVerified": false,
+  "oldInstalledAppMovedToTrash": false,
+  "userDataModifiedByUpdate": false
+}

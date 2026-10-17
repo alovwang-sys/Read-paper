@@ -7,6 +7,9 @@ const listen = (channel, callback) => {
 };
 contextBridge.exposeInMainWorld('papertrailDesktop', {
   startDictation: () => ipcRenderer.invoke('papertrail:start-dictation'),
+  getFullScreen: () => ipcRenderer.invoke('papertrail:get-fullscreen'),
+  exitFullScreen: () => ipcRenderer.invoke('papertrail:exit-fullscreen'),
+  onFullScreenChanged: (callback) => listen('papertrail:fullscreen-changed', callback),
   openAISettings: () => ipcRenderer.invoke('papertrail:open-ai-settings'),
   getProjectLocation: () => ipcRenderer.invoke('papertrail:project-location'),
   chooseDirectory: (defaultPath) => ipcRenderer.invoke('papertrail:choose-directory', defaultPath),

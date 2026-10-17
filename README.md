@@ -52,7 +52,7 @@ Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个
 
 ![实际工作台的新建研究表单：一次选择研究名称、问题与目录](docs/verification/research-directory/implemented-create-1440.jpg)
 
-PDF 默认连续滚动；阅读器顶部“分屏阅读”可同时查看同一篇论文的两个位置，页码、缩放及阅读进度独立保存。右侧 AI／卡片面板保持可用。Codex 图片材料支持 PDF 区域截图，需选择本机明确支持图片的模型；最多 4 张、每张 8 MB。macOS 桌面“语音”请求系统听写，识别结果留在草稿中；其他平台提供系统快捷键指引。详见[验证与限制](docs/verification/reader-images/README.md)。
+PDF 默认连续滚动；工作区顶部“分屏对照”可同时查看同篇两处、不同论文或知识卡片；两窗顶部可独立选择内容，页码、缩放及阅读进度独立保存。右侧 AI／卡片面板保持可用。桌面全屏时顶部常显“退出全屏”，也可按 macOS ⌃⌘F／其他平台 F11。Codex 图片材料支持 PDF 区域截图，需选择本机明确支持图片的模型；最多 4 张、每张 8 MB。macOS 桌面“语音”请求系统听写，识别结果留在草稿中；其他平台提供系统快捷键指引。详见[分屏与全屏验收](docs/verification/fullscreen/README.md)和[图片与听写限制](docs/verification/reader-images/README.md)。
 
 ## 研究目录与 Codex
 

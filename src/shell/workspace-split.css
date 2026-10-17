@@ -1,0 +1,10 @@
+.workspace-pane-body { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+.workspace-pane-body > .pdf-reader { height: 100%; }
+.workspace-pane-picker { display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0; }
+.workspace-pane-picker > span { flex-shrink: 0; color: #617554; font-size: 10px; }
+.workspace-pane-picker select { flex: 1; min-width: 0; width: 100%; border: 0; padding: 2px 18px 2px 4px; border-radius: 3px; background: transparent; color: #4d6242; font-size: 11px; text-overflow: ellipsis; }
+.workspace-pane-picker select:focus-visible { outline: 2px solid #659784; outline-offset: -1px; }
+.workspace-split:is(.pdf-split-horizontal, .pdf-split-vertical) .card-editor { padding: 18px; }
+.workspace-split:is(.pdf-split-horizontal, .pdf-split-vertical) .card-editor-kind { margin-bottom: 12px; }
+.workspace-split:is(.pdf-split-horizontal, .pdf-split-vertical) .card-editor .card-body-field { margin-top: 12px; }
+.workspace-split:is(.pdf-split-horizontal, .pdf-split-vertical) .card-editor .card-body-field textarea { min-height: 160px; }

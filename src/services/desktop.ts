@@ -6,6 +6,9 @@ declare global {
   interface Window {
     papertrailDesktop?: {
       startDictation?(): Promise<boolean>;
+      getFullScreen?(): Promise<boolean>;
+      exitFullScreen?(): Promise<void>;
+      onFullScreenChanged?(callback: (fullScreen: boolean) => void): () => void;
       openAISettings(): Promise<void>;
       onAISettingsChanged(callback: () => void): () => void;
       onOpenStorage(callback: () => void): () => void;

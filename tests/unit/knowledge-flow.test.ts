@@ -178,6 +178,7 @@ describe('摘录、共享依据和研究会话', () => {
       data.placements['stub-placement'] = { id: 'stub-placement', boardId: 'board-a', resourceRef: { kind: 'document', id: 'paper-stub' }, x: 0, y: 0, group: '' };
       const session = data.sessions['research-a'];
       session.active = { kind: 'document', id: 'paper-stub' };
+      session.mainSplit = { layout: 'vertical', ref: { kind: 'document', id: 'paper-stub' } };
       session.openItems = [{ kind: 'document', id: 'paper-stub' }, { kind: 'document', id: 'paper-a' }];
       session.history = [{ kind: 'document', id: 'paper-stub' }];
       session.recentItems = [{ kind: 'document', id: 'paper-stub' }];
@@ -197,6 +198,7 @@ describe('摘录、共享依据和研究会话', () => {
     expect([session.active, ...session.history, session.panel.ref, ...session.panel.history, session.panel.sourceReturnRef].every(ref => ref?.id === 'paper-a')).toBe(true);
     expect(session.pinnedIds).toEqual(['paper-a']);
     expect(session.recentItems).toEqual([{ kind: 'document', id: 'paper-a' }]);
+    expect(session.mainSplit?.ref).toEqual({ kind: 'document', id: 'paper-a' });
     expect(() => workspace.mergeDocuments('paper-a', 'paper-b')).toThrow(/无全文/);
   });
 

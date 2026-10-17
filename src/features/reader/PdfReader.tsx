@@ -13,7 +13,6 @@ import {
   Search,
   Scan,
   Sparkles,
-  Rows2,
   X,
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -35,28 +34,7 @@ type SelectionAction = 'excerpt' | 'card' | 'ai' | 'explain' | 'attach';
 type RegionPreview = { blob: Blob; url: string; width: number; height: number; rect: RegionRect; rotation: number };
 const explanationPrompt = '请解释所选材料的核心观点，并说明适用条件与限制。';
 
-export function PdfReader({ documentId, target = 'main', anchor }: { documentId: string; target?: 'main' | 'inspector'; anchor?: ResourceAnchor }) {
-  const { session, actions } = useWorkspace();
-  const layout = session.readerSplits?.[documentId];
-  if (target === 'inspector') return <PdfReaderPane documentId={documentId} target={target} anchor={anchor} />;
-  return <section className={`pdf-reader-layout ${layout ? `pdf-split-${layout}` : ''}`} aria-label="论文连续阅读">
-    <div className="pdf-layout-toolbar">
-      <span><BookOpen size={13} />连续阅读</span>
-      <div>
-        {!layout ? <button className="text-button" aria-label="分屏阅读" onClick={() => actions.setReaderSplit(documentId, 'vertical')}><Rows2 size={14} />分屏阅读</button> : <>
-          <label className="pdf-layout-select"><span>对照布局</span><select aria-label="阅读器分屏方向" value={layout} onChange={event => actions.setReaderSplit(documentId, event.target.value as 'horizontal' | 'vertical')}><option value="vertical">上下分屏</option><option value="horizontal">左右（窄屏上下）</option></select></label>
-          <button className="text-button" aria-label="关闭阅读器分屏" onClick={() => actions.setReaderSplit(documentId)}><X size={13} />关闭分屏</button>
-        </>}
-      </div>
-    </div>
-    <div className="pdf-reading-panes">
-      <div className="pdf-reading-pane">{layout && <div className="pdf-pane-label">阅读位置 1</div>}<PdfReaderPane documentId={documentId} target="main" anchor={anchor} /></div>
-      {layout && <div className="pdf-reading-pane"><div className="pdf-pane-label">阅读位置 2 <span>独立滚动与缩放</span></div><PdfReaderPane documentId={documentId} target="main-secondary" /></div>}
-    </div>
-  </section>;
-}
-
-function PdfReaderPane({
+export function PdfReader({
   documentId,
   target = 'main',
   anchor,
@@ -105,6 +83,7 @@ function PdfReaderPane({
   const selectionVersion = useRef(0);
   const [width, setWidth] = useState(target === 'main' ? 720 : 320);
   const [viewportHeight, setViewportHeight] = useState(600);
+  const [navigationRevision, setNavigationRevision] = useState(0);
   const scroll = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const layer = useRef<HTMLDivElement | null>(null);
@@ -113,6 +92,9 @@ function PdfReaderPane({
   const lastWrittenPosition = useRef<ReadingPosition | undefined>(undefined);
   const instanceGeneration = useRef(actions.getGeneration());
   const lastLayout = useRef('');
+  const lastPositionKey = useRef('');
+  const lastAnchorId = useRef<string | undefined>(undefined);
+  const navigationRequested = useRef(false);
   const scrollFrame = useRef<number | undefined>(undefined);
   const readScroll = useRef<() => void>(() => {});
   const pageSizes = useMemo(() => Array.from({ length: pdf?.numPages ?? 0 }, (_, index) => {
@@ -303,22 +285,29 @@ function PdfReaderPane({
   const layoutKey = `${documentId}:${width}:${viewportHeight}:${position.scale}:${naturalSizes.map(size => `${size.width},${size.height}`).join(';')}`;
   useEffect(() => {
     if (!pdf || !scroll.current || !pageSizes.length) return;
+    const positionKey = `${position.pageIndex}:${position.scale}:${position.offset ?? 0}`;
     const ownWrite = lastWrittenPosition.current;
     const unchanged = ownWrite?.pageIndex === position.pageIndex && ownWrite?.scale === position.scale && ownWrite?.offset === position.offset;
-    if (unchanged && lastLayout.current === layoutKey) return;
+    const externalNavigation = navigationRequested.current || (!unchanged && lastPositionKey.current !== positionKey) || lastAnchorId.current !== anchor?.evidenceId;
+    navigationRequested.current = false;
+    lastPositionKey.current = positionKey;
+    lastAnchorId.current = anchor?.evidenceId;
+    if (!externalNavigation && unchanged && lastLayout.current === layoutKey) return;
+    const destination = !externalNavigation && pendingPosition.current ? pendingPosition.current : position;
+    if (destination !== position) flushPosition();
     window.clearTimeout(positionTimer.current);
     pendingPosition.current = undefined;
     if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current);
     scrollFrame.current = undefined;
     lastLayout.current = layoutKey;
-    const index = Math.min(position.pageIndex, pdf.numPages - 1);
+    const index = Math.min(destination.pageIndex, pdf.numPages - 1);
     setVisiblePage(index);
     const top = pageSizes.slice(0, index).reduce((sum, size) => sum + size.height + 24, 0);
-    const region = sourceValid && sourceEvidence.region && sourceEvidence.pageIndex === index
+    const region = externalNavigation && sourceValid && sourceEvidence.region && sourceEvidence.pageIndex === index
       ? rotateRegion(sourceEvidence.region.rect, pageSizes[index].rotation - sourceEvidence.region.rotation) : undefined;
-    const offset = region ? region.y : position.offset ?? 0;
+    const offset = region ? region.y : destination.offset ?? 0;
     scroll.current.scrollTo({ top: Math.max(0, top + offset * pageSizes[index].height - (region ? 40 : 0)), left: 0 });
-  }, [pdf, layoutKey, position.pageIndex, position.offset, anchor?.evidenceId]);
+  }, [pdf, layoutKey, position.pageIndex, position.offset, anchor?.evidenceId, navigationRevision]);
 
   function flushPosition() {
     window.clearTimeout(positionTimer.current);
@@ -346,7 +335,7 @@ function PdfReaderPane({
     });
   }
   readScroll.current = () => {
-      if (!scroll.current || !pageSizes.length) return;
+      if (!scroll.current || !pageSizes.length || lastLayout.current !== layoutKey) return;
       let top = 0, index = 0;
       const y = Math.max(0, scroll.current.scrollTop);
       // Browser scrollTop is rounded; PDF page geometry can have fractional pixels.
@@ -361,7 +350,8 @@ function PdfReaderPane({
       setVisiblePage(index);
       pendingPosition.current = { pageIndex: index, scale: position.scale, offset: Math.min(1, Math.max(0, (y - top) / pageSizes[index].height)) };
       window.clearTimeout(positionTimer.current);
-      positionTimer.current = window.setTimeout(flushPosition, 180);
+      if (index !== position.pageIndex) flushPosition();
+      else positionTimer.current = window.setTimeout(flushPosition, 180);
   };
 
   function activatePage(index: number) {
@@ -373,12 +363,20 @@ function PdfReaderPane({
   }
 
   function changePage(next: number) {
+    navigatePosition({ pageIndex: next, scale: position.scale, offset: 0 });
+  }
+  function changeScale(scale: number) {
+    navigatePosition({ ...(pendingPosition.current ?? { pageIndex, scale: position.scale, offset: position.offset }), scale });
+  }
+  function navigatePosition(next: ReadingPosition) {
     clearSelection();
-    actions.setReader(
-      documentId,
-      { pageIndex: next, scale: position.scale, offset: 0 },
-      target,
-    );
+    window.clearTimeout(positionTimer.current);
+    pendingPosition.current = undefined;
+    if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current);
+    scrollFrame.current = undefined;
+    navigationRequested.current = true;
+    actions.setReader(documentId, next, target, data.scope);
+    setNavigationRevision(value => value + 1);
   }
   function clearSelection() {
     selectionVersion.current++;
@@ -725,22 +723,14 @@ function PdfReaderPane({
             className="icon-button"
             aria-label="缩小 PDF"
             disabled={position.scale <= 0.5}
-            onClick={() =>
-              actions.setReader(
-                documentId,
-                { pageIndex, scale: position.scale - 0.25, offset: position.offset },
-                target,
-              )
-            }
+            onClick={() => changeScale(position.scale - 0.25)}
           >
             <Minus size={14} />
           </button>
           <button
             className="text-button"
             title="恢复适合宽度"
-            onClick={() =>
-              actions.setReader(documentId, { pageIndex, scale: 1, offset: position.offset }, target)
-            }
+            onClick={() => changeScale(1)}
           >
             {Math.round(position.scale * 100)}%
           </button>
@@ -748,13 +738,7 @@ function PdfReaderPane({
             className="icon-button"
             aria-label="放大 PDF"
             disabled={position.scale >= 2}
-            onClick={() =>
-              actions.setReader(
-                documentId,
-                { pageIndex, scale: position.scale + 0.25, offset: position.offset },
-                target,
-              )
-            }
+            onClick={() => changeScale(position.scale + 0.25)}
           >
             <Plus size={14} />
           </button>

@@ -207,6 +207,13 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
       const citation = session.panel.citation;
       requireValid(object(citation) && has(data.drafts, citation.draftId) && data.drafts[citation.draftId].researchId === key && data.drafts[citation.draftId].evidenceIds.includes(citation.evidenceId), '出处链缺失或跨研究');
     }
+    if (session.mainSplit) {
+      const split = session.mainSplit;
+      ref(split.ref);
+      requireValid(key === 'library' || (split.ref.kind === 'document' ? data.researches[key].documentIds : data.researches[key].cardIds).includes(split.ref.id), '对照资源跨研究');
+      if (split.anchor?.evidenceId) requireValid(split.ref.kind === 'document' && data.evidence[split.anchor.evidenceId]?.documentId === split.ref.id, '对照来源缺失或串文献');
+      if (split.anchor?.pageIndex !== undefined) page(split.ref.id, split.anchor.pageIndex);
+    }
     for (const [reader, position] of Object.entries(session.readers)) page(reader.replace(/^(main|inspector|main-secondary):/, ''), position.pageIndex);
     if (session.activeConversationId) requireValid(has(data.conversations, session.activeConversationId) && data.conversations[session.activeConversationId].researchId === key, '活动会话跨研究');
   }

@@ -104,7 +104,10 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     await scroller.hover(); await page.mouse.wheel(0, pageStep + 10);
     await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
     await expect.poll(() => scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(pageStep);
+    const beforeSplit = await scroller.evaluate(node => node.scrollTop);
     await main(page).getByRole('button', { name: '分屏阅读', exact: true }).click();
+    await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
+    await expect.poll(() => scroller.evaluate((node, savedTop) => Math.abs(node.scrollTop - savedTop), beforeSplit)).toBeLessThanOrEqual(2);
     await goTo(primary(page), 2); await goTo(secondary(page), 3);
     await secondary(page).getByRole('button', { name: '放大 PDF', exact: true }).click();
     await expect(secondary(page).locator('.pdf-zoom')).toContainText('125%');
@@ -154,7 +157,7 @@ test('打包桌面：连续阅读、独立双窗和Codex区域图片在正常退
     await expect(primary(page).locator('.pdf-page-loading')).toHaveCount(0);
     await expect(secondary(page).locator('.pdf-page-loading')).toHaveCount(0);
     const restored = await state(page);
-    expect(restored.sessions['research-a'].readerSplits).toEqual(before.sessions['research-a'].readerSplits);
+    expect(restored.sessions['research-a'].mainSplit).toEqual(before.sessions['research-a'].mainSplit);
     for (const key of ['main:paper-a', 'main-secondary:paper-a'])
       expect(restored.sessions['research-a'].readers[key]).toEqual(before.sessions['research-a'].readers[key]);
     expect(restored.requests[run.requestId].context[0].region).toEqual(run.context[0].region);

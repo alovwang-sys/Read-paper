@@ -20,7 +20,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import type { PanelMode, ResearchViewId, ResourceRef } from '../domain/types';
+import type { PanelMode, ReaderTarget, ResearchViewId, ResourceRef } from '../domain/types';
 import {
   resourceExists,
   resourceTitle,
@@ -52,6 +52,8 @@ import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
 import { getAIConfig } from '../services/ai';
 import { ResourceTabs } from './ResourceTabs';
+import { WorkspaceSplit } from './WorkspaceSplit';
+import { DesktopWindowControls } from './DesktopWindowControls';
 import { BackupControls } from '../features/settings/BackupControls';
 
 const researchViews: { id: ResearchViewId; name: string; icon: typeof Home; group?: string }[] = [
@@ -187,10 +189,10 @@ export function App() {
     setDialog(null);
     lastFocus.current?.focus();
   }
-  function open(ref: ResourceRef, target: 'main' | 'inspector' = 'main') {
+  function open(ref: ResourceRef, target: ReaderTarget = 'main') {
     actions.openResource(ref, { scope: data.scope, target });
   }
-  function resourceView(ref: ResourceRef, target: 'main' | 'inspector') {
+  function resourceView(ref: ResourceRef, target: ReaderTarget) {
     if (!resourceExists(data, ref))
       return (
         <div className="empty-state">
@@ -205,7 +207,7 @@ export function App() {
           key={`${target}:${ref.id}`}
           documentId={ref.id}
           target={target}
-          anchor={target === 'main' ? session.anchor : session.panel.anchor}
+          anchor={target === 'main' ? session.anchor : target === 'main-secondary' ? session.mainSplit?.anchor : session.panel.anchor}
         />
       );
     if (ref.kind === 'card') return <CardEditor cardId={ref.id} />;
@@ -354,6 +356,7 @@ export function App() {
             <strong>{activeTitle}</strong>
           </div>
           <div className="header-actions">
+            <DesktopWindowControls />
             {!session.sourcePreview && active.kind === 'document' && hasFullText(data.documents[active.id]) && <button className="text-button" onClick={() => actions.updateData(next => { next.sessions[scopeKey(next.scope)].documentInfoId = session.documentInfoId === active.id ? undefined : active.id; })}>{session.documentInfoId === active.id ? '阅读全文' : '文献信息'}</button>}
             <span
               className="save-indicator"
@@ -398,7 +401,7 @@ export function App() {
           </div>
         )}
         <ResourceTabs preview={session.sourcePreview ? { title: session.sourcePreview.candidate.title, onClose: () => actions.closeSourcePreview() } : undefined} leading={{ title: data.scope.kind === 'research' ? researchViews.find(item => item.id === (session.researchView ?? 'home'))?.name ?? '研究主页' : '资料库', selected: !session.sourcePreview && (active.kind === 'researchView' || active.kind === 'collection'), onOpen: () => { if (data.scope.kind === 'research') actions.openResearchView(data.scope.researchId, session.researchView ?? 'home'); else actions.openCollection('documents'); } }} items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
-          title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)}
+          title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)} onOpenSecondary={ref => open(ref, 'main-secondary')}
           onClose={ref => actions.closeResource(ref)} onPin={ref => actions.pinResource(ref)}
           onMove={(from, to) => actions.updateData(next => {
             const items = next.sessions[scopeKey(next.scope)].openItems;
@@ -410,7 +413,7 @@ export function App() {
             {session.sourcePreview ? <SourcePreview candidate={session.sourcePreview.candidate} discovery={session.sourcePreview.discovery} scope={data.scope} /> : active.kind === 'collection' ? <LibraryView collection={active.id} /> : active.kind === 'researchView' && research ? (
               active.id === 'home' ? <ResearchView researchId={research.id} /> : active.id === 'sources' ? <SourcesView researchId={research.id} /> : active.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : active.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={active.id === 'boards' ? 'board' : 'draft'} />
             ) : active.kind !== 'researchView' ? (
-              resourceView(active, 'main')
+              <WorkspaceSplit primary={active} renderResource={resourceView} />
             ) : <div className="empty-state">请先选择研究。</div>}
           </ErrorBoundary>
         </main>
