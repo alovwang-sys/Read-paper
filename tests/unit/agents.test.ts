@@ -3,8 +3,8 @@ import { hasFullText } from '../../src/domain/knowledge';
 import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
-import { bindResearchDirectory, getAgents, getResearchDirectory, listProjectSessions, openProjectSession, refreshProjectConversation, selectAgent } from '../../src/services/agents';
-import { commitCardDraft, generateCardDraft, respondToAgent, retryAI, stopAI, submitAI } from '../../src/services/ai';
+import { bindResearchDirectory, getAgents, codexSupportsImages, currentAssistantSupportsImages, getResearchDirectory, listProjectSessions, openProjectSession, refreshProjectConversation, selectAgent } from '../../src/services/agents';
+import { commitCardDraft, generateCardDraft, generateCardDraftFromExcerpts, reviseCardDraft, respondToAgent, retryAI, stopAI, submitAI } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), contentHash: vi.fn() }));
@@ -27,6 +27,70 @@ beforeEach(async () => {
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('研究与助手会话', () => {
+  it('图片能力按当前助手与所选型号判断，未知型号不冒充支持', async () => {
+    const catalog = { skills: [], plan: false, models: [
+      { id: 'text-only', name: '文字', isDefault: true, inputModalities: ['text' as const] },
+      { id: 'vision', name: '图像', inputModalities: ['text' as const, 'image' as const] },
+      { id: 'unknown', name: '未确认' },
+    ] };
+    expect(codexSupportsImages(catalog)).toBe(false);
+    expect(codexSupportsImages(catalog, 'vision')).toBe(true);
+    expect(codexSupportsImages(catalog, 'unknown')).toBe(false);
+    expect(codexSupportsImages(catalog, 'missing')).toBe(false);
+    const conversation = selectAgent('research-a', 'codex');
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(catalog)));
+    workspace.updateData(next => { next.conversations[conversation].codex = { model: 'vision' }; });
+    expect(await currentAssistantSupportsImages('research-a')).toBe(true);
+    selectAgent('research-a', 'claude');
+    expect(await currentAssistantSupportsImages('research-a')).toBe(false);
+  });
+
+  it('Codex 发送区域实际字节且只包含冻结的本轮上下文，文字助手拒绝发送', async () => {
+    const conversation = selectAgent('research-a', 'codex');
+    const blob = new Blob(['real-region-bytes'], { type: 'image/png' });
+    vi.mocked(getAsset).mockResolvedValue(blob);
+    const { contentHash } = await import('../../src/data/storage');
+    vi.mocked(contentHash).mockResolvedValue('b'.repeat(64));
+    vi.stubGlobal('FileReader', class {
+      result = 'data:image/png;base64,cmVhbC1yZWdpb24tYnl0ZXM=';
+      onload?: () => void;
+      readAsDataURL() { this.onload?.(); }
+    });
+    workspace.updateData(next => {
+      next.evidence['evidence-a'].kind = 'region';
+      next.evidence['evidence-a'].region = { assetId: 'region-a', hash: 'b'.repeat(64), rect: { x: 0, y: 0, width: 0.5, height: 0.5 }, rotation: 0, width: 100, height: 100 };
+      next.conversations[conversation].contextIds = ['evidence-a'];
+      next.conversations[conversation].codex = { model: 'vision' };
+    });
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => url.endsWith('/capabilities')
+      ? Response.json({ skills: [], plan: false, models: [{ id: 'text-only', name: '文字', isDefault: true, inputModalities: ['text'] }, { id: 'vision', name: '图像', inputModalities: ['text', 'image'] }] }) : JSON.parse(_init?.body as string).purpose === 'chat' ? done() : done(JSON.stringify({ title: '图像卡片', body: '图像来源 [1]', evidenceIds: ['evidence-a'] })));
+    vi.stubGlobal('fetch', fetchMock);
+    const id = await submitAI('research-a', conversation, '解释这张图');
+    expect(data().requests[id].status).toBe('done');
+    const payload = JSON.parse(fetchMock.mock.calls.find(([url]) => url.endsWith('/run'))![1]!.body as string);
+    expect(payload.images).toEqual([{ evidenceId: 'evidence-a', dataUrl: 'data:image/png;base64,cmVhbC1yZWdpb24tYnl0ZXM=' }]);
+    expect(payload.context[0].region.hash).toBe('b'.repeat(64));
+    workspace.updateData(next => { next.conversations[conversation].codex = { model: 'text-only', access: 'full-access', mode: 'plan' }; });
+    const draft = await generateCardDraft(id);
+    expect(data().cardDrafts[draft].status).toBe('editing');
+    const cardPayload = JSON.parse(fetchMock.mock.calls.filter(([url]) => url.endsWith('/run'))[1][1]!.body as string);
+    expect(cardPayload).toMatchObject({ purpose: 'card', codex: { model: 'vision' } });
+    expect(cardPayload).not.toHaveProperty('skillIds');
+    expect(Object.keys(cardPayload.codex)).toEqual(['model']);
+    workspace.updateData(next => { next.conversations[conversation].codex = { model: 'vision', access: 'full-access' }; });
+    const excerptDraft = await generateCardDraftFromExcerpts('research-a', ['evidence-a']);
+    expect(data().cardDrafts[excerptDraft].source.codexModel).toBe('vision');
+    workspace.updateData(next => { next.conversations[conversation].codex = { model: 'text-only' }; });
+    await reviseCardDraft(excerptDraft, '保留图像依据，简化结论。');
+    const revisionPayload = JSON.parse(fetchMock.mock.calls.filter(([url]) => url.endsWith('/run')).at(-1)![1]!.body as string);
+    expect(revisionPayload).toMatchObject({ purpose: 'revision', codex: { model: 'vision' } });
+    const claude = selectAgent('research-a', 'claude');
+    fetchMock.mockClear();
+    const blocked = await submitAI('research-a', claude, '解释这张图');
+    expect(data().requests[blocked]).toMatchObject({ status: 'error', error: expect.stringContaining('未确认支持图片') });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('目录只在绑定确认时保存，状态与原生列表使用同一研究身份', async () => {
     const binding = { id: 'binding-confirmed', projectId: 'project-confirmed', path: '/fixture/confirmed' };
     const fetchMock = vi.fn(async (url: string) => Response.json(url.endsWith('/list') ? { sessions: [], errors: [] } : binding));

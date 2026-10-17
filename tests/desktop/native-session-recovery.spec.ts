@@ -99,7 +99,7 @@ test('打包桌面：后台占用恢复提示常显，旧来源不变且重启�
     });
     await page.reload(); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
     await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
-    await expect(page.getByRole('main').locator('canvas')).toBeVisible();
+    await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
     const original = (await state(page)).requests['old-request'];
     await input(page).fill('桌面继续核对原研究的证据条件。');
     await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();

@@ -7,6 +7,7 @@ import { mkdir } from 'node:fs/promises';
 import { startDesktopAI, createQuitHandler } from './local-ai.mjs';
 import { createSettingsStore } from './settings.mjs';
 import { APP_URL, SETTINGS_URL, createAppProtocol, canWriteClipboard } from './protocol.mjs';
+import { startSystemDictation } from './dictation.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 app.setName('Papertrail');
@@ -126,6 +127,7 @@ else {
   try { await store.load(); } catch (error) { dialog.showErrorBox('模型设置需要重新配置', error.message); }
   ai = await startDesktopAI({ env: runtimeEnvironment() });
   protocol.handle('papertrail', createAppProtocol({ distDirectory: join(directory, '..', 'dist'), desktopDirectory: directory, getAI: () => ai }));
+  ipcMain.handle('papertrail:start-dictation', event => startSystemDictation({ event, window: mainWindow, url: APP_URL, platform: process.platform, sendAction: action => Menu.sendActionToFirstResponder(action) }));
   ipcMain.handle('papertrail:project-location', event => {
     if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面读取研究位置。');
     return app.getPath('documents');

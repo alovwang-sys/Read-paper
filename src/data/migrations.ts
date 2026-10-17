@@ -58,6 +58,11 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (typeof evidence.documentId !== 'string' || typeof evidence.quote !== 'string' || !Number.isInteger(evidence.pageIndex) || evidence.pageIndex < 0) throw new Error('证据数据损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
+  for (const session of Object.values(data.sessions)) {
+    for (const position of Object.values(session.readers))
+      if (!record(position) || !Number.isInteger(position.pageIndex) || position.pageIndex < 0 || !Number.isFinite(position.scale) || position.scale < 0.5 || position.scale > 2 || position.offset !== undefined && (!Number.isFinite(position.offset) || position.offset < 0 || position.offset > 1)) throw new Error('阅读位置损坏，未覆盖现有数据。');
+    if (session.readerSplits !== undefined && (!record(session.readerSplits) || Object.entries(session.readerSplits).some(([id, layout]) => !hasFullText(data.documents[id]) || !['horizontal', 'vertical'].includes(layout)))) throw new Error('阅读分屏状态损坏，未覆盖现有数据。');
+  }
   for (const item of [...Object.values(data.conversations), ...Object.values(data.requests)]) {
     const settings = item.codex;
     if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key => !['model', 'mode', 'effort', 'access'].includes(key))

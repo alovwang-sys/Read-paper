@@ -114,7 +114,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
   test(`Codex 桌面交互 ${viewport.width}×${viewport.height}`, async ({ page, api }) => {
     await page.setViewportSize(viewport); await start(page, api);
     await page.getByRole('main').getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
-    await expect(page.getByRole('main').locator('canvas')).toBeVisible(); await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
+    await expect(page.getByRole('main').locator('canvas').first()).toBeVisible(); await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
     const notice = page.getByRole('button', { name: '关闭提示', exact: true }); if (await notice.isVisible()) await notice.click();
     await panel(page).getByLabel('向 AI 提问').fill('$');
     await expect(panel(page).getByRole('option', { name: /\$write-files/ })).toHaveAttribute('aria-disabled', 'true');

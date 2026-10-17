@@ -91,7 +91,7 @@ async function start(page: Page): Promise<API> {
   await expect(page.getByRole('main', { name: '主工作区' })).toBeVisible();
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
-  await expect(page.getByRole('main').locator('canvas')).toBeVisible();
+  await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
   await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
   await expect(turn(page, 'old-request').locator('.ai-answer')).toContainText('旧回答');
   return api;

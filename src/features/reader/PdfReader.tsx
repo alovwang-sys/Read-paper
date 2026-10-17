@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import {
   BookOpen,
   ChevronLeft,
@@ -13,13 +13,16 @@ import {
   Search,
   Scan,
   Sparkles,
+  Rows2,
   X,
 } from 'lucide-react';
-import { TextLayer, type PDFDocumentProxy, type RenderTask } from 'pdfjs-dist';
-import type { ResourceAnchor } from '../../domain/types';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { ReadingPosition, ReaderTarget, ResourceAnchor } from '../../domain/types';
 import { scopeKey, useWorkspace } from '../../services/workspace';
 import { loadPdfDocument } from '../../services/pdf';
-import { getAIConfig, submitAI } from '../../services/ai';
+import { submitAI } from '../../services/ai';
+import { currentAssistantSupportsImages } from '../../services/agents';
+import { PdfPage, type PageHandle, type PageSize } from './PdfPage';
 import { contentHash, putAsset } from '../../data/storage';
 import { hasFullText } from '../../domain/knowledge';
 import { ImportPDFButton } from './ImportPDFButton';
@@ -32,13 +35,34 @@ type SelectionAction = 'excerpt' | 'card' | 'ai' | 'explain' | 'attach';
 type RegionPreview = { blob: Blob; url: string; width: number; height: number; rect: RegionRect; rotation: number };
 const explanationPrompt = '请解释所选材料的核心观点，并说明适用条件与限制。';
 
-export function PdfReader({
+export function PdfReader({ documentId, target = 'main', anchor }: { documentId: string; target?: 'main' | 'inspector'; anchor?: ResourceAnchor }) {
+  const { session, actions } = useWorkspace();
+  const layout = session.readerSplits?.[documentId];
+  if (target === 'inspector') return <PdfReaderPane documentId={documentId} target={target} anchor={anchor} />;
+  return <section className={`pdf-reader-layout ${layout ? `pdf-split-${layout}` : ''}`} aria-label="论文连续阅读">
+    <div className="pdf-layout-toolbar">
+      <span><BookOpen size={13} />连续阅读</span>
+      <div>
+        {!layout ? <button className="text-button" aria-label="分屏阅读" onClick={() => actions.setReaderSplit(documentId, 'vertical')}><Rows2 size={14} />分屏阅读</button> : <>
+          <label className="pdf-layout-select"><span>对照布局</span><select aria-label="阅读器分屏方向" value={layout} onChange={event => actions.setReaderSplit(documentId, event.target.value as 'horizontal' | 'vertical')}><option value="vertical">上下分屏</option><option value="horizontal">左右（窄屏上下）</option></select></label>
+          <button className="text-button" aria-label="关闭阅读器分屏" onClick={() => actions.setReaderSplit(documentId)}><X size={13} />关闭分屏</button>
+        </>}
+      </div>
+    </div>
+    <div className="pdf-reading-panes">
+      <div className="pdf-reading-pane">{layout && <div className="pdf-pane-label">阅读位置 1</div>}<PdfReaderPane documentId={documentId} target="main" anchor={anchor} /></div>
+      {layout && <div className="pdf-reading-pane"><div className="pdf-pane-label">阅读位置 2 <span>独立滚动与缩放</span></div><PdfReaderPane documentId={documentId} target="main-secondary" /></div>}
+    </div>
+  </section>;
+}
+
+function PdfReaderPane({
   documentId,
   target = 'main',
   anchor,
 }: {
   documentId: string;
-  target?: 'main' | 'inspector';
+  target?: ReaderTarget;
   anchor?: ResourceAnchor;
 }) {
   const { data, session, research, actions } = useWorkspace();
@@ -47,19 +71,20 @@ export function PdfReader({
     pageIndex: 0,
     scale: 1,
   };
-  const pageIndex = Math.min(
-    position.pageIndex,
-    Math.max(0, (doc?.pageCount ?? 1) - 1),
-  );
+  const initialPage = Math.min(position.pageIndex, Math.max(0, (doc?.pageCount ?? 1) - 1));
+  const [pageIndex, setVisiblePage] = useState(initialPage);
+  const [selectionPage, setSelectionPage] = useState<number>();
+  const selectedPageIndex = selectionPage ?? pageIndex;
+  const pageHandles = useRef(new Map<number, PageHandle>());
+  const [, refreshPages] = useState(0);
+  const [naturalSizes, setNaturalSizes] = useState<PageSize[]>([]);
   const [pdf, setPdf] = useState<PDFDocumentProxy>();
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [textRetry, setTextRetry] = useState(0);
-  const [rendering, setRendering] = useState(true);
   const [textState, setTextState] = useState<
     'pending' | 'ready' | 'empty' | 'error'
   >('pending');
-  const [pageTextReady, setPageTextReady] = useState(false);
   const [pagesText, setPagesText] = useState<string[]>([]);
   const [outline, setOutline] = useState<Outline[]>([]);
   const [showNavigation, setShowNavigation] = useState(false);
@@ -79,15 +104,29 @@ export function PdfReader({
   const dragStart = useRef<{ x: number; y: number } | undefined>(undefined);
   const selectionVersion = useRef(0);
   const [width, setWidth] = useState(target === 'main' ? 720 : 320);
-  const [pageSize, setPageSize] = useState({
-    width: 612,
-    height: 792,
-    scale: 1,
-    rotation: 0,
-  });
+  const [viewportHeight, setViewportHeight] = useState(600);
   const scroll = useRef<HTMLDivElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const layer = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HTMLCanvasElement | null>(null);
+  const layer = useRef<HTMLDivElement | null>(null);
+  const pendingPosition = useRef<ReadingPosition | undefined>(undefined);
+  const positionTimer = useRef<number | undefined>(undefined);
+  const lastWrittenPosition = useRef<ReadingPosition | undefined>(undefined);
+  const instanceGeneration = useRef(actions.getGeneration());
+  const lastLayout = useRef('');
+  const scrollFrame = useRef<number | undefined>(undefined);
+  const readScroll = useRef<() => void>(() => {});
+  const pageSizes = useMemo(() => Array.from({ length: pdf?.numPages ?? 0 }, (_, index) => {
+    const natural = naturalSizes[index] ?? naturalSizes[0] ?? { width: 612, height: 792, scale: 1, rotation: 0 };
+    const fit = Math.max(0.2, Math.min(1.5, (width - (target === 'inspector' ? 24 : 56)) / natural.width));
+    const scale = fit * position.scale;
+    return { width: natural.width * scale, height: natural.height * scale, scale, rotation: natural.rotation };
+  }), [pdf, naturalSizes, width, target, position.scale]);
+  const selectedHandle = pageHandles.current.get(selectedPageIndex);
+  canvas.current = selectedHandle?.canvas ?? null;
+  layer.current = selectedHandle?.layer ?? null;
+  const pageSize = selectedHandle?.size ?? pageSizes[selectedPageIndex] ?? { width: 612, height: 792, scale: 1, rotation: 0 };
+  const rendering = !pdf || !selectedHandle || selectedHandle.rendering;
+  const pageTextReady = selectedHandle?.textReady ?? false;
   const viewScope = scopeKey(data.scope);
   const sourceEvidence = anchor?.evidenceId
     ? data.evidence[anchor.evidenceId]
@@ -102,24 +141,28 @@ export function PdfReader({
 
   useEffect(() => {
     let active = true;
-    if (selectionMode === 'region') getAIConfig().then((config) => {
-      if (active) setImagesSupported(config.images);
+    if (selectionMode === 'region' && research) currentAssistantSupportsImages(research.id).then((supported) => {
+      if (active) setImagesSupported(supported);
     }).catch(() => { if (active) setImagesSupported(false); });
     return () => { active = false; };
-  }, [selectionMode]);
+  }, [selectionMode, research?.id, session.activeConversationId, data.conversations[session.activeConversationId ?? '']?.connectionId, data.conversations[session.activeConversationId ?? '']?.codex?.model]);
 
   useEffect(() => {
     let active = true;
     setPdf(undefined);
     setError('');
     setQuote('');
-    setRendering(true);
+    setNaturalSizes([]);
+    pageHandles.current.clear();
     setPagesText([]);
     setOutline([]);
-    if (!hasFullText(doc)) { setRendering(false); return; }
+    if (!hasFullText(doc)) return;
     loadPdfDocument(doc, retry > 0)
-      .then(({ pdf, hash }) => {
+      .then(async ({ pdf, hash }) => {
+        const first = (await pdf.getPage(1)).getViewport({ scale: 1 });
         if (!active) return;
+        setNaturalSizes([{ width: first.width, height: first.height, scale: 1, rotation: first.rotation }]);
+        setVisiblePage(initialPage);
         setPdf(pdf);
         actions.updateData((data) => {
           const current = data.documents[documentId];
@@ -132,7 +175,6 @@ export function PdfReader({
       })
       .catch((error) => {
         if (active) {
-          setRendering(false);
           setError(
             error instanceof Error ? error.message : 'PDF 加载失败，请重试。',
           );
@@ -144,7 +186,7 @@ export function PdfReader({
   }, [documentId, doc?.assetId, doc?.assetRevision, retry]);
 
   const documentExcerpts = Object.values(data.evidence).filter(item => item.documentId === documentId && (!research || !item.researchId || item.researchId === research.id));
-  const selectedExcerpt = documentExcerpts.find(item => item.pageIndex === pageIndex && (selectionMode === 'region'
+  const selectedExcerpt = documentExcerpts.find(item => item.pageIndex === selectedPageIndex && (selectionMode === 'region'
     ? item.kind === 'region' && !!item.region && item.region.rotation === regionPreview?.rotation && JSON.stringify(item.region.rect) === JSON.stringify(regionPreview?.rect)
     : item.kind !== 'region' && !!quote && item.quote === quote));
   const findCard = session.panel.findEvidenceFor && data.cards[session.panel.findEvidenceFor];
@@ -162,47 +204,27 @@ export function PdfReader({
   }, [doc?.readingStatus, doc?.finishPromptShown, documentExcerpts.length, documentId]);
 
   useEffect(() => {
-    if (!pageTextReady || !layer.current) return;
-    const spans = [...layer.current.querySelectorAll<HTMLSpanElement>('span')].filter(span => span.textContent?.trim());
-    for (const span of spans) { span.classList.remove('pdf-excerpt-highlight'); delete span.dataset.evidenceId; }
-    const texts = spans.map(span => normalize(span.textContent ?? ''));
-    const fullText = texts.join(' ');
-    for (const item of documentExcerpts.filter(item => item.pageIndex === pageIndex && item.kind !== 'region' && item.quote)) {
-      const quote = normalize(item.quote);
-      const start = fullText.indexOf(quote);
-      if (start < 0) continue;
-      let offset = 0;
-      for (let index = 0; index < spans.length; index++) {
-        const end = offset + texts[index].length;
-        if (end > start && offset < start + quote.length) { spans[index].classList.add('pdf-excerpt-highlight'); spans[index].dataset.evidenceId = item.id; }
-        offset = end + 1;
-      }
-    }
-  }, [pageTextReady, pageIndex, documentId, data.evidence, research?.id]);
-
-  useEffect(() => {
     clearSelection();
     return () => {
       selectionVersion.current++;
       if (actions.getState().selection?.viewInstanceId === `reader:${viewScope}:${target}:${documentId}`)
         actions.setSelection(undefined);
     };
-  }, [documentId, target, viewScope, pageIndex, position.scale, width]);
+  }, [documentId, target, viewScope, position.scale, width]);
 
   useEffect(() => {
     if (!pdf || !scroll.current) return;
-    const update = () => setWidth(scroll.current!.clientWidth);
+    const update = () => {
+      const node = scroll.current!;
+      const style = getComputedStyle(node);
+      setWidth(node.clientWidth);
+      setViewportHeight(node.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
+    };
     const observer = new ResizeObserver(update);
     observer.observe(scroll.current);
     update();
     return () => observer.disconnect();
   }, [pdf]);
-
-  useEffect(() => {
-    if (rendering || !sourceValid || sourceEvidence.pageIndex !== pageIndex || !sourceEvidence.region) return;
-    const rect = rotateRegion(sourceEvidence.region.rect, pageSize.rotation - sourceEvidence.region.rotation);
-    scroll.current?.scrollTo({ top: Math.max(0, rect.y * pageSize.height - 60), left: Math.max(0, rect.x * pageSize.width - 40) });
-  }, [rendering, pageIndex, anchor?.evidenceId, pageSize.height, pageSize.width, pageSize.rotation]);
 
   useEffect(() => {
     if (!pdf) return;
@@ -218,8 +240,12 @@ export function PdfReader({
     };
     (async () => {
       const texts: string[] = [];
+      const sizes: PageSize[] = [];
       for (let i = 1; i <= pdf.numPages; i++) {
-        const content = await (await pdf.getPage(i)).getTextContent();
+        const page = await pdf.getPage(i);
+        const natural = page.getViewport({ scale: 1 });
+        sizes.push({ width: natural.width, height: natural.height, scale: 1, rotation: natural.rotation });
+        const content = await page.getTextContent();
         if (!active) return;
         texts.push(
           normalize(
@@ -230,6 +256,7 @@ export function PdfReader({
         );
       }
       if (!active) return;
+      setNaturalSizes(sizes);
       setPagesText(texts);
       update(texts.some(Boolean) ? 'ready' : 'empty');
     })().catch(() => update('error'));
@@ -273,119 +300,89 @@ export function PdfReader({
     };
   }, [pdf]);
 
+  const layoutKey = `${documentId}:${width}:${viewportHeight}:${position.scale}:${naturalSizes.map(size => `${size.width},${size.height}`).join(';')}`;
   useEffect(() => {
-    if (!pdf || !canvas.current || !layer.current || width < 1) return;
-    let active = true;
-    let task: RenderTask | undefined;
-    let textLayer: TextLayer | undefined;
-    setRendering(true);
-    setPageTextReady(false);
-    setQuote('');
-    if (
-      actions.getState().selection?.viewInstanceId ===
-      `reader:${viewScope}:${target}:${documentId}`
-    )
-      actions.setSelection(undefined);
-    const textContainer = layer.current;
-    textContainer.replaceChildren();
-    scroll.current?.scrollTo({ top: 0, left: 0 });
-    (async () => {
-      const page = await pdf.getPage(pageIndex + 1);
-      if (!active) return;
-      const natural = page.getViewport({ scale: 1 });
-      const fit = Math.max(
-        0.2,
-        Math.min(1.5, (width - (target === 'main' ? 56 : 24)) / natural.width),
-      );
-      const viewport = page.getViewport({ scale: fit * position.scale });
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      const node = canvas.current!;
-      node.width = Math.floor(viewport.width * pixelRatio);
-      node.height = Math.floor(viewport.height * pixelRatio);
-      node.style.width = `${viewport.width}px`;
-      node.style.height = `${viewport.height}px`;
-      setPageSize({
-        width: viewport.width,
-        height: viewport.height,
-        scale: viewport.scale,
-        rotation: viewport.rotation,
-      });
-      task = page.render({
-        canvas: node,
-        viewport,
-        transform:
-          pixelRatio === 1 ? undefined : [pixelRatio, 0, 0, pixelRatio, 0, 0],
-      });
-      await task.promise;
-      if (!active) return;
-      setRendering(false);
-      try {
-        const content = await page.getTextContent();
-        if (!active) return;
-        const hasText = content.items.some(
-          (item) => 'str' in item && item.str.trim(),
-        );
-        if (hasText) {
-          textLayer = new TextLayer({
-            textContentSource: content,
-            container: textContainer,
-            viewport,
-          });
-          await textLayer.render();
-          if (!active) return;
-          setPageTextReady(true);
-          if (sourceValid && sourceEvidence.pageIndex === pageIndex) {
-            const selected = normalize(sourceEvidence.quote);
-            for (const div of textLayer.textDivs)
-              if (
-                normalize(div.textContent ?? '') &&
-                selected.includes(normalize(div.textContent ?? ''))
-              )
-                div.classList.add('pdf-source-highlight');
-          }
-        }
-      } catch {
-        if (active) {
-          setTextState('error');
-          actions.updateData((data) => {
-            if (data.documents[documentId])
-              data.documents[documentId].textStatus = 'error';
-          });
-        }
-      }
-    })().catch((error) => {
-      if (!active || error?.name === 'RenderingCancelledException') return;
-      setRendering(false);
-      setError(
-        `此页无法渲染：${error instanceof Error ? error.message : '请重试'}`,
-      );
-    });
+    if (!pdf || !scroll.current || !pageSizes.length) return;
+    const ownWrite = lastWrittenPosition.current;
+    const unchanged = ownWrite?.pageIndex === position.pageIndex && ownWrite?.scale === position.scale && ownWrite?.offset === position.offset;
+    if (unchanged && lastLayout.current === layoutKey) return;
+    window.clearTimeout(positionTimer.current);
+    pendingPosition.current = undefined;
+    if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current);
+    scrollFrame.current = undefined;
+    lastLayout.current = layoutKey;
+    const index = Math.min(position.pageIndex, pdf.numPages - 1);
+    setVisiblePage(index);
+    const top = pageSizes.slice(0, index).reduce((sum, size) => sum + size.height + 24, 0);
+    const region = sourceValid && sourceEvidence.region && sourceEvidence.pageIndex === index
+      ? rotateRegion(sourceEvidence.region.rect, pageSizes[index].rotation - sourceEvidence.region.rotation) : undefined;
+    const offset = region ? region.y : position.offset ?? 0;
+    scroll.current.scrollTo({ top: Math.max(0, top + offset * pageSizes[index].height - (region ? 40 : 0)), left: 0 });
+  }, [pdf, layoutKey, position.pageIndex, position.offset, anchor?.evidenceId]);
+
+  function flushPosition() {
+    window.clearTimeout(positionTimer.current);
+    const next = pendingPosition.current;
+    pendingPosition.current = undefined;
+    if (!next || actions.getGeneration() !== instanceGeneration.current) return;
+    lastWrittenPosition.current = next;
+    actions.setReader(documentId, next, target, data.scope);
+  }
+  useEffect(() => {
+    window.addEventListener('beforeunload', flushPosition);
     return () => {
-      active = false;
-      task?.cancel();
-      textLayer?.cancel();
+      window.removeEventListener('beforeunload', flushPosition);
+      window.clearTimeout(positionTimer.current);
+      if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current);
+      flushPosition();
     };
-  }, [
-    pdf,
-    pageIndex,
-    position.scale,
-    width,
-    target,
-    textRetry,
-    anchor?.evidenceId,
-    viewScope,
-  ]);
+  }, [documentId, target, viewScope]);
+
+  function trackScroll() {
+    if (scrollFrame.current !== undefined) return;
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = undefined;
+      readScroll.current();
+    });
+  }
+  readScroll.current = () => {
+      if (!scroll.current || !pageSizes.length) return;
+      let top = 0, index = 0;
+      const y = Math.max(0, scroll.current.scrollTop);
+      // Browser scrollTop is rounded; PDF page geometry can have fractional pixels.
+      while (index < pageSizes.length - 1 && top + pageSizes[index].height + 24 <= y + 1) {
+        top += pageSizes[index].height + 24;
+        index++;
+      }
+      if (y > 0 && scroll.current.scrollHeight - scroll.current.clientHeight - y < 2) {
+        index = pageSizes.length - 1;
+        top = pageSizes.slice(0, index).reduce((sum, size) => sum + size.height + 24, 0);
+      }
+      setVisiblePage(index);
+      pendingPosition.current = { pageIndex: index, scale: position.scale, offset: Math.min(1, Math.max(0, (y - top) / pageSizes[index].height)) };
+      window.clearTimeout(positionTimer.current);
+      positionTimer.current = window.setTimeout(flushPosition, 180);
+  };
+
+  function activatePage(index: number) {
+    const handle = pageHandles.current.get(index);
+    if (!handle) return;
+    setSelectionPage(index);
+    canvas.current = handle.canvas;
+    layer.current = handle.layer;
+  }
 
   function changePage(next: number) {
     clearSelection();
     actions.setReader(
       documentId,
-      { pageIndex: next, scale: position.scale },
+      { pageIndex: next, scale: position.scale, offset: 0 },
       target,
     );
   }
   function clearSelection() {
     selectionVersion.current++;
+    setSelectionPage(undefined);
     setQuote('');
     setRegionRect(undefined);
     setRegionPreview(undefined);
@@ -399,19 +396,22 @@ export function PdfReader({
     if (selection?.rangeCount && layer.current?.contains(selection.getRangeAt(0).commonAncestorContainer))
       selection.removeAllRanges();
   }
-  function captureSelection() {
+  function captureSelection(index: number) {
+    const handle = pageHandles.current.get(index);
+    const pageLayer = handle?.layer;
     if (selectionMode !== 'text') return;
     const selection = window.getSelection();
-    if (!pageTextReady || !selection?.rangeCount || !layer.current) return;
+    if (!handle?.textReady || !selection?.rangeCount || !pageLayer) return;
     const range = selection.getRangeAt(0);
     if (
-      !layer.current.contains(range.startContainer) ||
-      !layer.current.contains(range.endContainer)
+      !pageLayer.contains(range.startContainer) ||
+      !pageLayer.contains(range.endContainer)
     ) {
       if (normalize(selection.toString()))
         setSelectionError('请在同一 PDF 页内选择文字；多页内容请逐页加入材料。');
       return;
     }
+    activatePage(index);
     const selected = normalize(selection.toString());
     if (!selected) {
       setQuote('');
@@ -428,7 +428,7 @@ export function PdfReader({
     setPendingAction(undefined);
     setQuote(selected);
     const bounds = range.getBoundingClientRect();
-    const pageBounds = layer.current.getBoundingClientRect();
+    const pageBounds = pageLayer.getBoundingClientRect();
     setMenuPosition({
       left: Math.max(8, Math.min(bounds.left - pageBounds.left, pageBounds.width - Math.min(480, pageBounds.width - 16))),
       top: bounds.bottom - pageBounds.top + 180 > pageBounds.height
@@ -439,7 +439,7 @@ export function PdfReader({
       scope: data.scope,
       viewInstanceId: `reader:${viewScope}:${target}:${documentId}`,
       selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }],
-      textRange: { documentId, pageIndex, quote: selected },
+      textRange: { documentId, pageIndex: index, quote: selected },
       evidenceIds: [],
     });
   }
@@ -447,9 +447,10 @@ export function PdfReader({
     const bounds = event.currentTarget.getBoundingClientRect();
     return { x: (event.clientX - bounds.left) / bounds.width, y: (event.clientY - bounds.top) / bounds.height };
   }
-  function startRegion(event: PointerEvent<HTMLDivElement>) {
-    if (rendering || event.button !== 0) return;
+  function startRegion(event: PointerEvent<HTMLDivElement>, index: number) {
+    if (pageHandles.current.get(index)?.rendering !== false || event.button !== 0) return;
     clearSelection();
+    activatePage(index);
     dragStart.current = regionPoint(event);
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
@@ -458,28 +459,31 @@ export function PdfReader({
     if (!dragStart.current) return;
     setRegionRect(regionFromPoints(dragStart.current, regionPoint(event)));
   }
-  function finishRegion(event: PointerEvent<HTMLDivElement>) {
+  function finishRegion(event: PointerEvent<HTMLDivElement>, index: number) {
     if (!dragStart.current) return;
     const rect = regionFromPoints(dragStart.current, regionPoint(event));
     dragStart.current = undefined;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (rect.width * pageSize.width < 8 || rect.height * pageSize.height < 8) {
+    const size = pageHandles.current.get(index)?.size ?? pageSize;
+    if (rect.width * size.width < 8 || rect.height * size.height < 8) {
       setRegionRect(undefined);
       setSelectionError('区域太小，请框选至少 8 × 8 像素，或使用下方百分比调整。');
       return;
     }
     setRegionRect(rect);
-    void previewRegion(rect);
+    void previewRegion(rect, index);
   }
-  async function previewRegion(rect = regionRect) {
-    if (!rect || !canvas.current || rendering || !validRegion(rect)) return;
+  async function previewRegion(rect = regionRect, index = selectedPageIndex) {
+    const handle = pageHandles.current.get(index);
+    if (!rect || !handle?.canvas || handle.rendering || !validRegion(rect)) return;
+    activatePage(index);
     const version = ++selectionVersion.current;
     setSelectionBusy(true);
     setSelectionError('');
     try {
-      const result = await cropRegion(canvas.current, rect);
+      const result = await cropRegion(handle.canvas, rect);
       if (version !== selectionVersion.current) return;
-      setRegionPreview({ ...result, url: URL.createObjectURL(result.blob), rect: { ...rect }, rotation: pageSize.rotation });
+      setRegionPreview({ ...result, url: URL.createObjectURL(result.blob), rect: { ...rect }, rotation: handle.size.rotation });
     } catch (error) {
       if (version === selectionVersion.current)
         setSelectionError(error instanceof Error ? error.message : '区域截图失败，请重试');
@@ -504,15 +508,15 @@ export function PdfReader({
     if (!research && !researchId) { setPendingAction(mode); return; }
     const version = selectionVersion.current;
     const originScope = data.scope;
-    const selectedDocument = documentId, selectedPage = pageIndex, selectedQuote = quote;
+    const selectedDocument = documentId, selectedPage = selectedPageIndex, selectedQuote = quote;
     const selectedRegion = regionPreview, selectedMode = selectionMode;
     const selectedResearchId = researchId ?? research!.id;
     const cardIdToAttach = session.panel.findEvidenceFor;
     setSelectionBusy(true); setSelectionError('');
     try {
       if (selectedMode === 'region' && (mode === 'ai' || mode === 'explain')) {
-        const config = await getAIConfig(); setImagesSupported(config.images);
-        if (!config.images) throw new Error('当前模型未启用图片。所选区域已保留，可摘录或创建人工卡片。');
+        const supported = await currentAssistantSupportsImages(selectedResearchId); setImagesSupported(supported);
+        if (!supported) throw new Error('当前助手不支持区域图片。所选区域已保留，可摘录或创建人工卡片。');
       }
       actions.associateDocument(selectedResearchId, selectedDocument);
       const beforeIds = new Set(Object.keys(actions.getState().data.evidence));
@@ -563,13 +567,14 @@ export function PdfReader({
     try { actions.removeExcerpt(evidenceId); setUndoExcerpt(undefined); clearSelection(); actions.notice('已取消摘录'); }
     catch (problem) { setSelectionError(problem instanceof Error ? problem.message : '取消摘录失败，请重试。'); }
   }
-  function openHighlightedExcerpt(element: HTMLElement) {
+  function openHighlightedExcerpt(element: HTMLElement, index: number) {
     if (normalize(window.getSelection()?.toString() ?? '')) return;
     const id = element.closest<HTMLElement>('[data-evidence-id]')?.dataset.evidenceId;
     const item = id && data.evidence[id];
     if (!item || item.kind === 'region') return;
+    activatePage(index);
     selectionVersion.current++; setQuote(item.quote); setSelectionError('');
-    actions.setSelection({ scope: data.scope, viewInstanceId: `reader:${viewScope}:${target}:${documentId}`, selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }], textRange: { documentId, pageIndex, quote: item.quote }, evidenceIds: [item.id] });
+    actions.setSelection({ scope: data.scope, viewInstanceId: `reader:${viewScope}:${target}:${documentId}`, selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }], textRange: { documentId, pageIndex: index, quote: item.quote }, evidenceIds: [item.id] });
     const bounds = element.getBoundingClientRect(), pageBounds = layer.current!.getBoundingClientRect();
     setMenuPosition({ left: Math.max(8, Math.min(bounds.left - pageBounds.left, pageBounds.width - Math.min(480, pageBounds.width - 16))), top: Math.max(8, bounds.bottom - pageBounds.top + 8 > pageBounds.height - 180 ? bounds.top - pageBounds.top - 180 : bounds.bottom - pageBounds.top + 8) });
   }
@@ -652,13 +657,10 @@ export function PdfReader({
       {researchPicker}
     </>
   );
-  const sourceRegion = sourceValid && sourceEvidence.kind === 'region' && sourceEvidence.region && sourceEvidence.pageIndex === pageIndex
-    ? rotateRegion(sourceEvidence.region.rect, pageSize.rotation - sourceEvidence.region.rotation)
-    : undefined;
   return (
     <section
-      className={`pdf-reader pdf-reader-${target}`}
-      aria-label={`PDF 阅读器 ${target === 'main' ? '主区' : '参考面板'}`}
+      className={`pdf-reader pdf-reader-pane pdf-reader-${target}`}
+      aria-label={`PDF 阅读器 ${target === 'main' ? '主区' : target === 'main-secondary' ? '对照位置' : '参考面板'}`}
       onKeyDown={(event) => {
         const editing = (event.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]');
         if (!editing && !event.metaKey && !event.ctrlKey && !event.altKey && (quote || regionPreview) && ['h', 'c'].includes(event.key.toLowerCase())) { event.preventDefault(); event.stopPropagation(); void saveSelection(event.key.toLowerCase() === 'h' ? 'excerpt' : 'card'); }
@@ -726,7 +728,7 @@ export function PdfReader({
             onClick={() =>
               actions.setReader(
                 documentId,
-                { pageIndex, scale: position.scale - 0.25 },
+                { pageIndex, scale: position.scale - 0.25, offset: position.offset },
                 target,
               )
             }
@@ -737,7 +739,7 @@ export function PdfReader({
             className="text-button"
             title="恢复适合宽度"
             onClick={() =>
-              actions.setReader(documentId, { pageIndex, scale: 1 }, target)
+              actions.setReader(documentId, { pageIndex, scale: 1, offset: position.offset }, target)
             }
           >
             {Math.round(position.scale * 100)}%
@@ -749,7 +751,7 @@ export function PdfReader({
             onClick={() =>
               actions.setReader(
                 documentId,
-                { pageIndex, scale: position.scale + 0.25 },
+                { pageIndex, scale: position.scale + 0.25, offset: position.offset },
                 target,
               )
             }
@@ -761,7 +763,7 @@ export function PdfReader({
       </div>
       {finishPrompt && <div className="pdf-finish-prompt" role="status"><span>要不要用一两句话记下：这篇对你的问题有什么用？</span><button className="button" onClick={() => { const used = new Set((research?.cardIds ?? []).flatMap(id => data.cards[id]?.evidenceIds ?? [])); const id = actions.createCard(documentExcerpts.filter(item => !used.has(item.id)).map(item => item.id), `${doc.title} · 要点`, ''); actions.openResource({ kind: 'card', id }, { scope: data.scope, target: 'inspector' }); setFinishPrompt(false); }}>写一张要点卡片</button><button className="text-button" onClick={() => setFinishPrompt(false)}>不用</button></div>}
       {undoExcerpt && data.evidence[undoExcerpt] && <div className="pdf-excerpt-notice" role="status">已摘录 <button className="text-button" onClick={() => removeExcerpt(undoExcerpt)}>撤销</button></div>}
-      <div className="pdf-status">
+      <div className={`pdf-status ${pdf && !rendering && textState !== 'pending' ? 'pdf-status-ready' : ''}`}>
         <span>
           {pdf ? (rendering ? '页面渲染中…' : '阅读就绪') : '正在加载原文件…'}
         </span>
@@ -873,15 +875,15 @@ export function PdfReader({
         <div className="pdf-region-panel">
           {regionPreview ? (
             <div className="pdf-region-preview">
-              <img src={regionPreview.url} alt={`所选区域预览，PDF 第 ${pageIndex + 1} 页`} />
+              <img src={regionPreview.url} alt={`所选区域预览，PDF 第 ${selectedPageIndex + 1} 页`} />
               <div>
-                <strong>PDF 第 {pageIndex + 1} 页 · 实际发送图像</strong>
+                <strong>PDF 第 {selectedPageIndex + 1} 页 · 实际发送图像</strong>
                 <span>{regionPreview.width} × {regionPreview.height} px · {(regionPreview.blob.size / 1024).toFixed(0)} KB</span>
                 {selectionActions}
               </div>
             </div>
           ) : <p>{selectionBusy ? '正在截取所选 PDF 区域…' : '在当前页拖框选择图表、公式或扫描内容。仅截取框内图像，确认预览后再加入对话。'}</p>}
-          {imagesSupported === false && <p className="pdf-region-capability">当前模型未启用图片。可继续框选并创建人工卡片；启用图像模型后重新点击“区域框选”更新状态。</p>}
+          {imagesSupported === false && <p className="pdf-region-capability">当前助手不支持区域图片。可继续摘录、创建卡片，或切换支持图片的助手后提问。</p>}
           <details className="pdf-region-keyboard">
             <summary>用百分比精确框选（键盘）</summary>
             <div className="pdf-region-fields">
@@ -898,60 +900,33 @@ export function PdfReader({
           </details>
         </div>
       )}
-      <div className="pdf-scroll" ref={scroll}>
-        {!pdf && (
-          <div className="pdf-loading">
-            <LoaderCircle size={24} className="pdf-spinner" />
-            <p>正在打开原 PDF…</p>
-          </div>
-        )}
-        {pdf && (
-          <div
-            className="pdf-sheet"
-            style={
-              {
-                width: pageSize.width,
-                height: pageSize.height,
-                '--total-scale-factor': pageSize.scale,
-                '--scale-round-x': '1px',
-                '--scale-round-y': '1px',
-              } as CSSProperties
-            }
-            data-document-id={documentId}
-            data-page-index={pageIndex}
-          >
-            <canvas
-              ref={canvas}
-              aria-label={`${doc.title} PDF 第 ${pageIndex + 1} 页`}
-            />
-            <div
-              ref={layer}
-              className={`pdf-text-layer ${selectionMode === 'region' ? 'pdf-text-layer-inactive' : ''}`}
-              onMouseUp={captureSelection}
-              onKeyUp={captureSelection}
-              onClick={event => openHighlightedExcerpt(event.target as HTMLElement)}
-            />
-            {documentExcerpts.filter(item => item.pageIndex === pageIndex && item.kind === 'region' && item.region).map(item => { const rect = rotateRegion(item.region!.rect, pageSize.rotation - item.region!.rotation); return <button key={item.id} className="pdf-saved-region" aria-label={`已摘录区域：PDF 第 ${pageIndex + 1} 页`} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} onClick={() => { clearSelection(); setSelectionMode('region'); setRegionRect(rect); void previewRegion(rect); }} />; })}
-            {sourceRegion && <div className="pdf-region-source" aria-label="来源区域高亮" style={{ left: `${sourceRegion.x * 100}%`, top: `${sourceRegion.y * 100}%`, width: `${sourceRegion.width * 100}%`, height: `${sourceRegion.height * 100}%` }} />}
-            {selectionMode === 'region' && (
-              <div className="pdf-region-layer" aria-label="拖动框选当前 PDF 页区域" onPointerDown={startRegion} onPointerMove={moveRegion} onPointerUp={finishRegion} onPointerCancel={() => { dragStart.current = undefined; }} onKeyDown={(event) => { if (event.key === 'Escape') clearSelection(); }} tabIndex={0}>
-                {regionRect && <div className="pdf-region-box" style={{ left: `${regionRect.x * 100}%`, top: `${regionRect.y * 100}%`, width: `${regionRect.width * 100}%`, height: `${regionRect.height * 100}%` }} />}
-              </div>
-            )}
-            {quote && selectionMode === 'text' && (
-              <div className="pdf-selection-menu" aria-label="原文选区操作" style={menuPosition}>
-                <span>PDF 第 {pageIndex + 1} 页 · {quote.length} 字符已选</span>
+      <div className="pdf-scroll" ref={scroll} onScroll={trackScroll} tabIndex={0} aria-label="连续滚动阅读区域">
+        {!pdf && <div className="pdf-loading"><LoaderCircle size={24} className="pdf-spinner" /><p>正在打开原 PDF…</p></div>}
+        {pdf && <div className="pdf-page-stack" style={{ paddingBottom: Math.max(0, viewportHeight - (pageSizes.at(-1)?.height ?? 0)) }}>
+          {pageSizes.map((size, index) => {
+            const selected = selectedPageIndex === index;
+            const source = sourceValid && sourceEvidence.pageIndex === index ? sourceEvidence : undefined;
+            const sourceRegion = source?.kind === 'region' && source.region ? rotateRegion(source.region.rect, size.rotation - source.region.rotation) : undefined;
+            return <PdfPage key={index} pdf={pdf} documentId={documentId} title={doc.title} pageIndex={index} size={size}
+              active={Math.abs(index - pageIndex) <= 2 || (!!quote || !!regionRect) && selected}
+              selectionMode={selectionMode} excerpts={documentExcerpts.filter(item => item.pageIndex === index)} source={source} retry={textRetry}
+              onUpdate={handle => { if (handle) pageHandles.current.set(index, handle); else pageHandles.current.delete(index); refreshPages(value => value + 1); }}
+              onTextError={() => { setTextState('error'); actions.updateData(next => { if (next.documents[documentId]) next.documents[documentId].textStatus = 'error'; }); }}
+              onError={message => setError(message)}
+              onSelect={() => captureSelection(index)} onExcerptClick={element => openHighlightedExcerpt(element, index)}>
+              {documentExcerpts.filter(item => item.pageIndex === index && item.kind === 'region' && item.region).map(item => { const rect = rotateRegion(item.region!.rect, size.rotation - item.region!.rotation); return <button key={item.id} className="pdf-saved-region" aria-label={`已摘录区域：PDF 第 ${index + 1} 页`} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} onClick={() => { clearSelection(); activatePage(index); setSelectionMode('region'); setRegionRect(rect); void previewRegion(rect, index); }} />; })}
+              {sourceRegion && <div className="pdf-region-source" aria-label="来源区域高亮" style={{ left: `${sourceRegion.x * 100}%`, top: `${sourceRegion.y * 100}%`, width: `${sourceRegion.width * 100}%`, height: `${sourceRegion.height * 100}%` }} />}
+              {selectionMode === 'region' && <div className="pdf-region-layer" aria-label={index === pageIndex ? '拖动框选当前 PDF 页区域' : `拖动框选 PDF 第 ${index + 1} 页区域`} onPointerDown={event => startRegion(event, index)} onPointerMove={moveRegion} onPointerUp={event => finishRegion(event, index)} onPointerCancel={() => { dragStart.current = undefined; }} onKeyDown={event => { if (event.key === 'Escape') clearSelection(); }} tabIndex={0}>
+                {selected && regionRect && <div className="pdf-region-box" style={{ left: `${regionRect.x * 100}%`, top: `${regionRect.y * 100}%`, width: `${regionRect.width * 100}%`, height: `${regionRect.height * 100}%` }} />}
+              </div>}
+              {selected && quote && selectionMode === 'text' && <div className="pdf-selection-menu" aria-label="原文选区操作" style={menuPosition}>
+                <span>PDF 第 {index + 1} 页 · {quote.length} 字符已选</span>
                 <details className="pdf-selection-preview"><summary>查看所选原文</summary><blockquote>{quote}</blockquote></details>
                 {selectionActions}
-              </div>
-            )}
-            {rendering && (
-              <div className="pdf-page-loading">
-                <LoaderCircle size={22} className="pdf-spinner" />
-              </div>
-            )}
-          </div>
-        )}
+              </div>}
+            </PdfPage>;
+          })}
+        </div>}
       </div>
       <div className="pdf-footer">
         <span>{doc.filename}</span>

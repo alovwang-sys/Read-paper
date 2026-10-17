@@ -21,6 +21,11 @@ async function launch(userData: string, home: string) {
   }, timeout: 60_000 });
   try {
     const page = await application.firstWindow();
+    // Exercise the IPC path without starting OS recording in an automated test.
+    await application.evaluate(({ Menu }) => {
+      Reflect.set(Menu, '__dictationActions', []);
+      Menu.sendActionToFirstResponder = action => (Reflect.get(Menu, '__dictationActions') as string[]).push(action);
+    });
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect(page.getByRole('main', { name: '主工作区' })).toBeVisible(); await saved(page);
     return { application, page };
@@ -121,9 +126,10 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     await expect(panel(page).locator('.ai-voice-hint')).toHaveCount(0); await expect(panel(page)).toBeVisible();
     await expect(input(page)).toHaveValue(draft);
     expect(await page.evaluate(() => Reflect.get(window, '__composerMediaRequests'))).toBe(0);
+    expect(await application.evaluate(({ Menu }) => Reflect.get(Menu, '__dictationActions'))).toEqual(process.platform === 'darwin' ? ['startDictation:'] : []);
 
     await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
-    await expect(page.getByRole('main', { name: '主工作区' }).locator('canvas')).toBeVisible();
+    await expect(page.getByRole('main', { name: '主工作区' }).locator('canvas').first()).toBeVisible();
     const notice = page.getByRole('button', { name: '关闭提示', exact: true });
     await expect(notice).not.toBeVisible();
     await page.setViewportSize({ width: 1024, height: 800 });

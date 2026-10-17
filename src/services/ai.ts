@@ -3,7 +3,7 @@ import { contentHash, getAsset } from '../data/storage';
 import { hasFullText } from '../domain/knowledge';
 import { mapCitationNumbers, remapCitationNumbers } from '../domain/citations';
 import { linkCard, uid, validateEvidence, workspace } from './workspace';
-import { conversationConnection } from './agents';
+import { codexSupportsImages, conversationConnection, getCodexCapabilities } from './agents';
 import { syncResearchFiles } from './project-files';
 
 export type AIConfig = {
@@ -150,7 +150,15 @@ export const liveResponder: AIResponder = async (request, options) => {
   return { ...citedResult(body, request.context), model };
 };
 const agentResponder: AIResponder = async (request, options) => {
-  if (request.context.some(item => item.kind === 'region')) throw new Error('本机助手当前仅支持文字材料，区域图片已保留。请选择支持图片的模型连接。');
+  const regions = request.context.filter(item => item.kind === 'region');
+  if (regions.length && (request.connectionId !== 'codex' || !codexSupportsImages(await getCodexCapabilities(), request.codex?.model))) throw new Error('当前助手或所选模型未确认支持图片。区域证据已保留，请切换支持图片的模型。');
+  if (regions.length > 4) throw new Error('单次最多发送 4 张区域图片，请缩小材料与历史范围。');
+  const images = [];
+  for (const item of regions) {
+    const blob = item.region && await getAsset(item.region.assetId);
+    if (!blob || blob.size > 8388608) throw new Error('区域图片缺失或超过 8 MB，请重新框选。');
+    images.push({ evidenceId: item.evidenceId, dataUrl: await imageURL(item.region!.assetId) });
+  }
   if (!workspace.getState().data.agentWorkspaceId) workspace.updateData(data => { data.agentWorkspaceId = uid('workspace'); });
   const { agentWorkspaceId: workspaceId, conversations, researches } = workspace.getState().data;
   const conversation = conversations[request.conversationId];
@@ -162,8 +170,9 @@ const agentResponder: AIResponder = async (request, options) => {
     body: JSON.stringify({ workspaceId, requestId: request.id, researchId: request.researchId, conversationId: request.conversationId,
       connectionId: request.connectionId, purpose: request.purpose ?? 'chat', prompt: request.prompt,
       context: request.context, history: request.history ?? [],
+      ...(images.length ? { images } : {}),
       ...(bindingId ? { bindingId, ...(request.purpose === 'chat' && conversation.nativeSessionRef ? { sessionRef: conversation.nativeSessionRef } : {}) } : {}),
-      ...(request.connectionId === 'codex' && request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : {}),
+      ...(request.connectionId === 'codex' ? request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : request.codex?.model ? { codex: { model: request.codex.model } } : {} : {}),
       reset: !!request.retryOf || !!request.regeneratedFrom || (!!conversation && conversation.historyRange !== 'all') }),
   });
   if (!response.body) throw new Error('本机助手连接没有返回内容。');
@@ -401,7 +410,7 @@ export async function regenerateAI(requestId: string, mode?: 'live' | 'demo') {
   return runChatRequest({ ...structuredClone(old), id: uid('request'), context: snapshotContext(data, old.researchId, old.conversationId, history), history, events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, superseded: false, status: 'generating', regeneratedFrom: old.id, createdAt: new Date().toISOString() }, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }
 function provenance(request: AIRequest, selection: string): CardProvenance {
-  return { researchId: request.researchId, conversationId: request.conversationId, conversationTitle: workspace.getState().data.conversations[request.conversationId]?.title || '阅读对话', requestId: request.id, prompt: request.prompt, answer: request.body, answerEvidenceIds: [...request.evidenceIds], selection, context: structuredClone(request.context), createdAt: new Date().toISOString(), model: request.model, connectionId: request.connectionId, generationRequestIds: [], incomplete: request.status !== 'done' || !!request.legacy };
+  return { researchId: request.researchId, conversationId: request.conversationId, conversationTitle: workspace.getState().data.conversations[request.conversationId]?.title || '阅读对话', requestId: request.id, prompt: request.prompt, answer: request.body, answerEvidenceIds: [...request.evidenceIds], selection, context: structuredClone(request.context), createdAt: new Date().toISOString(), model: request.model, ...(request.codex?.model ? { codexModel: request.codex.model } : {}), connectionId: request.connectionId, generationRequestIds: [], incomplete: request.status !== 'done' || !!request.legacy };
 }
 function createDraft(request: AIRequest, selection: string, manual = false) {
   if (!selection.trim() || selection.length > 30000) throw new Error('请选择 30,000 字以内的回答内容。');
@@ -425,6 +434,9 @@ async function cardGeneration(draftId: string, instruction: string | undefined, 
   const answer = source.incomplete ? mapCitationNumbers(source.answer, () => '') : remapCitationNumbers(source.answer, answerIds, contextIds);
   const currentBody = instruction ? remapCitationNumbers(draft.body, draft.evidenceIds, contextIds) : '';
   const request: AIRequest = { id: uid('request'), draftId, researchId: draft.researchId, conversationId: draft.conversationId, connectionId: source.connectionId ?? workspace.getState().data.requests[source.requestId]?.connectionId, purpose: instruction ? 'revision' : 'card', context: structuredClone(source.context), history: [], prompt: `${instruction ? `修订要求：${instruction}\n当前标题：${draft.title}\n当前正文：${currentBody}\n` : '将以下选中内容整理为一张独立可读的知识卡片，保留适用条件与限制。\n'}选中内容：\n${selection}\n\n所属原始问题：${source.prompt}\n完整原始回答（辅助理解，围绕选中内容整理）：\n${answer}`, createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [] };
+  const sourceRequest = workspace.getState().data.requests[source.requestId];
+  const imageModel = source.codexModel ?? sourceRequest?.codex?.model;
+  if (request.connectionId === 'codex' && request.context.some(item => item.kind === 'region') && imageModel) request.codex = { model: imageModel };
   workspace.updateData(data => { data.cardDrafts[draftId].status = 'generating'; data.cardDrafts[draftId].error = undefined; });
   try {
     await runRequest(request, responder);
@@ -464,6 +476,7 @@ export async function generateCardDraftFromExcerpts(researchId: string, evidence
     prompt: '将所选摘录整理为一张独立可读的知识卡片，保留适用条件与限制。', answer: '', answerEvidenceIds: [],
     selection: context.map((item, index) => `摘录 ${index + 1}：${item.quote || '保存的 PDF 区域'}`).join('\n\n'),
     context: structuredClone(context), createdAt: new Date().toISOString(), connectionId: conversation.connectionId,
+    ...(conversation.codex?.model ? { codexModel: conversation.codex.model } : {}),
     generationRequestIds: [],
   };
   workspace.updateData(next => {

@@ -21,6 +21,7 @@ type Props = {
   trailingControls?: ReactNode;
   disabled?: boolean;
   projectPath?: string;
+  onCapabilities?: (catalog: CodexCapabilities | undefined) => void;
 };
 type Menu = 'all' | 'skills' | 'models' | 'effort' | 'permissions' | 'status';
 type Choice = { id: string; label: string; description: string; group: string; selected?: boolean; disabledReason?: string; run(): void };
@@ -31,7 +32,7 @@ const accessInfo: Record<CodexAccess, { label: string; description: string }> = 
 };
 const effortLabel = (effort: string) => effort.charAt(0).toUpperCase() + effort.slice(1);
 
-export const CodexComposerTools = forwardRef<CodexComposerToolsHandle, Props>(function CodexComposerTools({ inputRef, value, skills, settings, status, onInput, onSkills, onSettings, onNew, children, leadingControls, trailingControls, disabled = false, projectPath }, ref) {
+export const CodexComposerTools = forwardRef<CodexComposerToolsHandle, Props>(function CodexComposerTools({ inputRef, value, skills, settings, status, onInput, onSkills, onSettings, onNew, children, leadingControls, trailingControls, disabled = false, projectPath, onCapabilities }, ref) {
   const [catalog, setCatalog] = useState<CodexCapabilities>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,8 +53,8 @@ export const CodexComposerTools = forwardRef<CodexComposerToolsHandle, Props>(fu
   const confirmationTitle = useId();
   async function load() {
     setLoading(true); setError('');
-    try { const result = await getCodexCapabilities(); if (alive.current) setCatalog(result); }
-    catch (failure) { if (alive.current) setError(failure instanceof Error ? failure.message : '无法读取 Codex 的技能与模型，请重试。'); }
+    try { const result = await getCodexCapabilities(); if (alive.current) { setCatalog(result); onCapabilities?.(result); } }
+    catch (failure) { if (alive.current) { setError(failure instanceof Error ? failure.message : '无法读取 Codex 的技能与模型，请重试。'); onCapabilities?.(undefined); } }
     finally { if (alive.current) setLoading(false); }
   }
   useEffect(() => { alive.current = true; void load(); return () => { alive.current = false; }; }, []);

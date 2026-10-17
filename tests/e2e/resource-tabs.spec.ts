@@ -37,7 +37,7 @@ async function setup(page: Page) {
 }
 async function openPaper(page: Page, title: string) {
   await main(page).getByRole('button', { name: new RegExp(title) }).click();
-  await expect(main(page).locator('canvas')).toBeVisible();
+  await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
 }
 
@@ -110,7 +110,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
       await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('同屏核查后继续完善的问题');
     }
     await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
-    const bounds = (await main(page).locator('canvas').boundingBox())!;
+    const bounds = (await main(page).locator('canvas').first().boundingBox())!;
     expect(bounds.x + bounds.width).toBeLessThanOrEqual((await panel(page).boundingBox())!.x + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await saved(page);

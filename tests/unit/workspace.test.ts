@@ -143,6 +143,27 @@ describe('工作台共享实体与会话', () => {
     workspace.back('main');
     expect(workspace.getSession().openItems.filter(ref => ref.id === first.id)).toHaveLength(1);
   });
+  it('连续阅读和对照位置按研究独立保留，引用只定位主窗且关闭分屏不丢第二位置', () => {
+    workspace.setReader('paper-a', { pageIndex: 1, scale: 1.2, offset: 0.4 });
+    workspace.setReaderSplit('paper-a', 'horizontal');
+    expect(workspace.getSession().readers['main-secondary:paper-a']).toEqual({ pageIndex: 1, scale: 1.2, offset: 0.4 });
+    workspace.setReader('paper-a', { pageIndex: 2, scale: 0.8, offset: 0.7 }, 'main-secondary');
+    workspace.openResource({ kind: 'document', id: 'paper-a' }, { scope: { kind: 'research', researchId: 'research-a' }, target: 'main', anchor: { pageIndex: 0 } });
+    expect(workspace.getSession().readers['main:paper-a']).toEqual({ pageIndex: 0, scale: 1.2, offset: 0 });
+    expect(workspace.getSession().readers['main-secondary:paper-a']).toEqual({ pageIndex: 2, scale: 0.8, offset: 0.7 });
+    expect(workspace.getSession().readerSplits?.['paper-a']).toBe('horizontal');
+    workspace.switchResearch('research-b');
+    expect(workspace.getSession().readerSplits?.['paper-a']).toBeUndefined();
+    workspace.setReader('paper-a', { pageIndex: 1, scale: 1, offset: 0.2 }, 'main', { kind: 'research', researchId: 'research-a' });
+    expect(workspace.getSession().readers['main:paper-a']).toBeUndefined();
+    workspace.switchResearch('research-a');
+    expect(workspace.getSession().readers['main:paper-a']).toEqual({ pageIndex: 1, scale: 1, offset: 0.2 });
+    workspace.setReaderSplit('paper-a');
+    workspace.setReaderSplit('paper-a', 'vertical');
+    expect(workspace.getSession().readers['main-secondary:paper-a']).toEqual({ pageIndex: 2, scale: 0.8, offset: 0.7 });
+    workspace.setReader('paper-a', { pageIndex: 99, scale: 3, offset: -1 }, 'main-secondary');
+    expect(workspace.getSession().readers['main-secondary:paper-a']).toEqual({ pageIndex: 2, scale: 2, offset: 0 });
+  });
   it('来源页索引不合法时拒绝建立证据', () => {
     expect(() =>
       workspace.createEvidence({

@@ -126,6 +126,7 @@ export type CardProvenance = {
   context: ContextSnapshot[];
   createdAt: string;
   model?: string;
+  codexModel?: string;
   connectionId?: AIConnectionId;
   generationRequestIds: string[];
   incomplete?: boolean;
@@ -173,7 +174,8 @@ export type Draft = {
   cardRefs?: { cardId: string; insertedAt: string; evidenceIds?: string[] }[];
   cardSources?: { cardId: string; title: string; provenance: CardProvenance }[];
 };
-export type ReadingPosition = { pageIndex: number; scale: number };
+export type ReadingPosition = { pageIndex: number; scale: number; offset?: number };
+export type ReaderTarget = 'main' | 'inspector' | 'main-secondary';
 export type BoardViewport = { x: number; y: number; scale: number };
 export type PanelState = {
   open: boolean;
@@ -209,6 +211,7 @@ export type Session = {
   history: Session['active'][];
   panel: PanelState;
   readers: Record<string, ReadingPosition>;
+  readerSplits?: Record<string, 'horizontal' | 'vertical'>;
   viewports: Record<string, BoardViewport>;
   anchor?: ResourceAnchor;
   activeConversationId?: string;
@@ -244,7 +247,7 @@ export type CodexAccess = 'read-only' | 'workspace-write' | 'full-access';
 export type CodexSettings = { model?: string; mode?: 'chat' | 'plan'; effort?: string; access?: CodexAccess };
 export type CodexCapabilities = {
   skills: AgentSkill[];
-  models: { id: string; name: string; isDefault?: boolean; reasoningEfforts?: { effort: string; description: string }[]; defaultReasoningEffort?: string }[];
+  models: { id: string; name: string; isDefault?: boolean; inputModalities?: ('text' | 'image' | 'audio')[]; reasoningEfforts?: { effort: string; description: string }[]; defaultReasoningEffort?: string }[];
   plan: boolean;
   accessModes?: CodexAccess[];
 };

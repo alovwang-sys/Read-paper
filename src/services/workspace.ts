@@ -6,6 +6,8 @@ import { hasFullText, normalizeIdentifier } from '../domain/knowledge';
 export { hasFullText, normalizeIdentifier, conclusionIssues } from '../domain/knowledge';
 import type {
   BoardPlacement,
+  ReadingPosition,
+  ReaderTarget,
   CollectionId,
   Evidence,
   PanelMode,
@@ -472,6 +474,7 @@ export const workspace = {
           session.readers[readerKey] = {
             pageIndex,
             scale: session.readers[readerKey]?.scale ?? 1,
+            ...(session.readers[readerKey]?.offset !== undefined ? { offset: 0 } : {}),
           };
         }
       }
@@ -689,16 +692,31 @@ export const workspace = {
   },
   setReader(
     documentId: string,
-    position: { pageIndex: number; scale: number },
-    target: 'main' | 'inspector' = 'main',
+    position: ReadingPosition,
+    target: ReaderTarget = 'main',
+    scope: WorkspaceScope = state.data.scope,
   ) {
     workspace.updateData((data) => {
       const doc = data.documents[documentId];
-      if (!hasFullText(doc)) return;
-      data.sessions[scopeKey(data.scope)].readers[`${target}:${documentId}`] = {
-        pageIndex: Math.max(0, Math.min(doc.pageCount - 1, position.pageIndex)),
+      const session = data.sessions[scopeKey(scope)];
+      if (!session || scope.kind === 'research' && !data.researches[scope.researchId]?.documentIds.includes(documentId)) return;
+      if (!hasFullText(doc) || !Number.isFinite(position.pageIndex) || !Number.isFinite(position.scale)) return;
+      session.readers[`${target}:${documentId}`] = {
+        pageIndex: Math.max(0, Math.min(doc.pageCount - 1, Math.floor(position.pageIndex))),
         scale: Math.max(0.5, Math.min(2, position.scale)),
+        ...(position.offset !== undefined && Number.isFinite(position.offset) ? { offset: Math.max(0, Math.min(1, position.offset)) } : {}),
       };
+    });
+  },
+  setReaderSplit(documentId: string, layout?: 'horizontal' | 'vertical') {
+    workspace.updateData(data => {
+      if (!hasFullText(data.documents[documentId])) return;
+      const session = data.sessions[scopeKey(data.scope)];
+      if (layout) {
+        session.readerSplits ??= {};
+        session.readerSplits[documentId] = layout;
+        session.readers[`main-secondary:${documentId}`] ??= structuredClone(session.readers[`main:${documentId}`] ?? { pageIndex: 0, scale: 1 });
+      } else if (session.readerSplits) delete session.readerSplits[documentId];
     });
   },
   addPlacement(boardId: string, ref: ResourceRef): BoardPlacement {

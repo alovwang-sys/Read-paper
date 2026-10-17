@@ -114,6 +114,7 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
   };
   const source = (value: CardProvenance) => {
     requireValid(object(value) && typeof value.prompt === 'string' && typeof value.answer === 'string' && typeof value.selection === 'string', '卡片对话来源损坏');
+    requireValid(value.codexModel === undefined || typeof value.codexModel === 'string' && !!value.codexModel.trim() && value.codexModel.length <= 200, '卡片图像型号损坏');
     requireValid(value.origin === undefined || ['conversation', 'excerpts'].includes(value.origin), '卡片来源类型损坏');
     context(value.context);
     ids(value.generationRequestIds);
@@ -206,7 +207,7 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
       const citation = session.panel.citation;
       requireValid(object(citation) && has(data.drafts, citation.draftId) && data.drafts[citation.draftId].researchId === key && data.drafts[citation.draftId].evidenceIds.includes(citation.evidenceId), '出处链缺失或跨研究');
     }
-    for (const [reader, position] of Object.entries(session.readers)) page(reader.replace(/^(main|inspector):/, ''), position.pageIndex);
+    for (const [reader, position] of Object.entries(session.readers)) page(reader.replace(/^(main|inspector|main-secondary):/, ''), position.pageIndex);
     if (session.activeConversationId) requireValid(has(data.conversations, session.activeConversationId) && data.conversations[session.activeConversationId].researchId === key, '活动会话跨研究');
   }
   return hashes;

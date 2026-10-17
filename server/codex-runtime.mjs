@@ -6,6 +6,7 @@ import { join, dirname, basename, isAbsolute, parse } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { stripVTControlCharacters } from 'node:util';
 import { inspectTikHubSkill, createTikHubBridge, TIKHUB_TOOL } from './tikhub-tools.mjs';
+import { IMAGE_LIMITS } from './images.mjs';
 
 const PROFILE = 'read_paper_materials';
 const safeError = (message, code = 'agent_failed') => Object.assign(new Error(message), { code });
@@ -216,8 +217,7 @@ async function skillCatalog(client, cwd, env) {
   return [...skills.values()];
 }
 
-async function desktopCatalog(client, cwd, env) {
-  const skills = await skillCatalog(client, cwd, env);
+async function modelCatalog(client, env) {
   const models = [];
   let cursor;
   for (let page = 0; page < 10; page++) {
@@ -225,12 +225,19 @@ async function desktopCatalog(client, cwd, env) {
     for (const model of listed.data || []) {
       if (model.hidden || typeof model.id !== 'string' || typeof model.model !== 'string' || typeof model.displayName !== 'string' || models.some((entry) => entry.id === model.id)) continue;
       const reasoningEfforts = (Array.isArray(model.supportedReasoningEfforts) ? model.supportedReasoningEfforts : []).filter(option => typeof option.reasoningEffort === 'string' && option.reasoningEffort.length > 0 && option.reasoningEffort.length <= 40 && !/[\x00-\x20\x7f]/.test(option.reasoningEffort)).slice(0, 20).map(option => ({ effort: option.reasoningEffort, description: toolText(typeof option.description === 'string' ? option.description : '', env, 500) }));
-      models.push({ id: model.id, name: toolText(model.displayName, env, 200), isDefault: model.isDefault === true, nativeModel: model.model, effort: model.defaultReasoningEffort, reasoningEfforts });
+      const inputModalities = Array.isArray(model.inputModalities) ? [...new Set(model.inputModalities.filter(value => ['text', 'image', 'audio'].includes(value)))] : undefined;
+      models.push({ id: model.id, name: toolText(model.displayName, env, 200), isDefault: model.isDefault === true, nativeModel: model.model, effort: model.defaultReasoningEffort, reasoningEfforts, ...(inputModalities ? { inputModalities } : {}) });
     }
     if (!listed.nextCursor) break;
     if (listed.nextCursor === cursor || page === 9) throw safeError('Codex 模型目录无法完整读取。', 'capability_unavailable');
     cursor = listed.nextCursor;
   }
+  return models;
+}
+
+async function desktopCatalog(client, cwd, env) {
+  const skills = await skillCatalog(client, cwd, env);
+  const models = await modelCatalog(client, env);
   const modes = await client.rpc('collaborationMode/list', {});
   return { skills, models, plan: (modes.data || []).some((mode) => mode.mode === 'plan') };
 }
@@ -382,7 +389,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         const catalog = await desktopCatalog(client, cwd, env);
         return {
           skills: catalog.skills.map(({ id, name, description, enabled, disabledReason }) => ({ id, name, description, enabled, ...(disabledReason ? { disabledReason } : {}) })),
-          models: catalog.models.map(({ id, name, isDefault, effort, reasoningEfforts }) => ({ id, name, isDefault, ...(typeof effort === 'string' ? { defaultReasoningEffort: effort } : {}), ...(reasoningEfforts.length ? { reasoningEfforts } : {}) })),
+          models: catalog.models.map(({ id, name, isDefault, effort, reasoningEfforts, inputModalities }) => ({ id, name, isDefault, ...(typeof effort === 'string' ? { defaultReasoningEffort: effort } : {}), ...(reasoningEfforts.length ? { reasoningEfforts } : {}), ...(inputModalities ? { inputModalities } : {}) })),
           plan: catalog.plan,
           accessModes: await accessModes(client, cwd),
         };
@@ -401,17 +408,24 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         const account = await client.rpc('account/read', { refreshToken: false });
         if (account.requiresOpenaiAuth && !account.account) return { state: 'needs-auth', version, detail: '请在本机终端运行 codex login 后重新检测。' };
         await verifySandbox(client, root);
-        return { state: 'ready', version, detail: '使用本机登录；默认只读材料及所选技能，额外权限由你在当前对话中逐次答复。' };
+        const images = await modelCatalog(client, env).then(models => models.some(model => model.inputModalities?.includes('image')), () => false);
+        return { state: 'ready', version, detail: '使用本机登录；默认只读材料及所选技能，额外权限由你在当前对话中逐次答复。', capabilities: { images } };
       } catch (error) {
         return { state: error.code === 'not-installed' ? 'not-installed' : 'error', detail: error.message };
       } finally { clearTimeout(timeout); if (client) await client.shutdown(); await rm(root, { recursive: true, force: true }); }
     },
-    async run({ prompt, title, cwd, materialCwd, nativeSessionId, signal, onEvent = () => {}, skillIds, codex, onInteraction }) {
+    async run({ prompt, title, cwd, materialCwd, nativeSessionId, signal, onEvent = () => {}, skillIds, codex, onInteraction, imagePaths = [] }) {
       if (materialCwd !== undefined) {
         cwd = await projectCwd(cwd);
         materialCwd = await projectCwd(materialCwd);
       }
       const desktop = skillIds !== undefined || codex !== undefined || typeof onInteraction === 'function';
+      if (!Array.isArray(imagePaths) || imagePaths.length > IMAGE_LIMITS.maxImages) throw safeError('图片材料格式不正确。', 'invalid_input');
+      const imageRoot = imagePaths.length ? await projectCwd(materialCwd || cwd) : undefined;
+      for (const image of imagePaths) {
+        if (!image || Object.keys(image).some(key => !['evidenceId', 'path'].includes(key)) || typeof image.evidenceId !== 'string' || !image.evidenceId || typeof image.path !== 'string'
+          || !/^region-[1-4]\.(?:png|jpg|webp)$/.test(basename(image.path)) || dirname(await realpath(image.path).catch(() => '')) !== imageRoot || !(await stat(image.path)).isFile()) throw safeError('区域图片文件缺失或不属于本轮材料。', 'invalid_input');
+      }
       if (skillIds !== undefined && (!Array.isArray(skillIds) || skillIds.length > 4 || skillIds.some((id) => typeof id !== 'string' || !/^skill_[A-Za-z0-9_-]{43}$/.test(id)))) throw safeError('技能选择无效，请重新选择本机技能。', 'invalid_skill');
       if (codex !== undefined && (!codex || typeof codex !== 'object' || Array.isArray(codex) || Object.keys(codex).some((key) => !['model', 'mode', 'effort', 'access'].includes(key)) || (codex.mode !== undefined && !['chat', 'plan'].includes(codex.mode)) || (codex.model !== undefined && (typeof codex.model !== 'string' || !codex.model)))) throw safeError('Codex 模式或模型选择无效。', 'invalid_model');
       if (codex?.effort !== undefined && (typeof codex.effort !== 'string' || !codex.effort || codex.effort.length > 40 || /[\x00-\x20\x7f]/.test(codex.effort))) throw safeError('Codex 推理强度选择无效。', 'invalid_effort');
@@ -536,7 +550,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
           if (thread?.id !== nativeSessionId || !await projectThread(thread, cwd, env)) throw safeError('此 Codex 会话不属于当前研究目录。', 'invalid_session');
         }
         await verifySandbox(client, materialCwd === undefined ? cwd : undefined);
-        const catalog = desktop ? await desktopCatalog(client, cwd, env) : undefined;
+        const catalog = desktop ? await desktopCatalog(client, cwd, env) : imagePaths.length ? { models: await modelCatalog(client, env) } : undefined;
         const selectedSkills = [...new Set(skillIds || [])].map((id) => {
           const skill = catalog.skills.find((entry) => entry.id === id);
           if (!skill?.enabled) throw safeError('所选技能已停用、不可用或不再存在，请重新选择。', 'invalid_skill');
@@ -547,6 +561,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         const selectedModel = codex?.model ? catalog.models.find((entry) => entry.id === codex.model) : catalog?.models.find((entry) => entry.isDefault) || catalog?.models[0];
         if (codex?.model && !selectedModel) throw safeError('所选模型不在本机 Codex 可用目录中，请重新选择。', 'invalid_model');
         if (desktop && !selectedModel) throw safeError('本机 Codex 未返回可用模型，请重新检测连接。', 'capability_unavailable');
+        if (imagePaths.length && !selectedModel?.inputModalities?.includes('image')) throw safeError('所选 Codex 模型未明确提供图片能力；请选择支持图片的模型或升级 CLI 后重试。', 'images_unsupported');
         if (codex?.effort && !selectedModel?.reasoningEfforts.some(option => option.effort === codex.effort)) throw safeError('所选模型不支持此推理强度，请重新选择。', 'invalid_effort');
         const effort = codex?.effort || selectedModel?.effort || 'low';
         const access = codex?.access || 'read-only';
@@ -589,7 +604,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         if ((!nativeSessionId || forkedFromId) && typeof title === 'string' && title.trim()) await client.rpc('thread/name/set', { threadId, name: toolText(title, env, 80).trim() });
         if (signal?.aborted) throw abortError();
         acceptingEvents = true;
-        const started = await client.rpc('turn/start', { threadId, cwd, runtimeWorkspaceRoots: roots, permissions: permissionProfile, approvalPolicy, ...(desktop ? { approvalsReviewer: 'user' } : {}), effort, ...(selectedModel ? { model: selectedModel.nativeModel } : {}), ...(codex?.mode === 'plan' ? { collaborationMode: { mode: 'plan', settings: { model: selectedModel.nativeModel, developer_instructions: null, reasoning_effort: effort } } } : codex?.mode === 'chat' ? { collaborationMode: { mode: 'default', settings: { model: selectedModel?.nativeModel || model, developer_instructions: null, reasoning_effort: effort } } } : {}), input: [{ type: 'text', text: prompt, text_elements: [] }, ...selectedSkills.map((skill) => ({ type: 'skill', name: skill.nativeName, path: skill.path }))] });
+        const started = await client.rpc('turn/start', { threadId, cwd, runtimeWorkspaceRoots: roots, permissions: permissionProfile, approvalPolicy, ...(desktop ? { approvalsReviewer: 'user' } : {}), effort, ...(selectedModel ? { model: selectedModel.nativeModel } : {}), ...(codex?.mode === 'plan' ? { collaborationMode: { mode: 'plan', settings: { model: selectedModel.nativeModel, developer_instructions: null, reasoning_effort: effort } } } : codex?.mode === 'chat' ? { collaborationMode: { mode: 'default', settings: { model: selectedModel?.nativeModel || model, developer_instructions: null, reasoning_effort: effort } } } : {}), input: [{ type: 'text', text: prompt, text_elements: [] }, ...imagePaths.flatMap(image => [{ type: 'text', text: `区域图片来源 evidenceId=${image.evidenceId}`, text_elements: [] }, { type: 'localImage', path: image.path }]), ...selectedSkills.map((skill) => ({ type: 'skill', name: skill.nativeName, path: skill.path }))] });
         turnId = started.turn.id;
         onEvent({ type: 'session', nativeSessionId: threadId, nativeTurnId: turnId });
         readyTurn();

@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { join, dirname, basename, parse } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { sanitizeAgentProgress } from './codex-runtime.mjs';
+import { imageRequestManifest, writeRegionImages } from './images.mjs';
 
 const agents = ['codex', 'opencode', 'claude'];
 const validId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
@@ -319,7 +320,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     },
     async archiveRequest(project, request) {
       const directory = await managed(project.path, true);
-      await atomicJSON(join(directory, `request-${digest(request.requestId)}.json`), { version: 1, ...request });
+      await atomicJSON(join(directory, `request-${digest(request.requestId)}.json`), { version: 1, ...imageRequestManifest(request) });
     },
     async materialize(project, request) {
       const parent = join(await managed(project.path, true), 'materials');
@@ -329,7 +330,8 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       await mkdir(directory, { mode: 0o700 });
       const materials = request.context.map((item, index) => `## [${index + 1}] ${item.title}\nevidenceId: ${item.evidenceId}\ndocumentId: ${item.documentId}\ndocumentHash: ${item.documentHash}\nPDF 第 ${item.pageIndex + 1} 页\n\n${item.quote}`).join('\n\n');
       await writeFile(join(directory, 'materials.md'), materials || '本次未发送论文材料。', { mode: 0o400 });
-      await writeFile(join(directory, 'manifest.json'), JSON.stringify(request, null, 2), { mode: 0o400 });
+      await writeFile(join(directory, 'manifest.json'), JSON.stringify(imageRequestManifest(request), null, 2), { mode: 0o400 });
+      await writeRegionImages(directory, request.images);
       await chmod(directory, 0o500);
       return directory;
     },

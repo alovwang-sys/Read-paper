@@ -68,7 +68,7 @@ test('打包桌面：目录取消、确认、项目列表与重启恢复，不�
     const binding = Object.values(registry.bindings).find((item: unknown) => (item as { researchId?: string }).researchId === 'research-a') as { path: string; projectId: string };
     expect(manifest).toMatchObject({ researchId: 'research-a', version: 1, title: 'research-project' }); expect(binding).toMatchObject({ path: await realpath(project), projectId: manifest.projectId });
 
-    await openSource(page, 'Adaptive Retrieval: Evidence & Reliability'); await expect(main(page).locator('canvas')).toBeVisible();
+    await openSource(page, 'Adaptive Retrieval: Evidence & Reliability'); await expect(main(page).locator('canvas').first()).toBeVisible();
     const listPromise = page.waitForResponse(response => response.url().endsWith('/api/ai/agents/projects/list') && response.request().method() === 'POST');
     await panel(page).getByRole('button', { name: '查看会话历史', exact: true }).click();
     const list = await listPromise; expect(list.status()).toBe(200); const result = await list.json();
@@ -79,7 +79,7 @@ test('打包桌面：目录取消、确认、项目列表与重启恢复，不�
     const refreshResponse = page.waitForResponse(response => response.url().endsWith('/api/ai/agents/projects/list') && response.request().method() === 'POST');
     await panel(page).getByRole('button', { name: '刷新', exact: true }).click(); expect((await refreshResponse).status()).toBe(200);
     await expect(panel(page).getByRole('button', { name: '刷新', exact: true })).toBeEnabled();
-    await expect(main(page).locator('canvas')).toBeVisible(); await saved(page);
+    await expect(main(page).locator('canvas').first()).toBeVisible(); await saved(page);
     await mkdir(test.info().outputPath('project-sessions'), { recursive: true }); await page.screenshot({ path: test.info().outputPath('project-sessions', 'desktop-project-entry.png') });
     await panel(page).getByRole('button', { name: '返回当前对话', exact: true }).click(); await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('目录绑定前保留的阅读问题');
     await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click(); await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();

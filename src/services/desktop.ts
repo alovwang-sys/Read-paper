@@ -5,6 +5,7 @@ import { flushProjectFiles } from './project-files';
 declare global {
   interface Window {
     papertrailDesktop?: {
+      startDictation?(): Promise<boolean>;
       openAISettings(): Promise<void>;
       onAISettingsChanged(callback: () => void): () => void;
       onOpenStorage(callback: () => void): () => void;

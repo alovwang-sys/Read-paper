@@ -83,7 +83,7 @@ test('H 摘录可撤销，重复选区复用，刷新保留原文高亮', async 
   await expect(panel(page)).toContainText(excerpt.quote);
   await main(page).getByRole('button', { name: '撤销', exact: true }).click();
   expect((await state(page)).evidence[excerpt.id]).toBeUndefined();
-  await expect(main(page).locator('.pdf-excerpt-highlight')).toHaveCount(0);
+  await expect(main(page).locator(`.pdf-excerpt-highlight[data-evidence-id="${excerpt.id}"]`)).toHaveCount(0);
 
   excerpt = await capture(page);
   await page.keyboard.press('h');
@@ -92,7 +92,7 @@ test('H 摘录可撤销，重复选区复用，刷新保留原文高亮', async 
   await page.reload();
   await expect(main(page).locator('.pdf-excerpt-highlight')).not.toHaveCount(0);
   expect((await state(page)).evidence[excerpt.id]).toMatchObject({ quote: excerpt.quote, researchId: 'research-a' });
-  await main(page).locator('.pdf-excerpt-highlight').first().click();
+  await main(page).locator(`.pdf-excerpt-highlight[data-evidence-id="${excerpt.id}"]`).first().click();
   await expect(main(page).getByRole('button', { name: '取消摘录', exact: true })).toBeEnabled();
 });
 

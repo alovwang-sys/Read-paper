@@ -4,8 +4,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { createAgentHandler } from './agents.mjs';
 import { createSourceHandler } from './sources.mjs';
+import { IMAGE_LIMITS, decodeImageDataURL } from './images.mjs';
 
-const LIMITS = Object.freeze({ maxInputChars: 120_000, maxImages: 4, maxImageBytes: 8 * 1024 * 1024 });
+const LIMITS = Object.freeze({ maxInputChars: 120_000, ...IMAGE_LIMITS });
 const MAX_BODY_BYTES = LIMITS.maxInputChars * 6 + Math.ceil(LIMITS.maxImageBytes / 3) * 4 * LIMITS.maxImages + 4096;
 const DEFAULT_BASE = 'https://open.bigmodel.cn/api/coding/paas/v4';
 
@@ -110,15 +111,8 @@ function imageURL(part, config) {
   if (!config.images) throw new AIError(400, 'images_unsupported', '当前模型连接未启用图片，请使用文字证据。');
   if (!isRecord(part.image_url) || !hasOnly(part.image_url, ['url']) || typeof part.image_url.url !== 'string') throw invalid();
   const url = part.image_url.url;
-  const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(url);
-  if (!match || match[2].length % 4 !== 0) throw invalid('图片必须是 PNG、JPEG 或 WebP 的 base64 数据。');
-  const bytes = Buffer.from(match[2], 'base64');
-  if (bytes.length > LIMITS.maxImageBytes) throw new AIError(413, 'image_too_large', '单张图片不能超过 8 MB。');
-  if (bytes.toString('base64') !== match[2]) throw invalid('图片编码不正确。');
-  const valid = (match[1] === 'png' && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
-    || (match[1] === 'jpeg' && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255)
-    || (match[1] === 'webp' && bytes.subarray(0, 4).toString() === 'RIFF' && bytes.subarray(8, 12).toString() === 'WEBP');
-  if (!valid) throw invalid('图片数据与声明的格式不一致。');
+  try { decodeImageDataURL(url); }
+  catch (error) { throw new AIError(error.status, error.code, error.message); }
   return { type: 'image_url', image_url: { url } };
 }
 

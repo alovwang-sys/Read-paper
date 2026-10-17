@@ -38,7 +38,7 @@ async function setup(page: Page, withEvidence = false) {
   await page.goto('/'); await expect(main(page)).toBeVisible();
   if (withEvidence) {
     await main(page).getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
-    await expect(main(page).locator('canvas')).toBeVisible(); await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
+    await expect(main(page).locator('canvas').first()).toBeVisible(); await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
     await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
     await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
     await page.getByRole('button', { name: '主区返回', exact: true }).click();
@@ -115,7 +115,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('下一条尚未发送的问题');
     await panel(page).getByRole('log', { name: '对话消息' }).evaluate(element => { element.scrollTop = 0; });
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
-    const pdf = (await main(page).locator('canvas').boundingBox())!; const right = (await panel(page).boundingBox())!;
+    const pdf = (await main(page).locator('canvas').first().boundingBox())!; const right = (await panel(page).boundingBox())!;
     expect(pdf.x + pdf.width).toBeLessThanOrEqual(right.x + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await mkdir('docs/verification/agents', { recursive: true });

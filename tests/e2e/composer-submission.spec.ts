@@ -170,7 +170,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
   test(`原文旁发送后继续写下一条草稿 ${viewport.width}`, async ({ page, api }) => {
     await page.setViewportSize(viewport); await start(page, api);
     await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
-    await expect(page.getByRole('main').locator('canvas')).toBeVisible();
+    await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
     await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
     const run = await send(page, api, '请核对这篇论文的实验条件。');
     await expect(input(page)).toHaveValue('');
