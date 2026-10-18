@@ -4,7 +4,9 @@
 
 Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个研究问题，集中阅读 PDF、留下原文摘录、整理观点卡片、在白板上组织论证，并写出可以返回原文核查的研究文稿。AI 在同一个工作台里辅助阅读，人工整理流程也可以独立使用。
 
-[下载安装](https://github.com/alovwang-sys/Read-paper/releases) · [快速上手](#快速上手) · [研究目录与-codex](#研究目录与-codex) · [开发运行](#开发运行)
+[下载安装](https://github.com/alovwang-sys/Read-paper/releases) · [快速上手](#快速上手) · [研究目录与-codex](#研究目录与-codex) · [开发运行](#开发运行) · [许可证与商业授权](#许可证与商业授权)
+
+**个人非商业使用免费；任何商业使用须事先获得作者 alovwang-sys 的书面许可。** 完整条款见 [LICENSE](LICENSE)。
 
 ![Papertrail 实际工作台：左侧研究导航、中央 PDF、右侧 Codex 与研究目录](docs/verification/research-directory/implemented-pdf-codex-1440.jpg)
 
@@ -161,6 +163,16 @@ npm run desktop:make      # 生成 out/make/ 下的安装文件
 ```
 
 macOS 生成 DMG 与 ZIP，Windows 生成安装器及配套 Squirrel 文件。CI 对 macOS arm64、macOS x64、Windows x64 分别构建和验证；公开版本在合并 `main` 后，由发行工作流为固定 tag 重跑检查、汇总安装包与 `SHA256SUMS`，核对草稿后发布技术预览。详细流程见[桌面分发](docs/desktop-distribution.md)与[开发协作约定](docs/development-workflow.md)。
+
+## 许可证与商业授权
+
+本项目采用 **Papertrail 个人非商业使用许可证 1.0**。个人可以免费用于非商业的学习、兴趣项目和个人研究，并可在保留许可证与版权声明、标注修改的前提下，无偿分享原版或修改版。
+
+**商业使用必须事先获得作者 alovwang-sys 的明确书面许可。** 企业内部业务使用、有偿咨询或委托研究、商业产品集成、收费分发、订阅或托管服务、广告变现等均属于商业使用；以个人名义使用、免费提供服务或尚未盈利，不自动免除授权要求。代表其他组织开展工作或部署服务，也须单独取得书面授权。
+
+商业授权请通过[项目仓库](https://github.com/alovwang-sys/Read-paper)联系[作者](https://github.com/alovwang-sys)，说明预期用途；未收到明确书面同意前，不得开展商业使用。
+
+这是限制用途的源码公开许可证，不属于允许自由商用的开源许可证。完整权利与限制以 [LICENSE](LICENSE) 为准。第三方依赖和材料遵循各自许可证；用户自行导入的资料和创作的研究内容不因使用本软件而自动受本许可证约束。
 
 ## 文档
 

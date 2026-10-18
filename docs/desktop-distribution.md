@@ -2,6 +2,8 @@
 
 Papertrail 使用同一套 React / TypeScript 界面，通过 Electron 与 Electron Forge 构建 macOS、Windows 安装包。日常开发、安装包验证和正式发布分别管理；macOS、Windows 不建立长期独立代码分支。
 
+项目采用[个人非商业使用许可证](../LICENSE)，商业使用须事先取得作者书面许可。Forge 白名单保留应用根目录的 `LICENSE`，后续构建会将其一并打入 `app.asar`；第三方组件继续适用各自许可。
+
 ## 产物与本机构建
 
 先使用 Node.js 24 和 `npm ci` 安装锁定的依赖。以下命令必须在对应操作系统运行；CI 使用三个原生 runner，避免在 Mac 上模拟 Windows 打包环境。

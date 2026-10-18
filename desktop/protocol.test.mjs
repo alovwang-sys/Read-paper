@@ -59,7 +59,7 @@ test('桌面原生助手与项目接口按路径和方法逐项放行，未知�
 });
 test('安装包白名单排除.env、真实材料、测试和Git文件', () => {
   const ignore = config.packagerConfig.ignore;
-  for (const file of ['/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', ...['ai', 'agents', 'codex-runtime', 'claude-runtime', 'opencode-runtime', 'projects', 'tikhub-tools'].map(name => `/server/${name}.mjs`), '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
+  for (const file of ['/LICENSE', '/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', ...['ai', 'agents', 'codex-runtime', 'claude-runtime', 'opencode-runtime', 'projects', 'tikhub-tools'].map(name => `/server/${name}.mjs`), '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
   for (const file of ['/.env.local', '/desktop/.env.local', '/dist/.env', '/.git/config', '/docs/private.pdf', '/tests/fixtures/a.pdf', '/server/ai.test.mjs', '/server/private.mjs', '/desktop/settings.test.mjs', '/README.md', '/package-lock.json']) assert.equal(ignore(file), true, file);
 });
 test('生产服务的相对模块依赖都包含在安装包中', async () => {
