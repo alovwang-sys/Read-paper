@@ -180,7 +180,7 @@ export function selectAgent(researchId: string, connectionId: AIConnectionId) {
   // Keep an explicit identity before the legacy panel preference changes.
   if (current) workspace.updateData(next => { next.conversations[current.id].connectionId = conversationConnection(current); });
   const target = Object.values(workspace.getState().data.conversations)
-    .filter(item => item.researchId === researchId && !item.archived && item.connectionId === connectionId)
+    .filter(item => item.researchId === researchId && !item.archived && (!item.inlineSource || item.inlineSource.promoted) && item.connectionId === connectionId)
     .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))[0];
   const id = target?.id ?? workspace.createConversation(researchId);
   workspace.updateData(next => {

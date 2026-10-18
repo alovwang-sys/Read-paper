@@ -12,27 +12,25 @@ import {
   RotateCw,
   Search,
   Scan,
-  Sparkles,
   X,
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { ReadingPosition, ReaderTarget, ResourceAnchor } from '../../domain/types';
 import { getReaderPosition, registerReaderFlush, scopeKey, useWorkspace } from '../../services/workspace';
 import { loadPdfDocument } from '../../services/pdf';
-import { submitAI } from '../../services/ai';
-import { currentAssistantSupportsImages } from '../../services/agents';
+import { createInlineConversation, findInlineConversation, type InlineAISelection } from '../../services/inline-ai';
 import { PdfPage, type PageHandle, type PageSize } from './PdfPage';
 import { contentHash, putAsset } from '../../data/storage';
 import { hasFullText } from '../../domain/knowledge';
 import { ImportPDFButton } from './ImportPDFButton';
 import { cropRegion, regionFromPoints, rotateRegion, validRegion, type RegionRect } from './region';
+import { InlineAIPopover, ReaderPopover, type ReaderSelectionAnchor } from './InlineAIPopover';
 import './reader.css';
 
 type Outline = { title: string; pageIndex: number; depth: number };
 const normalize = (value: string) => value.replace(/\s+/g, ' ').trim();
 type SelectionAction = 'excerpt' | 'card' | 'ai' | 'explain' | 'attach';
 type RegionPreview = { blob: Blob; url: string; width: number; height: number; rect: RegionRect; rotation: number };
-const explanationPrompt = '请解释所选材料的核心观点，并说明适用条件与限制。';
 
 export function PdfReader({
   documentId,
@@ -66,7 +64,11 @@ export function PdfReader({
   const [search, setSearch] = useState('');
   const [quote, setQuote] = useState('');
   const [selectionMode, setSelectionMode] = useState<'text' | 'region'>('text');
-  const [menuPosition, setMenuPosition] = useState({ left: 12, top: 12 });
+  const [selectionAnchor, setSelectionAnchor] = useState<ReaderSelectionAnchor>({ left: 12, top: 12, width: 1, height: 1 });
+  const [inlineConversationId, setInlineConversationId] = useState<string>();
+  const [inlineInitialAction, setInlineInitialAction] = useState<'explain' | 'ask'>('ask');
+  const [inlinePage, setInlinePage] = useState<number>();
+  const anchorPageWidth = useRef(0);
   const [regionRect, setRegionRect] = useState<RegionRect>();
   const [regionPreview, setRegionPreview] = useState<RegionPreview>();
   const [selectionError, setSelectionError] = useState('');
@@ -75,7 +77,6 @@ export function PdfReader({
   const [targetResearch, setTargetResearch] = useState('');
   const [undoExcerpt, setUndoExcerpt] = useState<string>();
   const [finishPrompt, setFinishPrompt] = useState(false);
-  const [imagesSupported, setImagesSupported] = useState<boolean>();
   const dragStart = useRef<{ x: number; y: number } | undefined>(undefined);
   const selectionVersion = useRef(0);
   const [width, setWidth] = useState(target === 'inspector' ? 320 : 720);
@@ -109,9 +110,9 @@ export function PdfReader({
   const pageTextReady = selectedHandle?.textReady ?? false;
   const viewScope = scopeKey(data.scope);
   const readerKey = `${viewScope}:${target}:${documentId}`;
-  const sourceEvidence = anchor?.evidenceId
-    ? data.evidence[anchor.evidenceId]
-    : undefined;
+  const inlineEvidenceId = inlineConversationId && data.conversations[inlineConversationId]?.inlineSource?.evidenceId;
+  const inlineEvidence = inlineEvidenceId ? data.evidence[inlineEvidenceId] : undefined;
+  const sourceEvidence = anchor?.evidenceId ? data.evidence[anchor.evidenceId] : undefined;
   const sourceValid =
     !!sourceEvidence &&
     sourceEvidence.documentId === documentId &&
@@ -120,13 +121,6 @@ export function PdfReader({
 
   useEffect(() => () => { if (regionPreview) URL.revokeObjectURL(regionPreview.url); }, [regionPreview]);
 
-  useEffect(() => {
-    let active = true;
-    if (selectionMode === 'region' && research) currentAssistantSupportsImages(research.id).then((supported) => {
-      if (active) setImagesSupported(supported);
-    }).catch(() => { if (active) setImagesSupported(false); });
-    return () => { active = false; };
-  }, [selectionMode, research?.id, session.activeConversationId, data.conversations[session.activeConversationId ?? '']?.connectionId, data.conversations[session.activeConversationId ?? '']?.codex?.model]);
 
   useEffect(() => {
     let active = true;
@@ -166,7 +160,7 @@ export function PdfReader({
     };
   }, [documentId, doc?.assetId, doc?.assetRevision, retry]);
 
-  const documentExcerpts = Object.values(data.evidence).filter(item => item.documentId === documentId && (!research || !item.researchId || item.researchId === research.id));
+  const documentExcerpts = Object.values(data.evidence).filter(item => !item.contextOnly && item.documentId === documentId && (!research || !item.researchId || item.researchId === research.id));
   const selectedExcerpt = documentExcerpts.find(item => item.pageIndex === selectedPageIndex && (selectionMode === 'region'
     ? item.kind === 'region' && !!item.region && item.region.rotation === regionPreview?.rotation && JSON.stringify(item.region.rect) === JSON.stringify(regionPreview?.rect)
     : item.kind !== 'region' && !!quote && item.quote === quote));
@@ -176,6 +170,8 @@ export function PdfReader({
   useEffect(() => {
     setFinishPrompt(false);
     setUndoExcerpt(undefined);
+    setInlineConversationId(undefined);
+    setInlinePage(undefined);
   }, [documentId, viewScope]);
 
   useEffect(() => {
@@ -191,7 +187,17 @@ export function PdfReader({
       if (actions.getState().selection?.viewInstanceId === `reader:${viewScope}:${target}:${documentId}`)
         actions.setSelection(undefined);
     };
-  }, [documentId, target, viewScope, position.scale, width]);
+  }, [documentId, target, viewScope]);
+
+  useEffect(() => {
+    if (!inlineConversationId || inlinePage === undefined) { clearSelection(); return; }
+    const nextWidth = pageSizes[inlinePage]?.width;
+    if (nextWidth && anchorPageWidth.current) {
+      const ratio = nextWidth / anchorPageWidth.current;
+      setSelectionAnchor(previous => ({ left: previous.left * ratio, top: previous.top * ratio, width: previous.width * ratio, height: previous.height * ratio }));
+      anchorPageWidth.current = nextWidth;
+    }
+  }, [position.scale, width]);
 
   useEffect(() => {
     if (!pdf || !scroll.current) return;
@@ -383,8 +389,8 @@ export function PdfReader({
   function changeScale(scale: number) {
     navigatePosition({ ...(pendingPosition.current ?? { pageIndex, scale: position.scale, offset: position.offset }), scale });
   }
-  function navigatePosition(next: ReadingPosition) {
-    clearSelection();
+  function navigatePosition(next: ReadingPosition, preserveSelection = false) {
+    if (!preserveSelection) clearSelection();
     window.clearTimeout(positionTimer.current);
     pendingPosition.current = undefined;
     if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current);
@@ -402,6 +408,8 @@ export function PdfReader({
     setSelectionBusy(false);
     setSelectionError('');
     setPendingAction(undefined);
+    setInlineConversationId(undefined);
+    setInlinePage(undefined);
     dragStart.current = undefined;
     if (actions.getState().selection?.viewInstanceId === `reader:${viewScope}:${target}:${documentId}`)
       actions.setSelection(undefined);
@@ -440,14 +448,12 @@ export function PdfReader({
     setSelectionError('');
     setPendingAction(undefined);
     setQuote(selected);
+    setInlineConversationId(undefined);
+    setInlinePage(undefined);
     const bounds = range.getBoundingClientRect();
     const pageBounds = pageLayer.getBoundingClientRect();
-    setMenuPosition({
-      left: Math.max(8, Math.min(bounds.left - pageBounds.left, pageBounds.width - Math.min(480, pageBounds.width - 16))),
-      top: bounds.bottom - pageBounds.top + 180 > pageBounds.height
-        ? Math.max(8, bounds.top - pageBounds.top - 180)
-        : Math.max(8, bounds.bottom - pageBounds.top + 8),
-    });
+    anchorPageWidth.current = pageBounds.width;
+    setSelectionAnchor({ left: bounds.left - pageBounds.left, top: bounds.top - pageBounds.top, width: bounds.width, height: bounds.height });
     actions.setSelection({
       scope: data.scope,
       viewInstanceId: `reader:${viewScope}:${target}:${documentId}`,
@@ -484,6 +490,7 @@ export function PdfReader({
       return;
     }
     setRegionRect(rect);
+    setSelectionAnchor({ left: rect.x * size.width, top: rect.y * size.height, width: rect.width * size.width, height: rect.height * size.height });
     void previewRegion(rect, index);
   }
   async function previewRegion(rect = regionRect, index = selectedPageIndex) {
@@ -493,6 +500,10 @@ export function PdfReader({
     const version = ++selectionVersion.current;
     setSelectionBusy(true);
     setSelectionError('');
+    setInlineConversationId(undefined);
+    setInlinePage(undefined);
+    anchorPageWidth.current = handle.size.width;
+    setSelectionAnchor({ left: rect.x * handle.size.width, top: rect.y * handle.size.height, width: rect.width * handle.size.width, height: rect.height * handle.size.height });
     try {
       const result = await cropRegion(handle.canvas, rect);
       if (version !== selectionVersion.current) return;
@@ -527,9 +538,24 @@ export function PdfReader({
     const cardIdToAttach = session.panel.findEvidenceFor;
     setSelectionBusy(true); setSelectionError('');
     try {
-      if (selectedMode === 'region' && (mode === 'ai' || mode === 'explain')) {
-        const supported = await currentAssistantSupportsImages(selectedResearchId); setImagesSupported(supported);
-        if (!supported) throw new Error('当前助手不支持区域图片。所选区域已保留，可摘录或创建人工卡片。');
+      if (mode === 'ai' || mode === 'explain') {
+        const source: InlineAISelection = { documentId: selectedDocument, pageIndex: selectedPage, quote: selectedMode === 'text' ? selectedQuote : '', kind: selectedMode };
+        if (selectedMode === 'region' && selectedRegion) {
+          const hash = await contentHash(await selectedRegion.blob.arrayBuffer());
+          const assetId = crypto.randomUUID();
+          await putAsset(assetId, selectedRegion.blob);
+          source.region = { assetId, hash, rect: selectedRegion.rect, rotation: selectedRegion.rotation, width: selectedRegion.width, height: selectedRegion.height };
+        }
+        if (version !== selectionVersion.current || scopeKey(actions.getState().data.scope) !== scopeKey(originScope)) return;
+        actions.associateDocument(selectedResearchId, selectedDocument);
+        const conversation = findInlineConversation(selectedResearchId, source);
+        const id = conversation?.id ?? createInlineConversation(selectedResearchId, source);
+        if (!research) actions.updateData(next => { next.sessions[scopeKey(originScope)].libraryResearchId = selectedResearchId; });
+        setInlineInitialAction(mode === 'explain' ? 'explain' : 'ask');
+        setInlinePage(selectedPage);
+        setInlineConversationId(id);
+        setPendingAction(undefined);
+        return;
       }
       actions.associateDocument(selectedResearchId, selectedDocument);
       const beforeIds = new Set(Object.keys(actions.getState().data.evidence));
@@ -537,7 +563,7 @@ export function PdfReader({
       const existing = Object.values(actions.getState().data.evidence).find(item =>
         (!item.researchId || item.researchId === selectedResearchId) && item.documentId === selectedDocument && item.pageIndex === selectedPage &&
         (selectedMode === 'region' ? item.kind === 'region' && !!item.region && item.region.rotation === selectedRegion?.rotation && JSON.stringify(item.region.rect) === JSON.stringify(selectedRegion?.rect) : item.kind !== 'region' && item.quote === selectedQuote));
-      if (existing) evidenceId = existing.id;
+      if (existing) { evidenceId = existing.id; if (existing.contextOnly) actions.updateData(next => { delete next.evidence[evidenceId].contextOnly; }); }
       else if (selectedMode === 'region' && selectedRegion) {
         const hash = await contentHash(await selectedRegion.blob.arrayBuffer());
         const assetId = crypto.randomUUID();
@@ -555,17 +581,6 @@ export function PdfReader({
       if (mode === 'excerpt') {
         setUndoExcerpt(beforeIds.has(evidenceId) ? undefined : evidenceId);
         actions.notice(beforeIds.has(evidenceId) ? '已摘录，已复用已有原文。' : '已摘录');
-      } else if (mode === 'ai' || mode === 'explain') {
-        if (researchId) {
-          actions.switchResearch(researchId);
-          actions.openResource({ kind: 'document', id: selectedDocument }, { scope: { kind: 'research', researchId }, target: 'main', anchor: { pageIndex: selectedPage, evidenceId } });
-        }
-        actions.contextFromEvidence(actions.getState().data.evidence[evidenceId]);
-        if (mode === 'explain') {
-          const conversation = actions.getActiveConversation(selectedResearchId);
-          await submitAI(selectedResearchId, conversation.id, explanationPrompt);
-        } else actions.notice('已加入当前对话，尚未发送；请在 AI 输入区填写问题。');
-        window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('.reading-ai textarea[aria-label="向 AI 提问"]')?.focus(), 0);
       } else if (mode === 'card') {
         const cardId = actions.createCard([evidenceId], '新的观点', '', selectedResearchId);
         actions.openResource({ kind: 'card', id: cardId }, { scope: { kind: 'research', researchId: selectedResearchId }, target: 'inspector' });
@@ -586,21 +601,46 @@ export function PdfReader({
     const item = id && data.evidence[id];
     if (!item || item.kind === 'region') return;
     activatePage(index);
-    selectionVersion.current++; setQuote(item.quote); setSelectionError('');
+    selectionVersion.current++; setQuote(item.quote); setSelectionError(''); setInlineConversationId(undefined); setInlinePage(undefined);
     actions.setSelection({ scope: data.scope, viewInstanceId: `reader:${viewScope}:${target}:${documentId}`, selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }], textRange: { documentId, pageIndex: index, quote: item.quote }, evidenceIds: [item.id] });
     const bounds = element.getBoundingClientRect(), pageBounds = layer.current!.getBoundingClientRect();
-    setMenuPosition({ left: Math.max(8, Math.min(bounds.left - pageBounds.left, pageBounds.width - Math.min(480, pageBounds.width - 16))), top: Math.max(8, bounds.bottom - pageBounds.top + 8 > pageBounds.height - 180 ? bounds.top - pageBounds.top - 180 : bounds.bottom - pageBounds.top + 8) });
+    anchorPageWidth.current = pageBounds.width;
+    setSelectionAnchor({ left: bounds.left - pageBounds.left, top: bounds.top - pageBounds.top, width: bounds.width, height: bounds.height });
   }
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || (event.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]')) return;
       if (actions.getState().selection?.viewInstanceId !== `reader:${viewScope}:${target}:${documentId}`) return;
-      if (event.key === 'Escape') { event.preventDefault(); clearSelection(); }
+      if (event.key === 'Escape') { event.preventDefault(); if (inlineConversationId) closeInline(); else clearSelection(); }
       else if (quote && ['h', 'c'].includes(event.key.toLowerCase())) { event.preventDefault(); void saveSelection(event.key.toLowerCase() === 'h' ? 'excerpt' : 'card'); }
     }
     document.addEventListener('keydown', shortcut);
     return () => document.removeEventListener('keydown', shortcut);
-  }, [quote, regionPreview, selectionBusy, documentId, pageIndex, viewScope, selectedExcerpt?.id, session.panel.findEvidenceFor]);
+  }, [quote, regionPreview, selectionBusy, documentId, pageIndex, viewScope, selectedExcerpt?.id, session.panel.findEvidenceFor, inlineConversationId]);
+  const inlineResearchId = research?.id ?? session.libraryResearchId;
+  const lastInline = inlineResearchId ? Object.values(data.conversations).filter(item => item.researchId === inlineResearchId && item.inlineSource?.documentId === documentId && !item.archived).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''))[0] : undefined;
+  function closeInline() {
+    setInlineConversationId(undefined);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      const trigger = document.querySelector<HTMLButtonElement>(`[data-inline-trigger="${target}:${inlineInitialAction}"]`);
+      (trigger ?? scroll.current)?.focus();
+    }));
+  }
+  function reopenInline() {
+    if (!lastInline?.inlineSource) return;
+    clearSelection();
+    const index = lastInline.inlineSource.pageIndex;
+    changePage(index);
+    anchorPageWidth.current = pageSizes[index]?.width ?? 0;
+    setSelectionAnchor({ left: 20, top: 36, width: 1, height: 1 });
+    setInlinePage(index); setInlineInitialAction('ask'); setInlineConversationId(lastInline.id);
+  }
+  function inlineSource(evidenceId: string) {
+    const item = actions.getState().data.evidence[evidenceId];
+    if (!item || item.documentId !== documentId) return;
+    const height = pageSizes[item.pageIndex]?.height ?? 1;
+    navigatePosition({ pageIndex: item.pageIndex, scale: position.scale, offset: Math.max(0, (selectionAnchor.top - 50) / height) }, true);
+  }
   if (!doc)
     return (
       <div className="empty-state">
@@ -642,7 +682,7 @@ export function PdfReader({
   const researchPicker = pendingAction && (
     <div className="pdf-research-picker">
       <label>
-        选择用于本次对话的研究
+        选择目标研究
         <select aria-label="选区目标研究" value={targetResearch} onChange={(event) => setTargetResearch(event.target.value)}>
           <option value="">请选择研究</option>
           {Object.values(data.researches).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
@@ -662,7 +702,8 @@ export function PdfReader({
         {findCard && <button className="button" disabled={selectionBusy} onClick={() => void saveSelection('attach')}>作为「{findCard.title}」的依据</button>}
         {!selectedExcerpt && <button className="primary" aria-label="摘录" disabled={selectionBusy} onClick={() => void saveSelection('excerpt')}>摘录 <kbd>H</kbd></button>}
         <button className="button" aria-label="写成卡片" disabled={selectionBusy} onClick={() => void saveSelection('card')}><Layers size={14} />写成卡片 <kbd>C</kbd></button>
-        <details className="pdf-ask-ai"><summary>问 AI</summary><div><button className="text-button" disabled={selectionBusy || (selectionMode === 'region' && imagesSupported === false)} title={explanationPrompt} onClick={() => void saveSelection('explain')}><Sparkles size={14} />解释这段</button><button className="text-button" disabled={selectionBusy || (selectionMode === 'region' && imagesSupported === false)} onClick={() => void saveSelection('ai')}>加入当前对话</button></div></details>
+        <button className="text-button pdf-inline-explain" data-inline-trigger={`${target}:explain`} disabled={selectionBusy} onClick={() => void saveSelection('explain')}>解释这段</button>
+        <button className="text-button" data-inline-trigger={`${target}:ask`} disabled={selectionBusy} onClick={() => void saveSelection('ai')}>提问</button>
         {selectedExcerpt && <button className="text-button" disabled={excerptInCard || selectionBusy} title={excerptInCard ? '此摘录已被卡片引用，请先在卡片中移除引用。' : '取消这条摘录'} onClick={() => removeExcerpt(selectedExcerpt.id)}>取消摘录</button>}
         <button className="icon-button" aria-label="取消原文选区" onClick={clearSelection}><X size={14} /></button>
       </div>
@@ -678,13 +719,14 @@ export function PdfReader({
       onKeyDown={(event) => {
         const editing = (event.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]');
         if (!editing && !event.metaKey && !event.ctrlKey && !event.altKey && (quote || regionPreview) && ['h', 'c'].includes(event.key.toLowerCase())) { event.preventDefault(); event.stopPropagation(); void saveSelection(event.key.toLowerCase() === 'h' ? 'excerpt' : 'card'); }
-        if (event.key === 'Escape' && (quote || regionRect)) {
+        if (event.key === 'Escape' && (quote || regionRect || inlineConversationId)) {
           event.stopPropagation();
-          clearSelection();
+          if (inlineConversationId) closeInline(); else clearSelection();
         }
       }}
     >
       <div className="pdf-toolbar">
+        {lastInline && <button className="text-button pdf-last-inline" onClick={reopenInline} title={research ? '找回这篇论文上次的就地问答' : `找回「${data.researches[lastInline.researchId]?.title ?? '所选研究'}」中这篇论文的上次就地问答`}>上次提问</button>}
         <button
           className={`icon-button ${showNavigation ? 'active' : ''}`}
           aria-label="目录与全文搜索"
@@ -871,19 +913,9 @@ export function PdfReader({
         </div>
       )}
       {selectionError && <div className="pdf-text-notice" role="alert">{selectionError}</div>}
-      {selectionMode === 'region' && (
+      {selectionMode === 'region' && !regionPreview && (
         <div className="pdf-region-panel">
-          {regionPreview ? (
-            <div className="pdf-region-preview">
-              <img src={regionPreview.url} alt={`所选区域预览，PDF 第 ${selectedPageIndex + 1} 页`} />
-              <div>
-                <strong>PDF 第 {selectedPageIndex + 1} 页 · 实际发送图像</strong>
-                <span>{regionPreview.width} × {regionPreview.height} px · {(regionPreview.blob.size / 1024).toFixed(0)} KB</span>
-                {selectionActions}
-              </div>
-            </div>
-          ) : <p>{selectionBusy ? '正在截取所选 PDF 区域…' : '在当前页拖框选择图表、公式或扫描内容。仅截取框内图像，确认预览后再加入对话。'}</p>}
-          {imagesSupported === false && <p className="pdf-region-capability">当前助手不支持区域图片。可继续摘录、创建卡片，或切换支持图片的助手后提问。</p>}
+          <p>{selectionBusy ? '正在截取所选 PDF 区域…' : '在当前页拖框选择图表或公式，随后可在区域旁直接提问。'}</p>
           <details className="pdf-region-keyboard">
             <summary>用百分比精确框选（键盘）</summary>
             <div className="pdf-region-fields">
@@ -905,7 +937,7 @@ export function PdfReader({
         {pdf && <div className="pdf-page-stack" style={{ paddingBottom: Math.max(0, viewportHeight - (pageSizes.at(-1)?.height ?? 0)) }}>
           {pageSizes.map((size, index) => {
             const selected = selectedPageIndex === index;
-            const source = sourceValid && sourceEvidence.pageIndex === index ? sourceEvidence : undefined;
+            const source = inlineEvidence?.pageIndex === index ? inlineEvidence : sourceValid && sourceEvidence.pageIndex === index ? sourceEvidence : undefined;
             const sourceRegion = source?.kind === 'region' && source.region ? rotateRegion(source.region.rect, size.rotation - source.region.rotation) : undefined;
             return <PdfPage key={index} pdf={pdf} documentId={documentId} title={doc.title} pageIndex={index} size={size}
               active={Math.abs(index - pageIndex) <= 2 || (!!quote || !!regionRect) && selected}
@@ -919,15 +951,20 @@ export function PdfReader({
               {selectionMode === 'region' && <div className="pdf-region-layer" aria-label={index === pageIndex ? '拖动框选当前 PDF 页区域' : `拖动框选 PDF 第 ${index + 1} 页区域`} onPointerDown={event => startRegion(event, index)} onPointerMove={moveRegion} onPointerUp={event => finishRegion(event, index)} onPointerCancel={() => { dragStart.current = undefined; }} onKeyDown={event => { if (event.key === 'Escape') clearSelection(); }} tabIndex={0}>
                 {selected && regionRect && <div className="pdf-region-box" style={{ left: `${regionRect.x * 100}%`, top: `${regionRect.y * 100}%`, width: `${regionRect.width * 100}%`, height: `${regionRect.height * 100}%` }} />}
               </div>}
-              {selected && quote && selectionMode === 'text' && <div className="pdf-selection-menu" aria-label="原文选区操作" style={menuPosition}>
-                <span>PDF 第 {index + 1} 页 · {quote.length} 字符已选</span>
-                <details className="pdf-selection-preview"><summary>查看所选原文</summary><blockquote>{quote}</blockquote></details>
-                {selectionActions}
-              </div>}
+
             </PdfPage>;
           })}
         </div>}
       </div>
+      {inlineConversationId && inlinePage !== undefined && <ReaderPopover key={`inline:${inlineConversationId}`} anchor={selectionAnchor} pageElement={pageHandles.current.get(inlinePage)?.layer} boundary={scroll.current} className="inline-ai">
+        <InlineAIPopover conversationId={inlineConversationId} initialAction={inlineInitialAction} onClose={closeInline} onSource={inlineSource} />
+      </ReaderPopover>}
+      {!inlineConversationId && (quote && selectionMode === 'text' || regionPreview && selectionMode === 'region') && <ReaderPopover anchor={selectionAnchor} pageElement={pageHandles.current.get(selectedPageIndex)?.layer} boundary={scroll.current} className="pdf-selection-menu" label="原文选区操作">
+        <div className="pdf-selection-meta"><span>PDF 第 {selectedPageIndex + 1} 页{quote ? ` · ${quote.length} 字符` : ' · 所选区域'}</span>
+          <details className="pdf-selection-preview"><summary>查看所选{quote ? '原文' : '区域'}</summary>{quote ? <blockquote>{quote}</blockquote> : regionPreview && <img className="pdf-inline-region-preview" src={regionPreview.url} alt={`所选区域预览，PDF 第 ${selectedPageIndex + 1} 页`} />}</details>
+        </div>
+        {selectionActions}
+      </ReaderPopover>}
       <div className="pdf-footer">
         <span>{doc.filename}</span>
         <span>

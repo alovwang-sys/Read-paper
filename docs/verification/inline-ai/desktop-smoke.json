@@ -1,0 +1,39 @@
+{
+  "executablePath": "/Users/amos/.codex/worktrees/inline-reading-assistant/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "protocol": "papertrail://app/",
+  "isolatedUserData": true,
+  "packagedPiRuntime": true,
+  "productionConfig": {
+    "configured": false,
+    "model": "glm-5.3-flash",
+    "provider": "智谱",
+    "images": false,
+    "mode": "demo",
+    "runtime": "pi",
+    "tools": [],
+    "limits": {
+      "maxInputChars": 120000,
+      "maxImages": 4,
+      "maxImageBytes": 8388608
+    }
+  },
+  "unconfigured": {
+    "status": 503,
+    "events": [
+      {
+        "type": "error",
+        "error": "尚未配置模型密钥，请启动已配置的本地 AI 服务。",
+        "code": "not_configured"
+      }
+    ]
+  },
+  "mockedModelResponses": 1,
+  "actualModelCalls": 0,
+  "nativeRuns": 0,
+  "rightDraftPreserved": true,
+  "inlineAnswerRestoredAfterRestart": true,
+  "normalLaunches": 2,
+  "normalExitCount": 2,
+  "normalExitCode": 0,
+  "pageErrors": []
+}

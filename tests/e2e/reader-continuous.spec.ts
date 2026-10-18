@@ -44,8 +44,8 @@ test('滚动连续跨页后立即分窗保持页内位置，第二页摘录仍�
     node.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     return node.textContent!.replace(/\s+/g, ' ').trim();
   });
-  await expect(secondPage.getByLabel('原文选区操作')).toBeVisible();
-  await secondPage.getByRole('button', { name: '摘录', exact: true }).click();
+  await expect(page.getByLabel('原文选区操作')).toBeVisible();
+  await page.getByLabel('原文选区操作').getByRole('button', { name: '摘录', exact: true }).click();
   await expect.poll(async () => Object.values((await state(page)).evidence).filter(item => item.quote === quote && item.researchId === 'research-a').map(item => item.pageIndex)).toEqual([1]);
   await expect(secondPage.locator('.pdf-excerpt-highlight')).not.toHaveCount(0);
 });

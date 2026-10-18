@@ -64,7 +64,7 @@ async function selectExcerpt(page: Page) {
     node.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     return node.textContent!.replace(/\s+/g, ' ').trim();
   });
-  await expect(main(page).getByLabel('原文选区操作')).toBeVisible();
+  await expect(page.getByLabel('原文选区操作')).toBeVisible();
   return quote;
 }
 async function capture(page: Page) {
@@ -94,7 +94,7 @@ test('H 摘录可撤销，重复选区复用，刷新保留原文高亮', async 
   await expect(main(page).locator('.pdf-excerpt-highlight')).not.toHaveCount(0);
   expect((await state(page)).evidence[excerpt.id]).toMatchObject({ quote: excerpt.quote, researchId: 'research-a' });
   await main(page).locator(`.pdf-excerpt-highlight[data-evidence-id="${excerpt.id}"]`).first().click();
-  await expect(main(page).getByRole('button', { name: '取消摘录', exact: true })).toBeEnabled();
+  await expect(page.getByLabel('原文选区操作').getByRole('button', { name: '取消摘录', exact: true })).toBeEnabled();
 });
 
 test('摘录按研究隔离，可展开其他研究来源，标为不需要后可恢复', async ({ page }) => {

@@ -175,7 +175,7 @@ test('显式材料、原生累计提示与收缩前序范围', async ({ page }) 
   await page.screenshot({ path: 'docs/verification/agents/native-context-scope.png' });
 });
 
-test('演示模式经历史返回 Codex 后，PDF 快捷解释仍使用原助手', async ({ page }) => {
+test('演示模式经历史返回 Codex 后，显式选材解释仍使用原助手', async ({ page }) => {
   const calls: Record<string, unknown>[] = [];
   await page.route('**/api/ai/agents/run', route => {
     calls.push(route.request().postDataJSON());
@@ -201,8 +201,17 @@ test('演示模式经历史返回 Codex 后，PDF 快捷解释仍使用原助手
     const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
     element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, view: window }));
   });
-  await main.getByText('问 AI', { exact: true }).click();
-  await main.getByRole('button', { name: '解释这段', exact: true }).click();
+  const selectionActions = page.getByLabel('原文选区操作');
+  await selectionActions.getByRole('button', { name: '摘录', exact: true }).click();
+  await selectionActions.getByRole('button', { name: '提问', exact: true }).click();
+  await page.getByRole('dialog', { name: '原文旁提问' }).getByRole('button', { name: '在右侧继续', exact: true }).click();
+  await select(page, 'Codex');
+  await panel(page).getByRole('button', { name: '添加材料', exact: true }).click();
+  const materials = panel(page).getByRole('dialog', { name: '添加对话材料' });
+  await materials.getByRole('button', { name: /PDF 第 1 页.*Abstract/ }).click();
+  await materials.getByRole('button', { name: '完成', exact: true }).click();
+  await panel(page).getByLabel('向 AI 提问').fill('请解释所选原文，并说明适用条件与限制。');
+  await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
   await expect(panel(page).locator('.ai-answer')).toContainText('Codex 对所选原文的解释');
   expect(calls).toHaveLength(1);
   expect(calls[0]).toMatchObject({ connectionId: 'codex', researchId: 'research-a', conversationId: codexId });

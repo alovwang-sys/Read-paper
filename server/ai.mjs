@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { createAgentHandler } from './agents.mjs';
 import { createSourceHandler } from './sources.mjs';
 import { IMAGE_LIMITS, decodeImageDataURL } from './images.mjs';
+import { runPiCompletion } from './pi-runtime.mjs';
 
 const LIMITS = Object.freeze({ maxInputChars: 120_000, ...IMAGE_LIMITS });
 const MAX_BODY_BYTES = LIMITS.maxInputChars * 6 + Math.ceil(LIMITS.maxImageBytes / 3) * 4 * LIMITS.maxImages + 4096;
@@ -50,7 +51,7 @@ function settings(env) {
 }
 
 function publicSettings(config) {
-  return { configured: Boolean(config.key), model: config.model, provider: '智谱', images: config.images, mode: config.key ? 'live' : 'demo', limits: LIMITS };
+  return { configured: Boolean(config.key), model: config.model, provider: '智谱', images: config.images, mode: config.key ? 'live' : 'demo', runtime: 'pi', tools: [], limits: LIMITS };
 }
 
 export function validateAISettings(env = process.env) {
@@ -273,23 +274,28 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
       requestId = validated.requestId;
       active.add(requestId);
       timeout = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
-      const upstream = await fetchImpl(config.endpoint, {
-        method: 'POST', signal: controller.signal, redirect: 'error',
-        headers: { Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ model: config.model, messages: validated.messages, stream: true, reasoning_effort: 'low', max_tokens: 8192 }),
+      await runPiCompletion({
+        model: config.model, messages: validated.messages, images: config.images, signal: controller.signal,
+        onDelta: (text) => send({ type: 'delta', text }),
+        streamCompletion: async function* (messages, signal) {
+          const upstream = await fetchImpl(config.endpoint, {
+            method: 'POST', signal, redirect: 'error',
+            headers: { Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+            body: JSON.stringify({ model: config.model, messages, stream: true, reasoning_effort: 'low', max_tokens: 8192 }),
+          });
+          if (!upstream.ok) {
+            await upstream.body?.cancel().catch(() => {});
+            throw upstreamError(upstream.status);
+          }
+          if (!upstream.body || !/^text\/event-stream(?:\s*;|$)/i.test(upstream.headers.get('content-type') || '')) {
+            await upstream.body?.cancel().catch(() => {});
+            throw new AIError(502, 'invalid_stream', '模型未返回流式回答，请检查模型连接。');
+          }
+          yield* readCompletionStream(upstream.body);
+        },
       });
-      if (!upstream.ok) {
-        await upstream.body?.cancel().catch(() => {});
-        throw upstreamError(upstream.status);
-      }
-      if (!upstream.body || !/^text\/event-stream(?:\s*;|$)/i.test(upstream.headers.get('content-type') || '')) {
-        await upstream.body?.cancel().catch(() => {});
-        throw new AIError(502, 'invalid_stream', '模型未返回流式回答，请检查模型连接。');
-      }
-      for await (const event of readCompletionStream(upstream.body)) {
-        if (controller.signal.aborted) throw controller.signal.reason;
-        await send(event.type === 'done' ? { ...event, model: config.model } : event);
-      }
+      controller.signal.throwIfAborted();
+      await send({ type: 'done', model: config.model });
       res.end();
     } catch (error) {
       if (res.destroyed || (controller.signal.aborted && !timedOut)) return;

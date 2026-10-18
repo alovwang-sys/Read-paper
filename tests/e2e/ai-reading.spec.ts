@@ -69,11 +69,13 @@ test('区域拖框、演示对话、片段卡片、刷新来源与真实 Markdow
   await page.mouse.down();
   await page.mouse.move(endPoint.x, endPoint.y, { steps: 12 });
   await page.mouse.up();
-  await expect(main(page).getByAltText('所选区域预览，PDF 第 1 页')).toBeVisible();
+  const selectionActions = page.getByLabel('原文选区操作');
+  await selectionActions.getByText('查看所选区域', { exact: true }).click();
+  await expect(selectionActions.getByAltText('所选区域预览，PDF 第 1 页')).toBeVisible();
   await expect(main(page).locator('.pdf-region-box')).toBeVisible();
   expect(Object.values((await data(page)).evidence).filter(item => item.kind === 'region')).toHaveLength(0);
-  await main(page).getByText('问 AI', { exact: true }).click();
-  await main(page).getByRole('button', { name: '加入当前对话', exact: true }).click();
+  await selectionActions.getByRole('button', { name: '提问', exact: true }).click();
+  await page.getByRole('dialog', { name: '原文旁提问' }).getByRole('button', { name: '在右侧继续', exact: true }).click();
   await expect(panel(page).locator('.ai-material')).toHaveCount(1);
   let state = await data(page);
   const evidence = Object.values(state.evidence).find(item => item.kind === 'region')!;
@@ -119,7 +121,8 @@ test('区域拖框、演示对话、片段卡片、刷新来源与真实 Markdow
   await page.reload();
   await expect(panel(page).getByRole('heading', { name: '卡片已建立', exact: true })).toBeVisible();
   state = await data(page);
-  expect(state.evidence[evidence.id]).toEqual(evidence);
+  const { contextOnly: _contextOnly, ...savedEvidence } = evidence;
+  expect(state.evidence[evidence.id]).toEqual(savedEvidence);
   const asset = await page.evaluate(async assetId => {
     const modulePath = '/src/data/storage.ts';
     const { getAsset, contentHash } = await import(modulePath);

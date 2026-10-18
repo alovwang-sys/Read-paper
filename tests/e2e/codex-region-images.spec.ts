@@ -63,9 +63,18 @@ async function addRegion(page: Page) {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * .68, box.y + box.height * .25, { steps: 10 });
   await page.mouse.up();
-  await expect(main(page).getByAltText('所选区域预览，PDF 第 1 页')).toBeVisible();
-  await main(page).getByText('问 AI', { exact: true }).click();
-  await main(page).getByRole('button', { name: '加入当前对话', exact: true }).click();
+  const selection = page.getByLabel('原文选区操作');
+  await selection.getByText('查看所选区域', { exact: true }).click();
+  await expect(selection.getByAltText('所选区域预览，PDF 第 1 页')).toBeVisible();
+  await selection.getByRole('button', { name: '摘录', exact: true }).click();
+  await selection.getByRole('button', { name: '提问', exact: true }).click();
+  await page.getByRole('dialog', { name: '原文旁提问' }).getByRole('button', { name: '在右侧继续', exact: true }).click();
+  await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+  await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();
+  await panel(page).getByRole('button', { name: '添加材料', exact: true }).click();
+  const materials = panel(page).getByRole('dialog', { name: '添加对话材料' });
+  await materials.getByRole('button', { name: /Adaptive Retrieval.*PDF 第 1 页.*已保存的原文区域/ }).click();
+  await materials.getByRole('button', { name: '完成', exact: true }).click();
   await expect(panel(page).locator('.ai-material')).toHaveCount(1);
 }
 

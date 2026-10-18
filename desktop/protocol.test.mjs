@@ -95,7 +95,8 @@ test('生产服务的相对模块依赖都包含在安装包中', async () => {
     for (const match of source.matchAll(/\bfrom\s+['"](.\/[^'"]+)['"]/g)) await visit(new URL(match[1], url));
   }
   await visit(new URL('../server/ai.mjs', import.meta.url));
-  assert.equal(visited.size, 10);
+  assert.ok(visited.has(new URL('../server/pi-runtime.mjs', import.meta.url).href));
+  assert.equal(visited.size, 11);
 });
 test('仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝', () => {
   const contents = { getURL: () => APP_URL, isDestroyed: () => false };

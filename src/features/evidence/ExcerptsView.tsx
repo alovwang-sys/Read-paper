@@ -16,7 +16,7 @@ export function ExcerptsView({ researchId }: { researchId: string }) {
   if (!loaded) return <div className="empty-state" role="status">正在加载摘录…</div>;
   if (loadError || !research) return <div className="empty-state" role="alert">{loadError || '研究已缺失，请重新打开。'}</div>;
   const used = new Set(research.cardIds.flatMap(id => data.cards[id]?.evidenceIds ?? []));
-  const all = Object.values(data.evidence).filter(item => research.documentIds.includes(item.documentId));
+  const all = Object.values(data.evidence).filter(item => !item.contextOnly && research.documentIds.includes(item.documentId));
   const own = all.filter(item => !item.researchId || item.researchId === researchId);
   const visible = own.filter(item => (showDismissed || !item.dismissed) && (filter === 'all' || used.has(item.id) === (filter === 'used')));
   const ids = selected.filter(id => visible.some(item => item.id === id));

@@ -1,0 +1,15 @@
+{
+  "model": "glm-5.3-flash",
+  "runtime": "pi",
+  "httpStatus": 429,
+  "completed": false,
+  "elapsedMs": 169,
+  "answer": "",
+  "errors": [
+    {
+      "type": "error",
+      "error": "模型额度或并发受限，请稍后手动重试。",
+      "code": "rate_limited"
+    }
+  ]
+}

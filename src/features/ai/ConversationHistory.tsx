@@ -71,7 +71,7 @@ export function ConversationHistory({ onBack, state, onState }: { onBack: () => 
   }, [query, archived, filter]);
   if (!research) return null;
   const current = getActiveConversation(data, research.id);
-  const local = Object.values(data.conversations).filter(item => item.researchId === research.id);
+  const local = Object.values(data.conversations).filter(item => item.researchId === research.id && (!item.inlineSource || item.inlineSource.promoted));
   const matchingSession = (entry: typeof local[number]) => sessions.find(item => item.agentId === conversationConnection(entry) && (item.id === entry.nativeSessionRef || (!!item.nativeSessionId && item.nativeSessionId === entry.nativeSessionId)));
   const entries = [
     ...local.filter(item => !!item.archived === archived).map(item => ({ id: item.id, local: item, native: matchingSession(item), title: item.title || '新的阅读对话', connectionId: conversationConnection(item), updatedAt: item.updatedAt ?? item.createdAt ?? '' })),

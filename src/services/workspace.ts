@@ -145,7 +145,7 @@ export function getActiveConversation(data: WorkspaceData, researchId: string): 
   const id = data.sessions[researchId]?.activeConversationId;
   const active = id ? data.conversations[id] : undefined;
   return active && !active.archived && active.researchId === researchId ? active :
-    Object.values(data.conversations).find(c => c.researchId === researchId && !c.archived);
+    Object.values(data.conversations).find(c => c.researchId === researchId && !c.archived && (!c.inlineSource || c.inlineSource.promoted));
 }
 export function linkCard(
   data: WorkspaceData,
@@ -156,6 +156,7 @@ export function linkCard(
     card = data.cards[cardId];
   if (!research || !card) throw new Error('研究或卡片不存在');
   const evidence = validateEvidence(data, card.evidenceIds);
+  evidence.forEach(item => { delete item.contextOnly; });
   research.cardIds = [...new Set([...research.cardIds, cardId])];
   research.documentIds = [
     ...new Set([
@@ -433,7 +434,10 @@ export const workspace = {
   },
   captureExcerpt(researchId: string, range: { documentId: string; pageIndex: number; quote: string }) {
     const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.researchId === researchId && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim());
-    if (existing) return existing.id;
+    if (existing) {
+      if (existing.contextOnly) workspace.updateData(data => { delete data.evidence[existing.id].contextOnly; });
+      return existing.id;
+    }
     const id = uid('evidence');
     workspace.updateData(data => {
       if (!data.researches[researchId]?.documentIds.includes(range.documentId)) throw new Error('请先把资料加入该研究。');
@@ -742,7 +746,7 @@ export const workspace = {
     workspace.updateData(data => {
       data.conversations[conversationId].archived = archived;
       if (archived && data.sessions[conversation.researchId].activeConversationId === conversationId)
-        data.sessions[conversation.researchId].activeConversationId = Object.values(data.conversations).find(c => c.researchId === conversation.researchId && !c.archived)?.id;
+        data.sessions[conversation.researchId].activeConversationId = Object.values(data.conversations).find(c => c.researchId === conversation.researchId && !c.archived && (!c.inlineSource || c.inlineSource.promoted))?.id;
     });
     if (archived && !getActiveConversation(state.data, conversation.researchId)) workspace.createConversation(conversation.researchId);
   },
