@@ -2,6 +2,7 @@ import { expect, test, _electron, type ElectronApplication, type Page } from '@p
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import type { BrowserWindow } from 'electron';
 import { createSeed } from '../../src/data/seed';
 import { mockProjectService } from '../e2e/project-fixture';
 
@@ -31,7 +32,7 @@ async function close(application: ElectronApplication) {
   void application.evaluate(({ app }) => app.quit()).catch(() => {}); await exited;
 }
 
-test('打包桌面：原生全屏时始终可退出，刷新与快捷键保留草稿和标准窗口框架', async () => {
+for (const initialState of ['default', 'maximized'] as const) test(`打包桌面：${initialState === 'default' ? '默认' : '最大化'}窗口全屏可退出，刷新与快捷键保留草稿和原生框架`, async ({}, testInfo) => {
   const directory = await mkdtemp(join(tmpdir(), 'papertrail-desktop-fullscreen-'));
   const userData = join(directory, 'app-data'), home = join(directory, 'isolated-home');
   await Promise.all([mkdir(userData), mkdir(home)]);
@@ -40,6 +41,19 @@ test('打包桌面：原生全屏时始终可退出，刷新与快捷键保留�
   const draft = '退出全屏时保留这段未发送的研究问题。';
   try {
     const session = await launch(userData, home); application = session.application; const page = session.page;
+    const mainWindow = await application.browserWindow(page);
+    if (initialState === 'maximized') await mainWindow.evaluate((window: BrowserWindow) => new Promise<void>(resolve => {
+      if (window.isMaximized()) resolve();
+      else { window.once('maximize', () => resolve()); window.maximize(); }
+    }));
+    const readFrame = () => mainWindow.evaluate((window: BrowserWindow) => ({
+      fullScreen: window.isFullScreen(), normal: window.isNormal(), maximized: window.isMaximized(), minimized: window.isMinimized(),
+      closable: window.isClosable(), minimizable: window.isMinimizable(), fullScreenable: window.isFullScreenable(),
+      frameInset: window.getBounds().height - window.getContentBounds().height, bounds: window.getBounds(),
+    }));
+    const suffix = initialState === 'maximized' ? '-maximized' : '';
+    const evidencePath = `docs/verification/pane-navigation/desktop-fullscreen${suffix}.json`;
+    const frameAuditPath = testInfo.outputPath('native-window-frames.json');
     page.on('pageerror', error => pageErrors.push(error.message));
     page.on('request', request => { if (/\/api\/ai\/(?:chat|agents\/run)$/.test(new URL(request.url()).pathname)) modelCalls.push(request.url()); });
     const seed = createSeed(); seed.sessions['research-a'].panel.mode = 'ai';
@@ -60,47 +74,57 @@ test('打包桌面：原生全屏时始终可退出，刷新与快捷键保留�
     });
     expect(rejected[0]).toContain('不允许此页面读取工作台窗口状态');
     expect(rejected[1]).toContain('不允许此页面修改工作台窗口状态');
-    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(window => window.webContents.getURL().includes('desktop-settings'))?.close());
+    const settingsWindow = await application.browserWindow(settings);
+    await settingsWindow.evaluate((window: BrowserWindow) => new Promise<void>(resolve => {
+      window.once('closed', () => resolve()); window.close();
+    }));
 
-    await application.evaluate(({ BrowserWindow }) => new Promise<void>(resolve => {
-      const window = BrowserWindow.getAllWindows().find(window => window.webContents.getURL() === 'papertrail://app/')!;
+    const initialFrame = await readFrame();
+    expect(initialFrame).toMatchObject({ fullScreen: false, minimized: false, closable: true, minimizable: true, fullScreenable: true });
+    if (initialState === 'maximized') expect(initialFrame).toMatchObject({ normal: false, maximized: true });
+    expect(initialFrame.frameInset).toBeGreaterThan(0);
+    await mkdir('docs/verification/pane-navigation', { recursive: true });
+    await writeFile(frameAuditPath, JSON.stringify({ executablePath, initialState, stage: 'before-fullscreen', initialFrame }, null, 2) + '\n');
+    console.info('Native frame before fullscreen', initialFrame);
+    await mainWindow.evaluate((window: BrowserWindow) => new Promise<void>(resolve => {
       window.once('enter-full-screen', () => resolve()); window.setFullScreen(true);
     }));
     await expect(exitButton(page)).toBeVisible();
     await expect(exitButton(page)).toHaveAttribute('title', process.platform === 'darwin' ? '退出全屏 · ⌃⌘F' : '退出全屏 · F11');
     expect(await page.evaluate(() => window.papertrailDesktop?.getFullScreen?.())).toBe(true);
     await page.reload(); await expect(exitButton(page)).toBeVisible(); await expect(input(page)).toHaveValue(draft);
-    await mkdir('docs/verification/pane-navigation', { recursive: true });
-    await page.screenshot({ path: 'docs/verification/pane-navigation/desktop-fullscreen.png' });
+    await page.screenshot({ path: `docs/verification/pane-navigation/desktop-fullscreen${suffix}.png` });
 
-    const left = application.evaluate(({ BrowserWindow }) => new Promise<void>(resolve => {
-      BrowserWindow.getAllWindows().find(window => window.webContents.getURL() === 'papertrail://app/')!.once('leave-full-screen', () => resolve());
+    const left = mainWindow.evaluate((window: BrowserWindow) => new Promise<void>(resolve => {
+      window.once('leave-full-screen', () => resolve());
     }));
     await exitButton(page).click(); await left;
     await expect(exitButton(page)).toHaveCount(0); await expect(input(page)).toHaveValue(draft);
-    const restoredFrame = await application.evaluate(({ BrowserWindow }) => {
-      const window = BrowserWindow.getAllWindows().find(window => window.webContents.getURL() === 'papertrail://app/')!;
-      return { fullScreen: window.isFullScreen(), normal: window.isNormal(), closable: window.isClosable(), minimizable: window.isMinimizable(), fullScreenable: window.isFullScreenable(), frameInset: window.getBounds().height - window.getContentBounds().height };
-    });
-    expect(restoredFrame).toMatchObject({ fullScreen: false, normal: true, closable: true, minimizable: true, fullScreenable: true });
-    expect(restoredFrame.frameInset).toBeGreaterThan(0);
+    const expectedFrame = { fullScreen: false, normal: initialFrame.normal, maximized: initialFrame.maximized, minimized: initialFrame.minimized,
+      closable: true, minimizable: true, fullScreenable: true };
+    let restoredFrame = await readFrame();
+    try {
+      // Native transitions are asynchronous, and fullscreen must restore the original window state.
+      await expect.poll(async () => { restoredFrame = await readFrame(); return restoredFrame; }).toMatchObject(expectedFrame);
+      expect(restoredFrame.frameInset).toBeGreaterThan(0);
+    } finally {
+      await writeFile(frameAuditPath, JSON.stringify({ executablePath, initialState, stage: 'restored-frame-check', initialFrame, restoredFrame }, null, 2) + '\n');
+    }
 
     const shortcut = process.platform === 'darwin' ? 'Control+Meta+f' : 'F11';
-    await application.evaluate(({ BrowserWindow }) => {
-      const window = BrowserWindow.getAllWindows().find(window => window.webContents.getURL() === 'papertrail://app/')!;
+    await mainWindow.evaluate((window: BrowserWindow) => {
       const audit = { entered: 0, left: 0, inputs: [] as object[] };
       Reflect.set(window, '__fullscreenKeyboardAudit', audit);
       window.on('enter-full-screen', () => audit.entered++); window.on('leave-full-screen', () => audit.left++);
       window.webContents.on('before-input-event', (_event, input) => audit.inputs.push({ ...input }));
       window.focus(); window.webContents.focus();
     });
-    const keyboardState = () => application!.evaluate(({ BrowserWindow }) => {
-      const window = BrowserWindow.getAllWindows().find(window => window.webContents.getURL() === 'papertrail://app/')!;
+    const keyboardState = () => mainWindow.evaluate((window: BrowserWindow) => {
       return { focused: window.isFocused(), contentsFocused: window.webContents.isFocused(), fullScreen: window.isFullScreen(), ...Reflect.get(window, '__fullscreenKeyboardAudit') as { entered: number; left: number; inputs: object[] } };
     });
     await expect.poll(async () => { const state = await keyboardState(); return state.focused && state.contentsFocused; }).toBe(true);
-    const sendShortcut = () => application!.evaluate(({ BrowserWindow }) => {
-      const contents = BrowserWindow.getAllWindows().find(window => window.webContents.getURL() === 'papertrail://app/')!.webContents;
+    const sendShortcut = () => mainWindow.evaluate((window: BrowserWindow) => {
+      const contents = window.webContents;
       const keyCode = process.platform === 'darwin' ? 'F' : 'F11';
       const modifiers: ('control' | 'meta')[] = process.platform === 'darwin' ? ['control', 'meta'] : [];
       // CDP keyboard events bypass Electron's native shortcut pipeline; use its documented input API.
@@ -120,13 +144,15 @@ test('打包桌面：原生全屏时始终可退出，刷新与快捷键保留�
     console.info('Verified native fullscreen keyboard audit', keyboardAudit);
     expect(keyboardAudit.inputs.filter(input => Reflect.get(input, 'type') === 'keyDown')).toHaveLength(2);
     await expect(exitButton(page)).toHaveCount(0); await expect(input(page)).toHaveValue(draft);
+    await expect.poll(readFrame).toMatchObject(expectedFrame);
     await saved(page); expect(modelCalls).toEqual([]); expect(pageErrors).toEqual([]);
-    await page.screenshot({ path: 'docs/verification/pane-navigation/desktop-window-restored.png' });
-    await writeFile('docs/verification/pane-navigation/desktop-fullscreen.json', JSON.stringify({ executablePath,
+    await page.screenshot({ path: `docs/verification/pane-navigation/desktop-window-restored${suffix}.png` });
+    const evidence = JSON.stringify({ executablePath, initialState, stage: 'complete', initialFrame,
       protocol: 'papertrail://app/', nativeFullscreenEventsVerified: true, refreshRetainsExitButton: true,
       exitButtonWorks: true, shortcutWorks: true, shortcut, keyboardTransport: 'Electron webContents.sendInputEvent', keyboardAudit, restoredFrame, settingsIPCRejected: true,
       nextDraftRetained: true, actualModelCalls: 0, pageErrors,
-    }, null, 2) + '\n');
+    }, null, 2) + '\n';
+    await Promise.all([writeFile(evidencePath, evidence), writeFile(frameAuditPath, evidence)]);
   } finally {
     const appProcess = application?.process();
     try { if (application) await close(application); }

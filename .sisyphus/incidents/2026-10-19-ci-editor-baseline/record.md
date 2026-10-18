@@ -27,4 +27,6 @@ Process completed with exit code 1.
 
 本机受影响用例：`npx playwright test --config=/tmp/read-paper-merge-focused.playwright.config.ts --grep=三窗格布局`，exit 0：`3 passed (9.5s)`。完整浏览器回归另行执行；远端 Linux 与三平台桌面验收结果以 PR #15 当前提交的 CI 为准，合入前须全部通过。
 
+续验：本机完整回归 exit 0，`158 passed (5.9m)`，无跳过或重试通过；远端提交 `ca68e9d` 的 Checks 任务 [117725485838](https://github.com/alovwang-sys/Read-paper/actions/runs/39144499831/job/117725485838) exit 0，`158 passed (11.3m)`，此前失败的三尺寸用例全部通过。该轮桌面验收另暴露两处全屏测试问题，见[独立记录](../2026-10-19-ci-native-window-state/record.md)，不能把浏览器通过当成全部门禁通过。
+
 回退此测试修复可恢复到 `f2cfa78` 的用例；不涉及数据迁移、运行文件或已安装应用。若相同错误再次出现，先检查基线是否已经包含实际 DOM 选区，不能通过允许任意新增方向规避。

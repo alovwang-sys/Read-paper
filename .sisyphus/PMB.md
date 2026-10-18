@@ -1,6 +1,8 @@
 # 本地故障经验
 
-- 2026-10-19 | ci-editor-baseline | root_cause=test-baseline-before-editor-flush | 布局恢复测试应在真实 blur 与保存后抓取完整编辑器基线，避免将平台原生选区方向的首次落盘误判为恢复失败；保留已有状态的严格比较。三尺寸受影响用例本机 3/3 通过，远端完整门禁在合入前验收。证据：[事件记录](incidents/2026-10-19-ci-editor-baseline/record.md)。
+- 2026-10-19 | ci-native-window-state | root_cause=test-native-window-state-and-lifecycle | 原生窗口测试应绑定当前页面的主窗句柄并等待设置窗closed；全屏退出要等待恢复进入前的普通／最大化状态，不能一律断言normal:true。可控最大化旧断言先红，修复后两起点各三次通过，Windows生命周期修复仍由远端门禁实测。证据：[事件记录](incidents/2026-10-19-ci-native-window-state/record.md)。
+
+- 2026-10-19 | ci-editor-baseline | root_cause=test-baseline-before-editor-flush | 布局恢复测试应在真实 blur 与保存后抓取完整编辑器基线，避免将平台原生选区方向的首次落盘误判为恢复失败；保留已有状态的严格比较。本机及远端完整浏览器均 158/158 通过，桌面门禁单独验收。证据：[事件记录](incidents/2026-10-19-ci-editor-baseline/record.md)。
 
 - 2026-10-17 | native-session-recovery | root_cause=session_ownership | 后台持有 writer 不等于用户打开会话；仅在 turn/start 前的精确占用拒绝允许保留历史 fork 一次，随后原子迁移 ID 保护与引用。结果未知禁止自动重发，复制 goal 必须延迟继续。证据：[事件记录](incidents/2026-10-17-native-session-recovery/record.md)。
 
