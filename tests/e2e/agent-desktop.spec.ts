@@ -37,7 +37,7 @@ async function setup(page: Page, withEvidence = false) {
   });
   await page.goto('/'); await expect(main(page)).toBeVisible();
   if (withEvidence) {
-    await main(page).getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
+    await main(page).getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true }).click();
     await expect(main(page).locator('canvas').first()).toBeVisible(); await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
     await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
     await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();

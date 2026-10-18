@@ -196,7 +196,9 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   const doc = Object.values(state.documents).find(
     (item) => item.filename === 'adaptive-retrieval.pdf',
   )!;
-  await page.getByRole('tablist', { name: '窗格 1 标签', exact: true }).getByRole('tab', { name: doc.title, exact: true }).click();
+  const originalPdfView = await main(page).getByRole('tab', { name: doc.title, exact: true }).getAttribute('data-tab-id');
+  expect(originalPdfView).toBeTruthy();
+  await main(page).locator(`[role="tab"][data-tab-id="${originalPdfView}"]`).click();
   await setPdfPage(page, 3);
   await selectText(page, quote);
   await main(page)
@@ -329,7 +331,7 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   expect(state.sessions[researchId].readers[`main:${doc.id}`].pageIndex).toBe(
     2,
   );
-  await page.getByRole('tablist', { name: '窗格 1 标签', exact: true }).getByRole('tab', { name: doc.title, exact: true }).click();
+  await main(page).locator(`[role="tab"][data-tab-id="${originalPdfView}"]`).click();
   await expect(main(page).locator('.pdf-sheet[data-page-index="2"] .pdf-text-layer')).toContainText(
     quote,
   );
@@ -365,14 +367,12 @@ test('共享卡片、摆放实例移出撤销、移动和白板视口持久化',
   await main(page)
     .getByRole('button', { name: '缩小白板', exact: true })
     .click();
-  await main(page)
-    .locator('.board-viewport')
-    .evaluate((element) => {
-      element.scrollLeft = 220;
-      element.scrollTop = 180;
-    });
+  await main(page).locator('.board-viewport').hover();
+  await page.mouse.wheel(220, 180);
+  await expect.poll(() => main(page).locator('.board-viewport').evaluate(element => ({ x: element.scrollLeft, y: element.scrollTop }))).toEqual({ x: 220, y: 180 });
   await saved(page);
-  const before = (await data(page)).sessions['research-a'].viewports['board-a'];
+  const before = await main(page).locator('.board-viewport').evaluate(element => ({ x: element.scrollLeft, y: element.scrollTop }));
+  expect(before).toEqual({ x: 220, y: 180 });
   await openNav(page, '条件与限制');
   await openNav(page, '证据与论证');
   await expect
@@ -390,6 +390,7 @@ test('共享卡片、摆放实例移出撤销、移动和白板视口持久化',
   await expect(
     main(page).getByRole('button', { name: '重置白板缩放' }),
   ).toHaveText('90%');
+  await expect.poll(() => main(page).locator('.board-viewport').evaluate(element => ({ x: element.scrollLeft, y: element.scrollTop }))).toEqual(before);
   expect((await data(page)).placements['placement-a']).toMatchObject({
     x: 155,
     y: 160,
@@ -634,7 +635,7 @@ test('双栏与扫描边界、损坏 PDF 导入、来源及返回恢复', async 
     quote,
   );
   await panel(page)
-    .getByRole('button', { name: '在主区打开 ↗', exact: true })
+    .getByRole('button', { name: '在当前窗格打开', exact: true })
     .click();
   await expect(main(page).locator('.pdf-sheet[data-page-index="2"] .pdf-text-layer')).toContainText(
     quote,

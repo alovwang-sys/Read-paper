@@ -608,16 +608,10 @@ export function AIPanel() {
       >
         {!requests.length && (
           <div className="ai-welcome-new">
-            <div className="ai-welcome-icon">
-              <Sparkles size={26} />
-            </div>
-            <h3>从证据出发，形成理解</h3>
+            <h3>新对话</h3>
             <p>
-              选中论文中的文字，带着材料提问。
-              <br />
-              把值得留下的知识点，整理为卡片。
+              输入问题，或选择原文后加入材料。
             </p>
-            <small>原始问答和论文来源会一起保留。</small>
           </div>
         )}
         {requests.map((request) => {

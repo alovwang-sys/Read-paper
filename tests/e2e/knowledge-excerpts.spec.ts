@@ -80,6 +80,7 @@ test('H 摘录可撤销，重复选区复用，刷新保留原文高亮', async 
   await reader(page);
   let excerpt = await capture(page);
   await expect(main(page).locator('.pdf-excerpt-highlight')).not.toHaveCount(0);
+  await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
   await expect(panel(page)).toContainText(excerpt.quote);
   await main(page).getByRole('button', { name: '撤销', exact: true }).click();
   expect((await state(page)).evidence[excerpt.id]).toBeUndefined();

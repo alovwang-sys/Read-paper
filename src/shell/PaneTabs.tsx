@@ -1,13 +1,14 @@
 import { useEffect, useRef, type DragEvent, type KeyboardEvent } from 'react';
-import { BookOpen, FileText, Layers, Network, PanelsTopLeft, Pin, X } from 'lucide-react';
-import type { PaneNode, ResourceRef } from '../domain/types';
+import { BookOpen, FileText, FolderOpen, Home, Layers, Maximize2, Minimize2, Network, PanelsTopLeft, Pin, X } from 'lucide-react';
+import type { PaneNode, WorkspaceViewRef } from '../domain/types';
 import './pane-tabs.css';
 
 export const PANE_TAB_MIME = 'application/x-papertrail-tab';
 type Group = Extract<PaneNode, { kind: 'group' }>;
 
-export function PaneTabs({ group, number, title, pinnedIds, menuOpen, onActivate, onClose, onMenu, onMove, onDragStart, onDragEnd, accepts, onDragOver, onDrop, dropIndex }: {
-  group: Group; number: number; title: (ref: ResourceRef) => string; pinnedIds: string[]; menuOpen: boolean;
+export function PaneTabs({ group, number, title, pinnedIds, menuOpen, zoomed, canZoom, onZoom, onActivate, onClose, onMenu, onMove, onDragStart, onDragEnd, accepts, onDragOver, onDrop, dropIndex }: {
+  group: Group; number: number; title: (ref: WorkspaceViewRef) => string; pinnedIds: string[]; menuOpen: boolean;
+  zoomed: boolean; canZoom: boolean; onZoom: () => void;
   onActivate: (tabId: string) => void; onClose: (tabId: string) => void; onMenu: (tabId?: string) => void; onMove: (tabId: string, index: number) => void;
   onDragStart: (event: DragEvent, tabId: string) => void; onDragEnd: () => void; accepts: (event: DragEvent) => boolean;
   onDragOver: (event: DragEvent, index: number) => void; onDrop: (event: DragEvent, index: number) => void; dropIndex?: number;
@@ -42,7 +43,7 @@ export function PaneTabs({ group, number, title, pinnedIds, menuOpen, onActivate
         const label = title(tab.ref), active = tab.id === group.activeTabId || !group.activeTabId && index === 0;
         const duplicate = group.tabs.filter(item => item.ref.kind === tab.ref.kind && item.ref.id === tab.ref.id).length > 1;
         const location = duplicate ? tab.ref.kind === 'document' ? `PDF 第 ${(tab.reading?.pageIndex ?? 0) + 1} 页` : `视图 ${index + 1}` : '';
-        const Icon = tab.ref.kind === 'document' ? BookOpen : tab.ref.kind === 'card' ? Layers : tab.ref.kind === 'board' || tab.ref.kind === 'research' ? Network : FileText;
+        const Icon = tab.ref.kind === 'document' ? BookOpen : tab.ref.kind === 'card' ? Layers : tab.ref.kind === 'board' || tab.ref.kind === 'research' ? Network : tab.ref.kind === 'researchView' ? tab.ref.id === 'home' ? Home : FolderOpen : tab.ref.kind === 'collection' ? FolderOpen : FileText;
         return <div key={tab.id} data-pane-tab={tab.id} className={`pane-tab ${active ? 'is-active' : ''} ${dropIndex === index ? 'has-drop-before' : ''}`}>
           <button ref={node => { if (node) buttons.current.set(tab.id, node); else buttons.current.delete(tab.id); }} className="pane-tab-select" role="tab" data-tab-id={tab.id} aria-label={`${label}${location ? ` · ${location}` : ''}`} aria-selected={active} tabIndex={active ? 0 : -1} title={`${label}${location ? ` · ${location}` : ''}`} draggable
             onClick={() => onActivate(tab.id)} onKeyDown={event => keyboard(event, index)} onContextMenu={event => { event.preventDefault(); event.stopPropagation(); onMenu(tab.id); }}
@@ -56,5 +57,6 @@ export function PaneTabs({ group, number, title, pinnedIds, menuOpen, onActivate
       {!group.tabs.length && <span className="pane-tabs-empty">空窗格</span>}
     </div>
     <button className={`pane-menu-trigger ${menuOpen ? 'is-active' : ''}`} aria-label={`窗格 ${number} 操作`} aria-haspopup="menu" aria-expanded={menuOpen} data-pane-menu-trigger={group.id} title="分屏与窗格操作" onClick={() => onMenu()}><PanelsTopLeft size={14} /><span>分屏</span></button>
+    <button className={`pane-zoom-trigger ${zoomed ? 'is-active' : ''}`} aria-label={`${zoomed ? '还原' : '放大'}窗格 ${number}`} title={zoomed ? '还原窗格布局' : '放大当前窗格'} disabled={!canZoom} onClick={onZoom}>{zoomed ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
   </div>;
 }

@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => {
   } = { scope: { kind: 'library' }, documents: {} };
   return {
     data,
+    generation: 0,
+    paneId: 'origin-pane',
     putAsset: vi.fn(),
     flushSave: vi.fn().mockResolvedValue(undefined),
     openResource: vi.fn(),
@@ -31,6 +33,8 @@ vi.mock('../../src/services/workspace', () => ({
     scope.kind === 'library' ? 'library' : scope.researchId,
   workspace: {
     getState: () => ({ data: mocks.data }),
+    getSession: () => ({ layout: { focusedPaneId: mocks.paneId } }),
+    getGeneration: () => mocks.generation,
     updateData: (change: (data: typeof mocks.data) => void) =>
       change(mocks.data),
     associateDocument: mocks.associateDocument,
@@ -50,6 +54,7 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.generation = 0; mocks.paneId = 'origin-pane';
   mocks.putAsset.mockResolvedValue(undefined);
   mocks.data.documents = {};
   mocks.data.scope = { kind: 'library' };
@@ -110,6 +115,27 @@ describe('PDF import boundaries', () => {
     expect(mocks.notice).toHaveBeenCalledWith(
       expect.stringContaining('开始导入时'),
     );
+  });
+
+  it('captures the original pane before file work and does not redirect to later focus', async () => {
+    let release!: () => void;
+    mocks.putAsset.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
+    const importing = importPdf(new File(['%PDF-1.7\npane-target'], 'pane.pdf'), { kind: 'library' });
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    mocks.paneId = 'later-focus'; release();
+    const id = await importing;
+    expect(mocks.openResource).toHaveBeenCalledWith({ kind: 'document', id }, { scope: { kind: 'library' }, target: 'main', paneId: 'origin-pane' });
+  });
+
+  it('does not write old imported records after workspace restore during asset storage', async () => {
+    let release!: () => void;
+    mocks.putAsset.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
+    const importing = importPdf(new File(['%PDF-1.7\nold-generation'], 'old.pdf'), { kind: 'library' });
+    const rejected = expect(importing).rejects.toThrow('工作区已重新载入');
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    mocks.generation++; release(); await rejected;
+    expect(mocks.data.documents).toEqual({});
+    expect(mocks.openResource).not.toHaveBeenCalled();
   });
 
   it('attaches a first PDF without changing a stub ID or edited metadata', async () => {

@@ -4,13 +4,16 @@ import type { WorkspaceScope } from '../../domain/types';
 import { normalizeIdentifier } from '../../domain/knowledge';
 import { importPdfFiles } from '../../services/pdf';
 import { collectSource, sourceCandidate } from '../../services/sources';
-import { scopeKey, useWorkspace } from '../../services/workspace';
+import { scopeKey, useWorkspace, workspace } from '../../services/workspace';
 import './library.css';
 
 const ADD_SOURCE_EVENT = 'papertrail:add-source';
-type AddSourceRequest = { scope?: WorkspaceScope; files?: File[]; onImported?: (documentId: string) => void };
+type AddSourceRequest = { paneId?: string; scope?: WorkspaceScope; files?: File[]; onImported?: (documentId: string) => void };
 export function openAddSource(request: AddSourceRequest = {}) {
-  window.dispatchEvent(new CustomEvent(ADD_SOURCE_EVENT, { detail: request }));
+  const scope = request.scope ?? workspace.getState().data.scope;
+  const inCurrentScope = scopeKey(scope) === scopeKey(workspace.getState().data.scope);
+  const paneId = request.paneId ?? (inCurrentScope ? (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-pane-id]')?.dataset.paneId : undefined) ?? workspace.getSession(scope)?.layout?.focusedPaneId;
+  window.dispatchEvent(new CustomEvent(ADD_SOURCE_EVENT, { detail: { ...request, scope, paneId } }));
 }
 
 export function AddSourceDialog() {
@@ -24,6 +27,9 @@ export function AddSourceDialog() {
   const input = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
+  const originPane = useRef<string | undefined>(undefined);
+  const originScope = useRef('');
+  const paneFor = (scope: WorkspaceScope) => scopeKey(scope) === originScope.current ? originPane.current : undefined;
   const callback = useRef<AddSourceRequest['onImported']>(undefined);
   const importing = useRef(false);
   const visible = useRef(false);
@@ -33,7 +39,7 @@ export function AddSourceDialog() {
     importing.current = true;
     setBusy(true); setError(''); setFailures([]);
     try {
-      const result = await importPdfFiles(files, structuredClone(scope));
+      const result = await importPdfFiles(files, structuredClone(scope), paneFor(scope));
       for (const id of result.documentIds) callback.current?.(id);
       setFailures(result.failures);
       if (!result.failures.length) close();
@@ -46,7 +52,7 @@ export function AddSourceDialog() {
       if (importing.current) return;
       const request = (event as CustomEvent<AddSourceRequest>).detail ?? {};
       trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      callback.current = request.onImported;
+      callback.current = request.onImported; originPane.current = request.paneId; originScope.current = scopeKey(request.scope ?? data.scope);
       visible.current = true;
       const scope = structuredClone(request.scope ?? data.scope);
       setTarget(scope); setQuery(''); setError(''); setFailures([]); setOpen(true);
@@ -65,7 +71,7 @@ export function AddSourceDialog() {
   const add = (input: Parameters<typeof actions.addSource>[0]) => {
     try {
       const result = actions.addSource(input, target);
-      actions.openResource({ kind: 'document', id: result.documentId }, { scope: target, target: 'main' });
+      actions.openResource({ kind: 'document', id: result.documentId }, { scope: target, target: 'main', paneId: paneFor(target) });
       actions.notice(result.created ? '资料已收下，可在原条目上添加 PDF。' : '已复用资料库中的资料和已有摘录。');
       close();
     } catch (error) { setError(error instanceof Error ? error.message : '添加失败，请重试。'); }
@@ -73,11 +79,14 @@ export function AddSourceDialog() {
   const collectLink = async () => {
     if (importing.current || !query.trim()) return;
     importing.current = true; setBusy(true); setError('');
-    const scope = structuredClone(target);
+    const scope = structuredClone(target), paneId = paneFor(target);
     try {
       const documentId = await collectSource(sourceCandidate(query), scope);
       callback.current?.(documentId);
-      if (visible.current && scopeKey(actions.getState().data.scope) === scopeKey(scope)) actions.openResource({ kind: 'document', id: documentId }, { scope, target: 'main' });
+      if (visible.current && scopeKey(actions.getState().data.scope) === scopeKey(scope)) {
+        try { actions.openResource({ kind: 'document', id: documentId }, { scope, target: 'main', paneId }); }
+        catch { actions.notice('资料已收下；原窗格已关闭，可从资料列表打开。'); }
+      }
       actions.notice('资料已收下，正在尝试获取文献信息和全文。');
       close();
     } catch (error) { setError(error instanceof Error ? error.message : '保存失败，链接已保留，请重试。'); }
@@ -134,7 +143,7 @@ export function SourceDropZone() {
       event.preventDefault();
       if (document.querySelector('[role="dialog"]')) return;
       const files = Array.from(event.dataTransfer?.files ?? []);
-      if (files.length) openAddSource({ files, scope: structuredClone(data.scope) });
+      if (files.length) openAddSource({ files, scope: structuredClone(data.scope), paneId: event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-pane-id]')?.dataset.paneId : undefined });
     };
     window.addEventListener('dragenter', enter); window.addEventListener('dragover', over); window.addEventListener('dragleave', leave); window.addEventListener('drop', reset, true); window.addEventListener('dragend', reset); window.addEventListener('drop', drop);
     return () => { window.removeEventListener('dragenter', enter); window.removeEventListener('dragover', over); window.removeEventListener('dragleave', leave); window.removeEventListener('drop', reset, true); window.removeEventListener('dragend', reset); window.removeEventListener('drop', drop); };

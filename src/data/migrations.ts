@@ -178,9 +178,10 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   for (const draft of Object.values(data.drafts)) if (draft.cardRefs !== undefined && (!Array.isArray(draft.cardRefs) || draft.cardRefs.some(ref => !record(ref) || typeof ref.cardId !== 'string' || typeof ref.insertedAt !== 'string' || ref.evidenceIds !== undefined && !strings(ref.evidenceIds)))) throw new Error('文稿卡片记录损坏。');
   data.schemaVersion = 3;
   for (const [key, session] of Object.entries(data.sessions)) {
+    validatePaneLayout(data, key);
     ensurePaneLayout(session, key);
     validatePaneLayout(data, key);
-    syncPaneSession(session, !['collection', 'researchView', 'research'].includes(session.active.kind));
+    syncPaneSession(session);
     delete session.mainSplit;
   }
   return data;

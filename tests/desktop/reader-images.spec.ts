@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createSeed } from '../../src/data/seed';
-import type { ContextSnapshot, WorkspaceData } from '../../src/domain/types';
+import type { ContextSnapshot, ReadingPosition, WorkspaceData } from '../../src/domain/types';
 import { fixtureSessionRef, mockProjectService } from '../e2e/project-fixture';
 import { openSource } from '../e2e/knowledge-helpers';
 import { dragView, groups, paneAction, paneById, split } from '../e2e/workspace-split-helpers';
@@ -68,6 +68,12 @@ async function viewportPosition(pane: Locator) {
     return { pageIndex: Number(sheet.dataset.pageIndex), offset: (bounds.top + padding - page.top) / page.height };
   });
 }
+function expectSameReading(actual: ReadingPosition | undefined, expected: ReadingPosition | undefined) {
+  expect(actual).toBeDefined(); expect(expected).toBeDefined();
+  expect(actual).toMatchObject({ pageIndex: expected!.pageIndex, scale: expected!.scale });
+  // Canvas dimensions round to pixels when the layout returns to two panes.
+  expect(Math.abs((actual!.offset ?? 0) - (expected!.offset ?? 0))).toBeLessThanOrEqual(.002);
+}
 
 // PDF rendering, cropping, IndexedDB and shutdown are real; only the native service uses fixtures.
 test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区域图片在正常退出重启后保留', async () => {
@@ -108,6 +114,8 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     await openSource(page, seed.documents['paper-a'].title);
     await expect(primary(page).locator('.pdf-text-layer').first()).not.toBeEmpty();
     await expect(primary(page).locator('.pdf-page-loading')).toHaveCount(0);
+    await primary(page).getByRole('button', { name: '关闭标签 研究主页', exact: true }).click();
+    await primary(page).getByRole('button', { name: '关闭标签 资料', exact: true }).click();
 
     const scroller = primary(page).locator('.pdf-scroll');
     const pageStep = await primary(page).locator('.pdf-sheet[data-page-index="0"]').evaluate(sheet => sheet.getBoundingClientRect().height + 24);
@@ -126,9 +134,10 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
       (window as unknown as { nativePaneDrop: { alt: boolean; trusted: boolean } }).nativePaneDrop = { alt: drag.altKey, trusted: drag.isTrusted };
     }, true));
     await dragView(page, originalView.id, primary(page), 'down', false, async () => {
-      await mkdir('docs/verification/same-article-split', { recursive: true });
-      await page.screenshot({ path: 'docs/verification/same-article-split/desktop-copy-preview.png' });
-    }, '复制');
+      await expect(primary(page).locator('.pane-drop-preview')).toHaveAttribute('data-drop-mode', 'copy');
+      await mkdir('docs/verification/pane-navigation', { recursive: true });
+      await page.screenshot({ path: 'docs/verification/pane-navigation/desktop-copy-preview.png' });
+    }, '保留原标签');
     const nativeDrop = await page.evaluate(() => (window as unknown as { nativePaneDrop: { alt: boolean; trusted: boolean } }).nativePaneDrop);
     expect(nativeDrop).toEqual({ alt: false, trusted: true });
     await expect(secondary(page)).toBeVisible();
@@ -166,9 +175,15 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     await expect(input(page)).toHaveValue(''); await input(page).fill(draft);
     await primary(page).getByRole('button', { name: '文字选择', exact: true }).click();
     const secondaryId = (await secondary(page).getAttribute('data-pane-id'))!;
+    await saved(page);
+    const ordinaryViews = groups((await state(page)).sessions['research-a'].layout!.root).flatMap(group => group.tabs).filter(tab => tab.ref.kind === 'document').map(tab => ({ id: tab.id, reading: tab.reading }));
     // Leave a source region, then clone and move its view: the current offset must win over the old anchor.
     await panel(page).getByRole('button', { name: /^引用 1：/ }).click();
     await expect(primary(page).locator('.pdf-region-source')).toHaveCount(1);
+    const citationViewId = (await primary(page).getByRole('region', { name: 'PDF 阅读器', exact: true }).getAttribute('data-view-id'))!;
+    expect(ordinaryViews.some(view => `view:${view.id}` === citationViewId)).toBe(false);
+    const afterCitation = groups((await state(page)).sessions['research-a'].layout!.root).flatMap(group => group.tabs);
+    for (const view of ordinaryViews) expectSameReading(afterCitation.find(tab => tab.id === view.id)?.reading, view.reading);
     await primary(page).locator('.pdf-scroll').evaluate(async node => {
       node.scrollTop += node.querySelector<HTMLElement>('.pdf-sheet[data-page-index="1"]')!.getBoundingClientRect().height * .28;
       await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
@@ -179,8 +194,7 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     await expect.poll(async () => Math.abs((await viewportPosition(cloned)).offset - beforeClone.offset)).toBeLessThanOrEqual(.02);
     await expect(cloned.locator('.pdf-region-source')).toHaveCount(1);
     const clonedViewId = (await cloned.getByRole('region', { name: 'PDF 阅读器', exact: true }).getAttribute('data-view-id'))!;
-    const destinationNumber = groups((await state(page)).sessions['research-a'].layout!.root).findIndex(group => group.id === secondaryId) + 1;
-    await paneAction(page, cloned, `移到窗格 ${destinationNumber}`);
+    await paneAction(page, cloned, `移到 下方 · ${seed.documents['paper-a'].title}`);
     const moved = paneById(page, secondaryId);
     await expect(moved.getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', clonedViewId);
     await expect.poll(async () => Math.abs((await viewportPosition(moved)).offset - beforeClone.offset)).toBeLessThanOrEqual(.02);
@@ -189,13 +203,14 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     await expect(secondary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
     await expect(secondary(page).locator('.pdf-zoom')).toContainText('125%');
     const readingViews = async () => groups((await state(page)).sessions['research-a'].layout!.root).flatMap(group => group.tabs).filter(tab => tab.ref.kind === 'document' && tab.ref.id === 'paper-a');
-    await expect.poll(async () => (await readingViews()).map(tab => tab.reading)).toMatchObject([{ pageIndex: 1, scale: 1 }, { pageIndex: 2, scale: 1.25 }]);
+    await expect.poll(async () => (await readingViews()).map(tab => tab.reading)).toMatchObject([{ pageIndex: 1, scale: 1 }, { pageIndex: 1, scale: 1 }, { pageIndex: 2, scale: 1.25 }]);
     await saved(page); const before = await state(page);
     const beforeViews = await readingViews();
-    expect(beforeViews).toHaveLength(2);
-    expect(beforeViews[0].id).not.toBe(beforeViews[1].id);
-    await expect(primary(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', `view:${beforeViews[0].id}`);
-    await expect(secondary(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', `view:${beforeViews[1].id}`);
+    expect(beforeViews).toHaveLength(3);
+    expect(new Set(beforeViews.map(tab => tab.id)).size).toBe(3);
+    for (const view of ordinaryViews) expectSameReading(beforeViews.find(tab => tab.id === view.id)?.reading, view.reading);
+    await expect(primary(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', citationViewId);
+    await expect(secondary(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toHaveAttribute('data-view-id', `view:${ordinaryViews[1].id}`);
     await close(application); application = undefined;
 
     session = await launch(userData, home); application = session.application; page = session.page;
@@ -211,9 +226,17 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     await expect(primary(page).locator('.pdf-page-loading')).toHaveCount(0);
     await expect(secondary(page).locator('.pdf-page-loading')).toHaveCount(0);
     const restored = await state(page);
+    expect(restored.documents['paper-a']).toMatchObject({ assetId: seed.documents['paper-a'].assetId, hash: seed.documents['paper-a'].hash, pageCount: 3 });
     expect(restored.sessions['research-a'].layout).toEqual(before.sessions['research-a'].layout);
     const restoredViews = groups(restored.sessions['research-a'].layout!.root).flatMap(group => group.tabs).filter(tab => tab.ref.kind === 'document' && tab.ref.id === 'paper-a');
     expect(restoredViews.map(tab => ({ id: tab.id, reading: tab.reading }))).toEqual(beforeViews.map(tab => ({ id: tab.id, reading: tab.reading })));
+    await primary(page).locator(`[role="tab"][data-tab-id="${originalView.id}"]`).click();
+    await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
+    await expect(primary(page).locator('.pdf-zoom')).toContainText('100%');
+    await expect(primary(page).locator('.pdf-region-source')).toHaveCount(0);
+    await primary(page).locator(`[role="tab"][data-tab-id="${citationViewId.slice(5)}"]`).click();
+    await expect(primary(page).locator('.pdf-region-source')).toHaveCount(1);
+    await expect.poll(async () => Math.abs((await viewportPosition(primary(page))).offset - beforeClone.offset)).toBeLessThanOrEqual(.02);
     expect(restored.requests[run.requestId].context[0].region).toEqual(run.context[0].region);
     expect(restored.conversations['conversation-research-a'].codex?.model).toBe('vision');
     const retainedImage = await page.evaluate(async assetId => {
@@ -232,12 +255,13 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     }, run.context[0].region!.assetId);
     expect(retainedImage).toEqual({ type: 'image/png', size: bytes.length, hash: imageHash });
     expect(runs).toHaveLength(1); expect(directModelCalls).toBe(0); expect(pageErrors).toEqual([]);
-    await saved(page); await mkdir('docs/verification/reader-images', { recursive: true });
-    await page.screenshot({ path: 'docs/verification/reader-images/desktop-reader-images.png' });
-    await writeFile('docs/verification/reader-images/desktop-reader-images.json', JSON.stringify({
+    await saved(page); await mkdir('docs/verification/pane-navigation', { recursive: true });
+    await page.screenshot({ path: 'docs/verification/pane-navigation/desktop-reader-images.png' });
+    await writeFile('docs/verification/pane-navigation/desktop-reader-images.json', JSON.stringify({
       executablePath, protocol: 'papertrail://app/', mockNativeRequests: runs.length, actualModelCalls: 0, recordingStarted: false,
       continuousScrollReachedPage: 2, paneLayoutRetainedAfterRestart: true,
       soleTabEdgeDrag: { direction: 'down', ...nativeDrop, copyPreview: true },
+      citationCreatesSeparateView: true, ordinaryReadingPositionsRetained: true,
       anchoredViewCloneAndMoveRetainOffset: true, sourceHighlightRetainedAfterCloneAndMove: true,
       readersAfterRestart: restoredViews.map(tab => ({ viewId: tab.id, documentId: tab.ref.id, reading: tab.reading })),
       model: run.codex.model, evidencePageIndex: run.context[0].pageIndex, imageBytes: bytes.length, imageHash,

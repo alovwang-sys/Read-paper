@@ -6,13 +6,15 @@ import { workspace, registerReaderFlush } from '../../src/services/workspace';
 import { findPaneTab, getReaderPosition, paneGroups, syncPaneSession, validatePaneLayout } from '../../src/services/panes';
 import type { WorkspaceLayout } from '../../src/domain/types';
 
-vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn().mockResolvedValue(undefined), getAsset: vi.fn() }));
+vi.mock('../../src/data/storage', () => ({ saveMigrationBackup: vi.fn().mockResolvedValue(undefined), loadWorkspace: vi.fn(), saveWorkspace: vi.fn().mockResolvedValue(undefined), getAsset: vi.fn() }));
 beforeEach(async () => {
   vi.useFakeTimers();
   vi.stubGlobal('localStorage', { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() });
   vi.mocked(loadWorkspace).mockResolvedValue(createSeed());
   await workspace.load();
   workspace.openResource({ kind: 'document', id: 'paper-a' }, { scope: { kind: 'research', researchId: 'research-a' }, target: 'main' });
+  const pane = paneGroups(workspace.getSession().layout!.root)[0];
+  for (const tab of pane.tabs.filter(t => t.ref.kind === 'researchView')) workspace.closePaneTab(pane.id, tab.id);
 });
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const layout = () => workspace.getSession().layout!;
@@ -138,8 +140,10 @@ describe('窗格与独立阅读视图', () => {
     const data = workspace.getState().data;
     expect(data.evidence[evidenceId]).toBeUndefined();
     const views = groups().flatMap(pane => pane.tabs).filter(tab => tab.ref.id === 'paper-a');
-    expect(views).toHaveLength(2);
-    expect(views.every(tab => !tab.anchor?.evidenceId && tab.reading?.pageIndex === 1)).toBe(true);
+    expect(views).toHaveLength(3);
+    expect(views.every(tab => !tab.anchor?.evidenceId)).toBe(true);
+    expect(views.filter(tab => tab.anchor?.pageIndex === 1).every(tab => tab.reading?.pageIndex === 1)).toBe(true);
+    expect(views.find(tab => !tab.anchor)?.reading).toBeUndefined();
     expect(workspace.getSession().panel.anchor).toEqual({ pageIndex: 1 });
     expect(() => migrateWorkspace(data)).not.toThrow();
   });

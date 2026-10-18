@@ -1477,3 +1477,10 @@ h3 {
   .library-filters { flex-wrap: wrap; }
   .library-filters > * { min-width: 0; }
 }
+
+.search-results .search-result-row { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); }
+.search-results .search-result-open { flex: 1; min-width: 0; }
+.search-result-open > span { flex: 1; min-width: 0; text-align: left; }
+.search-result-open small { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); font-weight: 400; }
+.search-results .search-result-join { width: auto; flex-shrink: 0; padding: 8px; font-size: 12px; }
+.search-results .resource-open-menu .icon-button { width: 28px; padding: 5px; }

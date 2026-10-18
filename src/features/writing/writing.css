@@ -244,3 +244,11 @@
 .writing-preview { min-height: 280px; padding: 12px 0; }
 .citation-link { display: inline; padding: 0 2px; vertical-align: baseline; }
 .writing-editor[hidden] { display: none; }
+@container workspace-pane (max-width: 480px) {
+  .workspace-pane-group .writing-page { padding: 24px 16px 40px; }
+  .workspace-pane-group .writing-toolbar { padding: 10px 12px; gap: 7px; }
+  .workspace-pane-group .writing-toolbar-label { flex-basis: 100%; }
+  .workspace-pane-group .writing-question { padding: 10px 12px; margin-bottom: 24px; }
+  .workspace-pane-group .writing-title { margin-top: 12px; }
+  .workspace-pane-group .writing-source { gap: 9px; }
+}

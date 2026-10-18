@@ -99,9 +99,6 @@ export function collectSource(candidate: SourceCandidate, scope: WorkspaceScope,
     remember(documentId, scope, discovery ?? { url: candidate.url, kind: 'link', createdAt: new Date().toISOString() });
     await workspace.flushSave();
     if (workspace.getGeneration() !== generation) throw new Error('工作区已重新加载，原收录已保存，请回原研究核对。');
-    // A preview becomes the saved resource in the same tab; background collection never changes navigation.
-    const session = workspace.getState().data.sessions[scopeKey(scope)];
-    if (scopeKey(workspace.getState().data.scope) === scopeKey(scope) && session?.sourcePreview?.candidate.url === candidate.url) workspace.openResource({ kind: 'document', id: documentId }, { scope, target: 'main' });
     if (!hasFullText(workspace.getState().data.documents[documentId])) void acquireFullText(documentId).catch(() => {});
     return documentId;
   }).finally(() => { collecting.delete(key); });

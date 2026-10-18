@@ -1,15 +1,29 @@
 import { hasFullText } from '../domain/knowledge';
-import type { PaneGroup, PaneNode, ReaderTarget, ReadingPosition, ResourceRef, Session, WorkspaceData, WorkspaceLayout, WorkspaceTab } from '../domain/types';
+import type { PaneGroup, PaneNode, ReaderTarget, ReadingPosition, ResourceRef, Session, WorkspaceData, WorkspaceLayout, WorkspaceTab, WorkspaceViewRef } from '../domain/types';
 
 export const paneGroups = (node: PaneNode): PaneGroup[] => node.kind === 'group' ? [node] : [...paneGroups(node.first), ...paneGroups(node.second)];
 export function findPaneTab(layout: WorkspaceLayout, id: string) {
   for (const pane of paneGroups(layout.root)) { const tab = pane.tabs.find(item => item.id === id); if (tab) return { pane, tab }; }
 }
-const equalRef = (a: ResourceRef, b: ResourceRef) => a.kind === b.kind && a.id === b.id;
+export const isResourceView = (ref: WorkspaceViewRef): ref is ResourceRef => ['research', 'document', 'card', 'board', 'draft'].includes(ref.kind);
+const equalRef = (a: WorkspaceViewRef, b: WorkspaceViewRef) => a.kind === b.kind && a.id === b.id;
 export function ensurePaneLayout(session: Session, namespace = 'workspace'): WorkspaceLayout {
-  if (session.layout) return session.layout;
+  if (session.layout) {
+    if (session.layout.version !== 2) {
+      const layout = session.layout;
+      const pane = paneGroups(layout.root).find(p => p.id === layout.focusedPaneId) ?? paneGroups(layout.root)[0];
+      const preview = session.sourcePreview;
+      const ref = preview ? { kind: 'sourcePreview' as const, id: `preview-${namespace}` } : session.active;
+      if (!isResourceView(ref)) {
+        const tab: WorkspaceTab = { id: `page-${namespace}`, ref: { ...ref }, ...(preview ? { preview: structuredClone(preview) } : {}) };
+        pane.tabs.push(tab); pane.activeTabId = tab.id;
+      }
+      layout.version = 2;
+    }
+    return session.layout;
+  }
   const refs = session.openItems.filter(ref => ref.kind !== 'research');
-  if (!['research', 'researchView', 'collection'].includes(session.active.kind) && !refs.some(ref => equalRef(ref, session.active as ResourceRef))) refs.push(session.active as ResourceRef);
+  if (!['research', 'researchView', 'collection', 'sourcePreview'].includes(session.active.kind) && !refs.some(ref => equalRef(ref, session.active as ResourceRef))) refs.push(session.active as ResourceRef);
   const tabs: WorkspaceTab[] = refs.map((ref, index) => ({ id: `view-${namespace}-${index}`, ref: { ...ref },
     ...(session.readers[`main:${ref.id}`] && ref.kind === 'document' ? { reading: { ...session.readers[`main:${ref.id}`] } } : {}),
     ...(equalRef(ref, session.active as ResourceRef) && session.anchor ? { anchor: { ...session.anchor } } : {}),
@@ -29,7 +43,7 @@ export function ensurePaneLayout(session: Session, namespace = 'workspace'): Wor
     }
   }
   session.layout = layout;
-  return layout;
+  return ensurePaneLayout(session, namespace);
 }
 export function getReaderPosition(session: Session, documentId: string, target: ReaderTarget): ReadingPosition {
   if (target.startsWith('view:') && session.layout) {
@@ -56,13 +70,20 @@ export function syncPaneSession(session: Session, activate = true) {
   const focused = groups.find(pane => pane.id === session.layout!.focusedPaneId) ?? groups[0];
   session.layout.focusedPaneId = focused.id;
   if (!groups.some(pane => pane.id === session.layout!.zoomedPaneId)) delete session.layout.zoomedPaneId;
-  for (const group of groups) if (!group.tabs.some(tab => tab.id === group.activeTabId)) group.activeTabId = group.tabs[0]?.id;
+  for (const group of groups) {
+    if (!group.tabs.some(tab => tab.id === group.activeTabId)) group.activeTabId = group.tabs[0]?.id;
+    group.history = group.history?.filter(id => group.tabs.some(tab => tab.id === id)).slice(-100);
+    group.recentTabIds = group.recentTabIds?.filter(id => group.tabs.some(tab => tab.id === id)).slice(0, 100);
+  }
   const all = groups.flatMap(pane => pane.tabs);
-  session.openItems = all.map(tab => tab.ref).filter((ref, index, refs) => refs.findIndex(other => equalRef(other, ref)) === index);
+  session.openItems = all.map(tab => tab.ref).filter(isResourceView).filter((ref, index, refs) => refs.findIndex(other => equalRef(other, ref)) === index);
   session.pinnedIds = session.pinnedIds.filter(id => session.openItems.some(ref => ref.id === id));
   const tab = focused.tabs.find(tab => tab.id === focused.activeTabId);
+  if (activate && !tab) { session.sourcePreview = undefined; session.anchor = undefined; session.documentInfoId = undefined; }
   if (activate && tab) {
-    session.active = { ...tab.ref }; session.anchor = tab.anchor; session.documentInfoId = tab.documentInfo && tab.ref.kind === 'document' ? tab.ref.id : undefined;
+    session.active = { ...tab.ref }; session.sourcePreview = tab.ref.kind === 'sourcePreview' ? tab.preview : undefined;
+    if (tab.ref.kind === 'researchView') session.researchView = tab.ref.id;
+    session.anchor = tab.anchor; session.documentInfoId = tab.documentInfo && tab.ref.kind === 'document' ? tab.ref.id : undefined;
     if (tab.ref.kind === 'document' && tab.reading) session.readers[`main:${tab.ref.id}`] = { ...tab.reading };
   }
 }
@@ -85,7 +106,25 @@ export function validatePaneLayout(data: WorkspaceData, key: string) {
     for (const tab of value.tabs) {
       if (!object(tab) || !id(tab.id) || tabs.has(tab.id as string) || !object(tab.ref)) return fail();
       tabs.add(tab.id as string);
-      const ref = tab.ref as unknown as ResourceRef;
+      const ref = tab.ref as unknown as WorkspaceViewRef;
+      if (tab.viewState !== undefined && (!object(tab.viewState) || Object.keys(tab.viewState).length > 100 || Object.entries(tab.viewState).some(([key, v]) => key.length > 100 || !['string', 'number', 'boolean'].includes(typeof v) || typeof v === 'number' && !Number.isFinite(v) || typeof v === 'string' && v.length > 10000))) return fail();
+      if (tab.boardViewport !== undefined) {
+        const v = tab.boardViewport;
+        if (ref.kind !== 'board' || !object(v) || ![v.x, v.y, v.scale].every(n => typeof n === 'number' && Number.isFinite(n)) || (v.scale as number) <= 0 || (v.scale as number) > 10) return fail();
+      }
+      if (!isResourceView(ref)) {
+        if (tab.anchor !== undefined || tab.reading !== undefined || tab.documentInfo !== undefined || tab.boardViewport !== undefined) return fail();
+        if (ref.kind === 'researchView' ? key === 'library' || !data.researches[key] || !['home','sources','excerpts','cards','boards','drafts'].includes(ref.id) : ref.kind === 'collection' ? key !== 'library' || !['documents','cards'].includes(ref.id) : ref.kind === 'sourcePreview' ? !id(ref.id) : true) return fail();
+        if (ref.kind === 'sourcePreview') {
+          const preview = tab.preview;
+          if (!object(preview) || !object(preview.candidate) || typeof preview.candidate.title !== 'string' || !['paper', 'web'].includes(preview.candidate.kind as string)) return fail();
+          try { const u = new URL(preview.candidate.url as string); if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return fail(); } catch { return fail(); }
+          const discovery = preview.discovery;
+          if (discovery !== undefined && (!object(discovery) || !['ai','link'].includes(discovery.kind as string) || typeof discovery.url !== 'string' || typeof discovery.createdAt !== 'string' || ['conversationId','requestId','recommendation'].some(k => discovery[k] !== undefined && typeof discovery[k] !== 'string'))) return fail();
+        } else if (tab.preview !== undefined) return fail();
+        continue;
+      }
+      if (tab.preview !== undefined) return fail();
       const entities = ref.kind === 'document' ? data.documents : ref.kind === 'card' ? data.cards : ref.kind === 'board' ? data.boards : ref.kind === 'draft' ? data.drafts : undefined;
       if (typeof ref.id !== 'string' || !entities || !Object.hasOwn(entities, ref.id)) return fail();
       const entity = ref.kind === 'document' ? data.documents[ref.id] : ref.kind === 'card' ? data.cards[ref.id] : ref.kind === 'board' ? data.boards[ref.id] : ref.kind === 'draft' ? data.drafts[ref.id] : undefined;
@@ -110,9 +149,11 @@ export function validatePaneLayout(data: WorkspaceData, key: string) {
         }
       }
     }
+    const groupTabs = value.tabs as WorkspaceTab[];
+    for (const field of ['history', 'recentTabIds']) if (value[field] !== undefined && (!Array.isArray(value[field]) || value[field].length > 100 || value[field].some((v: unknown) => typeof v !== 'string' || !groupTabs.some((t: WorkspaceTab) => t.id === v)))) return fail();
     if (value.tabs.length ? !value.tabs.some(tab => tab.id === value.activeTabId) : value.activeTabId !== undefined) return fail();
   }
-  if (!object(layout)) return fail();
+  if (!object(layout) || layout.version !== undefined && layout.version !== 2) return fail();
   visit(layout.root);
   const groups = paneGroups(layout.root);
   if (!groups.some(group => group.id === layout.focusedPaneId) || layout.zoomedPaneId !== undefined && !groups.some(group => group.id === layout.zoomedPaneId)) return fail();

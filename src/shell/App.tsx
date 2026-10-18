@@ -36,6 +36,7 @@ import { ProjectFileStatus } from '../features/research/ProjectFileStatus';
 import { LibraryView } from '../features/library/LibraryView';
 import { SourcesView } from '../features/library/SourcesView';
 import { DocumentDetail } from '../features/library/DocumentDetail';
+import { ResourceOpenMenu } from '../features/library/ResourceOpenMenu';
 import { SourcePreview } from '../features/library/SourcePreview';
 import { AddSourceDialog, SourceDropZone } from '../features/library/AddSourceDialog';
 import { ResourceListView } from '../features/research/ResourceListView';
@@ -51,7 +52,7 @@ import { BoardView } from '../features/board/BoardView';
 import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
 import { getAIConfig } from '../services/ai';
-import { ResourceTabs } from './ResourceTabs';
+
 import { WorkspaceSplit } from './WorkspaceSplit';
 import { paneGroups } from '../services/panes';
 import { DesktopWindowControls } from './DesktopWindowControls';
@@ -139,7 +140,6 @@ export function App() {
   const lastFocus = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const active = session.active;
-  const activeTitle = session.sourcePreview ? session.sourcePreview.candidate.title : active.kind === 'researchView' ? researchViews.find(item => item.id === active.id)?.name ?? '研究主页' : active.kind === 'collection' ? '资料库' : resourceTitle(data, active);
   const navigationTrigger = useRef<HTMLElement | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -193,7 +193,10 @@ export function App() {
   function open(ref: ResourceRef, target: 'main' | 'inspector' = 'main') {
     actions.openResource(ref, { scope: data.scope, target });
   }
-  function resourceView(ref: ResourceRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean) {
+  function viewContent(ref: import('../domain/types').WorkspaceViewRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean, tab?: import('../domain/types').WorkspaceTab) {
+    if (ref.kind === 'sourcePreview') return tab?.preview ? <SourcePreview key={tab.id} {...tab.preview} scope={data.scope} /> : <div className="empty-state">此预览已关闭。</div>;
+    if (ref.kind === 'collection') return <LibraryView collection={ref.id} />;
+    if (ref.kind === 'researchView') return research ? ref.id === 'home' ? <ResearchView researchId={research.id} /> : ref.id === 'sources' ? <SourcesView researchId={research.id} /> : ref.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : ref.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={ref.id === 'boards' ? 'board' : 'draft'} /> : <div className="empty-state">请先选择研究。</div>;
     if (!resourceExists(data, ref))
       return (
         <div className="empty-state">
@@ -216,6 +219,9 @@ export function App() {
     if (ref.kind === 'draft') return <WritingView draftId={ref.id} />;
     return <ResearchView researchId={ref.id} />;
   }
+  function resourceView(ref: import('../domain/types').WorkspaceViewRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean, tab?: import('../domain/types').WorkspaceTab) {
+    return <ErrorBoundary key={`${scopeKey(data.scope)}:${target}:${ref.kind}:${ref.id}:${documentInfo}:${actions.getGeneration()}`}>{viewContent(ref, target, anchor, documentInfo, tab)}</ErrorBoundary>;
+  }
   const evidenceIds =
     active.kind === 'card' ? data.cards[active.id]?.evidenceIds : undefined;
   const documentId = active.kind === 'document' ? active.id : undefined;
@@ -229,6 +235,7 @@ export function App() {
       kind: 'research' as const,
       id,
     })),
+    ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
     ...Object.keys(data.drafts).map((id) => ({ kind: 'draft' as const, id })),
   ];
   if (!loaded)
@@ -274,7 +281,7 @@ export function App() {
             <BookOpen size={20} />
           </span>
           <strong>
-            Papertrail<span>研究有迹可循</span>
+            Papertrail
           </strong>
           <button
             className="icon-button"
@@ -347,14 +354,14 @@ export function App() {
             <button
               className="icon-button"
               aria-label="主区返回"
-              disabled={!session.sourcePreview && !session.history.length}
+              disabled={!session.layout || !paneGroups(session.layout.root).find(p => p.id === session.layout!.focusedPaneId)?.history?.length}
               onClick={() => actions.back('main')}
             >
               <ArrowLeft size={17} />
             </button>
+            {!research && session.libraryResearchId && data.researches[session.libraryResearchId] && <button className="text-button" onClick={() => actions.switchResearch(session.libraryResearchId!)}>返回研究</button>}
             <span>{research ? research.title : '全局资料库'}</span>
-            <ChevronRight size={13} />
-            <strong>{activeTitle}</strong>
+
           </div>
           <div className="header-actions">
             <DesktopWindowControls />
@@ -401,32 +408,12 @@ export function App() {
             </button>
           </div>
         )}
-        {(session.sourcePreview || active.kind === 'collection' || active.kind === 'researchView') && <ResourceTabs preview={session.sourcePreview ? { title: session.sourcePreview.candidate.title, onClose: () => actions.closeSourcePreview() } : undefined} leading={{ title: data.scope.kind === 'research' ? researchViews.find(item => item.id === (session.researchView ?? 'home'))?.name ?? '研究主页' : '资料库', selected: !session.sourcePreview && (active.kind === 'researchView' || active.kind === 'collection'), onOpen: () => { if (data.scope.kind === 'research') actions.openResearchView(data.scope.researchId, session.researchView ?? 'home'); else actions.openCollection('documents'); } }} items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
-          title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)}
-          onClose={ref => actions.closeResource(ref)} onPin={ref => actions.pinResource(ref)}
-          onMove={(from, to) => actions.updateData(next => {
-            const items = next.sessions[scopeKey(next.scope)].openItems;
-            if (from < 0 || to < 0 || from >= items.length || to >= items.length) return;
-            items.splice(to, 0, items.splice(from, 1)[0]);
-          })} />}
         <main aria-label="主工作区" className="main-workspace">
           <ErrorBoundary key={`${scopeKey(data.scope)}:${actions.getGeneration()}`}>
-            {session.sourcePreview ? <SourcePreview candidate={session.sourcePreview.candidate} discovery={session.sourcePreview.discovery} scope={data.scope} /> : active.kind === 'collection' ? <LibraryView collection={active.id} /> : active.kind === 'researchView' && research ? (
-              active.id === 'home' ? <ResearchView researchId={research.id} /> : active.id === 'sources' ? <SourcesView researchId={research.id} /> : active.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : active.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={active.id === 'boards' ? 'board' : 'draft'} />
-            ) : active.kind !== 'researchView' ? (
-              <WorkspaceSplit primary={active} renderResource={resourceView} />
-            ) : <div className="empty-state">请先选择研究。</div>}
+            <WorkspaceSplit renderResource={resourceView} />
           </ErrorBoundary>
         </main>
-        <footer className="workspace-footer">
-          <span>本地工作空间</span>
-          <span>
-            {research
-              ? `${research.documentIds.length} 篇论文 · ${research.cardIds.length} 张卡片`
-              : '全局资料独立会话'}
-            <span className="footer-key">⌘ K 搜索</span>
-          </span>
-        </footer>
+
       </div>
       {session.panel.open && (
         <aside className="inspector" aria-label="参考面板">
@@ -531,6 +518,7 @@ export function App() {
                         actions.openResource(session.panel.ref!, {
                           scope: data.scope,
                           target: 'main',
+                          reading: session.panel.ref?.kind === 'document' ? session.readers[`inspector:${session.panel.ref.id}`] : undefined,
                           anchor:
                             session.panel.anchor ??
                             (session.panel.ref?.kind === 'document'
@@ -544,8 +532,9 @@ export function App() {
                         })
                       }
                     >
-                      在主区打开 ↗
+                      在当前窗格打开
                     </button>
+                    <ResourceOpenMenu resource={session.panel.ref} scope={data.scope} showPreview={false} anchor={session.panel.anchor} reading={session.panel.ref.kind === 'document' ? session.readers[`inspector:${session.panel.ref.id}`] : undefined} />
                   </div>
                   {resourceView(session.panel.ref, 'inspector')}
                 </>
@@ -553,7 +542,7 @@ export function App() {
                 <div className="reference-list">
                   <div className="panel-intro">
                     <span className="section-heading">观点与原文</span>
-                    <p>把理解留在卡片里，让来源留在手边。</p>
+
                   </div>
                   {(research ? research.cardIds : Object.keys(data.cards)).map(
                     (id) => (
@@ -669,30 +658,21 @@ export function App() {
                         .toLowerCase()
                         .includes(search.toLowerCase()),
                     )
-                    .map((ref) => (
-                      <button
-                        key={`${ref.kind}:${ref.id}`}
-                        onClick={() => {
-                          const researchId =
-                            ref.kind === 'research'
-                              ? ref.id
-                              : ref.kind === 'draft'
-                                ? data.drafts[ref.id].researchId
-                                : undefined;
-                          actions.openResource(ref, {
-                            scope: researchId
-                              ? { kind: 'research', researchId }
-                              : { kind: 'library' },
-                            target: 'main',
-                          });
-                          closeDialog();
-                        }}
-                      >
-                        <ResourceIcon kind={ref.kind} />
-                        {resourceTitle(data, ref)}
-                        <ChevronRight size={14} />
-                      </button>
-                    ))}
+                    .map(ref => {
+                      const owner = ref.kind === 'research' ? ref.id : ref.kind === 'board' ? data.boards[ref.id].researchId : ref.kind === 'draft' ? data.drafts[ref.id].researchId : undefined;
+                      const linked = research && (ref.kind === 'document' ? research.documentIds.includes(ref.id) : ref.kind === 'card' && research.cardIds.includes(ref.id));
+                      const targetScope = owner ? { kind: 'research' as const, researchId: owner } : linked ? data.scope : { kind: 'library' as const };
+                      return <div className="search-result-row" key={`${ref.kind}:${ref.id}`}>
+                        <button className="search-result-open" onClick={() => { actions.openResource(ref, { scope: targetScope, target: 'main' }); closeDialog(); }}>
+                          <ResourceIcon kind={ref.kind} /><span>{resourceTitle(data, ref)}<small>{owner ? owner === research?.id ? '当前研究' : '切换研究并打开' : linked ? '当前研究' : '在资料库查看'}</small></span><ChevronRight size={14} />
+                        </button>
+                        {scopeKey(targetScope) === scopeKey(data.scope) && ref.kind !== 'research' && <ResourceOpenMenu resource={ref} scope={targetScope} onOpened={closeDialog} />}
+                        {research && !linked && (ref.kind === 'document' || ref.kind === 'card') && <button className="text-button search-result-join" aria-label={`加入当前研究并打开 ${resourceTitle(data, ref)}`} onClick={() => {
+                          try { if (ref.kind === 'document') actions.associateDocument(research.id, ref.id); else actions.associateCard(research.id, ref.id); actions.openResource(ref, { scope: data.scope, target: 'main' }); closeDialog(); }
+                          catch (error) { actions.notice(error instanceof Error ? error.message : '暂时无法加入，请重试。'); }
+                        }}>加入研究</button>}
+                      </div>;
+                    })}
                 </div>
               </>
             ) : (

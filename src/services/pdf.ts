@@ -156,16 +156,19 @@ export async function attachPdf(documentId: string, file: File, options: { autom
   }
 }
 
-export async function importPdf(file: File, scope: WorkspaceScope) {
+export async function importPdf(file: File, scope: WorkspaceScope, paneId = workspace.getSession(scope).layout?.focusedPaneId) {
+  const generation = workspace.getGeneration();
   const { bytes, hash, pdf } = await preparePdf(file);
   try {
     await resolveSampleHashes();
+    if (workspace.getGeneration() !== generation) throw new Error('工作区已重新载入，请重新导入。');
     const existing = Object.values(workspace.getState().data.documents).find(
       (doc) => doc.hash === hash,
     );
     const id = existing?.id ?? `document-${hash}`;
     const assetId = existing?.assetId ?? `pdf-${hash}`;
     await putAsset(assetId, new Blob([bytes], { type: 'application/pdf' }));
+    if (workspace.getGeneration() !== generation) throw new Error('工作区已重新载入，请重新导入。');
     cache.delete(assetId);
     if (existing)
       workspace.updateData((data) => {
@@ -183,6 +186,7 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
       } catch {
         /* File metadata is optional; the source file remains intact. */
       }
+      if (workspace.getGeneration() !== generation) throw new Error('工作区已重新载入，请重新导入。');
       workspace.updateData((data) => {
         data.documents[id] = {
           id,
@@ -202,10 +206,8 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
     if (scope.kind === 'research')
       workspace.associateDocument(scope.researchId, id);
     if (scopeKey(workspace.getState().data.scope) === scopeKey(scope)) {
-      workspace.openResource(
-        { kind: 'document', id },
-        { scope, target: 'main' },
-      );
+      try { workspace.openResource({ kind: 'document', id }, { scope, target: 'main', paneId }); }
+      catch { workspace.notice('PDF 已导入；原窗格已关闭，可从资料列表打开。'); return id; }
       workspace.notice(
         existing
           ? '已打开已有论文；原文件资产已恢复。'
@@ -218,12 +220,12 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
   }
 }
 
-export async function importPdfFiles(files: File[], scope: WorkspaceScope) {
+export async function importPdfFiles(files: File[], scope: WorkspaceScope, paneId = workspace.getSession(scope).layout?.focusedPaneId) {
   const result = { created: 0, reused: 0, failures: [] as { filename: string; message: string }[], documentIds: [] as string[] };
   for (const file of files) {
     const ids = new Set(Object.keys(workspace.getState().data.documents));
     try {
-      const id = await importPdf(file, scope);
+      const id = await importPdf(file, scope, paneId);
       result.documentIds.push(id);
       if (ids.has(id)) result.reused++;
       else result.created++;

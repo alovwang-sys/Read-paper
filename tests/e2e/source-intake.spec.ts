@@ -198,6 +198,8 @@ test('元数据失败也可收下链接，跨研究复用同一实体并隔离�
   await expect(main(page)).toContainText('暂时无法读取来源信息');
   await main(page).getByRole('button', { name: '加入本研究', exact: true }).click();
   const doc = await documentFor(page, candidate.url);
+  await expect(main(page)).toContainText('已收录 · 来源预览');
+  await main(page).getByRole('button', { name: '打开资料', exact: true }).click();
   await expect(main(page).getByLabel('本研究收录备注')).toBeVisible();
   await main(page).getByLabel('本研究收录备注').fill('研究 A：比较检索方法');
   await expect.poll(async () => (await state(page)).documents[doc.id].acquisition?.status).toBe('error');

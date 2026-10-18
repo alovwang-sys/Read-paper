@@ -48,6 +48,11 @@ export async function start(page: Page, seed = createSeed()) {
   await expect(main(page)).toBeVisible();
   await openSource(page, seed.documents['paper-a'].title);
   await waitForPdf(pane(page, 1));
+  // These reader fixtures start with one view; navigation pages now remain as ordinary tabs.
+  for (const tab of groups((await layout(page)).root)[0].tabs.filter(tab => tab.ref.kind === 'researchView' || tab.ref.kind === 'collection')) {
+    await pane(page, 1).locator(`[data-pane-tab="${tab.id}"]`).getByRole('button', { name: /^关闭标签 / }).click();
+  }
+  await waitForPdf(pane(page, 1));
 }
 
 export async function waitForPdf(target: Locator) {
@@ -87,14 +92,26 @@ export async function split(page: Page, target: Locator, direction: '左' | '右
 export async function openCard(page: Page, title: string) {
   await openResearchPage(page, '卡片');
   await main(page).getByRole('button', { name: title, exact: true }).click();
-  await panel(page).getByRole('button', { name: /^在主区打开/ }).click();
   await expect(focusedPane(page).getByLabel('卡片标题')).toHaveValue(title);
 }
 
-export async function dragView(page: Page, tabId: string, target: Locator, side: 'left' | 'right' | 'up' | 'down' | 'center', copy = false, beforeDrop?: () => Promise<void>, expectedPreview = copy ? '复制' : '移动') {
+export async function dragView(page: Page, tabId: string, target: Locator, side: 'left' | 'right' | 'up' | 'down' | 'center', copy = false, beforeDrop?: () => Promise<void>, expectedPreview?: string) {
   const tab = main(page).getByRole('tab').and(main(page).locator(`[data-tab-id="${tabId}"]`));
-  await tab.scrollIntoViewIfNeeded();
-  const from = (await tab.boundingBox())!;
+  const sameGroup = await tab.evaluate(node => node.closest<HTMLElement>('[data-pane-id]')!.dataset.paneId) === await target.getAttribute('data-pane-id');
+  expectedPreview ??= copy || sameGroup && side !== 'center' ? '保留原标签' : sameGroup ? '原位置' : '移动';
+  if (sameGroup) await target.scrollIntoViewIfNeeded();
+  let from!: { x: number; y: number };
+  await expect.poll(async () => {
+    await tab.scrollIntoViewIfNeeded();
+    const point = await tab.evaluate(node => {
+      const box = node.getBoundingClientRect(), strip = node.closest('[role="tablist"]')!.getBoundingClientRect();
+      const left = Math.max(box.left, strip.left, 0), right = Math.min(box.right, strip.right, innerWidth);
+      const x = left + Math.min(30, (right - left) / 2), y = box.top + box.height / 2;
+      return { x, y, reachable: right > left && node.contains(document.elementFromPoint(x, y)) };
+    });
+    from = point;
+    return point.reachable;
+  }).toBe(true);
   const body = (await target.locator('[data-pane-content]').boundingBox())!;
   const point = {
     x: side === 'left' ? body.x + 8 : side === 'right' ? body.x + body.width - 8 : body.x + body.width / 2,
@@ -102,9 +119,9 @@ export async function dragView(page: Page, tabId: string, target: Locator, side:
   };
   if (copy) await page.keyboard.down('Alt');
   try {
-    await page.mouse.move(from.x + Math.min(30, from.width / 2), from.y + from.height / 2);
+    await page.mouse.move(from.x, from.y);
     await page.mouse.down();
-    await page.mouse.move(from.x + Math.min(30, from.width / 2) + 12, from.y + from.height / 2, { steps: 4 });
+    await page.mouse.move(from.x + 12, from.y, { steps: 4 });
     await page.mouse.move(point.x, point.y, { steps: 14 });
     // HTML5 needs dragover on the final PDF child before accepting a native drop.
     await page.mouse.move(point.x, point.y);

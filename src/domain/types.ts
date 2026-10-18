@@ -177,10 +177,11 @@ export type Draft = {
 };
 export type ReadingPosition = { pageIndex: number; scale: number; offset?: number };
 export type ReaderTarget = 'main' | 'inspector' | 'main-secondary' | `view:${string}`;
-export type WorkspaceTab = { id: string; ref: ResourceRef; anchor?: ResourceAnchor; reading?: ReadingPosition; documentInfo?: boolean };
-export type PaneGroup = { kind: 'group'; id: string; tabs: WorkspaceTab[]; activeTabId?: string };
+export type WorkspaceViewRef = ResourceRef | { kind: 'researchView'; id: ResearchViewId } | { kind: 'collection'; id: CollectionId } | { kind: 'sourcePreview'; id: string };
+export type WorkspaceTab = { id: string; ref: WorkspaceViewRef; anchor?: ResourceAnchor; reading?: ReadingPosition; documentInfo?: boolean; preview?: { candidate: SourceCandidate; discovery?: SourceDiscovery }; viewState?: Record<string, string | number | boolean>; boardViewport?: BoardViewport };
+export type PaneGroup = { kind: 'group'; id: string; tabs: WorkspaceTab[]; activeTabId?: string; history?: string[]; recentTabIds?: string[] };
 export type PaneNode = PaneGroup | { kind: 'split'; id: string; axis: 'row' | 'column'; ratio: number; first: PaneNode; second: PaneNode };
-export type WorkspaceLayout = { root: PaneNode; focusedPaneId: string; zoomedPaneId?: string };
+export type WorkspaceLayout = { version?: 2; root: PaneNode; focusedPaneId: string; zoomedPaneId?: string };
 export type BoardViewport = { x: number; y: number; scale: number };
 export type PanelState = {
   open: boolean;
@@ -206,7 +207,7 @@ export type ResourceAnchor = {
 export type Session = {
   documentInfoId?: string;
   sourcePreview?: { candidate: SourceCandidate; discovery?: SourceDiscovery };
-  active: ResourceRef | { kind: 'collection'; id: CollectionId } | { kind: 'researchView'; id: ResearchViewId };
+  active: WorkspaceViewRef;
   researchView?: ResearchViewId;
   recentItems?: ResourceRef[];
   libraryFilter?: LibraryFilter;

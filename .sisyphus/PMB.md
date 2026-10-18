@@ -13,3 +13,5 @@
 - 2026-10-17 | update-directory-sync-blocker | root_cause=error-misattribution-and-no-safe-exit-after-durable-save | 目录同步错误不能统一归因为 CLI；已保存与目录未同步应分别表达。旧版正常 Quit/SIGTERM 均阻塞，完整数据私有备份并即时核验稳定后维护退出，原子安装与真实恢复通过；底层 errno 和目录同步故障仍待单独定位。证据：[事件记录](incidents/2026-10-17-update-directory-sync-blocker/record.md)。
 
 - 2026-10-18 | same-article-split | root_cause=interaction-noop-with-success-preview | 唯一标签拖向自身边缘不能显示有效预览后无声返回；自动复制保留原位置，入口显示“分屏”。补真实无Alt拖动回归，不以菜单或修饰键路径通过替代手势验收。证据：[事件记录](incidents/2026-10-18-same-article-split/record.md)。
+
+- 2026-10-18 | pane-navigation | root_cause=navigation-and-layout-contract-diverged | 主页、列表、预览和资源统一进入窗格；打开目标及拖放不再依赖入口或标签数量。独立验收补齐返回历史、撤销失效来源、跨范围导入与滚动恢复问题，151 项浏览器路径通过；包和安装状态单独记录。证据：[事件记录](incidents/2026-10-18-pane-navigation/record.md)。

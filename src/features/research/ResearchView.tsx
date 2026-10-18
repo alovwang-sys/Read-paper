@@ -3,6 +3,8 @@ import type { ResourceRef } from '../../domain/types';
 import { conclusionIssues, hasFullText, researchEvidence } from '../../domain/knowledge';
 import { resourceTitle, useWorkspace } from '../../services/workspace';
 import { ImportPDFButton } from '../reader/ImportPDFButton';
+import { ResourceOpenMenu, startResourceDrag } from '../library/ResourceOpenMenu';
+import './research.css';
 
 export function ResearchView({ researchId }: { researchId: string }) {
   const { data, actions } = useWorkspace();
@@ -23,9 +25,9 @@ export function ResearchView({ researchId }: { researchId: string }) {
     ...research.documentIds.map(id => data.documents[id]).filter(d => d?.updatedAt).map(d => ({ id: d.id, date: d.updatedAt!, text: `${d.readingStatus === 'read' ? '读完' : d.readingStatus === 'skimmed' ? '略读过' : '收录资料'} · ${d.title}`, ref: { kind: 'document' as const, id: d.id }, evidenceId: undefined })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
   return <div className="overview page-content">
-    <div className="eyebrow">RESEARCH WORKSPACE</div><h1>{research.title}</h1>
+    <h1>{research.title}</h1>
     <section className="question-box"><Target size={19} /><div><span className="section-heading">我想回答的问题</span><textarea aria-label="核心研究问题" value={research.question} onChange={event => actions.updateData(next => { next.researches[researchId].question = event.target.value; })} /><small className="muted">问题会随阅读变得更具体，随时可以修改。</small></div></section>
-    <section><div className="section-title"><h2>接着上次</h2></div><div className="paper-list">{continuing.map(ref => <button key={`${ref.kind}:${ref.id}`} className="paper-row" onClick={() => actions.openResource(ref, { scope, target: 'main' })}><BookOpen size={18} /><span className="paper-details"><strong>{resourceTitle(data, ref)}</strong><small>{ref.kind === 'document' ? `PDF 第 ${(session.readers[`main:${ref.id}`]?.pageIndex ?? 0) + 1} 页` : ref.kind === 'draft' ? '继续写作' : '回到白板'}</small></span><span>打开 ↗</span></button>)}</div>{!research.documentIds.length && <div className="empty-state compact"><h3>收下一份与你的问题有关的资料</h3><ImportPDFButton /></div>}</section>
+    <section><div className="section-title"><h2>接着上次</h2></div><div className="paper-list">{continuing.map(ref => <article key={`${ref.kind}:${ref.id}`} className="paper-row" draggable onDragStart={event => startResourceDrag(event, ref, scope)}><BookOpen size={18} /><span className="paper-details"><button className="source-title" onClick={() => actions.openResource(ref, { scope, target: 'main' })}><strong>{resourceTitle(data, ref)}</strong></button><small>{ref.kind === 'document' ? `PDF 第 ${(session.readers[`main:${ref.id}`]?.pageIndex ?? 0) + 1} 页` : ref.kind === 'draft' ? '继续写作' : '回到白板'}</small></span><ResourceOpenMenu resource={ref} scope={scope}/></article>)}</div>{!research.documentIds.length && <div className="empty-state compact"><h3>收下一份与你的问题有关的资料</h3><ImportPDFButton /></div>}</section>
     <section aria-label="结论站得住吗"><div className="section-title"><h2>结论站得住吗</h2></div>{!hasWriting ? <p className="muted">写下第一段文稿后，在这里核查引用与出处。</p> : !issues.length ? <p className="healthy-citations">文稿里的每处引用都能回到原文。</p> : <div className="conclusion-issues">{issues.map((issue, i) => <article className="conclusion-issue" key={`${issue.draftId}:${issue.cardId}:${issue.kind}:${i}`}><div><strong>{issue.message}</strong><small className="muted">文稿：{data.drafts[issue.draftId]?.title}</small></div><button className="button" onClick={() => {
       if (issue.kind === 'no-evidence' && issue.cardId && data.cards[issue.cardId]) actions.findEvidence(issue.cardId);
       else if (issue.kind === 'needs-review' && issue.cardId) { actions.updateData(next => { next.sessions[researchId].panel.findEvidenceFor = undefined; next.sessions[researchId].panel.citation = undefined; }); actions.openResource({ kind: 'card', id: issue.cardId }, { scope, target: 'inspector' }); }

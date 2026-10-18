@@ -13,7 +13,7 @@ import type { AIRequest } from '../../src/domain/types';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 
 vi.mock('../../src/data/storage', () => ({
-  loadWorkspace: vi.fn(),
+  saveMigrationBackup: vi.fn().mockResolvedValue(undefined), loadWorkspace: vi.fn(),
   saveWorkspace: vi.fn(),
   getAsset: vi.fn(),
 }));
@@ -37,6 +37,7 @@ beforeEach(async () => {
   });
   vi.mocked(loadWorkspace).mockReset().mockResolvedValue(data);
   await workspace.load();
+  vi.mocked(saveWorkspace).mockClear();
 });
 afterEach(async () => {
   await vi.runOnlyPendingTimersAsync();
@@ -127,7 +128,7 @@ describe('工作台共享实体与会话', () => {
     workspace.switchResearch('research-a');
     expect(workspace.getSession().active.id).toBe('paper-a');
   });
-  it('主区返回重新打开已关闭的历史资源，复用原阅读位置且标签不重复', () => {
+  it('主区返回跳过已关闭标签，显式重开保留阅读位置且标签不重复', () => {
     const scope = { kind: 'research' as const, researchId: 'research-a' };
     const first = { kind: 'document' as const, id: 'paper-a' };
     const second = { kind: 'document' as const, id: 'paper-b' };
@@ -137,7 +138,8 @@ describe('工作台共享实体与会话', () => {
     workspace.closeResource(first);
     expect(workspace.getSession().openItems).not.toContainEqual(first);
     workspace.back('main');
-    expect(workspace.getSession().active).toEqual(first);
+    expect(workspace.getSession().active).toEqual({ kind: 'researchView', id: 'home' });
+    workspace.openResource(first, { scope, target: 'main' });
     expect(workspace.getSession().openItems.filter(ref => ref.id === first.id)).toHaveLength(1);
     expect(workspace.getSession().readers['main:paper-a']).toEqual({ pageIndex: 2, scale: 1.4 });
     workspace.openResource(second, { scope, target: 'main' });
@@ -154,7 +156,9 @@ describe('工作台共享实体与会话', () => {
     workspace.setReader('paper-a', { pageIndex: 2, scale: 0.8, offset: 0.7 }, `view:${view.id}`);
     workspace.activatePane(first.id);
     workspace.openResource({ kind: 'document', id: 'paper-a' }, { scope, target: 'main', anchor: { pageIndex: 0 } });
-    expect(paneGroups(workspace.getSession().layout!.root)[0].tabs.find(tab => tab.id === first.activeTabId)?.reading).toEqual({ pageIndex: 0, scale: 1.2, offset: 0 });
+    expect(paneGroups(workspace.getSession().layout!.root)[0].tabs.find(tab => tab.id === first.activeTabId)?.reading).toEqual({ pageIndex: 1, scale: 1.2, offset: 0.4 });
+    const focused = paneGroups(workspace.getSession().layout!.root)[0];
+    expect(focused.tabs.find(tab => tab.id === focused.activeTabId)?.reading).toEqual({ pageIndex: 0, scale: 1.2, offset: 0 });
     expect(paneGroups(workspace.getSession().layout!.root)[1].tabs[0].reading).toEqual({ pageIndex: 2, scale: 0.8, offset: 0.7 });
     workspace.switchResearch('research-b');
     workspace.setReader('paper-a', { pageIndex: 99, scale: 3, offset: -1 }, `view:${view.id}`, scope);

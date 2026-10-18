@@ -29,7 +29,7 @@ async function setup(page: Page) {
   await expect(tabs(page).getByRole('tab', { name: research, exact: true })).toBeVisible();
 }
 async function openPaper(page: Page, title: string) {
-  await main(page).getByRole('button', { name: new RegExp(title) }).click();
+  await main(page).getByRole('button', { name: title, exact: true }).click();
   await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
 }
@@ -45,6 +45,11 @@ test('资源标签复用打开项，支持固定、排序、键盘管理、刷�
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await panel(page).getByLabel('向 AI 提问').fill('切换资源时保留的未发送问题');
   await tabs(page).getByRole('button', { name: `关闭标签 ${paperB}`, exact: true }).click();
+  await expect(tabs(page).getByRole('tab')).toHaveCount(4);
+  for (const label of ['研究主页', research]) {
+    await expect(tabs(page).getByRole('tab', { name: label, exact: true })).toHaveCount(1);
+    await tabs(page).getByRole('button', { name: `关闭标签 ${label}`, exact: true }).click();
+  }
   await expect(tabs(page).getByRole('tab')).toHaveCount(2);
   await expect(tabs(page).getByRole('button', { name: `关闭标签 ${research}`, exact: true })).toHaveCount(0);
   const tabA = tabs(page).getByRole('tab', { name: paperA, exact: true });
@@ -83,9 +88,10 @@ test('资源标签复用打开项，支持固定、排序、键盘管理、刷�
 });
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 800 }]) {
-  test(`引用复用论文标签并定位原文，保留对话和分页 ${viewport.width}`, async ({ page }) => {
+  test(`引用另开并复用专用视图，保留普通阅读位置、对话和分页 ${viewport.width}`, async ({ page }) => {
     await page.setViewportSize(viewport); await setup(page);
     await openPaper(page, paperA);
+    const ordinaryView = groups((await layout(page)).root)[0].tabs.find(tab => tab.ref.id === 'paper-a')!;
     await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
     await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
     await openResearchPage(page, '资料');
@@ -96,11 +102,19 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     const citation = panel(page).getByRole('button', { name: /^引用 1：/ });
     await expect(citation).toBeVisible();
     await panel(page).getByLabel('向 AI 提问').fill('同屏核查后继续完善的问题');
+    let citationViewId: string | undefined;
     for (let index = 0; index < 2; index++) {
       await citation.click();
       await expect(main(page).getByLabel('PDF 页码')).toHaveValue('3');
-      await expect(tabs(page).getByRole('tab', { name: paperA, exact: true })).toHaveCount(1);
-      await expect(tabs(page).getByRole('tab', { name: paperA, exact: true })).toHaveAttribute('aria-selected', 'true');
+      const current = groups((await layout(page)).root)[0];
+      const views = current.tabs.filter(tab => tab.ref.id === 'paper-a');
+      expect(views).toHaveLength(2);
+      expect(views.find(tab => tab.id === ordinaryView.id)?.reading?.pageIndex ?? 0).toBe(0);
+      const citationView = views.find(tab => tab.id !== ordinaryView.id)!;
+      citationViewId ??= citationView.id;
+      expect(citationView.id).toBe(citationViewId);
+      expect(current.activeTabId).toBe(citationViewId);
+      await expect(tabs(page).getByRole('tab').and(tabs(page).locator(`[data-tab-id="${citationViewId}"]`))).toHaveAttribute('aria-selected', 'true');
       await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('同屏核查后继续完善的问题');
     }
     await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
@@ -108,8 +122,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     expect(bounds.x + bounds.width).toBeLessThanOrEqual((await panel(page).boundingBox())!.x + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await saved(page);
-    await mkdir('docs/verification/workspace-panes', { recursive: true });
-    await page.screenshot({ path: `docs/verification/workspace-panes/resource-tabs-${viewport.width}.png` });
+    await mkdir('docs/verification/pane-navigation', { recursive: true });
+    await page.screenshot({ path: `docs/verification/pane-navigation/resource-tabs-${viewport.width}.png` });
     await tabs(page).getByRole('tab', { name: paperB, exact: true }).click();
     await expect(main(page).getByLabel('PDF 页码')).toHaveValue('2');
     await saved(page); await page.reload();

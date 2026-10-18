@@ -3,7 +3,7 @@ import type { Session, WorkspaceData } from '../domain/types';
 export function emptySession(active: Session['active']): Session {
   return {
     active,
-    openItems: active.kind === 'collection' || active.kind === 'researchView' ? [] : [active],
+    openItems: active.kind === 'collection' || active.kind === 'researchView' || active.kind === 'sourcePreview' ? [] : [active],
     pinnedIds: [],
     history: [],
     panel: { open: true, mode: 'cards', pinned: false, history: [] },

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { createSeed } from '../../src/data/seed';
 import { migrateWorkspace } from '../../src/data/migrations';
-import { ensurePaneLayout, paneGroups } from '../../src/services/panes';
+import { ensurePaneLayout, paneGroups, syncPaneSession } from '../../src/services/panes';
 import { contentHash } from '../../src/data/storage';
 import { hasFullText } from '../../src/domain/knowledge';
 import type { CardProvenance, ContextSnapshot, RegionSource } from '../../src/domain/types';
@@ -304,4 +304,35 @@ describe('完整工作区备份', () => {
     }
     await expect(readWorkspaceBackup(new Blob([forged as Uint8Array<ArrayBuffer>]))).rejects.toThrow(/原始 ZIP/);
   });
+});
+
+it('统一窗格备份往返保留列表筛选、未收录预览和独立白板视口，资产只保存一份', async () => {
+  const { data: initial, assets } = await fixture();
+  const data = migrateWorkspace(initial), session = data.sessions['research-a'];
+  const group = paneGroups(session.layout!.root)[0];
+  group.tabs.push(
+    { id: 'source-list-view', ref: { kind: 'researchView', id: 'sources' }, viewState: { query: 'Retrieval', filter: 'reading', scrollTop: 240 } },
+    { id: 'preview-view', ref: { kind: 'sourcePreview', id: 'preview-only' }, preview: { candidate: { kind: 'paper', url: 'https://example.org/unsaved', title: '尚未收录的来源' } } },
+    { id: 'board-view-a', ref: { kind: 'board', id: 'board-a' }, boardViewport: { x: 20, y: 300, scale: 1.25 } },
+    { id: 'board-view-b', ref: { kind: 'board', id: 'board-a' }, boardViewport: { x: 450, y: 30, scale: 0.8 } },
+  );
+  group.activeTabId = 'preview-view'; syncPaneSession(session);
+  const before = structuredClone(data);
+  const restored = await readWorkspaceBackup(await createWorkspaceBackup(data, assets));
+  expect(restored.data.sessions['research-a'].layout).toEqual(before.sessions['research-a'].layout);
+  expect(restored.data.documents).toEqual(before.documents);
+  expect(restored.data.researches['research-a'].documentIds).toEqual(before.researches['research-a'].documentIds);
+  expect(restored.assets).toHaveLength(assets.length);
+  expect(data).toEqual(before);
+});
+
+it('拒绝备份恢复中的跨范围页面和带凭据的来源预览', async () => {
+  const { data: initial } = await fixture();
+  const data = migrateWorkspace(initial);
+  const library = paneGroups(data.sessions.library.layout!.root)[0];
+  library.tabs.push({ id: 'foreign-page', ref: { kind: 'researchView', id: 'sources' } });
+  expect(() => migrateWorkspace(data)).toThrow(/归属/);
+  library.tabs.pop();
+  library.tabs.push({ id: 'unsafe-preview', ref: { kind: 'sourcePreview', id: 'preview-only' }, preview: { candidate: { kind: 'paper', url: 'https://user:secret@example.org/paper', title: 'invalid' } } });
+  expect(() => migrateWorkspace(data)).toThrow(/归属/);
 });

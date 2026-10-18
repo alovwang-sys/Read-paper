@@ -160,7 +160,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
   test(`项目会话与中央原文并列 ${viewport.width}`, async ({ page }) => {
     await page.setViewportSize(viewport); const seed = createSeed(); seed.panelWidth = 440;
     const api = await setup(page, { seed, names: { 'research-a': 'research-a' }, sessions: [native('reference-open', 'opencode', 'OpenCode 原生端的研究讨论', false)] });
-    await main(page).getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click(); await expect(main(page).locator('canvas').first()).toBeVisible(); await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
+    await main(page).getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true }).click(); await expect(main(page).locator('canvas').first()).toBeVisible(); await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
     await panel(page).getByRole('tab', { name: '摘录', exact: true }).click(); await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click(); await select(page, 'Codex');
     await panel(page).getByLabel('向 AI 提问').fill('解释这条证据并保留原文'); await panel(page).getByRole('button', { name: '发送问题', exact: true }).click(); await expect(panel(page).locator('.ai-answer')).toContainText('模拟原生响应');
     await panel(page).getByLabel('向 AI 提问').fill('保留尚未发送的问题'); await panel(page).getByRole('button', { name: /^引用 1：/ }).click();

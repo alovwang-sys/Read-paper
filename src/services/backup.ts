@@ -84,6 +84,7 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
     requireValid(object(value) && typeof value.kind === 'string', '资源入口损坏');
     const collections = { research: data.researches, document: data.documents, card: data.cards, board: data.boards, draft: data.drafts };
     if (value.kind === 'researchView') requireValid(views.includes(value.id), '研究页面入口损坏');
+    else if (value.kind === 'sourcePreview') requireValid(typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 300, '来源预览入口损坏');
     else if (value.kind === 'collection') requireValid(['documents', 'cards'].includes(value.id), '集合入口损坏');
     else requireValid(has(collections, value.kind) && has(collections[value.kind], value.id), '引用的资源缺失');
   };

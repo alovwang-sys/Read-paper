@@ -62,7 +62,7 @@ test('同篇独立翻页缩放，合并保留两个视图，重新拆分及刷�
   await expect(first.locator('.pdf-zoom')).toContainText('100%');
   await expect.poll(async () => groups((await layout(page)).root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a').map(tab => tab.reading)).toMatchObject([{ pageIndex: 1, scale: 1 }, { pageIndex: 2, scale: 1.25 }]);
   const originals = groups((await layout(page)).root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a');
-  await paneAction(page, second, '收拢为一个窗格');
+  await paneAction(page, second, '收拢所有标签');
   await expect(panes(page)).toHaveCount(1);
   const merged = pane(page, 1);
   for (const view of originals) {
@@ -71,11 +71,17 @@ test('同篇独立翻页缩放，合并保留两个视图，重新拆分及刷�
     await expect(merged.locator('.pdf-zoom')).toContainText(`${view.reading!.scale * 100}%`);
   }
   expect(groups((await layout(page)).root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a').map(tab => tab.id).sort()).toEqual(originals.map(tab => tab.id).sort());
+  // Own-edge drag now preserves its source even when the group has multiple tabs.
+  await merged.getByRole('tab').and(merged.locator(`[data-tab-id="${originals[0].id}"]`)).click();
   await dragView(page, originals[1].id, merged, 'right');
   await expect(panes(page)).toHaveCount(2);
   await expect(pane(page, 1).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
   await expect(pane(page, 2).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
   await expectPageTop(pane(page, 1), 2); await expectPageTop(pane(page, 2), 3);
+  const duplicated = groups((await layout(page)).root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a');
+  expect(duplicated).toHaveLength(3);
+  expect(duplicated.map(tab => tab.id)).toContain(originals[1].id);
+  expect(new Set(duplicated.map(tab => tab.id)).size).toBe(3);
   await saved(page); await page.reload();
   await expect(pane(page, 1).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
   await expect(pane(page, 2).getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
@@ -124,6 +130,6 @@ for (const width of [1440, 1280, 1024]) test(`连续双窗与右侧AI ${width}px
   await expect(first.getByLabel('PDF 页码', { exact: true })).toHaveValue('1');
   await expect(second.getByLabel('PDF 页码', { exact: true })).toHaveValue('3');
   await saved(page); await page.evaluate(() => document.fonts.ready);
-  await mkdir('docs/verification/workspace-panes', { recursive: true });
-  await page.screenshot({ path: `docs/verification/workspace-panes/continuous-${width}.png` });
+  await mkdir('docs/verification/pane-navigation', { recursive: true });
+  await page.screenshot({ path: `docs/verification/pane-navigation/continuous-${width}.png` });
 });

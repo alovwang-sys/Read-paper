@@ -1,0 +1,790 @@
+{
+  "scope": "Original 107 browser regressions plus 4 pane scope cases; separate navigation/feature/workspace suites reported independently",
+  "stats": {
+    "startTime": "2026-10-18T15:07:15.175Z",
+    "duration": 214664.08599999998,
+    "expected": 111,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "桌面式对话完整保留Markdown，工具卡呈现真实命令、状态及输出",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "未安装助手提供官方安装入口与命令复制，需登录状态保留真实说明",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "桌面对话引用打开中央PDF，保留消息和输入 1440×900",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "桌面对话引用打开中央PDF，保留消息和输入 1280×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "桌面对话引用打开中央PDF，保留消息和输入 1024×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "助手状态、独立输入、重连、刷新与干净会话",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "生成中切换助手、后台归属、停止及权限拒绝不回退",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "显式材料、原生累计提示与收缩前序范围",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "演示模式经历史返回 Codex 后，PDF 快捷解释仍使用原助手",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "助手选择与结论工作台 1440×900",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "助手选择与结论工作台 1280×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "助手选择与结论工作台 1024×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "区域拖框、演示对话、片段卡片、刷新来源与真实 Markdown 下载",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "干净新会话、历史搜索重命名、归档恢复及刷新持久化",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "AI 引用在中央打开，回答、材料、草稿和相关对话留在右侧 1440",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "AI 引用在中央打开，回答、材料、草稿和相关对话留在右侧 1280",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "AI 引用在中央打开，回答、材料、草稿和相关对话留在右侧 1024",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "导出、校验预览、明确替换和刷新恢复，原资料与文件留有原子副本",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "本地保存失败后仍能导出包含最新内存编辑的完整备份",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 真实目录菜单、技能chips和模型/Plan快照持久化",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原生问题草稿按原研究保存，答复继续原请求，停止后交互失效",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "工具审批只允许本次或拒绝，不自动改变其他请求",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 桌面交互 1440×900",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 桌面交互 1280×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 桌面交互 1024×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 区域入口按原生模型能力工作，真实截图字节随冻结上下文发送并保留来源",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "切换为纯文字型号阻止图片发送，草稿与区域保留，切回图片型号可继续",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "完全访问需明确确认，权限与推理档位进入请求快照并按研究恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "切换模型清理不支持的推理档位，缺少能力时不假造模型或权限",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "加号从当前研究加入原文证据，保留输入且不发送",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "麦克风说明聚焦输入，Escape只关闭局部说明并保留草稿",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "生成时锁定设置，圆形停止按钮只停止原请求",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "只展示本轮Codex报告的文件变更节选，展开可核对加减行",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原生输入区与中央PDF并列 1440",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原生输入区与中央PDF并列 1280",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原生输入区与中央PDF并列 1024",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "codex：超过六千中文字的问题完整进入请求和会话记录",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "codex：生成挂起时输入即清空，done 不覆盖下一条草稿",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "codex：生成挂起时输入即清空，error 不覆盖下一条草稿",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "model：超过六千中文字的问题完整进入请求和会话记录",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "model：生成挂起时输入即清空，done 不覆盖下一条草稿",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "model：生成挂起时输入即清空，error 不覆盖下一条草稿",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原生发送前同步失败保留输入，且不建立或发送请求",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "网络中断且没有新草稿时恢复原输入，刷新后可重试",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "研究切换后迟到的 done 只更新原研究，输入分别恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "研究切换后迟到的 error 只更新原研究，输入分别恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "回答尚未结束时刷新，已提交问题留在记录而下一条草稿恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原文旁发送后继续写下一条草稿 1440",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原文旁发送后继续写下一条草稿 1280",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原文旁发送后继续写下一条草稿 1024",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "H 摘录可撤销，重复选区复用，刷新保留原文高亮",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "摘录按研究隔离，可展开其他研究来源，标为不需要后可恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "多选摘录可建人工卡片和显式演示草稿，确认入库幂等且来源可恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "略读与读完保留阅读位置，读完提示只出现一次",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "本地标识去重、标题建条目、资料库复用和添加框键盘返回",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "补 PDF 保留资料身份、研究关联和白板摆放，刷新后可阅读",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "补全文冲突先预览，取消不变，确认后原子转移关联与打开项",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "多 PDF 导入保留有效文件，重复计数和失败原因可见",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "窗口拖放显示当前目标，并归入该研究",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "资料状态分组与三种尺寸导航无横向溢出",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "从结论找依据、人工核对和补引用，出处链保留并定位原文，跨研究及刷新恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "无效正文引用可提示修复，不写入损坏的出处链状态；页面返回恢复当前窗格标签",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "三种宽度覆盖主PDF＋卡片、白板＋右原文、文稿＋AI，并验证1024抽屉焦点",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "阅读器直接补依据，保存失败后切面板、切研究和刷新仍可恢复且不重复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 后台占用自动恢复，原文、历史与新续接身份保持 1440",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 后台占用自动恢复，原文、历史与新续接身份保持 1280",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 后台占用自动恢复，原文、历史与新续接身份保持 1024",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "恢复失败保留原连接和原输入，允许原范围重试",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "恢复失败保留原连接和下一条草稿，允许原范围重试",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "研究切换后迟到的恢复只更新原研究会话，另一研究草稿保留",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "打开论文保留右侧卡片，右侧阅读转入新分屏保留自己的阅读位置",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "全局搜索查看不隐式加入研究，返回恢复布局，明确加入才创建关联",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "预览中收录保留原预览和其他窗格，全文不可用仍保存一份资料",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "添加资料明确改选另一研究后，收录和打开成功且原研究布局保留",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "保存失败后关闭资源、切换研究、切换面板和刷新恢复编辑缓冲",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "不支持的存储版本加载失败后不覆盖已有数据",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "1024px 导航抽屉、右侧关闭、键盘搜索均可操作",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "文本提取失败保留阅读能力，AI 请求失败可重试且不覆盖正文",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "未发送的 AI 输入按研究保留，切换面板和刷新后恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "目录浏览取消不写入，唯一确认绑定后保留输入并随请求提交归属",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "首次目录加载锁定路径输入，加载完成后的目标预览与取消保持一致",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "旧绑定按文件夹名称恢复项目入口，同目录重连与研究切换保留各自输入",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "三助手按身份合并与筛选；读取不发送；部分失败保留旧列表",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "外部忙碌不抢发或停止，切换助手恢复各自草稿，刷新新增消息不重复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "Codex 读取后按同一原生身份继续，目录失联保留记录和问题",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "项目会话与中央原文并列 1440",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "项目会话与中央原文并列 1280",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "项目会话与中央原文并列 1024",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "新建研究一次确认绑定目录，右侧助手继承且发送同一binding",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "使用已有目录在确认前采用目录名，最终只关联该位置",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "取消创建和子层目录选择不绑定、不留下业务研究并保留表单",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "稍后设置沿用人工阅读创建路径，不调用bind且保存问题",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "绑定结果待确认保留表单与稳定身份，重试完成唯一研究",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "新建目录后切换研究与助手分别恢复目录和未发送输入",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "浏览器语音入口显示系统听写引导，保留草稿且不发送或请求录音",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "桌面听写桥接requested时诚实反馈并保留输入",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "桌面听写桥接unavailable时诚实反馈并保留输入",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "桌面听写桥接error时诚实反馈并保留输入",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "TikHub 技能已接入且未知MCP仍禁用，目录工具过程独立于回答正文",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "TikHub 数据调用逐次审批，拒绝不查询、允许绑定原研究、停止使审批失效",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "TikHub 缺少本机凭据时说明原因，刷新能力后原会话可选择",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "中央PDF与TikHub目录说明并列 1440×900",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "中央PDF与TikHub目录说明并列 1280×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "中央PDF与TikHub目录说明并列 1024×800",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "完整研究路径：导入、真实 PDF 选区、卡片、白板、引用导出与恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "共享卡片、摆放实例移出撤销、移动和白板视口持久化",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "AI 固定快照、迟到隔离、编辑另存及插入结论编号",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "双栏与扫描边界、损坏 PDF 导入、来源及返回恢复",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "原 PDF 资产缺失后同 hash 重导入修复，保留文档与证据身份",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "延迟 PDF 导入绑定提交研究，切换研究后保持目标工作区",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    },
+    {
+      "title": "桌面导航、论文库与窄屏折叠的稳定截图",
+      "ok": true,
+      "status": [
+        "expected"
+      ]
+    }
+  ]
+}

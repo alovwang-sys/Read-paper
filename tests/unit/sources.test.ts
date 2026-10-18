@@ -40,7 +40,7 @@ describe('来源收录', () => {
     const before = structuredClone(workspace.getState().data);
     workspace.openSourcePreview(sourceCandidate('https://example.org/paper', '候选论文'), scope);
     expect(workspace.getState().data.documents).toEqual(before.documents);
-    expect(workspace.getSession(scope).active).toEqual(before.sessions['research-a'].active);
+    expect(workspace.getSession(scope).active.kind).toBe('sourcePreview');
     expect(workspace.getSession(scope).panel).toEqual(before.sessions['research-a'].panel);
     workspace.back('main');
     expect(workspace.getSession(scope).sourcePreview).toBeUndefined();

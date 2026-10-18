@@ -85,7 +85,7 @@ async function start(page: Page, api: API, pdf = false) {
   await mockProjectService(page);
   await page.goto('/'); await expect(page.getByRole('main')).toBeVisible();
   if (pdf) {
-    await page.getByRole('main').getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true }).click();
     await expect(page.getByRole('main').locator('canvas').first()).toBeVisible(); await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
   }
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();

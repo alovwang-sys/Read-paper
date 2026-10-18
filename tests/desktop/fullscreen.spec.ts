@@ -70,8 +70,8 @@ test('打包桌面：原生全屏时始终可退出，刷新与快捷键保留�
     await expect(exitButton(page)).toHaveAttribute('title', process.platform === 'darwin' ? '退出全屏 · ⌃⌘F' : '退出全屏 · F11');
     expect(await page.evaluate(() => window.papertrailDesktop?.getFullScreen?.())).toBe(true);
     await page.reload(); await expect(exitButton(page)).toBeVisible(); await expect(input(page)).toHaveValue(draft);
-    await mkdir('docs/verification/fullscreen', { recursive: true });
-    await page.screenshot({ path: 'docs/verification/fullscreen/desktop-fullscreen.png' });
+    await mkdir('docs/verification/pane-navigation', { recursive: true });
+    await page.screenshot({ path: 'docs/verification/pane-navigation/desktop-fullscreen.png' });
 
     const left = application.evaluate(({ BrowserWindow }) => new Promise<void>(resolve => {
       BrowserWindow.getAllWindows().find(window => window.webContents.getURL() === 'papertrail://app/')!.once('leave-full-screen', () => resolve());
@@ -121,8 +121,8 @@ test('打包桌面：原生全屏时始终可退出，刷新与快捷键保留�
     expect(keyboardAudit.inputs.filter(input => Reflect.get(input, 'type') === 'keyDown')).toHaveLength(2);
     await expect(exitButton(page)).toHaveCount(0); await expect(input(page)).toHaveValue(draft);
     await saved(page); expect(modelCalls).toEqual([]); expect(pageErrors).toEqual([]);
-    await page.screenshot({ path: 'docs/verification/fullscreen/desktop-window-restored.png' });
-    await writeFile('docs/verification/fullscreen/desktop-fullscreen.json', JSON.stringify({ executablePath,
+    await page.screenshot({ path: 'docs/verification/pane-navigation/desktop-window-restored.png' });
+    await writeFile('docs/verification/pane-navigation/desktop-fullscreen.json', JSON.stringify({ executablePath,
       protocol: 'papertrail://app/', nativeFullscreenEventsVerified: true, refreshRetainsExitButton: true,
       exitButtonWorks: true, shortcutWorks: true, shortcut, keyboardTransport: 'Electron webContents.sendInputEvent', keyboardAudit, restoredFrame, settingsIPCRejected: true,
       nextDraftRetained: true, actualModelCalls: 0, pageErrors,

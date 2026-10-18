@@ -122,7 +122,7 @@ test('只展示本轮Codex报告的文件变更节选，展开可核对加减行
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 800 }]) {
   test(`原生输入区与中央PDF并列 ${viewport.width}`, async ({ page, api }) => {
-    await page.setViewportSize(viewport); await start(page, api); await page.getByRole('main').getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
+    await page.setViewportSize(viewport); await start(page, api); await page.getByRole('main').getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true }).click();
     await expect(page.getByRole('main').locator('canvas').first()).toBeVisible(); await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
     await setUltra(page); await send(page, '模拟记录：比较研究条件'); await expect(panel(page).locator('.ai-answer')).toContainText('模拟原生响应'); await input(page).fill('在原文旁继续写下问题');
     const notice = page.getByRole('button', { name: '关闭提示', exact: true }); if (await notice.isVisible()) await notice.click();

@@ -2,10 +2,13 @@ import { CircleHelp, History, Layers } from 'lucide-react';
 import { useWorkspace, validateEvidence } from '../../services/workspace';
 import { EvidenceList } from '../evidence/EvidenceList';
 import { conversationAnswerSources } from '../export/exportMarkdown';
+import { useEditorViewState } from '../editor/useEditorViewState';
 import './cards.css';
 
 export function CardEditor({ cardId }: { cardId: string }) {
   const { data, research, actions, saveStatus } = useWorkspace();
+  const titleView = useEditorViewState<HTMLInputElement>(`card:${cardId}:title`);
+  const bodyView = useEditorViewState<HTMLTextAreaElement>(`card:${cardId}:body`);
   const card = data.cards[cardId];
   if (!card)
     return (
@@ -49,6 +52,7 @@ export function CardEditor({ cardId }: { cardId: string }) {
       <label className="field card-title-field">
         卡片标题
         <input
+          {...titleView}
           aria-label="卡片标题"
           placeholder="用一句话表达一个观点"
           value={card.title}
@@ -58,6 +62,7 @@ export function CardEditor({ cardId }: { cardId: string }) {
       <label className="field card-body-field">
         你的理解
         <textarea
+          {...bodyView}
           aria-label="卡片正文"
           placeholder="用自己的话写下观点、条件或尚待核查的问题…"
           value={card.body}

@@ -44,7 +44,7 @@ async function setup(page: Page) {
   await page.goto('/');
   await expect.poll(async () => (await state(page))?.documents['paper-a']?.title).toBeTruthy();
   const title = (await state(page)).documents['paper-a'].title;
-  await main(page).getByRole('button', { name: new RegExp(title) }).click();
+  await main(page).getByRole('button', { name: title, exact: true }).click();
   await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
   await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();

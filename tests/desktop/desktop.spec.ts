@@ -42,7 +42,8 @@ async function close(application: ElectronApplication) {
 async function screenshot(page: Page, name: string) {
   await saved(page);
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: test.info().outputPath('screenshots', name), fullPage: false });
+  await mkdir('docs/verification/pane-navigation', { recursive: true });
+  await page.screenshot({ path: `docs/verification/pane-navigation/desktop-${name}`, fullPage: false });
 }
 
 test('安装产物：独立运行、PDF与双栏、模型设置、关闭保存及重启恢复', async () => {
@@ -57,6 +58,7 @@ test('安装产物：独立运行、PDF与双栏、模型设置、关闭保存�
     page.on('pageerror', error => pageErrors.push(error.message));
     await page.setViewportSize({ width: 1440, height: 900 });
     expect(page.url()).toBe('papertrail://app/');
+    expect(await application.evaluate(({ app }) => app.getVersion())).toBe(JSON.parse(await readFile('package.json', 'utf8')).version);
     const asar = process.platform === 'darwin' ? resolve(dirname(executablePath), '../Resources/app.asar') : join(dirname(executablePath), 'resources/app.asar');
     const entries = listPackage(asar, { isPack: false });
     expect(entries.filter(name => /(?:^|[/\\])(?:\.env[^/\\]*|\.git|tests|docs)(?:$|[/\\])|\.(?:p12|pfx)$|\.(?:test|spec)\.mjs$/.test(name))).toEqual([]);
