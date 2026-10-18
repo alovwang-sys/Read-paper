@@ -292,9 +292,12 @@ for (const width of [1440, 1280, 1024]) test(`三窗格布局在 ${width}px 保�
   await openCard(page, cardA);
   const below = await split(page, right, '下');
   await openResearchPage(page, draftA);
+  // Capture the platform's native title selection before taking the restore baseline.
+  await below.getByLabel('结论标题', { exact: true }).focus();
   await below.getByLabel('结论正文').fill('窄屏保留多窗格，通过放大查看当前内容。');
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await waitForPdf(paneById(page, firstId!));
+  await saved(page);
   const original = await layout(page);
   const first = (await paneById(page, firstId!).boundingBox())!, second = (await right.boundingBox())!, third = (await below.boundingBox())!;
   expect(second.x).toBeGreaterThan(first.x + first.width - 3);

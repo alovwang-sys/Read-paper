@@ -1,5 +1,7 @@
 # 本地故障经验
 
+- 2026-10-19 | ci-editor-baseline | root_cause=test-baseline-before-editor-flush | 布局恢复测试应在真实 blur 与保存后抓取完整编辑器基线，避免将平台原生选区方向的首次落盘误判为恢复失败；保留已有状态的严格比较。三尺寸受影响用例本机 3/3 通过，远端完整门禁在合入前验收。证据：[事件记录](incidents/2026-10-19-ci-editor-baseline/record.md)。
+
 - 2026-10-17 | native-session-recovery | root_cause=session_ownership | 后台持有 writer 不等于用户打开会话；仅在 turn/start 前的精确占用拒绝允许保留历史 fork 一次，随后原子迁移 ID 保护与引用。结果未知禁止自动重发，复制 goal 必须延迟继续。证据：[事件记录](incidents/2026-10-17-native-session-recovery/record.md)。
 
 - 2026-10-17 | windows-research-directory | root_cause=test_environment | 隔离 HOME / USERPROFILE 的桌面测试需同时提供真实 Documents 并用 app.setPath 明确配置；保留原生 IPC 与全部业务断言。macOS arm64 目标测试 2/2 通过，Windows 新 head CI 待主 agent 复核；原 artifact 缺少 IPC 错误文本。证据：[事件记录](incidents/2026-10-17-windows-research-directory/record.md)。
