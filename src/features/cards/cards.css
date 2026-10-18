@@ -64,3 +64,9 @@
   line-height: 1.7;
   color: #9f855d;
 }
+@container workspace-pane (max-width: 480px) {
+  .workspace-pane-group .card-editor { padding: 20px 16px; }
+  .workspace-pane-group .card-editor-kind { margin-bottom: 18px; }
+  .workspace-pane-group .card-editor .card-title-field input { padding: 9px 10px; }
+  .workspace-pane-group .card-editor .card-body-field textarea { padding: 10px; }
+}

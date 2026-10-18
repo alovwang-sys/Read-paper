@@ -210,17 +210,17 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
       await applyActivity([session], project.directory, signal);
       return session;
     },
-    async probe() {
+    async probe({ signal } = {}) {
       let version;
       try {
-        const installed = await invoke(['--version'], { timeoutMs: 10_000 });
+        const installed = await invoke(['--version'], { signal, timeoutMs: 10_000 });
         if (installed.code !== 0) throw runtimeError('Claude Code 版本检测失败。');
         version = installed.output.trim().slice(0, 100);
-        const help = await invoke(['--help'], { timeoutMs: 10_000 });
+        const help = await invoke(['--help'], { signal, timeoutMs: 10_000 });
         if (help.code !== 0 || ['--safe-mode', '--restricted', '--tools', '--strict-mcp-config', '--permission-prompts', '--include-partial-messages'].some((flag) => !help.output.includes(flag))) {
           return status({ state: 'error', version, detail: '此 Claude Code 版本缺少安全隔离或流式协议参数，请升级后重新检测。' });
         }
-        const auth = await invoke(['auth', 'status', '--json'], { timeoutMs: 10_000 });
+        const auth = await invoke(['auth', 'status', '--json'], { signal, timeoutMs: 10_000 });
         if (JSON.parse(auth.output).loggedIn !== true) return status({ state: 'needs-auth', version, detail: '请在本机终端完成 claude auth login 后重新检测；平台不会读取或代管登录凭据。' });
         return status({ state: 'ready', version, detail: '使用本机认证，仅处理显式提供的文字；工具、MCP、插件、交互权限和图片均未开放。' });
       } catch (error) {

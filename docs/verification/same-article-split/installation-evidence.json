@@ -1,0 +1,35 @@
+{
+  "clientDate": "2026-10-18",
+  "status": "installed-and-running",
+  "target": "/Applications/Papertrail.app",
+  "asarSha256": "4f6390e906aff6e8edba64cdddf580e29b04b020bd850c5d381f6584f94d1fb6",
+  "matchesFinalTestedPackage": true,
+  "privateBackup": {
+    "durableFiles": 25,
+    "totalFiles": 82,
+    "bytes": 14636328,
+    "stableHashesCheckedBeforeAndAfterCopyAndImmediatelyBeforeExit": true,
+    "contentsPublished": false
+  },
+  "exitMethod": "Normal Quit blocked by existing external directory sync failure; after saved/idle confirmation and fresh stable private backup, verified old main was force-terminated and helpers exited on their own",
+  "uiVerification": {
+    "saved": true,
+    "selectedResearchPreserved": true,
+    "questionEntriesBefore": 12,
+    "questionEntriesAfter": 12,
+    "paneCountAfterLaunch": 3,
+    "existingPdfReadersLoaded": true,
+    "newSplitMenuHelp": true,
+    "actualFourDirectionMenuOpened": true,
+    "referencePanelPreserved": true,
+    "newLayoutCreatedDuringVerification": false
+  },
+  "remainingIssue": "Existing external directory sync error remains; application data saved. Not changed in this fix.",
+  "oldArtifactsMovedToRecoverableTrash": 3,
+  "trashEmptied": false,
+  "installer": {
+    "filename": "Papertrail-0.1.2-same-article-split-arm64.dmg",
+    "bytes": 157991916,
+    "sha256": "44088d39efd8b2d773c98dda3c673bbd65761d80d8125f95dfea6ba5c186f73b"
+  }
+}

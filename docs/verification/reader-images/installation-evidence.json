@@ -1,0 +1,19 @@
+{
+  "installedApp": "/Applications/Papertrail.app",
+  "asarSha256": "c7f566f9c2c03125f231ddbe5a73e4f4f8527ca07eb9290db594a9866a0c9077",
+  "bundleEntries": 272,
+  "normalExitBeforeSwap": true,
+  "reopenedAndRaised": true,
+  "workspaceSaved": true,
+  "readingReady": true,
+  "codexReady": true,
+  "imageUnsupportedNoticeAfterReady": false,
+  "inputAutomaticallySent": false,
+  "previousAppAndInstallerMovedToRecoverableTrash": 3,
+  "newInstaller": {
+    "path": "/Users/amos/Downloads/Papertrail-0.1.2-reader-images-arm64.dmg",
+    "sha256": "35f345a1b79774429b536c1457e1796264305725cf9a0cf02546409f0747e1c3",
+    "bytes": 157977092
+  },
+  "composerAccessibilityValueUnchanged": true
+}

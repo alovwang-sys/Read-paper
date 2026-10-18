@@ -60,7 +60,7 @@ test('保存失败后关闭资源、切换研究、切换面板和刷新恢复�
   );
   await page
     .getByRole('complementary', { name: '参考面板' })
-    .getByRole('button', { name: '在主区打开 ↗' })
+    .getByRole('button', { name: '在当前窗格打开', exact: true })
     .click();
   await page
     .getByRole('button', { name: '关闭标签 相关性是检索收益的前提', exact: true })
@@ -212,12 +212,12 @@ test('文本提取失败保留阅读能力，AI 请求失败可重试且不覆�
   });
   await page
     .getByRole('main')
-    .getByRole('button', { name: /Adaptive Retrieval/ })
+    .getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true })
     .click();
   await expect(
     page.getByRole('main').getByText('文本提取失败', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('main').locator('canvas')).toBeVisible();
+  await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
   await expect(
     page.getByRole('main').getByText('阅读就绪', { exact: true }),
   ).toBeVisible();

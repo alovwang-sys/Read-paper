@@ -1,0 +1,13 @@
+{
+  "executablePath": "/Users/amos/.codex/worktrees/source-intake/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "protocol": "papertrail://app/",
+  "promptCharacters": 6908,
+  "fullPromptReceived": true,
+  "requestCount": 2,
+  "clearedWhilePending": true,
+  "subsequentDraftPreservedOnSuccess": true,
+  "originalInputRestoredOnNetworkError": true,
+  "draftRetainedAfterRestart": true,
+  "actualModelCalls": 0,
+  "pageErrors": []
+}

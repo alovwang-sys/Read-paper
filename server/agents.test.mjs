@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { once, EventEmitter } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
 import { mkdtemp, readFile, readdir, rm, stat, chmod, writeFile } from 'node:fs/promises';
@@ -8,10 +8,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAgentHandler } from './agents.mjs';
 import { createCodexRuntime } from './codex-runtime.mjs';
+import { createHash } from 'node:crypto';
+import { IMAGE_LIMITS, MAX_IMAGE_BODY_BYTES } from './images.mjs';
 
 const evidence = (id = 'e1') => ({ evidenceId: id, documentId: 'doc1', documentHash: 'hash1', title: 'Selected paper', pageIndex: 0, quote: `Selected quote ${id}` });
 const request = (overrides = {}) => ({ workspaceId: 'workspace1', requestId: 'request1', researchId: 'research1', conversationId: 'conversation1', connectionId: 'codex', purpose: 'chat', prompt: 'Explain the selected source', context: [evidence()], history: [], ...overrides });
 const history = (id = 'request1', context = [evidence()]) => ({ requestId: id, prompt: 'Previous question', body: 'Original answer [7]', sentBody: 'Renumbered answer [1]', evidenceIds: context.map((item) => item.evidenceId), context });
+const png = size => { const bytes = Buffer.alloc(size ?? 8); Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes); return bytes; };
+const region = (id = 'image-evidence', bytes = png()) => ({ ...evidence(id), quote: '', kind: 'region', region: { assetId: `asset-${id}`, hash: createHash('sha256').update(bytes).digest('hex'), rect: { x: 0.1, y: 0.2, width: 0.4, height: 0.3 }, rotation: 0, width: 100, height: 80 } });
+const image = (source = region(), bytes = png()) => ({ evidenceId: source.evidenceId, dataUrl: `data:image/png;base64,${bytes.toString('base64')}` });
 async function fixture(t, runtime, options = {}) {
   const stateDir = await mkdtemp(join(tmpdir(), 'read-paper-agent-test-'));
   let handler;
@@ -108,6 +113,20 @@ test('card/revision requests use separate native sessions and preserve the chat 
   assert.match(calls[1].prompt, /只输出 JSON 对象/);
 });
 
+test('image card model is retained without inheriting skills, planning or write access', async (t) => {
+  const calls = []; const f = await fixture(t, simpleRuntime(calls));
+  const source = region();
+  await events(await f.post(request({ purpose: 'card', context: [source], images: [image(source)], codex: { model: 'vision' } })));
+  assert.deepEqual(calls[0].codex, { model: 'vision' });
+  assert.equal(calls[0].skillIds, undefined);
+  assert.equal(calls[0].onInteraction, undefined);
+  for (const [index, values] of [{ codex: { model: 'vision', access: 'full-access' } }, { codex: { mode: 'plan' } }, { codex: { effort: 'high' } }, { skillIds: [] }].entries()) {
+    const response = await f.post(request({ purpose: 'revision', requestId: `blocked-${index}`, ...values }));
+    assert.equal(response.status, 400);
+  }
+  assert.equal(calls.length, 1);
+});
+
 test('stop is request-scoped, duplicate requests cannot unlock a busy session, and new work proceeds after cancellation', async (t) => {
   const calls = []; let aborted = false;
   const runtime = { probe: async () => ({ state: 'ready' }), run(input) { calls.push(input); input.onEvent({ type: 'session', nativeSessionId: 'native-stop' }); input.onEvent({ type: 'progress', kind: 'status', text: 'Working' }); return new Promise((_, reject) => { input.signal.addEventListener('abort', () => { aborted = true; reject(new Error('aborted')); }, { once: true }); }); } };
@@ -138,6 +157,65 @@ test('rejects untrusted native IDs, images, bad content types and excessive cont
   assert.equal((await f.post(request({ prompt: 'x'.repeat(120001) }))).status, 413);
   assert.equal((await f.post(request(), undefined, { headers: { 'Content-Type': 'text/plain' } })).status, 415);
   assert.equal((await f.post(request({ workspaceId: undefined }))).status, 400); assert.equal(calls.length, 0);
+});
+
+test('Codex materializes exactly the submitted region images without base64 archives or history expansion', async t => {
+  const calls = []; const f = await fixture(t, simpleRuntime(calls));
+  const bytes = png(1_100_000), selected = region('selected', bytes), old = region('old');
+  const result = await events(await f.post(request({ context: [selected], images: [image(selected, bytes)], history: [{ ...history('old-request', [old]), evidenceIds: [] }] })));
+  assert.equal(result.at(-1).type, 'done');
+  assert.equal(calls[0].imagePaths.length, 1);
+  assert.equal(calls[0].imagePaths[0].evidenceId, selected.evidenceId);
+  const file = calls[0].imagePaths[0].path;
+  assert.deepEqual(await readFile(file), bytes);
+  assert.equal((await stat(file)).mode & 0o777, 0o400);
+  assert.equal((await stat(calls[0].cwd)).mode & 0o777, 0o500);
+  const manifestText = await readFile(join(calls[0].cwd, 'manifest.json'), 'utf8');
+  assert.doesNotMatch(manifestText, /data:image|dataUrl/);
+  assert.deepEqual(JSON.parse(manifestText).images, [{ evidenceId: selected.evidenceId, fileName: 'region-1.png' }]);
+  const [archive] = await readdir(join(f.stateDir, 'snapshots'));
+  assert.deepEqual(await readFile(join(f.stateDir, 'snapshots', archive, 'region-1.png')), bytes);
+  assert.doesNotMatch(await readFile(join(f.stateDir, 'snapshots', archive, 'manifest.json'), 'utf8'), /data:image|dataUrl/);
+  assert.match(calls[0].prompt, /image-evidence|对应图片已随本轮消息发送/);
+  const second = await events(await f.post(request({ requestId: 'request2', context: [], history: [] })));
+  assert.equal(second.at(-1).type, 'done');
+  assert.equal(calls[1].imagePaths, undefined);
+  assert.ok(!(await readdir(calls[1].cwd)).some(name => name.startsWith('region-')));
+  assert.deepEqual(await readFile(file), bytes);
+});
+
+test('native image validation rejects missing, extra, duplicate, altered, external and excessive image data before runtime', async t => {
+  const calls = []; const f = await fixture(t, simpleRuntime(calls)); const source = region(); const valid = image(source);
+  const cases = [
+    { context: [source] },
+    { context: [], images: [valid] },
+    { context: [source], images: [{ ...valid, path: '/private/file.png' }] },
+    { context: [source], images: [{ ...valid, dataUrl: 'https://example.com/image.png' }] },
+    { context: [source], images: [{ ...valid, dataUrl: 'data:image/png;base64,YQ==' }] },
+    { context: [source], images: [image(source, png(9))] },
+    { context: [source, region('second')], images: [valid, valid] },
+    { context: [source], images: [valid], connectionId: 'claude' },
+    { context: [source], images: [valid], connectionId: 'opencode' },
+  ];
+  for (const value of cases) assert.equal((await f.post(request(value))).status, 400);
+  const many = Array.from({ length: 5 }, (_, i) => region(`e${i}`));
+  assert.equal((await f.post(request({ context: many, images: many.map(value => image(value)) }))).status, 413);
+  const excessive = png(IMAGE_LIMITS.maxImageBytes + 1);
+  assert.equal((await f.post(request({ context: [region('large', excessive)], images: [image(region('large', excessive), excessive)] }))).status, 413);
+  assert.equal(calls.length, 0);
+  assert.ok(1_000_000 + MAX_IMAGE_BODY_BYTES < 46_000_000);
+});
+
+test('at most two run bodies are read concurrently before allocating image payloads', async t => {
+  const calls = []; const f = await fixture(t, simpleRuntime(calls));
+  const unfinished = [0, 1].map(() => {
+    const pending = httpRequest(`${f.url}/api/ai/agents/run`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    pending.on('error', () => {}); pending.write('{'); return pending;
+  });
+  t.after(() => unfinished.forEach(pending => pending.destroy()));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await f.post(request())).status, 429);
+  assert.equal(calls.length, 0);
 });
 
 test('session lock remains held until a cancelled native runtime actually exits', async (t) => {

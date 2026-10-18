@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-18",
+  "version": "0.1.5",
+  "suite": "tests/e2e/sidebar.spec.ts",
+  "result": "passed",
+  "tests": 7,
+  "unexpected": 0,
+  "flaky": 0,
+  "durationMs": 21967.059,
+  "scope": "Synthetic browser fixtures only; no real user data, native sessions, filesystem projects, model requests or installed application were used.",
+  "checks": [
+    "Clickable research navigation and nested board/draft entries include one shared SVG icon; nonclickable section labels remain text.",
+    "Native pointer drag from 240 to 500 px, keyboard increments/Home, separator aria values, double-click reset, collapse/expand and reload preserve width preference.",
+    "Writing content and unsent AI draft survive width adjustments, research changes and reload.",
+    "At 1440x900 and 1280x800, adaptive drag maximum leaves at least 320 px for the central column and 420 px for AI; opening AI after a wider sidebar causes no document overflow.",
+    "At 1024x800, a restored 1200 px preference fits inside a drawer capped by viewport minus 40 px; drag separator is absent and navigation closes after activation.",
+    "At 1440x900, 1280x800 and 1024x800, trusted pointer gestures set AI panel widths to 800, 700 and 650 px, beyond old 520/340px and 42vw limits. End uses available space, never reducing the central column below 320 px.",
+    "AI panel width survives reload and research switching. Keyboard increments, Shift increments, Home, End, double-click reset, mode-specific minimums and ARIA values match actual rendered widths.",
+    "Shrinking a window with an existing 800 px panel preference retains at least 320 px for the central column. Collapsing the left navigation allows widening the right panel to 900 px at a 1280 px window.",
+    "All right-panel screenshots use a deterministic stored demo answer and an unsent follow-up draft. No generation request was sent."
+  ],
+  "evidence": [
+    "sidebar-writing-1440.png",
+    "sidebar-ai-1440.png",
+    "sidebar-ai-1280.png",
+    "sidebar-drawer-1024.png",
+    "right-panel-1440.png",
+    "right-panel-1280.png",
+    "right-panel-1024.png"
+  ]
+}

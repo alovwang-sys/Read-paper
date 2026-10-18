@@ -101,7 +101,7 @@
   overflow: auto;
   white-space: pre-wrap;
 }
-.excerpts-view { height: 100%; overflow: auto; padding: 30px 36px 100px; box-sizing: border-box; position: relative; }
+.excerpts-view { min-height: 100%; padding: 30px 36px 100px; box-sizing: border-box; position: relative; }
 .excerpts-heading { display: flex; align-items: center; justify-content: space-between; color: var(--text); }
 .excerpts-heading h1 { margin: 0; font-size: 25px; font-weight: 600; }
 .excerpts-heading p { font-size: 13px; margin: 9px 0 22px; }

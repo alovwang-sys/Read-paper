@@ -39,7 +39,7 @@ async function stored(page: Page) {
 test('导出、校验预览、明确替换和刷新恢复，原资料与文件留有原子副本', async ({ page }, testInfo) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '检索增强，何时有效？', exact: true })).toBeVisible();
-  await page.getByRole('main').getByRole('button', { name: /Adaptive Retrieval/ }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true }).click();
   await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
   await expect(page.getByRole('main')).toContainText('文本已就绪');
   await page.getByRole('button', { name: '主区返回', exact: true }).click();

@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { BookOpen, Layers, Quote, Sparkles } from 'lucide-react';
 import { generateCardDraftFromExcerpts, demoResponder } from '../../services/ai';
-import { useWorkspace } from '../../services/workspace';
+import { usePaneViewState, useWorkspace } from '../../services/workspace';
 import { EvidenceList } from './EvidenceList';
 import './evidence.css';
 
 export function ExcerptsView({ researchId }: { researchId: string }) {
   const { data, loaded, loadError, actions } = useWorkspace();
-  const [filter, setFilter] = useState<'all' | 'unused' | 'used'>('all');
-  const [showDismissed, setShowDismissed] = useState(false);
+  const [filter, setFilter] = usePaneViewState<'all' | 'unused' | 'used'>('filter', 'all');
+  const [showDismissed, setShowDismissed] = usePaneViewState<boolean>('showDismissed', false);
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -33,7 +33,7 @@ export function ExcerptsView({ researchId }: { researchId: string }) {
     finally { setGenerating(false); }
   }
   return <section className="excerpts-view" aria-label="研究摘录">
-    <div className="excerpts-heading"><div><h1>摘录</h1><p className="muted">留下原文，再把理解写成自己的卡片。</p></div><Quote size={24} /></div>
+    <div className="excerpts-heading"><div><h1>摘录</h1></div><Quote size={24} /></div>
     <div className="excerpts-filters" role="group" aria-label="摘录筛选">
       {([['all', '全部'], ['unused', '还没用到'], ['used', '已用于卡片']] as const).map(([value, label]) => <button className={`button ${filter === value ? 'active' : ''}`} key={value} aria-pressed={filter === value} onClick={() => { setFilter(value); setSelected([]); }}>{label}</button>)}
       {filter === 'all' && <label className="excerpts-show-dismissed"><input type="checkbox" checked={showDismissed} onChange={event => setShowDismissed(event.target.checked)} />显示标为不需要的摘录</label>}

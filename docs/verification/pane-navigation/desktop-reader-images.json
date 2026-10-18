@@ -1,0 +1,56 @@
+{
+  "executablePath": "/Users/amos/.codex/worktrees/source-intake/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "protocol": "papertrail://app/",
+  "mockNativeRequests": 1,
+  "actualModelCalls": 0,
+  "recordingStarted": false,
+  "continuousScrollReachedPage": 2,
+  "paneLayoutRetainedAfterRestart": true,
+  "soleTabEdgeDrag": {
+    "direction": "down",
+    "alt": false,
+    "trusted": true,
+    "copyPreview": true
+  },
+  "citationCreatesSeparateView": true,
+  "ordinaryReadingPositionsRetained": true,
+  "anchoredViewCloneAndMoveRetainOffset": true,
+  "sourceHighlightRetainedAfterCloneAndMove": true,
+  "readersAfterRestart": [
+    {
+      "viewId": "view-4656872f-ad2a-406b-b58c-c8296748d2ab",
+      "documentId": "paper-a",
+      "reading": {
+        "pageIndex": 1,
+        "scale": 1,
+        "offset": 0.01161103047895503
+      }
+    },
+    {
+      "viewId": "view-d9edb21c-9435-4611-85db-2d46bdbb90c3",
+      "documentId": "paper-a",
+      "reading": {
+        "pageIndex": 1,
+        "scale": 1,
+        "offset": 0.2942340678189735
+      }
+    },
+    {
+      "viewId": "view-3012f915-cb8e-4c51-a211-7333f3e7d11c",
+      "documentId": "paper-a",
+      "reading": {
+        "pageIndex": 2,
+        "scale": 1.25,
+        "offset": 0.0007916611690193475
+      }
+    }
+  ],
+  "model": "vision",
+  "evidencePageIndex": 1,
+  "imageBytes": 15120,
+  "imageHash": "9e749fd90c72e0b753d9865bb9bb48005101dddbb379af3fd6816c2e4144e7d4",
+  "screenshotMatchesFrozenSource": true,
+  "imageAssetRetainedAfterRestart": true,
+  "nextDraftRetained": true,
+  "pageErrors": []
+}

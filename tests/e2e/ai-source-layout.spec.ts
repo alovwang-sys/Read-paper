@@ -18,10 +18,10 @@ async function state(page: Page): Promise<WorkspaceData> {
   });
 }
 async function originalInMain(page: Page) {
-  await expect(main(page).getByRole('region', { name: 'PDF 阅读器 主区' })).toBeVisible();
+  await expect(main(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toBeVisible();
   await expect(main(page).getByRole('spinbutton').first()).toHaveValue('3');
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
-  await expect(main(page).locator('canvas')).toBeVisible();
+  await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(panel(page).getByRole('tab', { name: 'AI', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(panel(page).getByRole('region', { name: /PDF 阅读器/ })).toHaveCount(0);
   expect((await state(page)).sessions['research-a'].anchor?.evidenceId).toBe('evidence-a');
@@ -44,8 +44,8 @@ async function setup(page: Page) {
   await page.goto('/');
   await expect.poll(async () => (await state(page))?.documents['paper-a']?.title).toBeTruthy();
   const title = (await state(page)).documents['paper-a'].title;
-  await main(page).getByRole('button', { name: new RegExp(title) }).click();
-  await expect(main(page).locator('canvas')).toBeVisible();
+  await main(page).getByRole('button', { name: title, exact: true }).click();
+  await expect(main(page).locator('canvas').first()).toBeVisible();
   await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
   await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
   await panel(page).locator('[data-evidence-id="evidence-a"]').getByRole('button', { name: '加入 AI', exact: true }).click();
@@ -74,7 +74,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue(pendingInput);
     await expect(turn.locator('.ai-answer')).toContainText('这项结论依赖证据');
     expect(await chat.evaluate(element => element.scrollTop)).toBeCloseTo(scrollTop, 0);
-    const documentBounds = (await main(page).locator('canvas').boundingBox())!;
+    const documentBounds = (await main(page).locator('canvas').first().boundingBox())!;
     const panelBounds = (await panel(page).boundingBox())!;
     expect(documentBounds.x + documentBounds.width).toBeLessThanOrEqual(panelBounds.x + 1);
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');

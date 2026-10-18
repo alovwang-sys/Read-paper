@@ -1,0 +1,38 @@
+.source-recommendations { margin: 16px 0 12px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #f8faf9; min-width: 0; }
+.source-recommendations-heading { display: flex; align-items: center; gap: 6px; color: #59766a; font-size: 12px; }
+.source-recommendations-heading span { margin-left: auto; color: var(--muted); }
+.source-recommendation { padding: 11px 0; border-bottom: 1px solid #e7ede9; min-width: 0; }
+.source-recommendation-title { display: block; font-size: 12px; font-weight: 550; line-height: 1.6; overflow-wrap: anywhere; }
+.source-recommendation small { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.source-recommendation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 9px; }
+.source-recommendation-actions button { font-size: 12px; }
+.source-collect-button { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #cbdcd3; border-radius: 5px; padding: 4px 7px; background: #eef5f1; color: #416e58; }
+.source-collected { display: inline-flex; align-items: center; gap: 4px; color: #587d68; font-size: 12px; }
+.source-recommendations-toggle { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 12px; }
+.source-recommendations-toggle .is-expanded { transform: rotate(180deg); }
+.source-recommendations-footnote { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
+.source-preview, .document-detail { overflow-wrap: anywhere; }
+.source-preview-kind { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 24px 0 8px; color: #557563; font-size: 12px; }
+.source-preview-kind span { color: var(--muted); }
+.source-preview h1 { line-height: 1.4; }
+.source-preview-byline { color: var(--muted); line-height: 1.7; }
+.source-preview-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 24px; }
+.source-preview-toolbar a { display: inline-flex; align-items: center; gap: 5px; }
+.source-preview > .muted { font-size: 12px; line-height: 1.8; }
+.source-intake-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 14px 16px; margin: 20px 0; border: 1px solid #dce6df; border-radius: 7px; background: #f6f9f6; font-size: 12px; line-height: 1.7; }
+.source-intake-status p { flex-basis: 100%; margin: 0; }
+.source-intake-status span { color: var(--muted); font-size: 12px; }
+.source-abstract, .source-preview-discovery, .source-research-record { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); }
+.source-abstract h2, .source-preview-discovery h2, .source-research-record h2 { margin: 0 0 12px; font-size: 14px; font-weight: 550; }
+.source-abstract p { font-size: 13px; line-height: 1.9; white-space: pre-wrap; }
+.source-abstract a { font-size: 12px; }
+.source-preview-recommendation { white-space: pre-wrap; font-size: 13px; line-height: 1.8; }
+.source-research-record textarea { min-height: 90px; resize: vertical; }
+.source-discovery-list { display: grid; gap: 8px; margin-top: 16px; }
+.source-discovery { padding: 12px 14px; border: 1px solid #e3eae5; border-radius: 6px; background: #fafbf9; font-size: 12px; line-height: 1.7; }
+.source-discovery p { margin: 5px 0; white-space: pre-wrap; }
+.source-discovery .source-discovery-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.source-discovery small { color: var(--muted); font-size: 12px; }
+.document-detail .source-acquisition-status { margin-bottom: 18px; }
+
+.source-recommendation-actions button { min-height: 36px; }

@@ -1,0 +1,84 @@
+{
+  "browser": "Chromium via Playwright",
+  "fixture": "synthetic createSeed, mocked agent/project endpoints",
+  "viewportSizes": [
+    [
+      1440,
+      900
+    ],
+    [
+      1280,
+      800
+    ],
+    [
+      1024,
+      800
+    ]
+  ],
+  "stats": {
+    "startTime": "2026-10-18T15:07:31.377Z",
+    "duration": 19611.235,
+    "expected": 7,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "主页、列表、PDF和卡片共用窗格；导航只改变目标并在三尺寸可操作",
+      "ok": true,
+      "status": [
+        "expected"
+      ],
+      "durationMs": 7354
+    },
+    {
+      "title": "卡片、白板、文稿和无全文资料从列表可直接在新分屏打开",
+      "ok": true,
+      "status": [
+        "expected"
+      ],
+      "durationMs": 1506
+    },
+    {
+      "title": "同篇PDF已有两处阅读位置时，定位引用新开视图并可返回",
+      "ok": true,
+      "status": [
+        "expected"
+      ],
+      "durationMs": 3358
+    },
+    {
+      "title": "未收录来源预览可分屏、刷新恢复；收录前不创建资料",
+      "ok": true,
+      "status": [
+        "expected"
+      ],
+      "durationMs": 1777
+    },
+    {
+      "title": "关闭和收拢可撤销，阅读进度继续保留，空窗格仍能打开资料和分屏",
+      "ok": true,
+      "status": [
+        "expected"
+      ],
+      "durationMs": 2433
+    },
+    {
+      "title": "真实拖动自身边缘：一个或多个标签均保留来源并另开，不需要Option",
+      "ok": true,
+      "status": [
+        "expected"
+      ],
+      "durationMs": 1531
+    },
+    {
+      "title": "真实拖动资料行到新窗格，列表仍留原位且资料没有复制或额外关联",
+      "ok": true,
+      "status": [
+        "expected"
+      ],
+      "durationMs": 1204
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+@container workspace-pane (max-width: 480px) {
+  .workspace-pane-group .page-content { padding: 24px 16px; }
+  .workspace-pane-group .library-heading { align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  .workspace-pane-group .library-heading h1 { margin: 0; }
+  .workspace-pane-group .library-heading .primary { margin: 0; }
+  .workspace-pane-group .library-heading .button-row { flex-wrap: wrap; gap: 7px; }
+  .workspace-pane-group .library-filters { gap: 8px; margin-bottom: 24px; }
+  .workspace-pane-group .library-filters > input, .workspace-pane-group .library-filters .search-input { flex: 1 1 100%; width: 100%; min-width: 0; }
+  .workspace-pane-group .library-filters select { max-width: 100%; }
+  .workspace-pane-group .paper-row { padding: 14px 12px; gap: 10px; min-height: 0; }
+  .workspace-pane-group .paper-details strong { white-space: normal; overflow-wrap: break-word; }
+  .workspace-pane-group .paper-details small { line-height: 1.6; }
+  .workspace-pane-group .overview .paper-row > svg { display: none; }
+  .workspace-pane-group .overview .recent-activity .paper-row { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .workspace-pane-group .question-box { padding: 14px 12px; gap: 9px; }
+  .workspace-pane-group .question-box > svg { display: none; }
+  .workspace-pane-group .conclusion-issue { flex-wrap: wrap; }
+  .workspace-pane-group .library-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .workspace-pane-group .library-card { padding: 15px; min-height: 0; }
+  .workspace-pane-group .library-card-meta { margin-bottom: 12px; }
+  .workspace-pane-group .library-card-title { min-width: 0; }
+  .workspace-pane-group .library-card-title h3 { overflow-wrap: break-word; }
+  .workspace-pane-group .library-card-footer { gap: 8px; flex-wrap: wrap; }
+}

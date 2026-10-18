@@ -9,6 +9,8 @@ import { createAgentHandler } from './agents.mjs';
 
 const identity = { workspaceId: 'workspace', researchId: 'research', conversationId: 'chat', requestId: 'request', connectionId: 'codex' };
 const runBody = { ...identity, purpose: 'chat', prompt: 'Test', context: [], history: [], codex: {}, skillIds: [] };
+// Leave time for real filesystem setup under parallel tests, then wait past this same deadline.
+const interactiveTimeoutMs = 400;
 async function fixture(t, runtime, timeoutMs = 3000) {
   const stateDir = await mkdtemp(join(tmpdir(), 'read-paper-interactions-'));
   let handler;
@@ -69,9 +71,9 @@ test('question time does not spend the model timeout and malformed answers canno
   const f = await fixture(t, { async run(input) {
     answer = await input.onInteraction({ kind: 'question', title: 'Choose a focus', questions: [{ id: 'focus', question: 'Which focus?', options: [{ label: 'Evidence' }] }] });
     return { nativeSessionId: 'native', body: 'Answered' };
-  } }, 40);
+  } }, interactiveTimeoutMs);
   const { reader, event } = await firstInteraction(await f.post(runBody));
-  await new Promise(resolve => setTimeout(resolve, 90));
+  await new Promise(resolve => setTimeout(resolve, interactiveTimeoutMs * 2 + 10));
   const body = { ...identity, interactionId: event.interaction.id };
   assert.equal((await f.post({ ...body, reply: { answers: { other: ['Evidence'] } } }, 'respond')).status, 400);
   assert.equal((await f.post({ ...body, reply: { answers: { focus: ['My own focus'] } } }, 'respond')).status, 200);
@@ -96,7 +98,7 @@ test('answering one parallel approval keeps the timeout paused for remaining use
   const f = await fixture(t, { async run(input) {
     await Promise.all(['First', 'Second'].map(title => input.onInteraction({ kind: 'approval', title })));
     return { nativeSessionId: 'native', body: 'Both answered' };
-  } }, 40);
+  } }, interactiveTimeoutMs);
   const response = await f.post(runBody), reader = response.body.getReader(); let text = '';
   let interactions = [];
   while (interactions.length < 2) {
@@ -105,7 +107,7 @@ test('answering one parallel approval keeps the timeout paused for remaining use
   }
   const reply = event => ({ ...identity, interactionId: event.interaction.id, reply: { decision: 'deny' } });
   assert.equal((await f.post(reply(interactions[0]), 'respond')).status, 200);
-  await new Promise(resolve => setTimeout(resolve, 90));
+  await new Promise(resolve => setTimeout(resolve, interactiveTimeoutMs * 2 + 10));
   assert.equal((await f.post(reply(interactions[1]), 'respond')).status, 200);
   assert.match(await rest(reader), /"type":"done"/);
 });

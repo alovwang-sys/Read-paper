@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => {
   } = { scope: { kind: 'library' }, documents: {} };
   return {
     data,
+    generation: 0,
+    paneId: 'origin-pane',
     putAsset: vi.fn(),
+    flushSave: vi.fn().mockResolvedValue(undefined),
     openResource: vi.fn(),
     associateDocument: vi.fn(),
     notice: vi.fn(),
@@ -30,11 +33,14 @@ vi.mock('../../src/services/workspace', () => ({
     scope.kind === 'library' ? 'library' : scope.researchId,
   workspace: {
     getState: () => ({ data: mocks.data }),
+    getSession: () => ({ layout: { focusedPaneId: mocks.paneId } }),
+    getGeneration: () => mocks.generation,
     updateData: (change: (data: typeof mocks.data) => void) =>
       change(mocks.data),
     associateDocument: mocks.associateDocument,
     openResource: mocks.openResource,
     notice: mocks.notice,
+    flushSave: mocks.flushSave,
   },
 }));
 import {
@@ -48,6 +54,7 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.generation = 0; mocks.paneId = 'origin-pane';
   mocks.putAsset.mockResolvedValue(undefined);
   mocks.data.documents = {};
   mocks.data.scope = { kind: 'library' };
@@ -110,6 +117,27 @@ describe('PDF import boundaries', () => {
     );
   });
 
+  it('captures the original pane before file work and does not redirect to later focus', async () => {
+    let release!: () => void;
+    mocks.putAsset.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
+    const importing = importPdf(new File(['%PDF-1.7\npane-target'], 'pane.pdf'), { kind: 'library' });
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    mocks.paneId = 'later-focus'; release();
+    const id = await importing;
+    expect(mocks.openResource).toHaveBeenCalledWith({ kind: 'document', id }, { scope: { kind: 'library' }, target: 'main', paneId: 'origin-pane' });
+  });
+
+  it('does not write old imported records after workspace restore during asset storage', async () => {
+    let release!: () => void;
+    mocks.putAsset.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
+    const importing = importPdf(new File(['%PDF-1.7\nold-generation'], 'old.pdf'), { kind: 'library' });
+    const rejected = expect(importing).rejects.toThrow('工作区已重新载入');
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    mocks.generation++; release(); await rejected;
+    expect(mocks.data.documents).toEqual({});
+    expect(mocks.openResource).not.toHaveBeenCalled();
+  });
+
   it('attaches a first PDF without changing a stub ID or edited metadata', async () => {
     mocks.data.documents['document-stub'] = { id: 'document-stub', title: 'My title', authors: 'My author', year: '2026', identifiers: { doi: '10.1234/test' }, readingStatus: 'skimmed', textStatus: 'pending' };
     const result = await attachPdf('document-stub', new File(['%PDF-1.7\nattach fixture'], 'fulltext.pdf'));
@@ -143,6 +171,21 @@ describe('PDF import boundaries', () => {
     expect(mocks.data.documents.stub).toEqual(before);
     await expect(attachPdf('stub', file)).resolves.toEqual({});
     expect(mocks.data.documents.stub.filename).toBe('retry.pdf');
+  });
+
+  it('does not report success before the document record is durably saved', async () => {
+    mocks.data.documents.stub = { id: 'stub', title: 'Stub', authors: '', year: '', readingStatus: 'unread', textStatus: 'pending' };
+    mocks.flushSave.mockRejectedValueOnce(new Error('资料记录保存失败'));
+    await expect(attachPdf('stub', new File(['%PDF-1.7\ncheckpoint'], 'checkpoint.pdf'))).rejects.toThrow('资料记录保存失败');
+    expect(mocks.putAsset).toHaveBeenCalled();
+    expect(mocks.notice).not.toHaveBeenCalled();
+  });
+
+  it('rejects an explicitly conflicting PDF DOI before storing its bytes', async () => {
+    mocks.data.documents.stub = { id: 'stub', title: 'Stub', authors: '', year: '', identifiers: { doi: '10.1000/expected' }, readingStatus: 'unread', textStatus: 'pending' };
+    mocks.getDocument.mockImplementationOnce(() => ({ promise: Promise.resolve({ numPages: 1, loadingTask: { destroy: mocks.destroy }, getMetadata: async () => ({ info: { DOI: '10.1000/another' } }) }), destroy: mocks.destroy }));
+    await expect(attachPdf('stub', new File(['%PDF-1.7\nwrong'], 'wrong.pdf'))).rejects.toThrow(/DOI.*不一致/);
+    expect(mocks.putAsset).not.toHaveBeenCalled();
   });
 
   it('imports files sequentially, counts reuse and keeps valid files after an individual failure', async () => {

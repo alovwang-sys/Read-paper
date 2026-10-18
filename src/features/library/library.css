@@ -26,3 +26,14 @@
 .source-conflict { margin-top: 22px; padding: 20px; border: 1px solid #e4d4b3; border-radius: 8px; background: #fffaf0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .source-conflict h2 { margin-top: 0; font-size: 16px; }
 @media (max-width: 700px) { .source-row { gap: 9px; padding: 14px 10px; }.source-row > .paper-icon { display: none; }.source-target { display: grid; }.source-status { max-width: 72px; } }
+@container workspace-pane (max-width: 480px) {
+  .workspace-pane-group .source-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .workspace-pane-group .source-row > .paper-icon { display: none; }
+  .workspace-pane-group .source-row .paper-details { grid-column: 1 / -1; }
+  .workspace-pane-group .source-row .source-title { overflow-wrap: break-word; }
+  .workspace-pane-group .source-row .source-status { grid-column: 1; justify-self: start; }
+  .workspace-pane-group .source-row > .resource-open-menu { grid-column: 2; justify-self: end; margin-left: 0; }
+  .workspace-pane-group .source-row-actions { flex-wrap: wrap; gap: 8px 14px; }
+  .workspace-pane-group .source-fulltext-drop { min-height: 160px; padding: 18px; }
+  .workspace-pane-group .document-detail .source-preview-toolbar { gap: 10px; }
+}

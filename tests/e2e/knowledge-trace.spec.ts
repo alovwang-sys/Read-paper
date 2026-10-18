@@ -52,11 +52,11 @@ test('从结论找依据、人工核对和补引用，出处链保留并定位�
   await expect(main(page).getByText('文稿里的每处引用都能回到原文。')).toBeVisible();
 });
 
-test('无效正文引用可提示修复，不写入损坏的出处链状态；页面返回同步中央首标签', async ({ page }) => {
+test('无效正文引用可提示修复，不写入损坏的出处链状态；页面返回恢复当前窗格标签', async ({ page }) => {
   await page.goto('/');
   await openResearchPage(page, '资料'); await openResearchPage(page, '摘录');
   await page.getByRole('button', { name: '主区返回', exact: true }).click();
-  await expect(page.getByRole('tablist', { name: '中央资源标签' }).getByRole('tab', { name: '资料', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(main(page).getByRole('tablist', { name: '窗格 1 标签' }).getByRole('tab', { name: '资料', exact: true })).toHaveAttribute('aria-selected', 'true');
   await openResearchPage(page, '检索增强的适用条件');
   await main(page).getByLabel('结论正文').fill('需要修复的引用 [99]。');
   await main(page).getByRole('button', { name: '预览引用' }).click();
@@ -71,7 +71,8 @@ test('三种宽度覆盖主PDF＋卡片、白板＋右原文、文稿＋AI，并
   for (const [width, height] of [[1440, 900], [1280, 800], [1024, 800]]) {
     await page.setViewportSize({ width, height });
     await openResearchPage(page, '卡片');
-    await main(page).getByRole('button', { name: '相关性是检索收益的前提', exact: true }).click();
+    await main(page).getByRole('button', { name: '相关性是检索收益的前提 的更多操作', exact: true }).click();
+    await page.getByRole('menu', { name: '打开位置', exact: true }).getByRole('menuitem', { name: '在右侧预览', exact: true }).click();
     await openResearchPage(page, '资料');
     await main(page).getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true }).click();
     await expect(main(page).locator('canvas').first()).toBeVisible();

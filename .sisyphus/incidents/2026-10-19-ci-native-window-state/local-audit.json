@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-19",
+  "platform": "darwin-arm64",
+  "runtimeVersion": "0.1.5",
+  "command": "npx playwright test --config playwright.desktop.config.ts tests/desktop/fullscreen.spec.ts --repeat-each=3 --output /tmp/papertrail-fullscreen-green-20261019",
+  "exitCode": 0,
+  "passed": 6,
+  "durationSeconds": 30.2,
+  "records": [
+    {
+      "initialState": "default",
+      "verifiedRuns": 3,
+      "initialFrame": {
+        "fullScreen": false,
+        "normal": true,
+        "maximized": false,
+        "minimized": false,
+        "closable": true,
+        "minimizable": true,
+        "fullScreenable": true,
+        "frameInset": 32,
+        "bounds": {
+          "x": 560,
+          "y": 250,
+          "width": 1440,
+          "height": 940
+        }
+      },
+      "restoredFrame": {
+        "fullScreen": false,
+        "normal": true,
+        "maximized": false,
+        "minimized": false,
+        "closable": true,
+        "minimizable": true,
+        "fullScreenable": true,
+        "frameInset": 32,
+        "bounds": {
+          "x": 560,
+          "y": 250,
+          "width": 1440,
+          "height": 940
+        }
+      },
+      "nativeFullscreenEventsVerified": true,
+      "refreshRetainsExitButton": true,
+      "exitButtonWorks": true,
+      "shortcutWorks": true,
+      "settingsIPCRejected": true,
+      "nextDraftRetained": true,
+      "actualModelCalls": 0,
+      "pageErrors": [],
+      "keyboardAudit": {
+        "entered": 1,
+        "left": 1,
+        "keyDownCount": 2
+      }
+    },
+    {
+      "initialState": "maximized",
+      "verifiedRuns": 3,
+      "initialFrame": {
+        "fullScreen": false,
+        "normal": false,
+        "maximized": true,
+        "minimized": false,
+        "closable": true,
+        "minimizable": true,
+        "fullScreenable": true,
+        "frameInset": 32,
+        "bounds": {
+          "x": 0,
+          "y": 30,
+          "width": 2560,
+          "height": 1321
+        }
+      },
+      "restoredFrame": {
+        "fullScreen": false,
+        "normal": false,
+        "maximized": true,
+        "minimized": false,
+        "closable": true,
+        "minimizable": true,
+        "fullScreenable": true,
+        "frameInset": 32,
+        "bounds": {
+          "x": 0,
+          "y": 30,
+          "width": 2560,
+          "height": 1321
+        }
+      },
+      "nativeFullscreenEventsVerified": true,
+      "refreshRetainsExitButton": true,
+      "exitButtonWorks": true,
+      "shortcutWorks": true,
+      "settingsIPCRejected": true,
+      "nextDraftRetained": true,
+      "actualModelCalls": 0,
+      "pageErrors": [],
+      "keyboardAudit": {
+        "entered": 1,
+        "left": 1,
+        "keyDownCount": 2
+      }
+    }
+  ]
+}
