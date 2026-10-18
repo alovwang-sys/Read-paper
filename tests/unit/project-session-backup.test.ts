@@ -9,7 +9,7 @@ import type { NativeSessionSnapshot, WorkspaceData } from '../../src/domain/type
 
 vi.mock('../../src/data/storage', async importOriginal => ({
   ...await importOriginal<typeof import('../../src/data/storage')>(),
-  loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), restoreWorkspaceBackup: vi.fn(),
+  loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn().mockResolvedValue(undefined), restoreWorkspaceBackup: vi.fn(),
 }));
 const directory = { id: 'binding-original', projectId: 'project-original', path: '/fixture/project-original' };
 const conversationId = 'conversation-research-a';
@@ -34,6 +34,7 @@ beforeEach(async () => {
   vi.mocked(saveWorkspace).mockReset().mockResolvedValue(undefined);
   vi.mocked(restoreWorkspaceBackup).mockReset().mockImplementation(async value => { vi.mocked(loadWorkspace).mockResolvedValue(structuredClone(value)); });
   await workspace.load();
+  vi.mocked(saveWorkspace).mockClear();
 });
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 

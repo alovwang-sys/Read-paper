@@ -1,0 +1,35 @@
+{
+  "packageVersion": "0.1.3",
+  "versionGuard": "Electron app.getVersion() matched source package.json in desktop.spec.ts",
+  "executablePath": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "asarSha256": "89b2d71c720c8cbea36e7f2291d8bd9fff3dc2f2543e9cc70dffb964b3fa98b5",
+  "productCodeUnchangedDuringDesktopRuns": true,
+  "checksEventuallyPassed": 7,
+  "initialRun": {
+    "passed": 6,
+    "failed": 1,
+    "failure": "New ordinary-view offset comparison observed one-pixel rounding: 0 to 0.0007916611690193475 at 125% zoom.",
+    "testOnlyCalibration": "pageIndex and scale remain exact; offset tolerance .002 matches existing browser geometry checks; restart layout and image/hash assertions remain exact."
+  },
+  "readerRetry": {
+    "startTime": "2026-10-18T15:15:42.755Z",
+    "duration": 9236.338,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "passedChecks": [
+    "isolated packaged runtime, version, settings encryption, huge final edit and normal quit/restart",
+    "save error keeps window and editing buffer; retry allows exit",
+    "quit during generation retains partial response and research",
+    "unresponsive renderer retains app until explicit force choice",
+    "clipboard permission boundaries",
+    "native fullscreen entry/exit, refresh, Control+Meta+f, standard window frame",
+    "trusted native own-edge drag, ordinary and citation views, region PNG/hash, scope, saved image and next draft after normal quit/restart"
+  ],
+  "readerEvidence": "desktop-reader-images.json",
+  "fullscreenEvidence": "desktop-fullscreen.json",
+  "privateData": "All native tests use temporary user data; the real installed app and its user data were not opened or changed by these tests.",
+  "testApplicationsStillRunning": []
+}

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { createSeed } from '../../src/data/seed';
 import { migrateWorkspace } from '../../src/data/migrations';
+import { ensurePaneLayout, paneGroups, syncPaneSession } from '../../src/services/panes';
 import { contentHash } from '../../src/data/storage';
 import { hasFullText } from '../../src/domain/knowledge';
 import type { CardProvenance, ContextSnapshot, RegionSource } from '../../src/domain/types';
@@ -40,11 +41,42 @@ async function editWorkspace(blob: Blob, edit: (data: ReturnType<typeof createSe
 afterEach(() => vi.unstubAllGlobals());
 
 describe('完整工作区备份', () => {
+  it('多窗布局与同篇独立视图、放大状态完整往返，不按文献去重', async () => {
+    const { data, assets } = await fixture();
+    const session = data.sessions['research-a'];
+    const layout = ensurePaneLayout(session, 'research-a');
+    const first = paneGroups(layout.root)[0];
+    const view = { id: 'backup-source-view', ref: { kind: 'document' as const, id: 'paper-a' }, reading: { pageIndex: 1, scale: 1.25, offset: .37 } };
+    first.tabs.push(view); first.activeTabId = view.id;
+    layout.root = { kind: 'split', id: 'backup-split', axis: 'column', ratio: .63, first,
+      second: { kind: 'group', id: 'backup-second', tabs: [{ ...structuredClone(view), id: 'backup-copy-view', reading: { pageIndex: 2, scale: .75, offset: .66 } }], activeTabId: 'backup-copy-view' } };
+    layout.focusedPaneId = 'backup-second'; layout.zoomedPaneId = first.id;
+    const normalized = migrateWorkspace(data);
+    const restored = await readWorkspaceBackup(await createWorkspaceBackup(data, assets));
+    expect(restored.data).toEqual(normalized);
+    expect(paneGroups(restored.data.sessions['research-a'].layout!.root).flatMap(group => group.tabs).filter(tab => tab.ref.id === 'paper-a')).toHaveLength(2);
+  });
+  it('无全文资料可对照和备份，迁移移除无效的界面阅读位置而保留资料', async () => {
+    const { data, assets } = await fixture();
+    data.sessions['research-a'].mainSplit = { layout: 'vertical', ref: { kind: 'document', id: 'paper-stub' } };
+    data.sessions['research-a'].readers['main-secondary:paper-stub'] = { pageIndex: 0, scale: 1 };
+    const normalized = migrateWorkspace(data);
+    expect(normalized.sessions['research-a'].readers['main-secondary:paper-stub']).toBeUndefined();
+    const restored = await readWorkspaceBackup(await createWorkspaceBackup(normalized, assets));
+    expect(restored.data.sessions['research-a'].layout).toEqual(normalized.sessions['research-a'].layout);
+    expect(paneGroups(restored.data.sessions['research-a'].layout!.root)[1].tabs[0].ref).toEqual({ kind: 'document', id: 'paper-stub' });
+    expect(restored.data.documents['paper-stub']).toEqual(normalized.documents['paper-stub']);
+  });
   it('无损往返全部资料、阅读位置、未发送内容和 PDF 字节，不改写输入', async () => {
     const { data, assets } = await fixture();
     data.cards['card-a'].body = '迁移时保留的编辑内容';
+    data.documents['paper-a'].abstract = { text: '带有来源的作者摘要', url: 'https://example.org/paper', retrievedAt: '2026-10-17T00:00:00Z' };
+    data.researches['research-a'].sourceRecords = { 'paper-a': { note: '仅研究A的收录备注', discoveries: [{ url: 'https://example.org/paper', kind: 'ai', requestId: 'original-turn', recommendation: 'AI 推荐段落快照', createdAt: '2026-10-17T00:00:00Z' }] } };
+    data.sessions['research-a'].sourcePreview = { candidate: { url: 'https://example.org/another', title: '尚未收录的预览', kind: 'web' } };
     data.conversations['conversation-research-a'].input = '尚未发送的问题';
-    data.sessions['research-a'].readers['main:paper-a'] = { pageIndex: 2, scale: 1.5 };
+    data.sessions['research-a'].readers['main:paper-a'] = { pageIndex: 2, scale: 1.5, offset: 0.6 };
+    data.sessions['research-a'].readers['main-secondary:paper-a'] = { pageIndex: 0, scale: 0.8, offset: 0.3 };
+    data.sessions['research-a'].mainSplit = { layout: 'horizontal', ref: { kind: 'card', id: 'card-a' } };
     data.sessions['research-a'].viewports['board-a'] = { x: 30, y: -40, scale: 0.75 };
     const original = structuredClone(data);
     const backup = await createWorkspaceBackup(data, assets);
@@ -272,4 +304,35 @@ describe('完整工作区备份', () => {
     }
     await expect(readWorkspaceBackup(new Blob([forged as Uint8Array<ArrayBuffer>]))).rejects.toThrow(/原始 ZIP/);
   });
+});
+
+it('统一窗格备份往返保留列表筛选、未收录预览和独立白板视口，资产只保存一份', async () => {
+  const { data: initial, assets } = await fixture();
+  const data = migrateWorkspace(initial), session = data.sessions['research-a'];
+  const group = paneGroups(session.layout!.root)[0];
+  group.tabs.push(
+    { id: 'source-list-view', ref: { kind: 'researchView', id: 'sources' }, viewState: { query: 'Retrieval', filter: 'reading', scrollTop: 240 } },
+    { id: 'preview-view', ref: { kind: 'sourcePreview', id: 'preview-only' }, preview: { candidate: { kind: 'paper', url: 'https://example.org/unsaved', title: '尚未收录的来源' } } },
+    { id: 'board-view-a', ref: { kind: 'board', id: 'board-a' }, boardViewport: { x: 20, y: 300, scale: 1.25 } },
+    { id: 'board-view-b', ref: { kind: 'board', id: 'board-a' }, boardViewport: { x: 450, y: 30, scale: 0.8 } },
+  );
+  group.activeTabId = 'preview-view'; syncPaneSession(session);
+  const before = structuredClone(data);
+  const restored = await readWorkspaceBackup(await createWorkspaceBackup(data, assets));
+  expect(restored.data.sessions['research-a'].layout).toEqual(before.sessions['research-a'].layout);
+  expect(restored.data.documents).toEqual(before.documents);
+  expect(restored.data.researches['research-a'].documentIds).toEqual(before.researches['research-a'].documentIds);
+  expect(restored.assets).toHaveLength(assets.length);
+  expect(data).toEqual(before);
+});
+
+it('拒绝备份恢复中的跨范围页面和带凭据的来源预览', async () => {
+  const { data: initial } = await fixture();
+  const data = migrateWorkspace(initial);
+  const library = paneGroups(data.sessions.library.layout!.root)[0];
+  library.tabs.push({ id: 'foreign-page', ref: { kind: 'researchView', id: 'sources' } });
+  expect(() => migrateWorkspace(data)).toThrow(/归属/);
+  library.tabs.pop();
+  library.tabs.push({ id: 'unsafe-preview', ref: { kind: 'sourcePreview', id: 'preview-only' }, preview: { candidate: { kind: 'paper', url: 'https://user:secret@example.org/paper', title: 'invalid' } } });
+  expect(() => migrateWorkspace(data)).toThrow(/归属/);
 });

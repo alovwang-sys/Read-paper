@@ -20,7 +20,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import type { PanelMode, ResearchViewId, ResourceRef } from '../domain/types';
+import type { PanelMode, ReaderTarget, ResearchViewId, ResourceRef } from '../domain/types';
 import {
   resourceExists,
   resourceTitle,
@@ -36,6 +36,8 @@ import { ProjectFileStatus } from '../features/research/ProjectFileStatus';
 import { LibraryView } from '../features/library/LibraryView';
 import { SourcesView } from '../features/library/SourcesView';
 import { DocumentDetail } from '../features/library/DocumentDetail';
+import { ResourceOpenMenu } from '../features/library/ResourceOpenMenu';
+import { SourcePreview } from '../features/library/SourcePreview';
 import { AddSourceDialog, SourceDropZone } from '../features/library/AddSourceDialog';
 import { ResourceListView } from '../features/research/ResourceListView';
 import { CardsView } from '../features/cards/CardsView';
@@ -50,7 +52,10 @@ import { BoardView } from '../features/board/BoardView';
 import { WritingView } from '../features/writing/WritingView';
 import { AIPanel } from '../features/ai/AIPanel';
 import { getAIConfig } from '../services/ai';
-import { ResourceTabs } from './ResourceTabs';
+
+import { WorkspaceSplit } from './WorkspaceSplit';
+import { paneGroups } from '../services/panes';
+import { DesktopWindowControls } from './DesktopWindowControls';
 import { BackupControls } from '../features/settings/BackupControls';
 
 const researchViews: { id: ResearchViewId; name: string; icon: typeof Home; group?: string }[] = [
@@ -135,9 +140,40 @@ export function App() {
   const lastFocus = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const active = session.active;
-  const activeTitle = active.kind === 'researchView' ? researchViews.find(item => item.id === active.id)?.name ?? '研究主页' : active.kind === 'collection' ? '资料库' : resourceTitle(data, active);
+  const sidebarWidth = typeof data.sidebarWidth === 'number' && Number.isFinite(data.sidebarWidth) ? Math.max(200, data.sidebarWidth) : 240;
   const navigationTrigger = useRef<HTMLElement | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
+  const [columnBounds, setColumnBounds] = useState({ left: 240, leftMaximum: window.innerWidth - 320, right: 360, rightMaximum: window.innerWidth - 560 });
+  function sidebarMaximum() {
+    return Math.max(200, window.innerWidth - 320 - (inspectorRef.current?.getBoundingClientRect().width ?? 0));
+  }
+  function panelMinimum() { return session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320; }
+  function panelMaximum() {
+    const left = window.innerWidth > 1024 ? sidebarRef.current?.getBoundingClientRect().width ?? 0 : 0;
+    return Math.max(panelMinimum(), window.innerWidth - (window.innerWidth >= 1024 ? left + 320 : 40));
+  }
+  useEffect(() => {
+    const element = sidebarRef.current;
+    if (!element) return;
+    const measure = () => {
+      const next = { left: Math.round(element.getBoundingClientRect().width), leftMaximum: Math.round(sidebarMaximum()), right: Math.round(inspectorRef.current?.getBoundingClientRect().width ?? 0), rightMaximum: Math.round(panelMaximum()) };
+      setColumnBounds(before => before.left === next.left && before.leftMaximum === next.leftMaximum && before.right === next.right && before.rightMaximum === next.rightMaximum ? before : next);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    observer.observe(element.parentElement!);
+    if (inspectorRef.current) observer.observe(inspectorRef.current);
+    return () => observer.disconnect();
+  }, [loaded, narrow, data.sidebarCollapsed, session.panel.open, session.panel.mode]);
+  function resizeSidebar(width: number) {
+    const next = Math.round(Math.max(200, Math.min(sidebarMaximum(), width)));
+    if (next !== data.sidebarWidth) actions.updateData(data => { data.sidebarWidth = next; });
+  }
+  function resizeInspector(width: number) {
+    const next = Math.round(Math.max(panelMinimum(), Math.min(panelMaximum(), width)));
+    if (next !== data.panelWidth) actions.updateData(data => { data.panelWidth = next; });
+  }
   useEffect(() => {
     void workspace.load();
   }, []);
@@ -189,7 +225,10 @@ export function App() {
   function open(ref: ResourceRef, target: 'main' | 'inspector' = 'main') {
     actions.openResource(ref, { scope: data.scope, target });
   }
-  function resourceView(ref: ResourceRef, target: 'main' | 'inspector') {
+  function viewContent(ref: import('../domain/types').WorkspaceViewRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean, tab?: import('../domain/types').WorkspaceTab) {
+    if (ref.kind === 'sourcePreview') return tab?.preview ? <SourcePreview key={tab.id} {...tab.preview} scope={data.scope} /> : <div className="empty-state">此预览已关闭。</div>;
+    if (ref.kind === 'collection') return <LibraryView collection={ref.id} />;
+    if (ref.kind === 'researchView') return research ? ref.id === 'home' ? <ResearchView researchId={research.id} /> : ref.id === 'sources' ? <SourcesView researchId={research.id} /> : ref.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : ref.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={ref.id === 'boards' ? 'board' : 'draft'} /> : <div className="empty-state">请先选择研究。</div>;
     if (!resourceExists(data, ref))
       return (
         <div className="empty-state">
@@ -197,20 +236,23 @@ export function App() {
           <p>原文件或来源不在本地数据中，请重新导入或从资料库打开。</p>
         </div>
       );
-    if (ref.kind === 'document' && !hasFullText(data.documents[ref.id])) return <DocumentDetail key={ref.id} documentId={ref.id} />;
+    if (ref.kind === 'document' && (!hasFullText(data.documents[ref.id]) || documentInfo || target === 'main' && session.documentInfoId === ref.id)) return <DocumentDetail key={ref.id} documentId={ref.id} />;
     if (ref.kind === 'document')
       return (
         <PdfReader
           key={`${target}:${ref.id}`}
           documentId={ref.id}
           target={target}
-          anchor={target === 'main' ? session.anchor : session.panel.anchor}
+          anchor={target.startsWith('view:') ? anchor : target === 'main' ? session.anchor : target === 'main-secondary' ? session.mainSplit?.anchor : session.panel.anchor}
         />
       );
     if (ref.kind === 'card') return <CardEditor cardId={ref.id} />;
     if (ref.kind === 'board') return <BoardView boardId={ref.id} />;
     if (ref.kind === 'draft') return <WritingView draftId={ref.id} />;
     return <ResearchView researchId={ref.id} />;
+  }
+  function resourceView(ref: import('../domain/types').WorkspaceViewRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean, tab?: import('../domain/types').WorkspaceTab) {
+    return <ErrorBoundary key={`${scopeKey(data.scope)}:${target}:${ref.kind}:${ref.id}:${documentInfo}:${actions.getGeneration()}`}>{viewContent(ref, target, anchor, documentInfo, tab)}</ErrorBoundary>;
   }
   const evidenceIds =
     active.kind === 'card' ? data.cards[active.id]?.evidenceIds : undefined;
@@ -225,6 +267,7 @@ export function App() {
       kind: 'research' as const,
       id,
     })),
+    ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
     ...Object.keys(data.drafts).map((id) => ({ kind: 'draft' as const, id })),
   ];
   if (!loaded)
@@ -248,7 +291,7 @@ export function App() {
   return (
     <div
       className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''} ${session.panel.open && session.panel.mode === 'ai' ? 'ai-panel-open' : ''}`}
-      style={{ '--panel-width': `${data.panelWidth}px` } as React.CSSProperties}
+      style={{ '--panel-width': `${data.panelWidth}px`, '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <PendingResearchRecovery key={workspace.getGeneration()} />
       {narrow && navigationOpen && (
@@ -270,7 +313,7 @@ export function App() {
             <BookOpen size={20} />
           </span>
           <strong>
-            Papertrail<span>研究有迹可循</span>
+            Papertrail
           </strong>
           <button
             className="icon-button"
@@ -295,7 +338,7 @@ export function App() {
           {research && researchViews.map(({ id, name, icon: Icon, group }) => <div key={id}>
             {group && <div className="sidebar-section-label">{group}</div>}
             <button className={`nav-item ${active.kind === 'researchView' && active.id === id ? 'active' : ''}`} onClick={() => navigate(id)}><Icon size={17} />{name}</button>
-            {(id === 'boards' || id === 'drafts') && Object.values(id === 'boards' ? data.boards : data.drafts).filter(item => item.researchId === research.id).map(item => <button key={item.id} className={`nav-item nested-nav ${active.id === item.id ? 'active' : ''}`} onClick={() => { open({ kind: id === 'boards' ? 'board' : 'draft', id: item.id }); if (narrow) closeNavigation(); }}><span>{item.title}</span></button>)}
+            {(id === 'boards' || id === 'drafts') && Object.values(id === 'boards' ? data.boards : data.drafts).filter(item => item.researchId === research.id).map(item => <button key={item.id} className={`nav-item nested-nav ${active.id === item.id ? 'active' : ''}`} title={item.title} onClick={() => { open({ kind: id === 'boards' ? 'board' : 'draft', id: item.id }); if (narrow) closeNavigation(); }}><ResourceIcon kind={id === 'boards' ? 'board' : 'draft'} size={17} /><span>{item.title}</span></button>)}
           </div>)}
         </nav>
         <div className="sidebar-bottom-nav"><button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
@@ -321,6 +364,17 @@ export function App() {
           </button>
         </div>
         {research?.directory && <ProjectFileStatus key={`${research.id}:${actions.getGeneration()}`} researchId={research.id} compact />}
+        {!narrow && !data.sidebarCollapsed && <div className="sidebar-resize-handle" role="separator" aria-label="调整左侧宽度" aria-orientation="vertical" aria-valuemin={200} aria-valuemax={columnBounds.leftMaximum} aria-valuenow={columnBounds.left} aria-valuetext={`${columnBounds.left} 像素`} title="拖动调整宽度，双击恢复默认宽度" tabIndex={0}
+          onDoubleClick={() => resizeSidebar(240)}
+          onKeyDown={event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const width = sidebarRef.current?.getBoundingClientRect().width ?? 240;
+            resizeSidebar(event.key === 'Home' ? 200 : event.key === 'End' ? window.innerWidth : width + (event.key === 'ArrowRight' ? 10 : -10) * (event.shiftKey ? 4 : 1));
+          }}
+          onPointerDown={event => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); }}
+          onPointerMove={event => { if (event.buttons === 1 && event.currentTarget.hasPointerCapture(event.pointerId)) resizeSidebar(event.clientX); }}
+        />}
       </aside>
       <div className="main-column">
         <header className="workspace-header">
@@ -343,16 +397,18 @@ export function App() {
             <button
               className="icon-button"
               aria-label="主区返回"
-              disabled={!session.history.length}
+              disabled={!session.layout || !paneGroups(session.layout.root).find(p => p.id === session.layout!.focusedPaneId)?.history?.length}
               onClick={() => actions.back('main')}
             >
               <ArrowLeft size={17} />
             </button>
+            {!research && session.libraryResearchId && data.researches[session.libraryResearchId] && <button className="text-button" onClick={() => actions.switchResearch(session.libraryResearchId!)}>返回研究</button>}
             <span>{research ? research.title : '全局资料库'}</span>
-            <ChevronRight size={13} />
-            <strong>{activeTitle}</strong>
+
           </div>
           <div className="header-actions">
+            <DesktopWindowControls />
+            {!session.sourcePreview && active.kind === 'document' && hasFullText(data.documents[active.id]) && <button className="text-button" onClick={() => actions.updateData(next => { const s = next.sessions[scopeKey(next.scope)]; s.documentInfoId = session.documentInfoId === active.id ? undefined : active.id; if (s.layout) { const pane = paneGroups(s.layout.root).find(pane => pane.id === s.layout!.focusedPaneId); const tab = pane?.tabs.find(tab => tab.id === pane.activeTabId); if (tab?.ref.kind === 'document' && tab.ref.id === active.id) tab.documentInfo = s.documentInfoId === active.id; } })}>{session.documentInfoId === active.id ? '阅读全文' : '文献信息'}</button>}
             <span
               className="save-indicator"
               data-testid="save-status"
@@ -395,64 +451,39 @@ export function App() {
             </button>
           </div>
         )}
-        <ResourceTabs leading={{ title: data.scope.kind === 'research' ? researchViews.find(item => item.id === (session.researchView ?? 'home'))?.name ?? '研究主页' : '资料库', selected: active.kind === 'researchView' || active.kind === 'collection', onOpen: () => { if (data.scope.kind === 'research') actions.openResearchView(data.scope.researchId, session.researchView ?? 'home'); else actions.openCollection('documents'); } }} items={session.openItems} active={session.active} pinnedIds={session.pinnedIds}
-          title={ref => resourceTitle(data, ref)} onOpen={ref => open(ref)}
-          onClose={ref => actions.closeResource(ref)} onPin={ref => actions.pinResource(ref)}
-          onMove={(from, to) => actions.updateData(next => {
-            const items = next.sessions[scopeKey(next.scope)].openItems;
-            if (from < 0 || to < 0 || from >= items.length || to >= items.length) return;
-            items.splice(to, 0, items.splice(from, 1)[0]);
-          })} />
         <main aria-label="主工作区" className="main-workspace">
-          <ErrorBoundary key={`${scopeKey(data.scope)}:${active.kind}:${active.id}`}>
-            {active.kind === 'collection' ? <LibraryView collection={active.id} /> : active.kind === 'researchView' && research ? (
-              active.id === 'home' ? <ResearchView researchId={research.id} /> : active.id === 'sources' ? <SourcesView researchId={research.id} /> : active.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : active.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={active.id === 'boards' ? 'board' : 'draft'} />
-            ) : active.kind !== 'researchView' ? (
-              resourceView(active, 'main')
-            ) : <div className="empty-state">请先选择研究。</div>}
+          <ErrorBoundary key={`${scopeKey(data.scope)}:${actions.getGeneration()}`}>
+            <WorkspaceSplit renderResource={resourceView} />
           </ErrorBoundary>
         </main>
-        <footer className="workspace-footer">
-          <span>本地工作空间</span>
-          <span>
-            {research
-              ? `${research.documentIds.length} 篇论文 · ${research.cardIds.length} 张卡片`
-              : '全局资料独立会话'}
-            <span className="footer-key">⌘ K 搜索</span>
-          </span>
-        </footer>
+
       </div>
       {session.panel.open && (
-        <aside className="inspector" aria-label="参考面板">
+        <aside className="inspector" aria-label="参考面板" ref={inspectorRef}>
           <div
             className="resize-handle"
             role="separator"
             aria-label="调整右侧宽度"
             aria-orientation="vertical"
+            aria-valuemin={panelMinimum()}
+            aria-valuemax={columnBounds.rightMaximum}
+            aria-valuenow={columnBounds.right}
+            aria-valuetext={`${columnBounds.right} 像素`}
+            title="拖动调整宽度，双击恢复默认宽度"
             tabIndex={0}
+            onDoubleClick={() => resizeInspector(360)}
             onKeyDown={(event) => {
-              if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
-                actions.updateData((data) => {
-                  data.panelWidth = Math.max(
-                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
-                    Math.min(
-                      520,
-                      Math.max(data.panelWidth, session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320) + (event.key === 'ArrowLeft' ? 20 : -20),
-                    ),
-                  );
-                });
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const width = inspectorRef.current?.getBoundingClientRect().width ?? data.panelWidth;
+              resizeInspector(event.key === 'Home' ? panelMinimum() : event.key === 'End' ? window.innerWidth : width + (event.key === 'ArrowLeft' ? 10 : -10) * (event.shiftKey ? 4 : 1));
             }}
             onPointerDown={(event) => {
+              event.preventDefault();
               event.currentTarget.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
-              if (event.buttons === 1)
-                actions.updateData((data) => {
-                  data.panelWidth = Math.max(
-                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
-                    Math.min(520, window.innerWidth - event.clientX),
-                  );
-                });
+              if (event.buttons === 1 && event.currentTarget.hasPointerCapture(event.pointerId)) resizeInspector(window.innerWidth - event.clientX);
             }}
           />
           <div className="inspector-header">
@@ -525,6 +556,7 @@ export function App() {
                         actions.openResource(session.panel.ref!, {
                           scope: data.scope,
                           target: 'main',
+                          reading: session.panel.ref?.kind === 'document' ? session.readers[`inspector:${session.panel.ref.id}`] : undefined,
                           anchor:
                             session.panel.anchor ??
                             (session.panel.ref?.kind === 'document'
@@ -538,8 +570,9 @@ export function App() {
                         })
                       }
                     >
-                      在主区打开 ↗
+                      在当前窗格打开
                     </button>
+                    <ResourceOpenMenu resource={session.panel.ref} scope={data.scope} showPreview={false} anchor={session.panel.anchor} reading={session.panel.ref.kind === 'document' ? session.readers[`inspector:${session.panel.ref.id}`] : undefined} />
                   </div>
                   {resourceView(session.panel.ref, 'inspector')}
                 </>
@@ -547,7 +580,7 @@ export function App() {
                 <div className="reference-list">
                   <div className="panel-intro">
                     <span className="section-heading">观点与原文</span>
-                    <p>把理解留在卡片里，让来源留在手边。</p>
+
                   </div>
                   {(research ? research.cardIds : Object.keys(data.cards)).map(
                     (id) => (
@@ -663,30 +696,21 @@ export function App() {
                         .toLowerCase()
                         .includes(search.toLowerCase()),
                     )
-                    .map((ref) => (
-                      <button
-                        key={`${ref.kind}:${ref.id}`}
-                        onClick={() => {
-                          const researchId =
-                            ref.kind === 'research'
-                              ? ref.id
-                              : ref.kind === 'draft'
-                                ? data.drafts[ref.id].researchId
-                                : undefined;
-                          actions.openResource(ref, {
-                            scope: researchId
-                              ? { kind: 'research', researchId }
-                              : { kind: 'library' },
-                            target: 'main',
-                          });
-                          closeDialog();
-                        }}
-                      >
-                        <ResourceIcon kind={ref.kind} />
-                        {resourceTitle(data, ref)}
-                        <ChevronRight size={14} />
-                      </button>
-                    ))}
+                    .map(ref => {
+                      const owner = ref.kind === 'research' ? ref.id : ref.kind === 'board' ? data.boards[ref.id].researchId : ref.kind === 'draft' ? data.drafts[ref.id].researchId : undefined;
+                      const linked = research && (ref.kind === 'document' ? research.documentIds.includes(ref.id) : ref.kind === 'card' && research.cardIds.includes(ref.id));
+                      const targetScope = owner ? { kind: 'research' as const, researchId: owner } : linked ? data.scope : { kind: 'library' as const };
+                      return <div className="search-result-row" key={`${ref.kind}:${ref.id}`}>
+                        <button className="search-result-open" onClick={() => { actions.openResource(ref, { scope: targetScope, target: 'main' }); closeDialog(); }}>
+                          <ResourceIcon kind={ref.kind} /><span>{resourceTitle(data, ref)}<small>{owner ? owner === research?.id ? '当前研究' : '切换研究并打开' : linked ? '当前研究' : '在资料库查看'}</small></span><ChevronRight size={14} />
+                        </button>
+                        {scopeKey(targetScope) === scopeKey(data.scope) && ref.kind !== 'research' && <ResourceOpenMenu resource={ref} scope={targetScope} onOpened={closeDialog} />}
+                        {research && !linked && (ref.kind === 'document' || ref.kind === 'card') && <button className="text-button search-result-join" aria-label={`加入当前研究并打开 ${resourceTitle(data, ref)}`} onClick={() => {
+                          try { if (ref.kind === 'document') actions.associateDocument(research.id, ref.id); else actions.associateCard(research.id, ref.id); actions.openResource(ref, { scope: data.scope, target: 'main' }); closeDialog(); }
+                          catch (error) { actions.notice(error instanceof Error ? error.message : '暂时无法加入，请重试。'); }
+                        }}>加入研究</button>}
+                      </div>;
+                    })}
                 </div>
               </>
             ) : (

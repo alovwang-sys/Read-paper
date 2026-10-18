@@ -1,0 +1,60 @@
+.workspace-panes { display: flex; position: relative; height: 100%; min-height: 0; min-width: 0; overflow: hidden; background: #f4f5f2; }
+.workspace-pane-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.workspace-pane-canvas { display: flex; width: 100%; height: 100%; }
+.workspace-split-node { display: flex; flex: 1; height: 100%; min-height: 0; min-width: 0; overflow: hidden; }
+.workspace-split-node.axis-column { flex-direction: column; }
+.workspace-split-slot { display: flex; min-height: 0; min-width: 0; overflow: hidden; }
+.workspace-split-slot[hidden] { display: none; }
+.workspace-pane-group { display: flex; flex-direction: column; flex: 1; position: relative; isolation: isolate; container-type: inline-size; container-name: workspace-pane; min-height: 0; min-width: 0; overflow: hidden; background: #f7f8f5; }
+.workspace-pane-group.is-focused { box-shadow: inset 0 0 0 1px #6d8c7b38; }
+.workspace-pane-body { flex: 1; position: relative; min-height: 0; min-width: 0; overflow: auto; }
+.workspace-pane-body > .pdf-reader { height: 100%; min-height: 0; }
+.pane-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 120px; height: 100%; padding: 20px; color: #839087; text-align: center; font-size: 13px; }
+.pane-empty p { margin: 0; color: #68746d; }
+.pane-empty span { font-size: 12px; color: #929c95; }
+.pane-empty button { display: flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 12px; border: 1px solid #d4ddd5; border-radius: 5px; background: #fff; color: #51645a; font-size: 12px; }
+.pane-empty button:hover { background: #eef2ed; }
+.pane-divider { position: relative; flex: 0 0 5px; z-index: 2; background: #dce4df; cursor: col-resize; touch-action: none; user-select: none; }
+.axis-column > .pane-divider { cursor: row-resize; }
+.pane-divider::after { content: ''; position: absolute; inset: 0 -2px; }
+.axis-column > .pane-divider::after { inset: -2px 0; }
+.pane-divider:hover, .pane-divider:focus-visible, .pane-divider.is-dragging { background: #78a796; outline-offset: -1px; }
+.pane-group-menu { position: absolute; top: 35px; right: 6px; z-index: 20; width: 224px; max-width: calc(100% - 12px); max-height: calc(100% - 43px); overflow: auto; padding: 5px; border: 1px solid #dce5e0; border-radius: 7px; background: #fff; box-shadow: 0 8px 26px #243e3226; color: #4e6559; }
+.pane-group-menu > button { display: flex; align-items: center; gap: 8px; min-height: 31px; width: 100%; padding: 6px 8px; text-align: left; font-size: 12px; border-radius: 4px; }
+.pane-group-menu > button > svg { flex-shrink: 0; }
+.pane-group-menu > button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-group-menu > button:disabled { opacity: .45; cursor: default; }
+.pane-group-menu > button:hover, .pane-group-menu > button:focus-visible { background: #edf4ee; outline-offset: -1px; }
+.pane-group-menu > hr { border: 0; border-top: 1px solid #edf0ed; margin: 4px 3px; }
+.pane-drop-layer { position: absolute; z-index: 15; top: 34px; bottom: 0; left: 0; right: 0; pointer-events: none; }
+.pane-drop-layer.is-drag-receiver { pointer-events: auto; }
+.pane-drop-preview { position: absolute; inset: 5px; display: grid; place-items: center; border: 2px solid #448b74; border-radius: 4px; background: #9dc9b84d; color: #255b49; pointer-events: none; }
+.pane-drop-preview.drop-left { right: 50%; }.pane-drop-preview.drop-right { left: 50%; }
+.pane-drop-preview.drop-up { bottom: 50%; }.pane-drop-preview.drop-down { top: 50%; }
+.pane-drop-preview > span { max-width: calc(100% - 12px); padding: 7px 10px; border-radius: 5px; background: #fcfff9ef; box-shadow: 0 2px 8px #204f3f1a; font-size: 11px; text-align: center; line-height: 1.5; }
+.pane-drop-preview.is-noop { border-color: #a5afa8; background: #b6c0ba24; }
+.pane-tabs { background: #edf0ec; border-bottom-color: #dce2dc; }
+.is-focused > .pane-tabs { background: #f0f4ef; }
+.pane-tab { min-width: 104px; max-width: 240px; }
+.pane-tab-select { font-size: 12px; color: #6f7b73; }
+.pane-tab.is-active { background: #fdfefb; border-bottom-color: #6d927b; }
+.pane-tab.is-active .pane-tab-select { color: #3e5145; }
+.pane-tab-select > small { font-size: 10px; }
+.pane-menu-trigger { font-size: 12px; color: #6c7b70; padding: 0 6px; margin-right: 0; }
+.pane-zoom-trigger { display: grid; place-items: center; align-self: center; flex: 0 0 28px; width: 28px; height: 28px; margin: 0 3px 0 0; border-radius: 4px; color: #6c7b70; }
+.pane-zoom-trigger:hover, .pane-zoom-trigger.is-active { background: #e3eae1; color: #3f5b47; }
+.pane-zoom-trigger:disabled { opacity: .35; cursor: default; }
+.pane-layout-undo { position: absolute; z-index: 30; display: flex; align-items: center; gap: 12px; bottom: 14px; left: 14px; max-width: calc(100% - 28px); min-height: 36px; padding: 4px 5px 4px 12px; border: 1px solid #d8dfd8; border-radius: 6px; background: #fff; box-shadow: 0 3px 12px #233c291a; font-size: 12px; color: #627067; }
+.pane-layout-undo > button { display: flex; align-items: center; gap: 5px; min-height: 27px; padding: 3px 6px; color: #47654f; border-radius: 3px; }
+.pane-layout-undo > button:hover { background: #edf2eb; }
+.pane-layout-undo > .pane-undo-dismiss { color: #929c94; }
+.workspace-panes.has-multiple-panes .pdf-toolbar { padding: 5px 8px; gap: 5px; }
+.workspace-panes.has-multiple-panes .pdf-toolbar .pdf-pages, .workspace-panes.has-multiple-panes .pdf-toolbar .pdf-zoom { gap: 2px; }
+.workspace-panes.has-multiple-panes .pdf-selection-modes button { min-height: 28px; padding-left: 5px; padding-right: 5px; }
+.workspace-panes.has-multiple-panes .pdf-status-ready, .workspace-panes.has-multiple-panes .pdf-footer { display: none; }
+.workspace-panes.has-multiple-panes .pdf-scroll { padding-top: 12px; padding-bottom: 12px; }
+.workspace-panes.has-multiple-panes .card-editor { padding: 16px; }
+.workspace-panes.has-multiple-panes .card-editor-kind { margin-bottom: 12px; }
+.workspace-panes.has-multiple-panes .card-editor .card-body-field { margin-top: 12px; }
+.workspace-panes.has-multiple-panes .card-editor .card-body-field textarea { min-height: 160px; }
+@media (max-width: 1100px) { .pane-group-menu { width: 210px; } }

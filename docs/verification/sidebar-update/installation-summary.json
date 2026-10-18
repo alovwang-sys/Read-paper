@@ -1,0 +1,40 @@
+{
+  "version": "0.1.5",
+  "installedApplication": "/Applications/Papertrail.app",
+  "installedBundleVersionVerified": true,
+  "installedAsarSha256": "73e6aa687f3658f74a2ed1447096318c53109ce5e8eed4226e8568f7f0dabf5f",
+  "matchesVerifiedPackage": true,
+  "newProcessStarted": true,
+  "newProcessPid": 50718,
+  "localServiceListening": true,
+  "realWindowContentAutomation": "CUA window-tree read timed out; no claim of real-user content verification. Isolated packaged UI path passed separately.",
+  "exit": {
+    "sigtermDidNotExit": true,
+    "maintenanceForceExit": true,
+    "normalApplicationQuitConfirmed": false,
+    "freshFullBackupAndImmediateDurableHashMatch": true,
+    "earlierBackupWasRefreshedAfterDatabaseGenerationChanged": true
+  },
+  "privateData": {
+    "originalDirectoryRetained": true,
+    "fullPrivateBackupVerified": true,
+    "durableFiles": 24,
+    "totalFiles": 81,
+    "backupManifestPublished": false
+  },
+  "cleanup": {
+    "itemsMovedToRecoverableTrash": 8,
+    "includes": "Previous installed application, unused intermediate staged bundle, old installers and sidecars.",
+    "trashEmptied": false
+  },
+  "installer": {
+    "fileName": "Papertrail-0.1.5-sidebar-update-arm64.dmg",
+    "bytes": 158009191,
+    "sha256": "bce6e6755fb26458bf1f5edfffac2c36bbf45b32256675cd18199401a5253831"
+  },
+  "limits": [
+    "Existing directory sync failure was not fixed.",
+    "No real paid-model or dictation recording test.",
+    "PR remains unmerged."
+  ]
+}

@@ -3,6 +3,7 @@ export type ResourceRef = {
   kind: 'research' | 'document' | 'card' | 'board' | 'draft';
   id: string;
 };
+export type SecondaryResourceRef = { kind: 'document' | 'card'; id: string };
 export type WorkspaceScope =
   | { kind: 'research'; researchId: string }
   | { kind: 'library' };
@@ -18,6 +19,29 @@ export type Research = {
   cardIds: string[];
   createdAt: string;
   directory?: ResearchDirectory;
+  sourceRecords?: Record<string, { note: string; discoveries: SourceDiscovery[] }>;
+};
+export type SourceAbstract = { text: string; url: string; retrievedAt: string };
+export type SourceCandidate = {
+  url: string;
+  title: string;
+  authors?: string;
+  year?: string;
+  identifiers?: { doi?: string; arxiv?: string; url?: string };
+  kind: 'paper' | 'web';
+  abstract?: SourceAbstract;
+  metadataSource?: string;
+  pdfUrl?: string;
+  resolvedAt?: string;
+  warning?: string;
+};
+export type SourceDiscovery = {
+  url: string;
+  kind: 'ai' | 'link';
+  conversationId?: string;
+  requestId?: string;
+  recommendation?: string;
+  createdAt: string;
 };
 export type ResearchDirectory = { id: string; projectId: string; path: string; name?: string };
 export type NativeAgentId = 'codex' | 'claude' | 'opencode';
@@ -43,6 +67,12 @@ export type PaperDocument = {
   authors: string;
   year: string;
   identifiers?: { doi?: string; arxiv?: string; url?: string };
+  abstract?: SourceAbstract;
+  sourceKind?: 'paper' | 'web';
+  abstractAlternatives?: SourceAbstract[];
+  metadataSource?: string;
+  pdfUrl?: string;
+  acquisition?: { status: 'fetching' | 'unavailable' | 'error' | 'conflict'; message?: string; url?: string; conflictDocumentId?: string };
   filename?: string;
   hash?: string;
   assetId?: string;
@@ -97,6 +127,7 @@ export type CardProvenance = {
   context: ContextSnapshot[];
   createdAt: string;
   model?: string;
+  codexModel?: string;
   connectionId?: AIConnectionId;
   generationRequestIds: string[];
   incomplete?: boolean;
@@ -144,7 +175,13 @@ export type Draft = {
   cardRefs?: { cardId: string; insertedAt: string; evidenceIds?: string[] }[];
   cardSources?: { cardId: string; title: string; provenance: CardProvenance }[];
 };
-export type ReadingPosition = { pageIndex: number; scale: number };
+export type ReadingPosition = { pageIndex: number; scale: number; offset?: number };
+export type ReaderTarget = 'main' | 'inspector' | 'main-secondary' | `view:${string}`;
+export type WorkspaceViewRef = ResourceRef | { kind: 'researchView'; id: ResearchViewId } | { kind: 'collection'; id: CollectionId } | { kind: 'sourcePreview'; id: string };
+export type WorkspaceTab = { id: string; ref: WorkspaceViewRef; anchor?: ResourceAnchor; reading?: ReadingPosition; documentInfo?: boolean; preview?: { candidate: SourceCandidate; discovery?: SourceDiscovery }; viewState?: Record<string, string | number | boolean>; boardViewport?: BoardViewport };
+export type PaneGroup = { kind: 'group'; id: string; tabs: WorkspaceTab[]; activeTabId?: string; history?: string[]; recentTabIds?: string[] };
+export type PaneNode = PaneGroup | { kind: 'split'; id: string; axis: 'row' | 'column'; ratio: number; first: PaneNode; second: PaneNode };
+export type WorkspaceLayout = { version?: 2; root: PaneNode; focusedPaneId: string; zoomedPaneId?: string };
 export type BoardViewport = { x: number; y: number; scale: number };
 export type PanelState = {
   open: boolean;
@@ -168,7 +205,9 @@ export type ResourceAnchor = {
   citationNumber?: number;
 };
 export type Session = {
-  active: ResourceRef | { kind: 'collection'; id: CollectionId } | { kind: 'researchView'; id: ResearchViewId };
+  documentInfoId?: string;
+  sourcePreview?: { candidate: SourceCandidate; discovery?: SourceDiscovery };
+  active: WorkspaceViewRef;
   researchView?: ResearchViewId;
   recentItems?: ResourceRef[];
   libraryFilter?: LibraryFilter;
@@ -178,6 +217,10 @@ export type Session = {
   history: Session['active'][];
   panel: PanelState;
   readers: Record<string, ReadingPosition>;
+  layout?: WorkspaceLayout;
+  mainSplit?: { open?: boolean; layout: 'horizontal' | 'vertical'; ref: SecondaryResourceRef; anchor?: ResourceAnchor };
+  /** Legacy per-paper layout, consumed on load. */
+  readerSplits?: Record<string, 'horizontal' | 'vertical'>;
   viewports: Record<string, BoardViewport>;
   anchor?: ResourceAnchor;
   activeConversationId?: string;
@@ -213,7 +256,7 @@ export type CodexAccess = 'read-only' | 'workspace-write' | 'full-access';
 export type CodexSettings = { model?: string; mode?: 'chat' | 'plan'; effort?: string; access?: CodexAccess };
 export type CodexCapabilities = {
   skills: AgentSkill[];
-  models: { id: string; name: string; isDefault?: boolean; reasoningEfforts?: { effort: string; description: string }[]; defaultReasoningEffort?: string }[];
+  models: { id: string; name: string; isDefault?: boolean; inputModalities?: ('text' | 'image' | 'audio')[]; reasoningEfforts?: { effort: string; description: string }[]; defaultReasoningEffort?: string }[];
   plan: boolean;
   accessModes?: CodexAccess[];
 };
@@ -319,6 +362,7 @@ export type WorkspaceData = {
   sessions: Record<string, Session>;
   scope: WorkspaceScope;
   sidebarCollapsed: boolean;
+  sidebarWidth?: number;
   panelWidth: number;
 };
 export type WorkspaceState = {

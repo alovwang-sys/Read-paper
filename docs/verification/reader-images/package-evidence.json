@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-10-17T09:01:16.367Z",
+  "version": "0.1.2",
+  "architecture": "arm64",
+  "comparisonBasis": "Current worktree files on disk, including uncommitted changes; no HEAD comparison.",
+  "runtime": {
+    "fileCount": 103,
+    "fileCountsByArea": {
+      "desktop": 13,
+      "server": 10,
+      "dist": 80
+    },
+    "byteForByteMatch": true,
+    "mismatches": [],
+    "sourceTreeSha256": "3d3ba23bd4ff7358d11cbb0f5b3ed3910ebb9556340ae3cb6aac5b84bd7585af",
+    "archiveTreeSha256": "3d3ba23bd4ff7358d11cbb0f5b3ed3910ebb9556340ae3cb6aac5b84bd7585af",
+    "treeHashFormat": "Sorted runtime path UTF-8, NUL, file bytes, NUL; SHA-256 over concatenation.",
+    "requiredFiles": {
+      "server/images.mjs": {
+        "present": true,
+        "sha256": "a493f794e330d88f5cf4304fcf5a9f84e91b2fa64dbb19736284cf9e0280f64c"
+      },
+      "desktop/dictation.mjs": {
+        "present": true,
+        "sha256": "952b80e4fcb2d7fd36afa92075ff24acc5efabf584cc7081be956a688359773a"
+      }
+    },
+    "testOrEnvEntries": []
+  },
+  "asar": {
+    "path": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar",
+    "sizeBytes": 108167368,
+    "sha256": "c7f566f9c2c03125f231ddbe5a73e4f4f8527ca07eb9290db594a9866a0c9077",
+    "mountedDmgSha256": "c7f566f9c2c03125f231ddbe5a73e4f4f8527ca07eb9290db594a9866a0c9077",
+    "mountedDmgMatches": true
+  },
+  "dmg": {
+    "path": "out/make/dmg/arm64/Papertrail-0.1.2-macos-arm64.dmg",
+    "sizeBytes": 157977092,
+    "sha256": "35f345a1b79774429b536c1457e1796264305725cf9a0cf02546409f0747e1c3",
+    "modifiedAt": "2026-10-17T08:58:00.004Z",
+    "hdiutilVerify": "VALID",
+    "mountMode": "readonly",
+    "temporaryMountDetached": true
+  },
+  "conclusion": "PASS: current runtime files match the arm64 application and the verified DMG; images and dictation runtime modules are included; test and .env files are absent."
+}

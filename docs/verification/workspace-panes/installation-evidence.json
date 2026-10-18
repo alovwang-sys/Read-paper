@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-10-17T10:42:05Z",
+  "status": "installed-and-running",
+  "target": "/Applications/Papertrail.app",
+  "asarSha256": "f543ced7c1ab5d6834609018351e8d1d6d536d15b5773b51e34732083880435c",
+  "matchesFinalTestedPackage": true,
+  "backup": {
+    "method": "Private copy of complete application userData; IndexedDB and Local Storage hashes matched source before and after copy and were rechecked immediately before maintenance exit",
+    "durableFiles": 23,
+    "totalFiles": 80,
+    "bytes": 14279565,
+    "contentsPublished": false
+  },
+  "exitMethod": "Verified idle old main force-terminated after normal Quit and SIGTERM were blocked; current databases matched fresh stable private backup immediately beforehand; helpers exited on their own",
+  "uiVerification": {
+    "saved": true,
+    "selectedResearchPreserved": true,
+    "questionEntriesBefore": 12,
+    "questionEntriesAfter": 12,
+    "paneCount": 2,
+    "restoredPdfPages": [
+      1,
+      14
+    ],
+    "emptyDraftPreserved": true,
+    "actualNativeFullScreenEntered": true,
+    "visibleExitButtonUsed": true,
+    "nativeWindowButtonsRestored": true
+  },
+  "remainingIssue": {
+    "directorySyncError": true,
+    "messageMisattributedToAgentConnection": true,
+    "underlyingErrno": "unknown",
+    "fixedInThisPackage": false
+  },
+  "oldArtifacts": {
+    "movedToRecoverableTrash": 6,
+    "trashEmptied": false
+  },
+  "installer": {
+    "filename": "Papertrail-0.1.2-workspace-panes-arm64.dmg",
+    "bytes": 157991697,
+    "sha256": "769b5f8641247d477c7c05f5eb6fe3916dd4dbf8038772e50135f7e10e93fbdd"
+  }
+}

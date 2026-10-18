@@ -36,6 +36,25 @@ export async function getCodexCapabilities(): Promise<CodexCapabilities> {
   return result;
 }
 
+export function codexSupportsImages(catalog: CodexCapabilities | undefined, modelId?: string): boolean {
+  const model = modelId
+    ? catalog?.models.find(item => item.id === modelId)
+    : catalog?.models.find(item => item.isDefault) ?? catalog?.models[0];
+  return Array.isArray(model?.inputModalities) && model.inputModalities.includes('image');
+}
+
+export async function currentAssistantSupportsImages(researchId: string): Promise<boolean> {
+  const conversation = getActiveConversation(workspace.getState().data, researchId);
+  if (!conversation) return false;
+  const connection = conversationConnection(conversation);
+  if (connection === 'demo') return true;
+  if (connection === 'codex') return codexSupportsImages(await getCodexCapabilities(), conversation.codex?.model);
+  if (connection !== 'model') return false;
+  const response = await fetch('/api/ai/config');
+  if (!response.ok) return false;
+  return (await response.json()).images === true;
+}
+
 function projectIdentity(researchId: string) {
   if (!workspace.getState().data.agentWorkspaceId) workspace.updateData(data => { data.agentWorkspaceId = uid('workspace'); });
   const { data } = workspace.getState();

@@ -1,0 +1,65 @@
+{
+  "executablePath": "/Users/amos/.codex/worktrees/source-intake/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "protocol": "papertrail://app/",
+  "nativeFullscreenEventsVerified": true,
+  "refreshRetainsExitButton": true,
+  "exitButtonWorks": true,
+  "shortcutWorks": true,
+  "shortcut": "Control+Meta+f",
+  "keyboardTransport": "Electron webContents.sendInputEvent",
+  "keyboardAudit": {
+    "focused": true,
+    "contentsFocused": true,
+    "fullScreen": false,
+    "entered": 1,
+    "left": 1,
+    "inputs": [
+      {
+        "type": "keyDown",
+        "key": "f",
+        "code": "KeyF",
+        "isAutoRepeat": false,
+        "isComposing": false,
+        "shift": false,
+        "control": true,
+        "alt": false,
+        "meta": true,
+        "location": 0,
+        "_modifiers": 10,
+        "modifiers": [
+          "control",
+          "meta"
+        ]
+      },
+      {
+        "type": "keyDown",
+        "key": "f",
+        "code": "KeyF",
+        "isAutoRepeat": false,
+        "isComposing": false,
+        "shift": false,
+        "control": true,
+        "alt": false,
+        "meta": true,
+        "location": 0,
+        "_modifiers": 10,
+        "modifiers": [
+          "control",
+          "meta"
+        ]
+      }
+    ]
+  },
+  "restoredFrame": {
+    "fullScreen": false,
+    "normal": true,
+    "closable": true,
+    "minimizable": true,
+    "fullScreenable": true,
+    "frameInset": 32
+  },
+  "settingsIPCRejected": true,
+  "nextDraftRetained": true,
+  "actualModelCalls": 0,
+  "pageErrors": []
+}

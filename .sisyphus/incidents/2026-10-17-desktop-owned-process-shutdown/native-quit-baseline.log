@@ -1,0 +1,33 @@
+command: npx playwright test --config /tmp/source-intake-close-diagnostic.config.mjs
+exit: 1
+诊断副本保留原 composer 业务断言与 app.quit + close 等待；只加无副作用日志，最终只清理本次 owned 进程。
+    at eval (eval at evaluate (:370:30), <anonymous>:3:13)
+    at UtilityScript.evaluate (<anonymous>:372:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+DIAG before-quit
+DIAG quit:called Error
+    at app.quit (eval at evaluate (:370:30), <anonymous>:6:39)
+    at BrowserWindow.<anonymous> (file:///Users/amos/.codex/worktrees/source-intake/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar/desktop/main.mjs:99:23)
+    at BrowserWindow.emit (node:events:526:24)
+DIAG before-quit
+DIAG before-quit
+DIAG will-quit true
+DIAG will-quit [{"kind":"Socket","destroyed":false},{"kind":"Server","listening":true},{"kind":"Socket","destroyed":false}]
+DIAG allSettled:begin 3 Error
+DIAG allSettled:begin 1 Error
+DIAG allSettled:begin 1 Error
+DIAG allSettled:done 3 Error
+DIAG allSettled:done 1 Error
+DIAG allSettled:done 1 Error
+DIAG quit:called Error
+    at app.quit (eval at evaluate (:370:30), <anonymous>:6:39)
+    at quit (file:///Users/amos/.codex/worktrees/source-intake/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar/desktop/main.mjs:118:21)
+    at Promise.resolve.then.then.stopping (file:///Users/amos/.codex/worktrees/source-intake/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar/desktop/local-ai.mjs:50:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+DIAG 1000ms [{"kind":"Socket","destroyed":false},{"kind":"Socket","destroyed":false}]
+DIAG 5000ms [{"kind":"Socket","destroyed":false},{"kind":"Socket","destroyed":false}]
+DIAG 15000ms [{"kind":"Socket","destroyed":false},{"kind":"Socket","destroyed":false}]
+DIAG before-quit
+DIAG will-quit false
+DIAG will-quit [{"kind":"Socket","destroyed":false},{"kind":"Socket","destroyed":false}]
+    TimeoutError: electronApplication.waitForEvent: Timeout 30000ms exceeded while waiting for event "close"

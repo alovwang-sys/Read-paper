@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type {
   AgentConnection,
+  CodexCapabilities,
   AIConnectionId,
   AIRequest,
   CardProvenance,
@@ -34,7 +35,7 @@ import {
   submitAI,
 } from '../../services/ai';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
-import { connectionLabel, conversationConnection, getAgents, getResearchDirectory, refreshProjectConversation, selectAgent } from '../../services/agents';
+import { codexSupportsImages, connectionLabel, conversationConnection, getAgents, getResearchDirectory, refreshProjectConversation, selectAgent } from '../../services/agents';
 import { CardDraftEditor } from '../cards/CardDraftEditor';
 import { MarkdownContent } from './MarkdownContent';
 import { ConversationHistory, initialHistoryState, type ConversationHistoryState } from './ConversationHistory';
@@ -47,6 +48,7 @@ import { AgentInteractionCard } from './AgentInteractionCard';
 import { ComposerMaterials } from './ComposerMaterials';
 import { VoiceInput } from './VoiceInput';
 import { ReportedChanges } from './ReportedChanges';
+import { SourceRecommendations } from './SourceRecommendations';
 import {
   ContextDetails,
   RegionPreview,
@@ -68,6 +70,7 @@ function toSource(request: AIRequest, title: string): CardProvenance {
     context: request.context,
     createdAt: request.createdAt,
     model: request.model,
+    ...(request.codex?.model ? { codexModel: request.codex.model } : {}),
     connectionId: request.connectionId,
     generationRequestIds: [],
     incomplete: request.status !== 'done' || !!request.legacy || !!request.nativeImported,
@@ -90,6 +93,7 @@ export function AIPanel() {
   const [configError, setConfigError] = useState('');
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [agents, setAgents] = useState<AgentConnection[]>([]);
+  const [codexCatalog, setCodexCatalog] = useState<CodexCapabilities>();
   const [agentError, setAgentError] = useState('');
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [intent, setIntent] = useState<SelectionIntent>();
@@ -155,8 +159,8 @@ export function AIPanel() {
     mode === 'live' &&
     (conversation?.contextIds.some(
       (id) => data.evidence[id]?.kind === 'region',
-    ) || selectedHistory.some(turn => turn.context.some(item => item.kind === 'region'))) &&
-    !(native ? agent?.capabilities.images : config?.images);
+    ) || selectedHistory.some(turn => turn.context.some(item => item.kind === 'region' && turn.evidenceIds.includes(item.evidenceId)))) &&
+    !(connectionId === 'codex' ? codexSupportsImages(codexCatalog, conversation?.codex?.model) : native ? agent?.capabilities.images : config?.images);
   const canSend =
     !!prompt.trim() &&
     !generating &&
@@ -604,16 +608,10 @@ export function AIPanel() {
       >
         {!requests.length && (
           <div className="ai-welcome-new">
-            <div className="ai-welcome-icon">
-              <Sparkles size={26} />
-            </div>
-            <h3>从证据出发，形成理解</h3>
+            <h3>新对话</h3>
             <p>
-              选中论文中的文字，带着材料提问。
-              <br />
-              把值得留下的知识点，整理为卡片。
+              输入问题，或选择原文后加入材料。
             </p>
-            <small>原始问答和论文来源会一起保留。</small>
           </div>
         )}
         {requests.map((request) => {
@@ -677,6 +675,7 @@ export function AIPanel() {
               >
                 <MarkdownContent text={request.body} />
               </div>
+              {request.status !== 'generating' && <SourceRecommendations request={request}/>}
               {request.status === 'generating' && (
                 <div className="ai-generating">
                   <span />
@@ -1006,7 +1005,7 @@ export function AIPanel() {
         )}
         {missingImages && (
           <p className="ai-error">
-            当前助手不支持区域图片。本轮材料或所选历史含图片，请调整材料与历史范围，或切换支持图片的助手；区域证据仍会保留。
+            当前助手或所选模型未确认支持区域图片。请切换支持图片的模型，或调整材料与历史范围；区域证据仍会保留。
           </p>
         )}
         {error && (
@@ -1018,7 +1017,7 @@ export function AIPanel() {
         </div>
         <div className="ai-input-shell">
           {connectionId === 'codex' ? (
-            <CodexComposerTools key={conversation.id} ref={codexTools} inputRef={input} value={prompt} skills={conversation.skills ?? []} settings={conversation.codex ?? {}} status={agent ? agentStateLabel[agent.state] : '未连接'} onInput={value => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].input = value; })} onSkills={skills => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].skills = skills; })} onSettings={codex => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].codex = codex; })} onNew={() => { rememberScroll(); actions.createConversation(research.id); input.current?.focus(); }} disabled={!!generating} projectPath={research.directory?.path} leadingControls={composerLeading} trailingControls={composerTrailing}>
+            <CodexComposerTools key={conversation.id} ref={codexTools} inputRef={input} value={prompt} skills={conversation.skills ?? []} settings={conversation.codex ?? {}} status={agent ? agentStateLabel[agent.state] : '未连接'} onInput={value => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].input = value; })} onSkills={skills => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].skills = skills; })} onSettings={codex => actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].codex = codex; })} onNew={() => { rememberScroll(); actions.createConversation(research.id); input.current?.focus(); }} disabled={!!generating} projectPath={research.directory?.path} onCapabilities={setCodexCatalog} leadingControls={composerLeading} trailingControls={composerTrailing}>
               {composerInput}
             </CodexComposerTools>
           ) : <>{composerInput}<div className="ai-composer-footer">{composerLeading}<div className="ai-composer-actions">{composerTrailing}</div></div></>}

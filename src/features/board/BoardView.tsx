@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
   ArrowUpRight,
@@ -21,6 +21,7 @@ import {
   resourceExists,
   resourceTitle,
   uid,
+  usePaneViewState,
   useWorkspace,
 } from '../../services/workspace';
 import './board.css';
@@ -29,15 +30,16 @@ type Undo = { placements: BoardPlacement[]; edges: BoardEdge[] };
 const recentRemovals = new Map<string, Undo>();
 
 export function BoardView({ boardId }: { boardId: string }) {
-  const { data, session, actions } = useWorkspace();
+  const { data, actions, pane } = useWorkspace();
+  const domId = useId();
   const board = data.boards[boardId];
-  const [mode, setMode] = useState<'select' | 'connect' | 'pan'>('select');
+  const [mode, setMode] = usePaneViewState<'select' | 'connect' | 'pan'>(`board:${boardId}:mode`, 'select');
   const [selected, setSelected] = useState<string[]>([]);
   const [connectingFrom, setConnectingFrom] = useState<string>();
   const [selectedEdge, setSelectedEdge] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerKind, setPickerKind] = useState<'card' | 'document'>('card');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = usePaneViewState<string>(`board:${boardId}:query`, '');
   const [pickerQuery, setPickerQuery] = useState('');
   const [groupName, setGroupName] = useState('');
   const [error, setError] = useState('');
@@ -65,7 +67,7 @@ export function BoardView({ boardId }: { boardId: string }) {
     | undefined
   >(undefined);
   const suppressClick = useRef(false);
-  const scale = session.viewports[boardId]?.scale ?? 1;
+  const scale = actions.getBoardViewport(boardId).scale;
   const placements = Object.values(data.placements).filter(
     (item) => item.boardId === boardId,
   );
@@ -111,19 +113,16 @@ export function BoardView({ boardId }: { boardId: string }) {
     };
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setSelected([]);
     setConnectingFrom(undefined);
     setSelectedEdge(undefined);
     setUndo(recentRemovals.get(boardId));
-    const saved = actions.getSession().viewports[boardId];
-    const frame = requestAnimationFrame(() => {
-      if (viewport.current) {
-        viewport.current.scrollLeft = saved?.x ?? 0;
-        viewport.current.scrollTop = saved?.y ?? 0;
-      }
-    });
-    return () => cancelAnimationFrame(frame);
+    const saved = actions.getBoardViewport(boardId);
+    if (viewport.current) {
+      viewport.current.scrollLeft = saved.x;
+      viewport.current.scrollTop = saved.y;
+    }
   }, [boardId, actions]);
   useEffect(() => {
     setGroupName(activePlacements[0]?.group ?? '');
@@ -154,7 +153,7 @@ export function BoardView({ boardId }: { boardId: string }) {
     );
     actions.setSelection({
       scope,
-      viewInstanceId: `board:${boardId}`,
+      viewInstanceId: pane ? `view:${pane.tabId}` : `board:${boardId}`,
       selectedItems: selectedItems.map((placement) => ({
         resourceRef: placement.resourceRef,
         placementId: placement.id,
@@ -350,13 +349,7 @@ export function BoardView({ boardId }: { boardId: string }) {
             element.clientHeight / 2,
         )
       : 0;
-    actions.updateData((current) => {
-      current.sessions[board.researchId].viewports[boardId] = {
-        x,
-        y,
-        scale: next,
-      };
-    });
+    actions.setBoardViewport(boardId, { x, y, scale: next });
     requestAnimationFrame(() => {
       if (element) {
         element.scrollLeft = x;
@@ -621,15 +614,9 @@ export function BoardView({ boardId }: { boardId: string }) {
         onScroll={(event) => {
           const x = event.currentTarget.scrollLeft,
             y = event.currentTarget.scrollTop,
-            current = session.viewports[boardId];
+            current = actions.getBoardViewport(boardId);
           if (current?.x === x && current?.y === y) return;
-          actions.updateData((next) => {
-            next.sessions[board.researchId].viewports[boardId] = {
-              x,
-              y,
-              scale,
-            };
-          });
+          actions.setBoardViewport(boardId, { x, y, scale });
         }}
         onPointerDown={(event) => {
           if (
@@ -689,7 +676,7 @@ export function BoardView({ boardId }: { boardId: string }) {
             >
               <defs>
                 <marker
-                  id={`arrow-${boardId}`}
+                  id={`arrow-${domId}`}
                   viewBox="0 0 10 10"
                   refX="9"
                   refY="5"
@@ -741,7 +728,7 @@ export function BoardView({ boardId }: { boardId: string }) {
                       y1={y1}
                       x2={x2}
                       y2={y2}
-                      markerEnd={`url(#arrow-${boardId})`}
+                      markerEnd={`url(#arrow-${domId})`}
                     />
                     <line
                       className="board-edge-hit"
@@ -947,12 +934,12 @@ export function BoardView({ boardId }: { boardId: string }) {
               <span className="muted">已选 {activePlacements.length} 项</span>
               <input
                 aria-label="白板分组名称"
-                list={`groups-${boardId}`}
+                list={`groups-${domId}`}
                 placeholder="分组名称"
                 value={groupName}
                 onChange={(event) => setGroupName(event.target.value)}
               />
-              <datalist id={`groups-${boardId}`}>
+              <datalist id={`groups-${domId}`}>
                 {groups.map((group) => (
                   <option key={group.name}>{group.name}</option>
                 ))}

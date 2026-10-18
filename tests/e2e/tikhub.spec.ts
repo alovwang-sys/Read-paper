@@ -85,8 +85,8 @@ async function start(page: Page, api: API, pdf = false) {
   await mockProjectService(page);
   await page.goto('/'); await expect(page.getByRole('main')).toBeVisible();
   if (pdf) {
-    await page.getByRole('main').getByRole('button', { name: /Adaptive Retrieval: Evidence & Reliability/ }).click();
-    await expect(page.getByRole('main').locator('canvas')).toBeVisible(); await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
+    await page.getByRole('main').getByRole('button', { name: 'Adaptive Retrieval: Evidence & Reliability', exact: true }).click();
+    await expect(page.getByRole('main').locator('canvas').first()).toBeVisible(); await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
   }
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click(); await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();
@@ -147,7 +147,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await expect(panel(page).locator('.ai-answer')).toHaveText(checkAnswer); await panel(page).locator('.ai-agent-events > summary').click();
     await panel(page).getByRole('log', { name: '对话消息' }).evaluate(element => { element.scrollTop = 0; });
     await panel(page).getByLabel('向 AI 提问').fill('$'); await expect(panel(page).getByRole('option', { name: /\$tikhub/ })).toContainText(scope);
-    const right = (await panel(page).boundingBox())!, pdf = (await page.getByRole('main').locator('canvas').boundingBox())!;
+    const right = (await panel(page).boundingBox())!, pdf = (await page.getByRole('main').locator('canvas').first().boundingBox())!;
     expect(pdf.x + pdf.width).toBeLessThanOrEqual(right.x + 1); expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     const menu = (await panel(page).getByRole('dialog', { name: 'Codex 操作与技能' }).boundingBox())!; expect(menu.y).toBeGreaterThanOrEqual(0); expect(menu.x + menu.width).toBeLessThanOrEqual(viewport.width);
     await mkdir('docs/verification/agents', { recursive: true }); await page.screenshot({ path: `docs/verification/agents/tikhub-${viewport.width}.png` });

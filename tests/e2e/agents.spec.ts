@@ -142,7 +142,7 @@ test('显式材料、原生累计提示与收缩前序范围', async ({ page }) 
   });
   await start(page);
   const title = (await state(page)).documents['paper-a'].title;
-  await page.getByRole('main').getByRole('button', { name: new RegExp(title) }).click();
+  await page.getByRole('main').getByRole('button', { name: title, exact: true }).click();
   await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
   await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
   await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
@@ -193,7 +193,7 @@ test('演示模式经历史返回 Codex 后，PDF 快捷解释仍使用原助手
   await panel(page).locator('.ai-history-item').filter({ hasText: 'Codex' }).locator('.ai-history-open').click();
   const title = (await state(page)).documents['paper-a'].title;
   const main = page.getByRole('main', { name: '主工作区' });
-  await main.getByRole('button', { name: new RegExp(title) }).click();
+  await main.getByRole('button', { name: title, exact: true }).click();
   const selected = main.locator('.pdf-text-layer').getByText('Abstract', { exact: true });
   await expect(selected).toBeVisible();
   await selected.evaluate(element => {

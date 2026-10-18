@@ -1,0 +1,13 @@
+{
+  "version": "0.1.5",
+  "checks": {
+    "startTime": "2026-10-18T15:57:55.215Z",
+    "duration": 9458.259999999998,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "scope": "Isolated packaged desktop: real PDF/card/board/writing/AI layout, encrypted settings, version, large final edit, normal quit and restart.",
+  "noRealUserData": true
+}

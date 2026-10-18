@@ -1,10 +1,18 @@
 import { hasFullText } from '../domain/knowledge';
+import { ensurePaneLayout, validatePaneLayout, syncPaneSession } from '../services/panes';
 import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
 const connectionIds = ['model', 'demo', 'codex', 'claude', 'opencode'];
+function webLink(value: unknown) {
+  if (typeof value !== 'string') return false;
+  try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password; } catch { return false; }
+}
+function validAbstract(value: unknown) {
+  return record(value) && typeof value.text === 'string' && webLink(value.url) && typeof value.retrievedAt === 'string' && Number.isFinite(Date.parse(value.retrievedAt));
+}
 
 export function migrateWorkspace(value: unknown): WorkspaceData {
   if (!record(value) || ![1, 2, 3].includes(value.schemaVersion as number))
@@ -32,11 +40,18 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (research.directory !== undefined && (!record(research.directory) || ['id', 'projectId', 'path'].some(key => typeof research.directory?.[key as keyof typeof research.directory] !== 'string' || !research.directory[key as keyof typeof research.directory]))) throw new Error('研究目录关联损坏，未覆盖现有数据。');
   for (const research of Object.values(data.researches))
     if (research.directory?.name !== undefined && (typeof research.directory.name !== 'string' || !research.directory.name)) throw new Error('研究目录名称损坏，未覆盖现有数据。');
+  for (const research of Object.values(data.researches)) {
+    if (research.sourceRecords !== undefined && (!record(research.sourceRecords) || Object.entries(research.sourceRecords).some(([id, value]) => !research.documentIds.includes(id) || !record(value) || typeof value.note !== 'string' || !Array.isArray(value.discoveries) || value.discoveries.some(item => !record(item) || typeof item.url !== 'string' || typeof item.createdAt !== 'string' || !['ai', 'link'].includes(item.kind as string) || (['requestId', 'conversationId', 'recommendation'] as const).some(key => item[key] !== undefined && typeof item[key] !== 'string'))))) throw new Error('研究收录记录损坏，未覆盖现有数据。');
+  }
   for (const doc of Object.values(data.documents)) {
     const fields = [doc.assetId, doc.hash, doc.filename, doc.pageCount];
     if (fields.some(field => field !== undefined) && !hasFullText(doc) || value.schemaVersion !== 3 && !hasFullText(doc)) throw new Error('论文来源损坏，未覆盖现有数据。');
     if (!['unread', 'reading', 'skimmed', 'read'].includes(doc.readingStatus)) throw new Error('阅读状态损坏。');
     if (doc.identifiers !== undefined && (!record(doc.identifiers) || Object.entries(doc.identifiers).some(([key, value]) => !['doi', 'arxiv', 'url'].includes(key) || typeof value !== 'string'))) throw new Error('资料标识损坏。');
+    if (doc.abstract !== undefined && !validAbstract(doc.abstract) || doc.abstractAlternatives !== undefined && (!Array.isArray(doc.abstractAlternatives) || !doc.abstractAlternatives.every(validAbstract))) throw new Error('资料摘要来源损坏。');
+    if (doc.sourceKind !== undefined && !['paper', 'web'].includes(doc.sourceKind) || doc.pdfUrl !== undefined && !webLink(doc.pdfUrl) || doc.metadataSource !== undefined && !webLink(doc.metadataSource)) throw new Error('资料来源信息损坏。');
+    if (doc.acquisition !== undefined && (!record(doc.acquisition) || !['fetching', 'unavailable', 'error', 'conflict'].includes(doc.acquisition.status) || ['message', 'url', 'conflictDocumentId'].some(key => doc.acquisition?.[key as keyof typeof doc.acquisition] !== undefined && typeof doc.acquisition[key as keyof typeof doc.acquisition] !== 'string'))) throw new Error('全文获取记录损坏。');
+    if (doc.acquisition?.status === 'fetching') doc.acquisition = { ...doc.acquisition, status: 'unavailable', message: '上次获取已中断，资料已保留，可重试或添加 PDF。' };
   }
   for (const item of [...Object.values(data.cards), ...Object.values(data.drafts)])
     if (typeof item.body !== 'string' || !strings(item.evidenceIds)) throw new Error('正文或引用损坏，未覆盖现有数据。');
@@ -44,6 +59,31 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (typeof evidence.documentId !== 'string' || typeof evidence.quote !== 'string' || !Number.isInteger(evidence.pageIndex) || evidence.pageIndex < 0) throw new Error('证据数据损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
+  for (const session of Object.values(data.sessions)) {
+    for (const [key, position] of Object.entries(session.readers)) {
+      if (!record(position) || !Number.isInteger(position.pageIndex) || position.pageIndex < 0 || !Number.isFinite(position.scale) || position.scale < 0.5 || position.scale > 2 || position.offset !== undefined && (!Number.isFinite(position.offset) || position.offset < 0 || position.offset > 1)) throw new Error('阅读位置损坏，未覆盖现有数据。');
+      const id = key.replace(/^(main|main-secondary|inspector):/, '');
+      if (id !== key && data.documents[id] && !hasFullText(data.documents[id])) delete session.readers[key];
+    }
+    if (session.readerSplits !== undefined && (!record(session.readerSplits) || Object.entries(session.readerSplits).some(([id, layout]) => !hasFullText(data.documents[id]) || !['horizontal', 'vertical'].includes(layout)))) throw new Error('阅读分屏状态损坏，未覆盖现有数据。');
+    if (!session.mainSplit && session.readerSplits) {
+      const id = session.active.kind === 'document' && session.readerSplits[session.active.id] ? session.active.id : session.openItems.find(ref => ref.kind === 'document' && session.readerSplits?.[ref.id])?.id;
+      if (id) session.mainSplit = { layout: session.readerSplits[id], ref: { kind: 'document', id } };
+    }
+    delete session.readerSplits;
+    if (session.mainSplit !== undefined) {
+      const split = session.mainSplit;
+      const ref = split?.ref;
+      const exists = ref?.kind === 'document' ? !!data.documents[ref.id] : ref?.kind === 'card' && !!data.cards[ref.id];
+      if (!record(split) || split.open !== undefined && typeof split.open !== 'boolean' || !['horizontal', 'vertical'].includes(split.layout) || !record(ref) || !exists) throw new Error('工作区分屏资源损坏，未覆盖现有数据。');
+      if (split.anchor !== undefined && (!record(split.anchor) || ref.kind !== 'document' || split.anchor.pageIndex !== undefined && (!Number.isInteger(split.anchor.pageIndex) || split.anchor.pageIndex < 0 || !hasFullText(data.documents[ref.id]) || split.anchor.pageIndex >= data.documents[ref.id].pageCount!))) throw new Error('对照来源定位损坏，未覆盖现有数据。');
+      if (split.anchor?.evidenceId !== undefined && (typeof split.anchor.evidenceId !== 'string' || data.evidence[split.anchor.evidenceId]?.documentId !== ref.id)) throw new Error('对照来源不属于该文献，未覆盖现有数据。');
+    }
+  }
+  for (const [key, session] of Object.entries(data.sessions)) {
+    const ref = session.mainSplit?.ref;
+    if (ref && key !== 'library' && !(ref.kind === 'document' ? data.researches[key]?.documentIds : data.researches[key]?.cardIds)?.includes(ref.id)) throw new Error('对照资源不属于本研究，未覆盖现有数据。');
+  }
   for (const item of [...Object.values(data.conversations), ...Object.values(data.requests)]) {
     const settings = item.codex;
     if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key => !['model', 'mode', 'effort', 'access'].includes(key))
@@ -128,6 +168,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   }
   const views: ResearchViewId[] = ['home', 'sources', 'excerpts', 'cards', 'boards', 'drafts'];
   for (const session of Object.values(data.sessions)) {
+    const preview = session.sourcePreview;
+    if (preview !== undefined && (!record(preview) || !record(preview.candidate) || !webLink(preview.candidate.url) || typeof preview.candidate.title !== 'string' || !['paper', 'web'].includes(preview.candidate.kind))) throw new Error('文献预览记录损坏。');
     if (session.active.kind === 'researchView' && !views.includes(session.active.id) || session.researchView !== undefined && !views.includes(session.researchView) || !['excerpts', 'cards', 'ai'].includes(session.panel.mode)) throw new Error('工作区页面或面板模式损坏。');
   }
   for (const evidence of Object.values(data.evidence)) {
@@ -135,5 +177,12 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   }
   for (const draft of Object.values(data.drafts)) if (draft.cardRefs !== undefined && (!Array.isArray(draft.cardRefs) || draft.cardRefs.some(ref => !record(ref) || typeof ref.cardId !== 'string' || typeof ref.insertedAt !== 'string' || ref.evidenceIds !== undefined && !strings(ref.evidenceIds)))) throw new Error('文稿卡片记录损坏。');
   data.schemaVersion = 3;
+  for (const [key, session] of Object.entries(data.sessions)) {
+    validatePaneLayout(data, key);
+    ensurePaneLayout(session, key);
+    validatePaneLayout(data, key);
+    syncPaneSession(session);
+    delete session.mainSplit;
+  }
   return data;
 }

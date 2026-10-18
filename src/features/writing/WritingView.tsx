@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   BookOpen,
@@ -9,7 +9,8 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { useWorkspace, validateEvidence } from '../../services/workspace';
+import { usePaneViewState, useWorkspace, validateEvidence } from '../../services/workspace';
+import { useEditorViewState } from '../editor/useEditorViewState';
 import {
   draftConversationSources,
   draftSources,
@@ -23,14 +24,26 @@ import '../evidence/evidence.css';
 import './writing.css';
 
 export function WritingView({ draftId }: { draftId: string }) {
-  const { data, session, actions } = useWorkspace();
+  const { data, session, actions, view, pane } = useWorkspace();
   const draft = data.drafts[draftId];
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
-  const [preview, setPreview] = useState(false);
-  const editor = useRef<HTMLTextAreaElement>(null);
-  const citationNumber = session.anchor?.citationNumber;
+  const [preview, setPreview] = usePaneViewState<boolean>(`draft:${draftId}:preview`, false);
+  const [scrollTop, setScrollTop] = usePaneViewState<number>(`draft:${draftId}:scrollTop`, 0);
+  const titleView = useEditorViewState<HTMLInputElement>(`draft:${draftId}:title`);
+  const bodyView = useEditorViewState<HTMLTextAreaElement>(`draft:${draftId}:body`);
+  const editor = bodyView.ref;
+  const scroll = useRef<HTMLDivElement>(null);
+  const scrollFrame = useRef<number>(undefined);
+  const persistScroll = useRef(() => {});
+  persistScroll.current = () => { if (scroll.current) setScrollTop(scroll.current.scrollTop); };
+  useLayoutEffect(() => {
+    const flush = persistScroll.current;
+    if (scroll.current) scroll.current.scrollTop = scrollTop;
+    return () => { if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current); flush(); };
+  }, [draftId, pane?.tabId]);
+  const citationNumber = (view?.anchor ?? session.anchor)?.citationNumber;
   useEffect(() => {
     if (citationNumber === undefined) return;
     setPreview(false);
@@ -146,12 +159,13 @@ export function WritingView({ draftId }: { draftId: string }) {
           导出 Markdown
         </button>
       </div>
-      <div className="writing-scroll">
+      <div className="writing-scroll" ref={scroll} onScroll={() => { if (scrollFrame.current !== undefined) cancelAnimationFrame(scrollFrame.current); scrollFrame.current = requestAnimationFrame(() => { scrollFrame.current = undefined; persistScroll.current(); }); }}>
         <div className="writing-page">
           <div className="writing-eyebrow">
-            RESEARCH NOTES <span>·</span> {research?.title ?? '所属研究已缺失'}
+            {research?.title ?? '所属研究已缺失'}
           </div>
           <input
+            {...titleView}
             aria-label="结论标题"
             className="writing-title"
             value={draft.title}
@@ -232,8 +246,8 @@ export function WritingView({ draftId }: { draftId: string }) {
           {activeCard && !!missingEvidence.length && <section className="supplement-citations" aria-label="补引用"><strong>「{activeCard.title}」还有依据未引用到文稿</strong><p className="muted">在正文放置光标后，插入这些依据的引用编号。</p>{missingEvidence.map(id => <blockquote key={id}>{data.evidence[id]?.quote || '区域或失效依据'}</blockquote>)}<button className="primary" onClick={() => { try { const start = editor.current?.selectionStart ?? draft.body.length; const end = editor.current?.selectionEnd ?? start; let cursor = start; actions.updateData(next => { cursor = insertEvidenceReferences(next, draftId, missingEvidence, start, end); }); setPreview(false); requestAnimationFrame(() => { editor.current?.focus(); editor.current?.setSelectionRange(cursor, cursor); }); } catch (error) { setError((error as Error).message); } }}>在光标处补引用</button></section>}
           {preview && <section className="writing-preview" aria-label="文稿预览"><MarkdownContent text={draft.body || '尚未撰写结论。'} onCitation={showCitation} /></section>}
           <textarea
+            {...bodyView}
             hidden={preview}
-            ref={editor}
             aria-label="结论正文"
             className="writing-editor"
             value={draft.body}

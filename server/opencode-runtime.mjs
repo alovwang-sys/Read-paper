@@ -157,16 +157,16 @@ export function createOpenCodeRuntime({ executable, spawnImpl = spawn, env = pro
       const active = await activeSessions(directory, signal);
       return { ...summary(info, active), messages: [...messages.values()], ...(truncated ? { truncated: true } : {}) };
     },
-    async probe() {
+    async probe({ signal } = {}) {
       let version;
       try {
-        const installed = await invoke(['--version'], { timeoutMs: 10_000 });
+        const installed = await invoke(['--version'], { signal, timeoutMs: 10_000 });
         if (installed.code !== 0) throw runtimeError('OpenCode 版本检测失败。');
         version = installed.output.trim().slice(0, 100);
         if (!/\bv?2\./.test(version)) return status({ state: 'error', version, detail: '当前适配器已验证 OpenCode v2 原生协议；请安装 v2 后重新检测。' });
-        const help = await invoke(['run', '--help'], { timeoutMs: 10_000 });
+        const help = await invoke(['run', '--help'], { signal, timeoutMs: 10_000 });
         if (help.code !== 0 || ['--standalone', '--format', '--session', '--agent', '--model'].some((flag) => !help.output.includes(flag))) return status({ state: 'error', version, detail: '此 OpenCode 版本缺少独占服务或会话参数，请升级后重新检测。' });
-        const selected = await connection();
+        const selected = await connection(signal);
         return status({ state: 'ready', version, detail: `新对话使用本机 OpenCode 模型 ${selected.model}；认证与额度由实际请求确认。仅支持显式文字，工具与图片未开放。` });
       } catch (error) {
         return status({ state: error.code === 'not-installed' ? 'not-installed' : 'error', ...(version ? { version } : {}), detail: error.code === 'not-installed' ? '未安装 OpenCode CLI。' : ['sandbox_unavailable', 'model_required', 'config_unavailable'].includes(error.code) ? error.message : '无法检测 OpenCode，请检查本机 CLI 配置后重试。' });

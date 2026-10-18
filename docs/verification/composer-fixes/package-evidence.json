@@ -1,0 +1,13 @@
+{
+  "version": "0.1.2",
+  "architecture": "arm64",
+  "installer": "/Users/amos/Downloads/Papertrail-0.1.2-source-intake-fixes-arm64.dmg",
+  "bytes": 157972314,
+  "dmgSha256": "a50983d79aeaa6cfe0d5c7ac054d6cef7ccaed2d5d357504ec152572396e1375",
+  "appAsarSha256": "53e7a22117ccf9b7fb870088e6beb5d72760d7fd8e20096e89617ad280eaf90d",
+  "dmgVerified": true,
+  "mountedReadOnly": true,
+  "runtimeFilesCompared": 101,
+  "runtimeFileMismatches": 0,
+  "installedApplicationReplaced": false
+}

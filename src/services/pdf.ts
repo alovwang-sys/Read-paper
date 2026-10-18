@@ -27,7 +27,7 @@ export function checkPdfBytes(bytes: ArrayBuffer) {
 
 async function parsePdf(bytes: ArrayBuffer) {
   checkPdfBytes(bytes);
-  const loadingTask = getDocument({ data: new Uint8Array(bytes.slice(0)) });
+  const loadingTask = getDocument({ data: new Uint8Array(bytes.slice(0)), wasmUrl: '/pdfjs/wasm/' });
   try {
     const pdf = await loadingTask.promise;
     if (pdf.numPages < 1 || pdf.numPages > 2000) {
@@ -112,41 +112,63 @@ async function resolveSampleHashes() {
   }
 }
 
-export async function attachPdf(documentId: string, file: File): Promise<{ conflict?: { into: string } }> {
+export async function attachPdf(documentId: string, file: File, options: { automatic?: boolean; generation?: number } = {}): Promise<{ conflict?: { into: string } }> {
   const document = workspace.getState().data.documents[documentId];
   if (!document || hasFullText(document)) throw new Error('只能给无全文资料添加 PDF。');
   const { bytes, hash, pdf } = await preparePdf(file);
   try {
+    const unchanged = () => options.generation === undefined || workspace.getGeneration() === options.generation;
+    if (!unchanged()) return {};
+    try {
+      const info = (await pdf.getMetadata()).info as Record<string, unknown>;
+      const declared = [info.DOI, info.doi, info.Identifier].filter((value): value is string => typeof value === 'string').map(value => value.replace(/^doi:\s*/i, '').toLowerCase()).find(value => /^10\.\d{4,9}\/\S+$/.test(value));
+      if (declared && document.identifiers?.doi && declared !== document.identifiers.doi) throw new Error('PDF 中的 DOI 与这条资料不一致，请核对来源后重新选择。');
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('DOI 与')) throw error;
+      // Missing PDF metadata does not prove a mismatch; the source remains explicitly user-selected.
+    }
     await resolveSampleHashes();
+    if (!unchanged()) return {};
+    if (options.automatic && hasFullText(workspace.getState().data.documents[documentId])) return {};
     const existing = Object.values(workspace.getState().data.documents).find(doc => doc.id !== documentId && doc.hash === hash);
     if (existing) return { conflict: { into: existing.id } };
     const current = workspace.getState().data.documents[documentId];
+    if (options.automatic && hasFullText(current)) return {};
     if (!current || hasFullText(current)) throw new Error('资料状态已变化，请重新打开后重试。');
     const assetId = `pdf-${hash}`;
     await putAsset(assetId, new Blob([bytes], { type: 'application/pdf' }));
+    if (!unchanged()) return {};
     workspace.updateData(data => {
       const doc = data.documents[documentId];
+      if (options.automatic && hasFullText(doc)) return;
       if (!doc || hasFullText(doc)) throw new Error('资料状态已变化，请重新打开后重试。');
       Object.assign(doc, { filename: file.name, hash, assetId, assetRevision: 1, pageCount: pdf.numPages, textStatus: 'pending', updatedAt: new Date().toISOString() });
+      doc.acquisition = undefined;
     });
     cache.delete(assetId);
-    workspace.notice('PDF 已添加，可以继续阅读；资料 ID 和研究关联保持不变。');
+    if (!options.automatic) {
+      await workspace.flushSave();
+      workspace.notice('PDF 已添加，可以继续阅读；资料与已有整理保持不变。');
+    }
     return {};
   } finally {
     await pdf.loadingTask.destroy();
   }
 }
 
-export async function importPdf(file: File, scope: WorkspaceScope) {
+export async function importPdf(file: File, scope: WorkspaceScope, paneId = workspace.getSession(scope).layout?.focusedPaneId) {
+  const generation = workspace.getGeneration();
   const { bytes, hash, pdf } = await preparePdf(file);
   try {
     await resolveSampleHashes();
+    if (workspace.getGeneration() !== generation) throw new Error('工作区已重新载入，请重新导入。');
     const existing = Object.values(workspace.getState().data.documents).find(
       (doc) => doc.hash === hash,
     );
     const id = existing?.id ?? `document-${hash}`;
     const assetId = existing?.assetId ?? `pdf-${hash}`;
     await putAsset(assetId, new Blob([bytes], { type: 'application/pdf' }));
+    if (workspace.getGeneration() !== generation) throw new Error('工作区已重新载入，请重新导入。');
     cache.delete(assetId);
     if (existing)
       workspace.updateData((data) => {
@@ -164,6 +186,7 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
       } catch {
         /* File metadata is optional; the source file remains intact. */
       }
+      if (workspace.getGeneration() !== generation) throw new Error('工作区已重新载入，请重新导入。');
       workspace.updateData((data) => {
         data.documents[id] = {
           id,
@@ -183,10 +206,8 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
     if (scope.kind === 'research')
       workspace.associateDocument(scope.researchId, id);
     if (scopeKey(workspace.getState().data.scope) === scopeKey(scope)) {
-      workspace.openResource(
-        { kind: 'document', id },
-        { scope, target: 'main' },
-      );
+      try { workspace.openResource({ kind: 'document', id }, { scope, target: 'main', paneId }); }
+      catch { workspace.notice('PDF 已导入；原窗格已关闭，可从资料列表打开。'); return id; }
       workspace.notice(
         existing
           ? '已打开已有论文；原文件资产已恢复。'
@@ -199,12 +220,12 @@ export async function importPdf(file: File, scope: WorkspaceScope) {
   }
 }
 
-export async function importPdfFiles(files: File[], scope: WorkspaceScope) {
+export async function importPdfFiles(files: File[], scope: WorkspaceScope, paneId = workspace.getSession(scope).layout?.focusedPaneId) {
   const result = { created: 0, reused: 0, failures: [] as { filename: string; message: string }[], documentIds: [] as string[] };
   for (const file of files) {
     const ids = new Set(Object.keys(workspace.getState().data.documents));
     try {
-      const id = await importPdf(file, scope);
+      const id = await importPdf(file, scope, paneId);
       result.documentIds.push(id);
       if (ids.has(id)) result.reused++;
       else result.created++;

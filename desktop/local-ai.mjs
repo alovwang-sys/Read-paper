@@ -37,3 +37,21 @@ export async function startDesktopAI({ env = {}, fetchImpl, timeoutMs } = {}) {
     throw error;
   }
 }
+
+// will-quit fires after the existing window/save confirmation has succeeded.
+export function createQuitHandler({ stop, quit, onError }) {
+  let stopped = false;
+  let stopping;
+  return event => {
+    if (stopped) return;
+    event.preventDefault();
+    stopping ??= Promise.resolve().then(stop).then(() => {
+      stopped = true;
+      // Let Electron finish unwinding the cancelled will-quit native event first.
+      setImmediate(quit);
+    }, error => {
+      stopping = undefined;
+      onError(error);
+    });
+  };
+}

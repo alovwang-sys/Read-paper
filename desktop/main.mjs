@@ -4,9 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import { startDesktopAI } from './local-ai.mjs';
+import { startDesktopAI, createQuitHandler } from './local-ai.mjs';
 import { createSettingsStore } from './settings.mjs';
 import { APP_URL, SETTINGS_URL, createAppProtocol, canWriteClipboard } from './protocol.mjs';
+import { startSystemDictation } from './dictation.mjs';
+import { installFullscreenShortcut } from './window-shortcuts.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 app.setName('Papertrail');
@@ -21,6 +23,8 @@ let closing;
 let closeAllowed = false;
 let closeTimer;
 let closeDialogOpen = false;
+let shutdownStarted = false;
+let settingsChange = Promise.resolve();
 
 function runtimeEnvironment() {
   const home = app.getPath('home');
@@ -61,6 +65,7 @@ function secureWindow(window) {
   window.webContents.session.setPermissionCheckHandler((contents, permission, origin, details) => canWriteClipboard({ contents, mainContents: mainWindow?.webContents, permission, origin, details }));
 }
 function showAISettings() {
+  if (shutdownStarted) return;
   if (settingsWindow && !settingsWindow.isDestroyed()) { settingsWindow.focus(); return; }
   settingsWindow = new BrowserWindow({ width: 580, height: 710, minWidth: 500, minHeight: 640, parent: mainWindow, title: '模型连接 · Papertrail', autoHideMenuBar: true, webPreferences: { preload: join(directory, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   secureWindow(settingsWindow);
@@ -68,10 +73,14 @@ function showAISettings() {
   settingsWindow.on('closed', () => { settingsWindow = undefined; });
 }
 function createWindow() {
+  if (shutdownStarted) return;
   closeAllowed = false;
   let rendererUnavailable = false;
   mainWindow = new BrowserWindow({ width: 1440, height: 940, minWidth: 900, minHeight: 640, title: 'Papertrail', backgroundColor: '#f6f7f9', show: false, webPreferences: { preload: join(directory, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   secureWindow(mainWindow);
+  installFullscreenShortcut(mainWindow, process.platform);
+  mainWindow.on('enter-full-screen', () => mainWindow?.webContents.send('papertrail:fullscreen-changed', true));
+  mainWindow.on('leave-full-screen', () => mainWindow?.webContents.send('papertrail:fullscreen-changed', false));
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.webContents.on('render-process-gone', () => { rendererUnavailable = true; if (closing) void unconfirmedClose('工作台进程已停止响应。'); });
   mainWindow.webContents.on('did-fail-load', (_event, code, _description, _url, isMainFrame) => {
@@ -105,7 +114,15 @@ else {
   });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' || quitting) app.quit(); });
   app.on('activate', () => { if (!mainWindow && store) createWindow(); });
-  app.on('will-quit', () => { void ai?.stop(); });
+  app.on('will-quit', createQuitHandler({
+    stop: async () => {
+      shutdownStarted = true;
+      await settingsChange;
+      await ai?.stop();
+    },
+    quit: () => app.quit(),
+    onError: error => dialog.showErrorBox('本机助手未能停止', error instanceof Error ? error.message : '请重试退出应用。'),
+  }));
 
   // Electron must finish evaluating the ESM entry before it can emit ready.
   void app.whenReady().then(async () => {
@@ -114,6 +131,15 @@ else {
   try { await store.load(); } catch (error) { dialog.showErrorBox('模型设置需要重新配置', error.message); }
   ai = await startDesktopAI({ env: runtimeEnvironment() });
   protocol.handle('papertrail', createAppProtocol({ distDirectory: join(directory, '..', 'dist'), desktopDirectory: directory, getAI: () => ai }));
+  ipcMain.handle('papertrail:start-dictation', event => startSystemDictation({ event, window: mainWindow, url: APP_URL, platform: process.platform, sendAction: action => Menu.sendActionToFirstResponder(action) }));
+  ipcMain.handle('papertrail:get-fullscreen', event => {
+    if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面读取工作台窗口状态。');
+    return mainWindow.isFullScreen();
+  });
+  ipcMain.handle('papertrail:exit-fullscreen', event => {
+    if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面修改工作台窗口状态。');
+    mainWindow.setFullScreen(false);
+  });
   ipcMain.handle('papertrail:project-location', event => {
     if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面读取研究位置。');
     return app.getPath('documents');
@@ -132,15 +158,21 @@ else {
     if (!trusted(event, settingsWindow, SETTINGS_URL)) throw new Error('不允许读取设置。');
     return store.summary();
   });
-  ipcMain.handle('papertrail:save-ai-settings', async (event, input) => {
+  ipcMain.handle('papertrail:save-ai-settings', (event, input) => {
     if (!trusted(event, settingsWindow, SETTINGS_URL)) throw new Error('不允许修改设置。');
-    const summary = await store.save(input);
-    const next = await startDesktopAI({ env: runtimeEnvironment() });
-    const previous = ai;
-    ai = next;
-    await previous?.stop();
-    mainWindow?.webContents.send('papertrail:ai-settings-changed');
-    return summary;
+    if (shutdownStarted) throw new Error('应用正在退出，请重新打开后修改设置。');
+    const change = settingsChange.then(async () => {
+      const summary = await store.save(input);
+      const next = await startDesktopAI({ env: runtimeEnvironment() });
+      const previous = ai;
+      ai = next;
+      await previous?.stop();
+      mainWindow?.webContents.send('papertrail:ai-settings-changed');
+      return summary;
+    });
+    // Keep the caller's rejection, while a later save or quit can still await the queue.
+    settingsChange = change.then(() => undefined, () => undefined);
+    return change;
   });
   ipcMain.on('papertrail:close-prepared', async (event, id, error) => {
     if (!trusted(event, mainWindow, APP_URL) || !closing || id !== closing) return;
@@ -167,7 +199,8 @@ else {
     item.setSaveDialogOptions({ title: '保存导出文件', defaultPath: join(app.getPath('documents'), item.getFilename()) });
     item.once('done', (_done, result) => { if (result === 'interrupted') dialog.showErrorBox('导出未完成', '文件写入失败，请检查可用空间与目录权限，然后重试。'); });
   });
-  }).catch(error => {
+  }).catch(async error => {
+    await ai?.stop();
     dialog.showErrorBox('Papertrail 无法启动', error instanceof Error ? error.message : '请重新安装应用后重试。');
     app.exit(1);
   });

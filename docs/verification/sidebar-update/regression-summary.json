@@ -1,0 +1,15 @@
+{
+  "version": "0.1.5",
+  "checks": {
+    "startTime": "2026-10-18T15:57:14.388Z",
+    "duration": 36610.979,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "files": [
+    "pane-navigation.spec.ts",
+    "pane-feature-state.spec.ts"
+  ]
+}
