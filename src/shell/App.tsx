@@ -140,8 +140,40 @@ export function App() {
   const lastFocus = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const active = session.active;
+  const sidebarWidth = typeof data.sidebarWidth === 'number' && Number.isFinite(data.sidebarWidth) ? Math.max(200, data.sidebarWidth) : 240;
   const navigationTrigger = useRef<HTMLElement | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
+  const [columnBounds, setColumnBounds] = useState({ left: 240, leftMaximum: window.innerWidth - 320, right: 360, rightMaximum: window.innerWidth - 560 });
+  function sidebarMaximum() {
+    return Math.max(200, window.innerWidth - 320 - (inspectorRef.current?.getBoundingClientRect().width ?? 0));
+  }
+  function panelMinimum() { return session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320; }
+  function panelMaximum() {
+    const left = window.innerWidth > 1024 ? sidebarRef.current?.getBoundingClientRect().width ?? 0 : 0;
+    return Math.max(panelMinimum(), window.innerWidth - (window.innerWidth >= 1024 ? left + 320 : 40));
+  }
+  useEffect(() => {
+    const element = sidebarRef.current;
+    if (!element) return;
+    const measure = () => {
+      const next = { left: Math.round(element.getBoundingClientRect().width), leftMaximum: Math.round(sidebarMaximum()), right: Math.round(inspectorRef.current?.getBoundingClientRect().width ?? 0), rightMaximum: Math.round(panelMaximum()) };
+      setColumnBounds(before => before.left === next.left && before.leftMaximum === next.leftMaximum && before.right === next.right && before.rightMaximum === next.rightMaximum ? before : next);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    observer.observe(element.parentElement!);
+    if (inspectorRef.current) observer.observe(inspectorRef.current);
+    return () => observer.disconnect();
+  }, [loaded, narrow, data.sidebarCollapsed, session.panel.open, session.panel.mode]);
+  function resizeSidebar(width: number) {
+    const next = Math.round(Math.max(200, Math.min(sidebarMaximum(), width)));
+    if (next !== data.sidebarWidth) actions.updateData(data => { data.sidebarWidth = next; });
+  }
+  function resizeInspector(width: number) {
+    const next = Math.round(Math.max(panelMinimum(), Math.min(panelMaximum(), width)));
+    if (next !== data.panelWidth) actions.updateData(data => { data.panelWidth = next; });
+  }
   useEffect(() => {
     void workspace.load();
   }, []);
@@ -259,7 +291,7 @@ export function App() {
   return (
     <div
       className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''} ${session.panel.open && session.panel.mode === 'ai' ? 'ai-panel-open' : ''}`}
-      style={{ '--panel-width': `${data.panelWidth}px` } as React.CSSProperties}
+      style={{ '--panel-width': `${data.panelWidth}px`, '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <PendingResearchRecovery key={workspace.getGeneration()} />
       {narrow && navigationOpen && (
@@ -306,7 +338,7 @@ export function App() {
           {research && researchViews.map(({ id, name, icon: Icon, group }) => <div key={id}>
             {group && <div className="sidebar-section-label">{group}</div>}
             <button className={`nav-item ${active.kind === 'researchView' && active.id === id ? 'active' : ''}`} onClick={() => navigate(id)}><Icon size={17} />{name}</button>
-            {(id === 'boards' || id === 'drafts') && Object.values(id === 'boards' ? data.boards : data.drafts).filter(item => item.researchId === research.id).map(item => <button key={item.id} className={`nav-item nested-nav ${active.id === item.id ? 'active' : ''}`} onClick={() => { open({ kind: id === 'boards' ? 'board' : 'draft', id: item.id }); if (narrow) closeNavigation(); }}><span>{item.title}</span></button>)}
+            {(id === 'boards' || id === 'drafts') && Object.values(id === 'boards' ? data.boards : data.drafts).filter(item => item.researchId === research.id).map(item => <button key={item.id} className={`nav-item nested-nav ${active.id === item.id ? 'active' : ''}`} title={item.title} onClick={() => { open({ kind: id === 'boards' ? 'board' : 'draft', id: item.id }); if (narrow) closeNavigation(); }}><ResourceIcon kind={id === 'boards' ? 'board' : 'draft'} size={17} /><span>{item.title}</span></button>)}
           </div>)}
         </nav>
         <div className="sidebar-bottom-nav"><button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
@@ -332,6 +364,17 @@ export function App() {
           </button>
         </div>
         {research?.directory && <ProjectFileStatus key={`${research.id}:${actions.getGeneration()}`} researchId={research.id} compact />}
+        {!narrow && !data.sidebarCollapsed && <div className="sidebar-resize-handle" role="separator" aria-label="调整左侧宽度" aria-orientation="vertical" aria-valuemin={200} aria-valuemax={columnBounds.leftMaximum} aria-valuenow={columnBounds.left} aria-valuetext={`${columnBounds.left} 像素`} title="拖动调整宽度，双击恢复默认宽度" tabIndex={0}
+          onDoubleClick={() => resizeSidebar(240)}
+          onKeyDown={event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const width = sidebarRef.current?.getBoundingClientRect().width ?? 240;
+            resizeSidebar(event.key === 'Home' ? 200 : event.key === 'End' ? window.innerWidth : width + (event.key === 'ArrowRight' ? 10 : -10) * (event.shiftKey ? 4 : 1));
+          }}
+          onPointerDown={event => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); }}
+          onPointerMove={event => { if (event.buttons === 1 && event.currentTarget.hasPointerCapture(event.pointerId)) resizeSidebar(event.clientX); }}
+        />}
       </aside>
       <div className="main-column">
         <header className="workspace-header">
@@ -416,36 +459,31 @@ export function App() {
 
       </div>
       {session.panel.open && (
-        <aside className="inspector" aria-label="参考面板">
+        <aside className="inspector" aria-label="参考面板" ref={inspectorRef}>
           <div
             className="resize-handle"
             role="separator"
             aria-label="调整右侧宽度"
             aria-orientation="vertical"
+            aria-valuemin={panelMinimum()}
+            aria-valuemax={columnBounds.rightMaximum}
+            aria-valuenow={columnBounds.right}
+            aria-valuetext={`${columnBounds.right} 像素`}
+            title="拖动调整宽度，双击恢复默认宽度"
             tabIndex={0}
+            onDoubleClick={() => resizeInspector(360)}
             onKeyDown={(event) => {
-              if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
-                actions.updateData((data) => {
-                  data.panelWidth = Math.max(
-                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
-                    Math.min(
-                      520,
-                      Math.max(data.panelWidth, session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320) + (event.key === 'ArrowLeft' ? 20 : -20),
-                    ),
-                  );
-                });
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const width = inspectorRef.current?.getBoundingClientRect().width ?? data.panelWidth;
+              resizeInspector(event.key === 'Home' ? panelMinimum() : event.key === 'End' ? window.innerWidth : width + (event.key === 'ArrowLeft' ? 10 : -10) * (event.shiftKey ? 4 : 1));
             }}
             onPointerDown={(event) => {
+              event.preventDefault();
               event.currentTarget.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
-              if (event.buttons === 1)
-                actions.updateData((data) => {
-                  data.panelWidth = Math.max(
-                    session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320,
-                    Math.min(520, window.innerWidth - event.clientX),
-                  );
-                });
+              if (event.buttons === 1 && event.currentTarget.hasPointerCapture(event.pointerId)) resizeInspector(window.innerWidth - event.clientX);
             }}
           />
           <div className="inspector-header">

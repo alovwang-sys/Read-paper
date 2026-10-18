@@ -362,6 +362,7 @@ export type WorkspaceData = {
   sessions: Record<string, Session>;
   scope: WorkspaceScope;
   sidebarCollapsed: boolean;
+  sidebarWidth?: number;
   panelWidth: number;
 };
 export type WorkspaceState = {

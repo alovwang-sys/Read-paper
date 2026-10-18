@@ -12,6 +12,8 @@
 
 ## 安装文件与当前本机状态
 
+后续更新：0.1.5 已在 2026-10-19 实际替换并启动，旧应用及安装器已移至可恢复废纸篓；以下为本轮 0.1.3 交付时的历史状态。最新安装和新增侧栏修复见[侧栏更新记录](../sidebar-update/README.md)。
+
 新文件：`~/Downloads/Papertrail-0.1.3-unified-workspace-arm64.dmg`（158,010,419 字节），同目录附 `.sha256`。
 
 SHA-256：`4e6a5eb36681abc2723e12b6d76d60d12323264a214e8e4225da17ced80c7811`。应用 ASAR：`89b2d71c720c8cbea36e7f2291d8bd9fff3dc2f2543e9cc70dffb964b3fa98b5`。
