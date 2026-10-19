@@ -1,0 +1,53 @@
+.reader-popover { z-index: 48; box-sizing: border-box; color: inherit; background: white; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 5px 24px #2433261f, 0 1px 3px #2433260d; }
+.reader-popover.inline-ai { display: flex; overflow: hidden; }
+.inline-ai-dialog { display: flex; flex-direction: column; width: 100%; max-height: inherit; min-height: 0; font-size: 14px; }
+.inline-ai-header { display: flex; align-items: center; gap: 7px; padding: 10px 12px 7px; flex-shrink: 0; }
+.inline-ai-header strong { font-size: 14px; font-weight: 600; }
+.inline-ai-header > span { margin-left: auto; color: var(--muted); font-size: 12px; }
+.inline-ai-header .icon-button { width: 25px; height: 25px; min-height: 25px; }
+.inline-ai-source { flex-shrink: 0; padding: 0 14px 9px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); }
+.inline-ai-source summary { cursor: pointer; }
+.inline-ai-source summary > span { float: right; color: var(--muted); }
+.inline-ai-source blockquote { margin: 8px 0 0; padding-left: 9px; border-left: 2px solid var(--border); color: var(--muted); line-height: 1.6; max-height: 92px; overflow: auto; overflow-wrap: anywhere; }
+.inline-ai-content { padding: 0 15px; overflow-y: auto; min-height: 0; flex: 1 1 auto; overscroll-behavior: contain; }
+.inline-ai-empty { margin: 16px 0; color: var(--muted); line-height: 1.7; }
+.inline-ai-turn { padding: 10px 0 8px; }
+.inline-ai-turn + .inline-ai-turn { border-top: 1px solid var(--border); }
+.inline-ai-question { margin: 0 0 8px; color: var(--muted); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.inline-ai .ai-markdown { font-size: 14px; line-height: 1.85; overflow-wrap: anywhere; }
+.inline-ai .ai-markdown > :first-child { margin-top: 0; }
+.inline-ai .ai-markdown > :last-child { margin-bottom: 0; }
+.inline-ai .ai-markdown h1, .inline-ai .ai-markdown h2, .inline-ai .ai-markdown h3 { font-size: 14px; margin: 12px 0 5px; }
+.inline-ai .ai-markdown p { margin: 5px 0 9px; }
+.inline-ai .ai-markdown ul, .inline-ai .ai-markdown ol { padding-left: 19px; margin: 5px 0; }
+.inline-ai .ai-markdown pre, .inline-ai .ai-markdown table, .inline-ai .katex-display { max-width: 100%; overflow-x: auto; }
+.inline-ai-working, .inline-ai-demo { color: var(--muted); font-size: 12px; line-height: 1.65; }
+.inline-ai-working { margin: 6px 0; }
+.inline-ai-request-error, .inline-ai-problem { font-size: 12px; line-height: 1.7; color: #9b6d3b; overflow-wrap: anywhere; }
+.inline-ai-request-error { display: flex; align-items: center; gap: 8px; }
+.inline-ai-problem { padding: 8px 14px; background: #fff9ef; flex-shrink: 0; max-height: 90px; overflow: auto; }
+.inline-ai-problem .text-button { margin-left: 8px; }
+.inline-ai-answer-actions { display: flex; justify-content: space-between; gap: 6px; padding: 3px 10px 6px; flex-shrink: 0; }
+.inline-ai-answer-actions .text-button { font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 4px; min-height: 25px; }
+.inline-ai-composer { margin: 7px 10px 10px; display: flex; align-items: flex-end; border: 1px solid var(--border); background: color-mix(in srgb, var(--accent-soft) 30%, white); border-radius: 6px; padding: 7px; gap: 6px; flex-shrink: 0; }
+.inline-ai-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent); }
+.inline-ai-composer textarea { resize: vertical; min-width: 0; min-height: 44px; max-height: 120px; width: 100%; flex: 1; border: 0; background: transparent; padding: 1px; color: inherit; line-height: 1.6; font: inherit; outline: none; box-shadow: none; }
+.inline-ai-composer textarea::placeholder { color: var(--muted); }
+.inline-ai-send { width: 30px; height: 30px; flex-shrink: 0; display: flex; justify-content: center; align-items: center; border: 0; border-radius: 5px; background: var(--accent); color: white; cursor: pointer; }
+.inline-ai-send:disabled { background: var(--accent-soft); color: var(--muted); cursor: default; }
+.inline-ai-draft { padding: 12px 14px; overflow-y: auto; min-height: 0; flex: 1; }
+.inline-ai-draft label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.inline-ai-draft input:not([type=checkbox]), .inline-ai-draft textarea { display: block; margin-top: 5px; padding: 7px 9px; width: 100%; border: 1px solid var(--border); border-radius: 4px; background: white; font-size: 14px; color: inherit; box-sizing: border-box; line-height: 1.7; }
+.inline-ai-draft textarea { min-height: 165px; resize: vertical; }
+.inline-ai-draft label.inline-ai-review { display: flex; align-items: center; gap: 5px; }
+.inline-ai-draft h3 { font-size: 14px; margin: 0 0 10px; }
+.inline-ai-draft-footer { padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); flex-shrink: 0; gap: 8px; }
+.inline-ai-draft-footer > span { font-size: 12px; color: var(--muted); }
+.inline-ai-draft-footer .primary { padding: 6px 9px; font-size: 12px; flex-shrink: 0; }
+.inline-ai-saved { display: flex; align-items: start; gap: 5px; color: var(--accent); line-height: 1.6; font-size: 12px; }
+.inline-ai-missing { padding: 15px; font-size: 12px; }
+.pdf-last-inline { font-size: 12px; white-space: nowrap; display: inline-flex; gap: 4px; align-items: center; padding: 5px; }
+.inline-ai-answer-actions > :last-child { margin-left: auto; }
+.inline-ai-materials { max-height: 140px; overflow-y: auto; }
+.inline-ai-materials > div { margin-top: 8px; }
+.inline-ai-materials strong { font-size: 12px; font-weight: 500; }

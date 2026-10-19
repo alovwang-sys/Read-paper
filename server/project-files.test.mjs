@@ -74,6 +74,16 @@ test('idempotent saves and text-only changes keep the same PDF inode and mtime',
   assert.equal(await contents(join(f.output, 'cards/card-a.md')), 'After');
 });
 
+test('valid multi-megabyte PDF assets save without overflowing the base64 validator', async t => {
+  const f = await fixture(t), bytes = Buffer.alloc(8 * 1024 * 1024, 65);
+  bytes.write('%PDF-1.7\n');
+  const pdf = file('library/large.pdf', bytes.toString('base64'), 'base64');
+  const result = await f.sync(payload(pdf));
+  assert.equal(result.written, 3);
+  assert.deepEqual(await readFile(join(f.output, pdf.path)), bytes);
+  assert.equal((await manifest(f)).files[pdf.path].hash, hash(bytes));
+});
+
 test('removes only unchanged managed exports and preserves user-added files', async t => {
   const f = await fixture(t);
   await f.sync(payload(file('cards/removed.md', 'Old generated card')));
@@ -150,6 +160,14 @@ test('noncanonical base64 is rejected instead of silently decoding a different v
   const f = await fixture(t);
   const value = { path: 'images/a.png', content: 'Zh==', encoding: 'base64', hash: hash(Buffer.from('f')) };
   await assert.rejects(f.sync(payload(value)), { code: 'project_files_hash_mismatch' });
+  assert.deepEqual(await readdir(f.root), []);
+});
+
+test('malformed base64 padding, whitespace and URL-safe characters are rejected before writing', async t => {
+  const f = await fixture(t);
+  for (const content of ['YQ==YQ==', 'YQ=', 'Y Q==', 'YQ==\n', '-_==', 'YQ======']) {
+    await assert.rejects(f.sync(payload({ path: 'images/a.png', content, encoding: 'base64', hash: hash(Buffer.from(content, 'base64')) })), { code: 'invalid_project_files' });
+  }
   assert.deepEqual(await readdir(f.root), []);
 });
 

@@ -201,7 +201,7 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   await main(page).locator(`[role="tab"][data-tab-id="${originalPdfView}"]`).click();
   await setPdfPage(page, 3);
   await selectText(page, quote);
-  await main(page)
+  await page.getByLabel('原文选区操作')
     .getByRole('button', { name: '写成卡片', exact: true })
     .click();
   await expect(panel(page).getByLabel('卡片正文')).toBeVisible();
@@ -597,7 +597,7 @@ test('双栏与扫描边界、损坏 PDF 导入、来源及返回恢复', async 
     'A fixed retrieval budget does not guarantee relevant evidence.',
   );
   await expect(
-    main(page).getByRole('button', { name: '写成卡片', exact: true }),
+    page.getByLabel('原文选区操作').getByRole('button', { name: '写成卡片', exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(() =>
@@ -681,7 +681,7 @@ test('原 PDF 资产缺失后同 hash 重导入修复，保留文档与证据身
   await expect(main(page).locator('canvas').first()).toBeVisible();
   await setPdfPage(page, 3);
   await selectText(page, quote);
-  await main(page)
+  await page.getByLabel('原文选区操作')
     .getByRole('button', { name: '写成卡片', exact: true })
     .click();
   await expect(panel(page).getByLabel('卡片正文')).toBeVisible();

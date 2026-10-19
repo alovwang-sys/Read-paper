@@ -234,15 +234,38 @@ test('directory creation routes accept a new draft identity and return only loca
 
 test('sync accepts research files above the normal request limit only after binding and cannot cross research', async t => {
   const f = await fixture(t); const binding = await f.bind('a');
-  const file = (path, content) => ({ path, content, encoding: 'utf8', hash: createHash('sha256').update(content).digest('hex') });
+  const file = (path, content, encoding = 'utf8') => ({ path, content, encoding, hash: createHash('sha256').update(Buffer.from(content, encoding)).digest('hex') });
   const content = JSON.stringify({ text: 'a'.repeat(1_010_000) });
-  const files = [file('README.md', '# Research files'), file('research.json', content)];
+  const pdf = Buffer.alloc(8 * 1024 * 1024, 65); pdf.write('%PDF-1.7\n');
+  const files = [file('README.md', '# Research files'), file('research.json', content), file('library/large.pdf', pdf.toString('base64'), 'base64')];
   const response = await f.post('projects/sync', { ...identity('a'), bindingId: binding.id, files });
-  assert.equal(response.status, 200); const result = await response.json(); assert.equal(result.files, 2); assert.ok(result.bytes > 1_000_000);
+  assert.equal(response.status, 200); const result = await response.json(); assert.equal(result.files, 3); assert.ok(result.bytes > 1_000_000);
   assert.equal(await readFile(join(f.paths.a, 'Papertrail', 'research.json'), 'utf8'), content);
+  assert.deepEqual(await readFile(join(f.paths.a, 'Papertrail', 'library/large.pdf')), pdf);
   const wrong = await f.post('projects/sync', { ...identity('b'), bindingId: binding.id, files });
   assert.equal(wrong.status, 409); assert.equal((await wrong.json()).code, 'project_required');
   const normal = await f.post('projects/preview', { ...identity('a'), path: f.paths.a, padding: content });
   assert.equal(normal.status, 413); assert.equal((await normal.json()).code, 'request_too_large');
+  assert.deepEqual(f.calls, []);
+});
+
+test('directory sync permission failures report storage permissions without blaming the native CLI', async t => {
+  if (process.getuid?.() === 0) { t.skip('root bypasses filesystem write permissions'); return; }
+  const f = await fixture(t), binding = await f.bind('a');
+  const file = (path, content) => ({ path, content, encoding: 'utf8', hash: createHash('sha256').update(content).digest('hex') });
+  const files = [file('README.md', '# Research files'), file('research.json', '{}')];
+  await chmod(f.paths.a, 0o500);
+  try {
+    const response = await f.post('projects/sync', { ...identity('a'), bindingId: binding.id, files });
+    const result = await response.json();
+    assert.equal(response.status, 500);
+    assert.ok(['EACCES', 'EPERM'].includes(result.code));
+    assert.match(result.error, /研究目录.*权限/);
+    assert.doesNotMatch(result.error, /Agent|CLI/);
+    assert.doesNotMatch(result.error, new RegExp(f.paths.a));
+  } finally { await chmod(f.paths.a, 0o700); }
+  const retried = await f.post('projects/sync', { ...identity('a'), bindingId: binding.id, files });
+  assert.equal(retried.status, 200);
+  assert.equal(await readFile(join(f.paths.a, 'Papertrail', 'research.json'), 'utf8'), '{}');
   assert.deepEqual(f.calls, []);
 });

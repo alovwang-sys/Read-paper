@@ -56,7 +56,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   for (const item of [...Object.values(data.cards), ...Object.values(data.drafts)])
     if (typeof item.body !== 'string' || !strings(item.evidenceIds)) throw new Error('正文或引用损坏，未覆盖现有数据。');
   for (const evidence of Object.values(data.evidence))
-    if (typeof evidence.documentId !== 'string' || typeof evidence.quote !== 'string' || !Number.isInteger(evidence.pageIndex) || evidence.pageIndex < 0) throw new Error('证据数据损坏，未覆盖现有数据。');
+    if (typeof evidence.documentId !== 'string' || typeof evidence.quote !== 'string' || !Number.isInteger(evidence.pageIndex) || evidence.pageIndex < 0 || evidence.contextOnly !== undefined && typeof evidence.contextOnly !== 'boolean') throw new Error('证据数据损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions)) {
@@ -103,6 +103,12 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       throw new Error('助手连接记录不受支持，未覆盖现有数据。');
     if (conversation.nativeSessionRef !== undefined && typeof conversation.nativeSessionRef !== 'string' || conversation.nativeState !== undefined && !['idle', 'busy', 'unknown'].includes(conversation.nativeState) || conversation.nativeCanResume !== undefined && typeof conversation.nativeCanResume !== 'boolean') throw new Error('原生会话关联损坏，未覆盖现有数据。');
     if (conversation.nativeState === 'busy') { conversation.nativeState = 'unknown'; conversation.nativeCanResume = false; }
+    if (conversation.inlineSource !== undefined) {
+      const source = conversation.inlineSource, evidence = data.evidence[source?.evidenceId];
+      if (!record(source) || !evidence || source.documentId !== evidence.documentId || source.pageIndex !== evidence.pageIndex
+        || source.promoted !== undefined && typeof source.promoted !== 'boolean'
+        || source.draftId !== undefined && typeof source.draftId !== 'string') throw new Error('原文旁问答来源损坏，未覆盖现有数据。');
+    }
   }
   for (const request of Object.values(data.requests)) {
     if (typeof request.prompt !== 'string' || typeof request.body !== 'string' || !Array.isArray(request.context) || !Array.isArray(request.evidenceIds))
@@ -132,7 +138,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (!session) throw new Error('研究工作区缺失，未覆盖现有数据。');
     const current = session.activeConversationId && data.conversations[session.activeConversationId];
     if (!current || current.researchId !== research.id || current.archived) {
-      const conversation = Object.values(data.conversations).find(item => item.researchId === research.id && !item.archived);
+      const conversation = Object.values(data.conversations).find(item => item.researchId === research.id && !item.archived && (!item.inlineSource || item.inlineSource.promoted));
       session.activeConversationId = conversation?.id;
     }
   }

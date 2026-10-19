@@ -59,5 +59,5 @@ export function conclusionIssues(data: WorkspaceData, researchId: string): Concl
 
 export function researchEvidence(data: WorkspaceData, researchId: string) {
   const documents = data.researches[researchId]?.documentIds ?? [];
-  return Object.values(data.evidence).filter(e => documents.includes(e.documentId) && (!e.researchId || e.researchId === researchId));
+  return Object.values(data.evidence).filter(e => !e.contextOnly && documents.includes(e.documentId) && (!e.researchId || e.researchId === researchId));
 }

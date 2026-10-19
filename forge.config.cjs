@@ -14,8 +14,9 @@ module.exports = {
       const name = file.replaceAll('\\', '/');
       if (!name) return false;
       if (/(?:^|\/)\.env[^/]*(?:\/|$)/.test(name)) return true;
+      if (/(?:^|\/)(?:tests|docs)(?:\/|$)/.test(name)) return true;
       if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(name)) return true;
-      return !/^\/(?:LICENSE$|package\.json$|dist(?:\/|$)|desktop(?:\/|$)|server\/(?:ai|agents|codex-runtime|claude-runtime|opencode-runtime|projects|project-files|tikhub-tools|sources|images)\.mjs$|server$|node_modules(?:\/|$))/.test(name);
+      return !/^\/(?:LICENSE$|package\.json$|dist(?:\/|$)|desktop(?:\/|$)|server\/(?:ai|agents|pi-runtime|codex-runtime|claude-runtime|opencode-runtime|projects|project-files|tikhub-tools|sources|images)\.mjs$|server$|node_modules(?:\/|$))/.test(name);
     },
   },
   makers: [

@@ -49,6 +49,7 @@ export function EvidenceList({
     Object.values(data.evidence)
       .filter(
         (item) =>
+          !item.contextOnly &&
           (!documentId || item.documentId === documentId) &&
           (!research || (research.documentIds.includes(item.documentId) && (!item.researchId || item.researchId === research.id))),
       )

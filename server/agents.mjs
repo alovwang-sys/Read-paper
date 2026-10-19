@@ -160,6 +160,14 @@ const runtimeMessages = {
   'session_recovery_failed': '暂时无法恢复这条对话，本次问题未发送。原对话、历史和输入已保留，请重试或重新连接 Codex。',
   'stop_unconfirmed': '本轮停止尚未得到原生服务确认，请在原生应用核对记录；输入已保留，请勿直接重复发送。',
 };
+const projectMessages = {
+  EACCES: '无法保存研究目录，请检查文件夹访问权限后重试。应用内资料已保留。',
+  EPERM: '无法保存研究目录，请检查文件夹访问权限后重试。应用内资料已保留。',
+  EROFS: '研究目录所在磁盘为只读，请检查磁盘权限后重试。应用内资料已保留。',
+  ENOSPC: '研究目录所在磁盘空间不足，请释放空间后重试。应用内资料已保留。',
+  EDQUOT: '研究目录所在磁盘配额不足，请释放空间后重试。应用内资料已保留。',
+  EIO: '读写研究目录失败，请检查磁盘连接后重试。应用内资料已保留。',
+};
 const requestKey = (body) => hash(JSON.stringify(identityKeys.map((key) => body[key])));
 
 export function createAgentHandler({ env = process.env, runtimes, stateDir = env.AI_AGENT_STATE_DIR || join(tmpdir(), `read-paper-agents-${process.getuid?.() ?? 'local'}`), timeoutMs = 180_000, probeTimeoutMs = 12_000, ports: allowedPorts } = {}) {
@@ -431,12 +439,14 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       await mappingWrites.catch(() => {});
       const unconfirmed = error.code === 'stop_unconfirmed';
       if (unconfirmed && project && nativeSessionId) await projects.markUnconfirmed(project, body.agentId, nativeSessionId).catch(() => {});
-      const message = unconfirmed ? runtimeMessages.stop_unconfirmed : timedOut ? 'Agent 响应超时，已请求停止并保留收到的内容，请检查原生记录后重试。' : stopped ? '已请求停止；收到的内容已保留。' : error.status ? error.message : runtimeMessages[error.code] || '本机 Agent 连接失败，请检查 CLI 配置后重试。';
-      if (!res.headersSent) res.statusCode = timedOut ? 504 : stopped ? 200 : error.status || 502;
+      const projectRequest = req.url.startsWith('/api/ai/agents/projects/');
+      const fallback = projectRequest ? projectMessages[error.code] || '研究目录操作失败，应用内资料已保留。请重试并检查目录连接。' : runtimeMessages[error.code] || '本机 Agent 连接失败，请检查 CLI 配置后重试。';
+      const message = unconfirmed ? runtimeMessages.stop_unconfirmed : timedOut ? 'Agent 响应超时，已请求停止并保留收到的内容，请检查原生记录后重试。' : stopped ? '已请求停止；收到的内容已保留。' : error.status ? error.message : fallback;
+      if (!res.headersSent) res.statusCode = timedOut ? 504 : stopped ? 200 : error.status || (projectRequest ? 500 : 502);
       if (body && record(body)) {
         eventQueue = eventQueue.catch(() => {});
         await send({ type: 'error', code: unconfirmed ? 'stop_unconfirmed' : timedOut ? 'timeout' : stopped ? 'stopped' : error.code || 'agent_failed', error: message }).catch(() => {});
-      } else { res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify({ type: 'error', code: error.code || 'agent_failed', error: message, ...(typeof error.ownerResearchId === 'string' ? { ownerResearchId: error.ownerResearchId } : {}) })); }
+      } else { res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify({ type: 'error', code: error.code || (projectRequest ? 'project_failed' : 'agent_failed'), error: message, ...(typeof error.ownerResearchId === 'string' ? { ownerResearchId: error.ownerResearchId } : {}) })); }
       res.end();
     } finally {
       clearTimeout(timer); if (controller?.signal.aborted && runCompletion) await runCompletion; await mappingWrites.catch(() => {});

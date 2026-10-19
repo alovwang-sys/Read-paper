@@ -63,7 +63,7 @@ test('config exposes capabilities, never key or endpoint; missing config cannot 
   await withServer({ fetchImpl: async () => { calls += 1; return response(); } }, async (port) => {
     const res = await call(port, { path: '/api/ai/config', method: 'GET', body: '' });
     assert.equal(res.status, 200);
-    assert.deepEqual(JSON.parse(res.body), { configured: true, model: 'glm-5.3-flash', provider: '智谱', images: false, mode: 'live', limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } });
+    assert.deepEqual(JSON.parse(res.body), { configured: true, model: 'glm-5.3-flash', provider: '智谱', images: false, mode: 'live', runtime: 'pi', tools: [], limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } });
     assert.equal(res.body.includes(secret), false);
     assert.equal(res.body.includes('bigmodel.cn'), false);
   });
@@ -162,6 +162,28 @@ test('live endpoint fixes model, URL and key server-side, emits only content wit
     assert.equal(res.body.includes(secret), false);
   });
   assert.equal(calls, 1);
+});
+
+test('shared Pi endpoint preserves card and revision JSON drafts without tool or file access', async () => {
+  const draft = '{"title":"方法的条件","body":"只在给定条件下成立。","citationIds":["evidence-1"]}';
+  let calls = 0;
+  await withServer({ fetchImpl: async (_url, options) => {
+    calls += 1;
+    const body = JSON.parse(options.body);
+    assert.equal('tools' in body, false);
+    assert.equal('tool_choice' in body, false);
+    assert.deepEqual(body.messages, prompt.messages);
+    return response(`${chunk(draft)}${chunk('', 'stop')}`);
+  } }, async (port) => {
+    for (const purpose of ['card', 'revision']) {
+      const result = await call(port, { body: { ...prompt, requestId: purpose, purpose } });
+      assert.equal(result.status, 200);
+      const frames = events(result.body);
+      assert.equal(frames.filter((frame) => frame.type === 'delta').map((frame) => frame.text).join(''), draft);
+      assert.deepEqual(frames.at(-1), { type: 'done', model: 'glm-5.3-flash' });
+    }
+  });
+  assert.equal(calls, 2);
 });
 
 test('host, origin, fetch site, content type, roles and client configuration are checked before billing', async () => {

@@ -41,7 +41,8 @@ function payloadFiles(payload) {
     if (typeof file.content !== 'string' || file.reuse !== undefined) throw fail('invalid_project_files', '研究文件内容无效。', 400);
     const limit = binary ? MAX_ASSET : MAX_TEXT;
     if (file.content.length > (binary ? Math.ceil(limit / 3) * 4 : limit)) throw fail('project_files_too_large', '单个研究文件过大。', 413);
-    if (binary && (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(file.content))) throw fail('invalid_project_files', '研究资产的 base64 编码无效。', 400);
+    // Avoid repeated-group backtracking on PDF-sized input; round-trip below checks padding bits.
+    if (binary && (file.content.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(file.content) || !/^[A-Za-z0-9+/]*={0,2}$/.test(file.content))) throw fail('invalid_project_files', '研究资产的 base64 编码无效。', 400);
     const bytes = Buffer.from(file.content, file.encoding);
     if (bytes.length > limit || (total += bytes.length) > MAX_TOTAL) throw fail('project_files_too_large', '研究文件总量不能超过 256 MiB，单个资产不能超过 64 MiB。', 413);
     if (binary && bytes.toString('base64') !== file.content || hash(bytes) !== file.hash) throw fail('project_files_hash_mismatch', '研究文件 SHA-256 不匹配，未写入任何内容。', 400);

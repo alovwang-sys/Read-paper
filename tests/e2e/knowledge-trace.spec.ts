@@ -121,7 +121,7 @@ test('阅读器直接补依据，保存失败后切面板、切研究和刷新�
       return original.apply(this, args);
     };
   });
-  await main(page).getByRole('button', { name: '作为「检索的边界仍需补充实验」的依据', exact: true }).click();
+  await page.getByLabel('原文选区操作').getByRole('button', { name: '作为「检索的边界仍需补充实验」的依据', exact: true }).click();
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'error');
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await panel(page).getByRole('tab', { name: '卡片', exact: true }).click();

@@ -8,6 +8,7 @@ import { syncResearchFiles } from './project-files';
 
 export type AIConfig = {
   configured: boolean; model: string; provider: string; images: boolean; mode: 'live' | 'demo';
+  runtime?: 'pi';
   limits: { maxInputChars: number; maxImages: number; maxImageBytes: number };
 };
 type AIResult = { body: string; evidenceIds: string[]; rawBody?: string; model?: string; result?: { title: string; body: string; evidenceIds: string[] } };
@@ -424,6 +425,21 @@ export function createManualCardDraft(requestId: string) {
   if (!request?.body) throw new Error('没有可保留的回答内容。');
   return createDraft(request, request.body, true);
 }
+export function createCardDraftFromAnswer(requestId: string) {
+  const data = workspace.getState().data, request = data.requests[requestId];
+  if (!request || request.status !== 'done' || request.validationError) throw new Error('请等待完整且引用有效的回答后再收为卡片。');
+  validateResponse(data, request, request.evidenceIds);
+  const existing = Object.values(data.cardDrafts).find(draft => draft.source.requestId === requestId);
+  if (existing) return existing.id;
+  const id = uid('card-draft');
+  const title = request.body.split('\n').find(line => line.trim())?.replace(/^[#>*\s]+|\[\d+\]/g, '').trim().slice(0, 60) || '阅读笔记';
+  workspace.updateData(next => {
+    next.cardDrafts[id] = { id, researchId: request.researchId, conversationId: request.conversationId,
+      source: provenance(request, request.body), title, body: request.body, evidenceIds: [...request.evidenceIds],
+      needsReview: true, status: 'editing', revision: 0 };
+  });
+  return id;
+}
 async function cardGeneration(draftId: string, instruction: string | undefined, responder: AIResponder) {
   const draft = structuredClone(workspace.getState().data.cardDrafts[draftId]);
   if (!draft || draft.cardId) throw new Error('草稿不存在或已经加入卡片。');
@@ -527,5 +543,5 @@ export function discardCardDraft(draftId: string) {
   if (draft?.status === 'generating') {
     for (const request of Object.values(workspace.getState().data.requests).filter(r => r.draftId === draftId && r.status === 'generating')) stopAI(request.id);
   }
-  workspace.updateData(data => { delete data.cardDrafts[draftId]; const panel = data.sessions[draft?.researchId ?? 'library']?.panel; if (panel) { panel.aiView = 'chat'; panel.aiDraftId = undefined; } });
+  workspace.updateData(data => { delete data.cardDrafts[draftId]; const panel = data.sessions[draft?.researchId ?? 'library']?.panel; if (panel?.aiDraftId === draftId) { panel.aiView = 'chat'; panel.aiDraftId = undefined; } });
 }

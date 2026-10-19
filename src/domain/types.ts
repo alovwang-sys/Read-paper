@@ -85,6 +85,7 @@ export type PaperDocument = {
   textStatus: 'pending' | 'ready' | 'empty' | 'error';
 };
 export type Evidence = {
+  contextOnly?: boolean;
   researchId?: string;
   dismissed?: boolean;
   note?: string;
@@ -344,6 +345,7 @@ export type Conversation = {
   sentContext?: ContextSnapshot[];
   skills?: AgentSkill[];
   codex?: CodexSettings;
+  inlineSource?: { documentId: string; pageIndex: number; evidenceId: string; draftId?: string; promoted?: boolean };
 };
 export type WorkspaceData = {
   schemaVersion: 3;
