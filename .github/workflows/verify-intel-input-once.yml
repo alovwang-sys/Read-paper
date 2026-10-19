@@ -1,0 +1,45 @@
+name: Verify Intel input fix once
+
+on:
+  push:
+    branches: ['codex/verify-intel-input-fix']
+    paths: ['.github/workflows/verify-intel-input-once.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-intel-input-fix-once
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'alovwang-sys/Read-paper' && github.ref == 'refs/heads/codex/verify-intel-input-fix' && github.event.deleted != true
+    runs-on: macos-15-intel
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24
+          architecture: x64
+          cache: npm
+      - name: Verify the fixed candidate source
+        run: git diff --exit-code e2905e914472a93f9d14c86d218a0131674ac4ba HEAD -- src server desktop public package.json package-lock.json forge.config.ts vite.config.ts tests/desktop
+      - run: npm ci
+      - run: npm run desktop:make -- --arch=x64
+      - name: Exercise original assertions without diagnostic instrumentation
+        run: npx playwright test --config playwright.desktop.config.ts tests/desktop/inline-ai.spec.ts tests/desktop/native-session-recovery.spec.ts --repeat-each=10 --trace=on
+      - name: Keep repeated Intel verification evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: intel-input-fixed-${{ github.run_id }}
+          path: |
+            test-results-desktop/
+            playwright-report-desktop/
+          if-no-files-found: error
+          retention-days: 7
