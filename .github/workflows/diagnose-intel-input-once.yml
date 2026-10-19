@@ -1,0 +1,49 @@
+name: Diagnose Intel draft input once
+
+on:
+  push:
+    branches: ['codex/diagnose-intel-input']
+    paths:
+      - '.github/workflows/diagnose-intel-input-once.yml'
+      - 'tests/desktop/native-session-recovery.debug.spec.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnose-intel-input-once
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.repository == 'alovwang-sys/Read-paper' && github.ref == 'refs/heads/codex/diagnose-intel-input' && github.event.deleted != true
+    runs-on: macos-15-intel
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24
+          architecture: x64
+          cache: npm
+      - name: Verify unchanged application source
+        run: git diff --exit-code 93f6cc0bb7253418e14c8044b3a6d99fa5b89f31 HEAD -- src server desktop public package.json package-lock.json forge.config.ts vite.config.ts
+      - run: npm ci
+      - name: Build the same Intel application
+        run: npm run desktop:make -- --arch=x64
+      - name: Capture controlled input events
+        run: npx playwright test --config playwright.desktop.config.ts tests/desktop/inline-ai.spec.ts tests/desktop/native-session-recovery.debug.spec.ts --repeat-each=5 --trace=on
+      - name: Keep diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: intel-input-diagnosis-${{ github.run_id }}
+          path: |
+            test-results-desktop/
+            playwright-report-desktop/
+          if-no-files-found: error
+          retention-days: 7
+
