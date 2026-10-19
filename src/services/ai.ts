@@ -43,7 +43,7 @@ export function snapshotContext(data: WorkspaceData, researchId: string, convers
   for (const id of conversation.contextIds) snapshots.set(id, evidenceSnapshot(data, id));
   const context = [...snapshots.values()];
   if (context.some(item => !research.documentIds.includes(item.documentId))) throw new Error('上下文来源不属于当前研究');
-  if (context.length > 16 || context.reduce((n, item) => n + item.quote.length, 0) > 24000 || history.reduce((n, item) => n + item.prompt.length + item.body.length, 0) > 80000) throw new Error('上下文过大，请缩小材料或历史范围，或新建对话。材料最多 16 条、24,000 字。');
+  if (conversationConnection(conversation) !== 'codex' && (context.length > 16 || context.reduce((n, item) => n + item.quote.length, 0) > 24000 || history.reduce((n, item) => n + item.prompt.length + item.body.length, 0) > 80000)) throw new Error('上下文过大，请缩小材料或历史范围，或新建对话。材料最多 16 条、24,000 字。');
   return context;
 }
 function validateSnapshot(data: WorkspaceData, snapshot: ContextSnapshot) {
@@ -347,7 +347,7 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
         data.requests[request.id].status = controller.signal.aborted ? 'stopped' : 'error';
         data.requests[request.id].error = error instanceof Error ? error.message : '生成失败，请重试';
         const conversation = data.conversations[request.conversationId];
-        if (consumedInput && submittedInput !== undefined && workspace.getGeneration() === generation && conversation?.input === '') conversation.input = submittedInput;
+        if (consumedInput && !received.trim() && submittedInput !== undefined && workspace.getGeneration() === generation && conversation?.input === '') conversation.input = submittedInput;
         if (/引用|来源|编号/.test(data.requests[request.id].error!)) data.requests[request.id].validationError = data.requests[request.id].error;
       });
     }

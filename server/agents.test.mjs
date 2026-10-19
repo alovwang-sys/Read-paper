@@ -60,8 +60,87 @@ test('streams only answer deltas, saves explicit snapshots, and resumes across s
   f.restart();
   await events(await f.post(request({ requestId: 'request2', history: [history()] })));
   assert.equal(calls[1].nativeSessionId, 'native-1'); assert.equal(calls[1].nativeModel, 'test-model'); assert.equal(calls[1].cwd, calls[0].cwd);
-  assert.match(calls[1].prompt, /Renumbered answer \[1\]/); assert.doesNotMatch(calls[1].prompt, /Original answer/);
+  assert.doesNotMatch(calls[1].prompt, /Renumbered answer|Original answer/);
+  assert.match(calls[1].prompt, /由 Codex 管理与压缩/);
   assert.equal((await readdir(join(f.stateDir, 'snapshots'))).length, 2);
+});
+
+test('Codex resumes long native history without reinjecting old answers or applying their size to this turn', async t => {
+  const calls = [], answer = 'Previous native answer. '.repeat(28000);
+  const runtime = { async run(input) {
+    calls.push(input);
+    const nativeSessionId = input.nativeSessionId || 'native-long';
+    input.onEvent({ type: 'session', nativeSessionId });
+    return { nativeSessionId, body: calls.length < 3 ? answer : 'Continued answer [1]' };
+  } };
+  const f = await fixture(t, runtime);
+  await events(await f.post(request()));
+  const first = { ...history(), body: answer, sentBody: answer };
+  await events(await f.post(request({ requestId: 'request2', history: [first] })));
+  f.restart();
+  const fullHistory = [first, { ...first, requestId: 'request2' }];
+  assert.ok(Buffer.byteLength(JSON.stringify(request({ history: fullHistory }))) > 1_000_000);
+  const result = await events(await f.post(request({ requestId: 'request3', history: fullHistory })));
+  assert.equal(result.at(-1).type, 'done');
+  assert.equal(calls[2].nativeSessionId, 'native-long');
+  assert.ok(calls[2].prompt.length < 2000);
+  assert.doesNotMatch(calls[2].prompt, /Previous native answer/);
+  const archived = JSON.parse(await readFile(join(calls[2].cwd, 'manifest.json'), 'utf8'));
+  assert.deepEqual(archived.history, fullHistory);
+});
+
+test('only trusted native history is omitted; newly supplied turns retain current citation numbering', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  await events(await f.post(request()));
+  const missing = { ...history('imported-turn'), prompt: 'Newly imported history' };
+  await events(await f.post(request({ requestId: 'request2', history: [history(), missing] })));
+  assert.equal(calls[1].nativeSessionId, 'native-1');
+  assert.match(calls[1].prompt, /Newly imported history/);
+  assert.match(calls[1].prompt, /Renumbered answer \[1\]/);
+  assert.doesNotMatch(calls[1].prompt, /Original answer/);
+  assert.match(calls[1].prompt, /本次编号取代历史编号/);
+  assert.match(calls[1].prompt, /evidenceId=e1/);
+});
+
+test('Codex accepts more than 128 historical turns while keeping finite history and transport limits', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  const many = Array.from({ length: 129 }, (_, index) => history(`old-${index}`));
+  assert.equal((await events(await f.post(request({ history: many })))).at(-1).type, 'done');
+  const tooMany = Array.from({ length: 4097 }, (_, index) => history(`old-${index}`));
+  const historyError = await events(await f.post(request({ requestId: 'too-many', history: tooMany })));
+  assert.equal(historyError.at(-1).code, 'context_too_large');
+  assert.match(historyError.at(-1).error, /4096/);
+  const large = { ...history(), body: 'x'.repeat(16_000_000), sentBody: '' };
+  const transportError = await events(await f.post(request({ requestId: 'too-large', history: [large] })));
+  assert.equal(transportError.at(-1).code, 'request_too_large');
+  assert.match(transportError.at(-1).error, /16 MB/);
+  assert.equal(calls.length, 1);
+});
+
+test('Codex fresh sessions and explicit resets keep the full selected history and reject oversized new input', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  const fresh = await events(await f.post(request({ history: [history('imported')] })));
+  assert.equal(fresh.at(-1).type, 'done');
+  assert.match(calls[0].prompt, /Renumbered answer \[1\]/);
+  const long = { ...history(), body: 'x'.repeat(120_000), sentBody: 'x'.repeat(120_000) };
+  const reset = await events(await f.post(request({ requestId: 'reset-long', reset: true, history: [history('imported'), long] })));
+  assert.equal(reset.at(-1).code, 'context_too_large');
+  assert.match(reset.at(-1).error, /需要补入的历史/);
+  const newSession = await events(await f.post(request({ requestId: 'other-research-long', researchId: 'other-research', history: [long] })));
+  assert.equal(newSession.at(-1).code, 'context_too_large');
+  assert.equal(calls.length, 1);
+});
+
+test('forged known history IDs cannot bypass snapshot and historical citation validation', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  await events(await f.post(request()));
+  const invalidCitation = { ...history(), evidenceIds: ['unselected-evidence'] };
+  assert.equal((await f.post(request({ requestId: 'forged-citation', history: [invalidCitation] }))).status, 400);
+  const changed = { ...evidence(), quote: 'Changed historical scope' };
+  await events(await f.post(request({ requestId: 'changed-scope', context: [changed], history: [history('request1', [changed])] })));
+  assert.equal(calls[1].nativeSessionId, undefined);
+  assert.match(calls[1].prompt, /Renumbered answer/);
+  assert.match(calls[1].prompt, /Changed historical scope/);
 });
 
 test('native model is saved with the session before an interrupted answer and survives service restart', async (t) => {
