@@ -1,0 +1,44 @@
+name: Publish v0.1.8 once
+
+on:
+  push:
+    branches: ['codex/publish-v0.1.8']
+    paths:
+      - '.github/workflows/publish-v0.1.8-once.yml'
+      - '.github/scripts/publish-preview-once.mjs'
+      - '.github/scripts/publish-preview-once.test.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-once-v0.1.8
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'alovwang-sys/Read-paper' && github.ref == 'refs/heads/codex/publish-v0.1.8' && github.event.deleted != true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: '93f6cc0bb7253418e14c8044b3a6d99fa5b89f31'
+          path: release-source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: 24
+      - name: Verify release controls
+        run: node --test .github/scripts/release.test.mjs .github/scripts/publish-preview-once.test.mjs
+      - name: Build, verify and publish the fixed preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/publish-preview-once.mjs
