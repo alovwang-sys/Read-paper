@@ -14,6 +14,8 @@ const navigation = (page: Page) => page.getByRole('complementary', { name: '左�
 const saved = (page: Page) => expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const exists = (path: string) => stat(path).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
+// A saving transaction moves the old file aside before installing its replacement.
+const readDuringSync = (path: string) => readFile(path, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
 
 async function fixture() {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'papertrail-directory-desktop-')));
@@ -175,7 +177,7 @@ test('打包桌面：真实PDF与卡片写入研究目录，UI修改同步，外
     await panel(page).getByRole('button', { name: /相关性是检索收益的前提/ }).first().click();
     const body = panel(page).getByLabel('卡片正文', { exact: true }); const updated = originalCard.body + '\n\n桌面真实文件同步验证。';
     await body.fill(updated); await saved(page);
-    await expect.poll(() => readFile(cardFile, 'utf8')).toContain(updated);
+    await expect.poll(() => readDuringSync(cardFile)).toContain(updated);
     const pdfAfter = await stat(join(project, 'Papertrail', 'library', 'paper-a.pdf'));
     expect(pdfAfter.ino).toBe(pdfBefore.ino); expect(pdfAfter.mtimeMs).toBe(pdfBefore.mtimeMs);
     await expect(page.getByRole('button', { name: '目录文件已更新', exact: true })).toBeVisible();
@@ -195,7 +197,7 @@ test('打包桌面：真实PDF与卡片写入研究目录，UI修改同步，外
     // Restore only this test's own external edit, then use the visible recovery action.
     await writeFile(cardFile, restoreCard); restoreCard = undefined;
     await page.getByRole('button', { name: '目录保存失败 · 重试', exact: true }).click();
-    await expect.poll(() => readFile(cardFile, 'utf8')).toContain(latest);
+    await expect.poll(() => readDuringSync(cardFile)).toContain(latest);
     await expect(page.getByRole('button', { name: '目录文件已更新', exact: true })).toBeVisible();
     expect(modelRequests).toEqual([]);
   } finally {

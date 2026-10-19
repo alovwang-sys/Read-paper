@@ -32,3 +32,11 @@ Packaged test/docs directories: 0; Pi runtime and protobuf runtime/license prese
 ## 退路与防复发
 
 回退这些修复可恢复到 `7c60239` 的打包规则和测试；不涉及用户数据、模型设置或已安装应用。依赖增加时检查实际 asar 的运行文件、许可证和无测试目录断言；UI 宿主或入口改变时同步浏览器与打包桌面路径。原生交互依赖实际可见坐标及命中证据，不能只使用名义 viewport。
+
+## 续验：Intel 目录读取时机
+
+提交 `a4beb29` 的 [CI 39181476243](https://github.com/alovwang-sys/Read-paper/actions/runs/39181476243) 中 Checks 完整浏览器 `163 passed`，Windows 与 arm64 桌面通过；Intel `15 passed / 1 failed`，失败发生在目录重试后的 `expect.poll(() => readFile(cardFile))`，错误为 ENOENT。
+
+`server/project-files.mjs:228–229` 将旧文件移入暂存后再落地新文件，期间目标路径短暂不存在；清单提交、清理完成后才返回成功。因此测试在保存完成前读路径，不能将一次 ENOENT 直接当作最终失败。两处轮询仅对 ENOENT 返回未就绪值继续等待；其他错误仍抛出，最终正文、UI 保存成功、PDF 未重写和外部冲突保护断言保留。不修改生产事务，也不增加超时。
+
+`npm run check` exit 0；打包桌面 `research-directory.spec.ts` 定向验证 exit 0：`2 passed (11.8s)`。新提交仍须重新等待完整 CI，不能用前一提交的平台结果替代。
