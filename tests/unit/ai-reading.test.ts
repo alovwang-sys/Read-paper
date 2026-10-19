@@ -95,6 +95,22 @@ describe('多轮聊天、停止和原始问答', () => {
     expect(data().conversations[conversationId].input).toBe(prompt);
   });
 
+  it('已收到部分回答后失败，保留问答和重试入口，不回填已发送问题', async () => {
+    const prompt = '这段原文的适用条件是什么？';
+    workspace.updateData(next => { next.conversations[conversationId].input = prompt; });
+    const id = await submitAI('research-a', conversationId, prompt, async (_request, options) => {
+      options?.onDelta('已收到问题，正在核对研究条件。');
+      throw new Error('回答期间连接中断');
+    });
+    expect(data().requests[id]).toMatchObject({ status: 'error', prompt, body: '已收到问题，正在核对研究条件。' });
+    expect(data().conversations[conversationId].input).toBe('');
+    const retry = retryAI(id, 'demo');
+    await vi.runAllTimersAsync();
+    const retried = await retry;
+    expect(data().requests[retried]).toMatchObject({ status: 'done', retryOf: id, prompt });
+    expect(data().conversations[conversationId].input).toBe('');
+  });
+
   it('资产准备期间恢复工作区，不提交旧请求或清空导入的输入', async () => {
     const prompt = '恢复后继续保留的研究问题';
     addContext();

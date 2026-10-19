@@ -4,7 +4,7 @@ import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { bindResearchDirectory, getAgents, codexSupportsImages, currentAssistantSupportsImages, getResearchDirectory, listProjectSessions, openProjectSession, refreshProjectConversation, selectAgent } from '../../src/services/agents';
-import { commitCardDraft, generateCardDraft, generateCardDraftFromExcerpts, reviseCardDraft, respondToAgent, retryAI, stopAI, submitAI } from '../../src/services/ai';
+import { commitCardDraft, generateCardDraft, generateCardDraftFromExcerpts, reviseCardDraft, respondToAgent, retryAI, snapshotContext, stopAI, submitAI } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), contentHash: vi.fn() }));
@@ -374,5 +374,34 @@ it('原生忙碌或连接失败保留原输入，成功后才清空且不自动�
   mock.mockImplementation(async () => done('明确再次提交后的回答。'));
   await submitAI('research-a', id, prompt);
   expect(data().conversations[id].input).toBe('');
+  expect(mock).toHaveBeenCalledTimes(2);
+});
+
+it('Codex 不再受 16 条、24,000 字材料与 80,000 字历史限制，快照和引用校验仍完整保留', async () => {
+  const id = selectAgent('research-a', 'codex');
+  workspace.updateData(next => {
+    const ids = Array.from({ length: 17 }, (_, index) => `context-evidence-${index}`);
+    ids.forEach(evidenceId => { next.evidence[evidenceId] = { ...next.evidence['evidence-a'], id: evidenceId, quote: '完整保留的原文明示材料。'.repeat(130) }; });
+    next.conversations[id].contextIds = ids;
+  });
+  const longAnswer = '已在原生会话中的历史回答。'.repeat(8000);
+  expect(longAnswer.length).toBeGreaterThan(80_000);
+  const mock = vi.fn(async (_url: string, _init?: RequestInit) => done(longAnswer));
+  vi.stubGlobal('fetch', mock);
+  const first = await submitAI('research-a', id, '比较全部明确选择的材料');
+  expect(data().requests[first]).toMatchObject({ status: 'done', evidenceIds: [] });
+  mock.mockImplementation(async () => done());
+  const second = await submitAI('research-a', id, '继续原生历史');
+  expect(data().requests[second].status).toBe('done');
+  const payload = JSON.parse(mock.mock.calls[1][1]!.body as string);
+  expect(payload.context).toHaveLength(17);
+  expect(payload.context.reduce((total: number, item: { quote: string }) => total + item.quote.length, 0)).toBeGreaterThan(24_000);
+  expect(payload.history[0].body).toBe(longAnswer);
+  expect(payload.context.map((item: { evidenceId: string }) => item.evidenceId)).toEqual(data().conversations[id].contextIds);
+  const model = selectAgent('research-a', 'model');
+  workspace.updateData(next => { next.conversations[model].contextIds = [...next.conversations[id].contextIds]; });
+  expect(() => snapshotContext(data(), 'research-a', model)).toThrow('上下文过大');
+  workspace.updateData(next => { next.documents[next.evidence['context-evidence-0'].documentId].hash = 'changed-source'; });
+  await expect(submitAI('research-a', id, '不能绕过来源验证')).rejects.toThrow('请求来源已变化');
   expect(mock).toHaveBeenCalledTimes(2);
 });

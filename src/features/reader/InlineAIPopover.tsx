@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ArrowUp, Check, ChevronRight, Layers, Square, X } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Check, ChevronRight, GripHorizontal, Layers, MoveDiagonal2, Square, X } from 'lucide-react';
 import { commitCardDraft, retryAI, snapshotContext, stopAI, submitAI } from '../../services/ai';
 import { continueInlineInPanel, createInlineCardDraft, inlineAIConfig } from '../../services/inline-ai';
 import { useWorkspace } from '../../services/workspace';
 import { MarkdownContent } from '../ai/MarkdownContent';
+import { constrainPopover, type PopoverRect } from './popover-layout';
 import './inline-ai.css';
 
 export type ReaderSelectionAnchor = { left: number; top: number; width: number; height: number };
@@ -15,7 +16,16 @@ export function ReaderPopover({ anchor, pageElement, boundary, className, label,
   className: string; label?: string; children: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
+  const manualRect = useRef<PopoverRect | null>(null);
+  const pointer = useRef<{ id: number; mode: 'move' | 'resize'; x: number; y: number; rect: PopoverRect } | null>(null);
+  const movable = className.includes('inline-ai');
   const [position, setPosition] = useState<CSSProperties>({ position: 'fixed', visibility: 'hidden' });
+  const place = (rect: PopoverRect, resizing = false) => {
+    const bounded = resizing ? { ...rect, width: Math.min(rect.width, window.innerWidth - 8 - rect.left), height: Math.min(rect.height, window.innerHeight - 8 - rect.top) } : rect;
+    const next = constrainPopover(bounded, { width: window.innerWidth, height: window.innerHeight }, resizing ? { width: 320, height: 280 } : undefined);
+    manualRect.current = next;
+    setPosition({ position: 'fixed', ...next, maxHeight: next.height, visibility: 'visible' });
+  };
   useLayoutEffect(() => {
     const node = box.current;
     if (!node || !boundary || !pageElement) return;
@@ -23,9 +33,10 @@ export function ReaderPopover({ anchor, pageElement, boundary, className, label,
     const update = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
+        if (manualRect.current) { place(manualRect.current); return; }
         const bounds = boundary.getBoundingClientRect(), page = pageElement.getBoundingClientRect();
-        const left = Math.max(8, bounds.left + 8), right = Math.min(window.innerWidth - 8, bounds.right - 8);
-        const top = Math.max(8, bounds.top + 8), bottom = Math.min(window.innerHeight - 8, bounds.bottom - 8);
+        const left = movable ? 8 : Math.max(8, bounds.left + 8), right = movable ? window.innerWidth - 8 : Math.min(window.innerWidth - 8, bounds.right - 8);
+        const top = movable ? 8 : Math.max(8, bounds.top + 8), bottom = movable ? window.innerHeight - 8 : Math.min(window.innerHeight - 8, bounds.bottom - 8);
         const start = page.top + anchor.top, end = start + anchor.height;
         const width = Math.max(120, Math.min(className.includes('inline-ai') ? 430 : 560, right - left));
         const maxHeight = Math.max(80, Math.min(className.includes('inline-ai') ? 520 : 300, bottom - top));
@@ -38,7 +49,7 @@ export function ReaderPopover({ anchor, pageElement, boundary, className, label,
           position: 'fixed', width, maxHeight,
           left: Math.max(left, Math.min(page.left + anchor.left, right - width)),
           top: Math.max(top, Math.min(y, bottom - height)),
-          visibility: end < top || start > bottom || right <= left || bottom <= top ? 'hidden' : 'visible',
+          visibility: end < Math.max(top, bounds.top) || start > Math.min(bottom, bounds.bottom) || right <= left || bottom <= top ? 'hidden' : 'visible',
         };
         setPosition(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
       });
@@ -49,8 +60,38 @@ export function ReaderPopover({ anchor, pageElement, boundary, className, label,
     window.addEventListener('resize', update);
     update();
     return () => { cancelAnimationFrame(frame); observer.disconnect(); boundary.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
-  }, [anchor, pageElement, boundary, className]);
-  return createPortal(<div ref={box} className={`reader-popover ${className}`} aria-label={label} style={position}>{children}</div>, document.body);
+  }, [anchor, pageElement, boundary, className, movable]);
+  return createPortal(<div ref={box} className={`reader-popover ${className}`} aria-label={label} style={position}
+    onPointerDown={event => {
+      if (!movable || event.button !== 0) return;
+      const target = event.target as HTMLElement;
+      const handle = target.closest('[data-popover-drag], [data-popover-resize]');
+      if (!handle || target.closest('button, a, input, textarea, summary') && !target.closest('[data-popover-move], [data-popover-resize]')) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      pointer.current = { id: event.pointerId, mode: handle.hasAttribute('data-popover-resize') ? 'resize' : 'move', x: event.clientX, y: event.clientY, rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }}
+    onPointerMove={event => {
+      const active = pointer.current;
+      if (!active || active.id !== event.pointerId) return;
+      const dx = event.clientX - active.x, dy = event.clientY - active.y;
+      place(active.mode === 'move' ? { ...active.rect, left: active.rect.left + dx, top: active.rect.top + dy } : { ...active.rect, width: active.rect.width + dx, height: active.rect.height + dy }, active.mode === 'resize');
+    }}
+    onPointerUp={event => { if (pointer.current?.id === event.pointerId) { pointer.current = null; event.currentTarget.releasePointerCapture(event.pointerId); } }}
+    onPointerCancel={() => { pointer.current = null; }} onLostPointerCapture={() => { pointer.current = null; }}
+    onKeyDownCapture={event => {
+      const target = event.target as HTMLElement;
+      const resizing = target.hasAttribute('data-popover-resize');
+      if (!movable || !resizing && !target.hasAttribute('data-popover-move') || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+      event.preventDefault(); event.stopPropagation();
+      const rect = event.currentTarget.getBoundingClientRect(), step = event.shiftKey ? 40 : 10;
+      const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+      const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+      place({ left: rect.left + (resizing ? 0 : dx), top: rect.top + (resizing ? 0 : dy), width: rect.width + (resizing ? dx : 0), height: rect.height + (resizing ? dy : 0) }, resizing);
+    }}>
+    {children}
+  </div>, document.body);
 }
 
 export function InlineAIPopover({ conversationId, initialAction, onClose, onSource }: {
@@ -121,9 +162,9 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     event.stopPropagation();
     if (event.key === 'Escape') { event.preventDefault(); close(); }
   }}>
-    <header className="inline-ai-header">
+    <header className="inline-ai-header" data-popover-drag>
       {draftOpen && <button className="icon-button" aria-label="返回就地问答并保留卡片草稿" onClick={() => setDraftOpen(false)}><ArrowLeft size={15} /></button>}
-      <strong>{draftOpen ? draft?.status === 'saved' ? '卡片已保存' : '整理为卡片' : '解释与提问'}</strong>
+      <button type="button" className="inline-ai-move" data-popover-move aria-label="移动原文旁问答" title="拖动标题栏移动 · 方向键移动，Shift 加速" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><GripHorizontal size={14} /><strong>{draftOpen ? draft?.status === 'saved' ? '卡片已保存' : '整理为卡片' : '解释与提问'}</strong></button>
       <span>PDF 第 {source.pageIndex + 1} 页</span>
       <button className="icon-button" aria-label="关闭就地问答并保留内容" title="收起，内容会保留 · Esc" onClick={close}><X size={15} /></button>
     </header>
@@ -164,5 +205,6 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
       </form>
     </>}
     {problem && <div className="inline-ai-problem" role="alert">{problem}{!requests.length && initialAction === 'explain' && <button className="text-button" disabled={busy} onClick={() => void ask('请用容易理解的中文解释这段原文的意思，区分原文与补充解释。')}>重试解释</button>}</div>}
+    <button type="button" className="inline-ai-resize" data-popover-resize aria-label="调整原文旁问答大小" title="拖动调整大小 · 方向键调整，Shift 加速" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><MoveDiagonal2 size={13} /></button>
   </section>;
 }

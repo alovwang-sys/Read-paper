@@ -8,12 +8,17 @@ import { fixtureSessionRef, mockProjectService } from './project-fixture';
 import { openSource, switchResearch } from './knowledge-helpers';
 
 type Run = { requestId: string; researchId?: string; conversationId?: string; prompt?: string; messages?: { role: string; content: string }[] };
-type API = { url: string; runs: Run[]; finish: (requestId: string) => void; disconnect: (requestId: string) => void };
+type API = { url: string; runs: Run[]; delta: (requestId: string, text: string) => void; finish: (requestId: string) => void; disconnect: (requestId: string) => void };
 const answer = '模拟回答：已完整接收问题，继续保留原文条件。';
 const test = base.extend<{ api: API }>({ api: async ({}, use) => {
   const pending = new Map<string, ServerResponse>();
   const api: API = {
     url: '', runs: [],
+    delta(requestId, text) {
+      const response = pending.get(requestId);
+      if (!response) throw new Error(`No pending request: ${requestId}`);
+      response.write(JSON.stringify({ type: 'delta', text }) + '\n');
+    },
     finish(requestId) {
       const response = pending.get(requestId);
       if (!response) throw new Error(`No pending request: ${requestId}`);
@@ -116,6 +121,41 @@ for (const connection of ['codex', 'model'] as const) {
       await saved(page); await page.reload(); await expect(input(page)).toHaveValue(nextDraft);
     });
   }
+
+  test(`${connection}：部分回答断线后原问题只留在消息中，可按原范围重试`, async ({ page, api }) => {
+    await start(page, api, connection);
+    await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
+    await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
+    await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
+    const prompt = '请核对原文的适用范围，并保留研究条件。';
+    const run = await send(page, api, prompt);
+    await expect(input(page)).toHaveValue('');
+    const partial = '已经收到问题，正在核对原文的研究条件。';
+    api.delta(run.requestId, partial);
+    await expect(panel(page).locator('.ai-answer')).toContainText(partial);
+    api.disconnect(run.requestId); await ended(page, run, 'error');
+    await expect(input(page)).toHaveValue('');
+    expect((await state(page)).requests[run.requestId]).toMatchObject({ prompt, body: partial });
+    await saved(page); await page.reload();
+    await expect(input(page)).toHaveValue('');
+    await expect(panel(page).locator('.ai-answer')).toContainText(partial);
+    await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
+    await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
+    await saved(page); await page.evaluate(() => document.fonts.ready);
+    await mkdir('docs/verification/ai-fixes-017', { recursive: true });
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(viewport);
+      await expect(input(page)).toBeVisible();
+      await page.screenshot({ path: `docs/verification/ai-fixes-017/composer-${connection}-${viewport.width}.png` });
+    }
+    await panel(page).getByRole('button', { name: '按原范围重试', exact: true }).click();
+    await expect.poll(() => api.runs.length).toBe(2);
+    const retry = api.runs[1];
+    expect(connection === 'model' ? retry.messages?.at(-1)?.content : retry.prompt).toBe(prompt);
+    await expect(input(page)).toHaveValue('');
+    api.finish(retry.requestId); await ended(page, retry, 'done');
+    await expect(input(page)).toHaveValue('');
+  });
 }
 
 test('原生发送前同步失败保留输入，且不建立或发送请求', async ({ page, api }) => {
