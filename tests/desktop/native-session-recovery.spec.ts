@@ -106,8 +106,10 @@ test('打包桌面：连续会话沿用原生线程，旧来源不变且重启�
     await expect(panel(page).locator('.ai-answer').last()).toContainText('桌面模拟恢复回答');
     await expect(panel(page).getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0);
     expect(requests).toHaveLength(1); expect(requests[0]).toMatchObject({ sessionRef: fixtureSessionRef(oldSessionId), managed: true, history: [], reset: false });
-    const draft = '桌面恢复后尚未发送的下一条问题。'; await input(page).fill(draft); await saved(page);
+    const draft = '桌面恢复后尚未发送的下一条问题。'; await input(page).fill(draft);
+    await expect(input(page)).toHaveValue(draft); await saved(page);
     const data = await state(page);
+    expect(data.conversations[conversationId].input).toBe(draft);
     expect(data.requests['old-request']).toEqual(original);
     expect(data.requests[requests[0].requestId].nativeSessionId).toBe(newSessionId);
     expect(data.requests[requests[0].requestId].nativeTurnId).toBe('desktop-turn-2');
@@ -117,12 +119,15 @@ test('打包桌面：连续会话沿用原生线程，旧来源不变且重启�
     await close(application); application = undefined;
     session = await launch(userData, home); application = session.application; page = session.page;
     page.on('pageerror', error => pageErrors.push(error.message));
-    await mockProjectService(page);
-    // Restart renderer services with the fixture while leaving the persisted workspace untouched.
-    await page.evaluate(() => sessionStorage.setItem('papertrail-project-fixture-ready', 'true'));
+    await expect(input(page)).toHaveValue(draft);
+    expect((await state(page)).conversations[conversationId].input).toBe(draft);
+    await mockProjectService(page, { initializeWorkspace: false });
+    // A restarted renderer must restore persisted data even without a fixture session marker.
+    await page.evaluate(() => sessionStorage.removeItem('papertrail-project-fixture-ready'));
     await page.reload();
     await expect(input(page)).toHaveValue(draft);
     const restored = await state(page);
+    expect(restored.conversations[conversationId].input).toBe(draft);
     expect(restored.requests['old-request']).toEqual(original);
     expect(restored.conversations[conversationId].nativeSessionRef).toBe(fixtureSessionRef(newSessionId));
     expect(restored.conversations[conversationId].sentContext).toEqual(data.conversations[conversationId].sentContext);

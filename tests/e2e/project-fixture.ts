@@ -6,10 +6,12 @@ export const fixtureDirectory: ResearchDirectory = { id: 'binding-research-a', p
 export const fixtureSessionRef = (nativeSessionId: string) => `fixture-${nativeSessionId}`;
 
 // Deterministic project service; it never reads or writes the user's filesystem or native histories.
-export async function mockProjectService(page: Page, options: { bound?: boolean; sessions?: NativeSessionSnapshot[]; seed?: ReturnType<typeof createSeed>; names?: Record<string, string> } = {}) {
+export async function mockProjectService(page: Page, options: { bound?: boolean; sessions?: NativeSessionSnapshot[]; seed?: ReturnType<typeof createSeed>; names?: Record<string, string>; initializeWorkspace?: boolean } = {}) {
   const seed = options.seed ?? createSeed();
   if (options.bound !== false) for (const research of Object.values(seed.researches)) research.directory = { id: `binding-${research.id}`, projectId: `project-${research.id}`, path: `/fixture/${research.id}` };
-  await page.addInitScript(value => { if (!sessionStorage.getItem('papertrail-project-fixture-ready')) { localStorage.setItem('papertrail-recovery-v3', JSON.stringify(value)); sessionStorage.setItem('papertrail-project-fixture-ready', 'true'); } }, seed);
+  if (options.initializeWorkspace !== false) {
+    await page.addInitScript(value => { if (!sessionStorage.getItem('papertrail-project-fixture-ready')) { localStorage.setItem('papertrail-recovery-v3', JSON.stringify(value)); sessionStorage.setItem('papertrail-project-fixture-ready', 'true'); } }, seed);
+  }
   const state = { names: { ...options.names } as Record<string, string>, bound: options.bound !== false, sessions: options.sessions ?? [], calls: [] as { action: string; body: Record<string, unknown> }[], errors: [] as { agentId: string; error: string }[], failList: false, failDirectory: false };
   await page.route('**/api/ai/agents/projects/*', async route => {
     const body = route.request().postDataJSON() as Record<string, unknown>;
