@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
 import type { ResearchDirectory, WorkspaceData } from '../../src/domain/types';
 import { createSeed } from '../../src/data/seed';
 import { mockProjectService } from './project-fixture';
@@ -88,9 +89,14 @@ test('新建研究一次确认绑定目录，右侧助手继承且发送同一bi
   expect(bindings[0].body.operationId).toBeTruthy(); expect(api.pendingAtBind).toEqual([true]);
   await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText(research.title);
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await selectAgent(page, 'Codex');
-  await expect(panel(page)).toContainText('沿用研究目录');
+  await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
   await expect(panel(page).getByRole('button', { name: '选择研究目录', exact: true })).toHaveCount(0);
   await panel(page).getByLabel('向 AI 提问').fill('请核查当前研究目录。');
+  await page.getByRole('complementary', { name: '左侧导航' }).getByRole('button', { name: `项目设置 · ${research.title}`, exact: true }).click();
+  const settings = page.getByRole('dialog', { name: '项目设置', exact: true });
+  await expect(settings.getByLabel('项目位置')).toHaveValue(research.directory!.path);
+  await settings.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('请核查当前研究目录。');
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
   await expect(panel(page).locator('.ai-answer')).toContainText('已沿用研究目录');
   expect(api.runs).toHaveLength(1); expect(api.runs[0]).toMatchObject({ researchId: research.id, bindingId: research.directory!.id });
@@ -102,9 +108,27 @@ test('新建研究一次确认绑定目录，右侧助手继承且发送同一bi
   const metadata = JSON.parse(files.find(file => file.path === 'research.json')!.content!);
   expect(metadata.entities.research.id).toBe(research.id);
   expect(files.some(file => file.path.startsWith('sessions/') && file.content?.includes('directory-test-native'))).toBe(true);
+  await mkdir('docs/verification/composer-directory', { recursive: true });
+  for (const width of [1440, 1280, 1024]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
+    await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
+    await expect(panel(page).locator('.ai-context-options')).not.toHaveAttribute('open', '');
+    for (const label of ['添加材料', '发送问题']) {
+      const bounds = await panel(page).getByRole('button', { name: label, exact: true }).boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(width === 1440 ? 900 : 800);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    }
+    const chat = panel(page).getByRole('log', { name: '对话消息' });
+    await expect(chat).toBeVisible();
+    const chatBounds = (await chat.boundingBox())!, composerBounds = (await panel(page).locator('.ai-composer-new').boundingBox())!;
+    expect(chatBounds.y + chatBounds.height).toBeLessThanOrEqual(composerBounds.y + 1);
+    await page.screenshot({ path: `docs/verification/composer-directory/bound-${width}.png` });
+  }
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload();
   await expect(page.getByLabel('切换研究')).toHaveValue(research.id);
   expect((await data(page)).researches[research.id].directory).toMatchObject(research.directory!);
+  await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
   expect(await page.evaluate(key => localStorage.getItem(key), pendingKey)).toBeNull();
 });
 

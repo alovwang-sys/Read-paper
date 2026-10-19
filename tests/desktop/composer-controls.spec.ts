@@ -87,7 +87,7 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     await expect(materials.getByLabel('搜索研究证据')).toBeVisible();
     await materials.getByRole('button', { name: '关闭添加材料', exact: true }).click();
     await expect(materials).not.toBeVisible(); await expect(input(page)).toHaveValue(draft);
-    await expect(panel(page).getByText('本轮材料 · 0', { exact: true })).toBeVisible();
+    await expect(panel(page).locator('.ai-context-options > summary')).toContainText('本轮材料 · 0');
 
     const permissions = panel(page).getByRole('button', { name: 'Codex 访问权限', exact: true });
     await permissions.click(); await expect(menu(page)).toContainText('仅影响当前对话的后续请求');

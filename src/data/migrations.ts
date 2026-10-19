@@ -57,7 +57,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   for (const item of [...Object.values(data.cards), ...Object.values(data.drafts)])
     if (typeof item.body !== 'string' || !strings(item.evidenceIds)) throw new Error('正文或引用损坏，未覆盖现有数据。');
   for (const evidence of Object.values(data.evidence))
-    if (typeof evidence.documentId !== 'string' || typeof evidence.quote !== 'string' || !Number.isInteger(evidence.pageIndex) || evidence.pageIndex < 0 || evidence.contextOnly !== undefined && typeof evidence.contextOnly !== 'boolean') throw new Error('证据数据损坏，未覆盖现有数据。');
+    if (typeof evidence.documentId !== 'string' || typeof evidence.quote !== 'string' || !Number.isInteger(evidence.pageIndex) || evidence.pageIndex < 0 || evidence.contextOnly !== undefined && typeof evidence.contextOnly !== 'boolean' || evidence.annotationHidden !== undefined && typeof evidence.annotationHidden !== 'boolean') throw new Error('证据数据损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions)) {

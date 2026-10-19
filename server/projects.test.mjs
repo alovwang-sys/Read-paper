@@ -140,6 +140,20 @@ test('request deduplication identity requires a matching accepted archive; ordin
   assert.equal(result.messages[0].requestId, 'request-1'); assert.equal(result.messages[0].text, 'What is the evidence?');
   assert.equal(result.messages[1].text, ordinary); assert.equal(result.messages[1].requestId, undefined);
   assert.equal(result.messages[2].text, envelope); assert.equal(result.messages[2].requestId, undefined);
+  const longEnvelope = `[Read-paper requestId=large-request]\n${'original materials '.repeat(7000)}\n用户本次问题：\nThe real question survives.`;
+  await f.store.archiveRequest(project, { ...identity(), requestId: 'large-request', nativeSessionId: 'envelopes', prompt: 'The real question survives.' });
+  f.set(f.first, { history: { envelopes: { ...native('envelopes'), messages: [visible('u', longEnvelope, 'user')] } } });
+  const long = await f.store.read({ ...identity(), sessionRef: ref });
+  assert.equal(long.messages[0].text, 'The real question survives.'); assert.equal(long.messages[0].requestId, 'large-request');
+  assert.equal(long.truncated, undefined);
+  const extracted = { ...visible('u', envelope, 'user'), requestId: 'already-extracted' };
+  f.set(f.first, { history: { envelopes: { ...native('envelopes'), messages: [extracted] } } });
+  const untrustedExtracted = await f.store.read({ ...identity(), sessionRef: ref });
+  assert.equal(untrustedExtracted.messages[0].requestId, undefined);
+  assert.equal(untrustedExtracted.messages[0].text, envelope);
+  await f.store.archiveRequest(project, { ...identity(), requestId: extracted.requestId, nativeSessionId: 'envelopes', prompt: envelope });
+  const repeated = await f.store.read({ ...identity(), sessionRef: ref });
+  assert.equal(repeated.messages[0].text, envelope); assert.equal(repeated.messages[0].requestId, extracted.requestId);
 });
 
 test('accepted request archive restores the real question before native display truncation', async (t) => {

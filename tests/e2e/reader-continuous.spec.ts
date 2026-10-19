@@ -21,8 +21,9 @@ test('滚动连续跨页后立即分窗保持页内位置，第二页摘录仍�
   const firstId = (await pane(page, 1).getAttribute('data-pane-id'))!;
   const first = paneById(page, firstId), scroller = first.locator('.pdf-scroll');
   const top = await scroller.evaluate(node => node.scrollTop);
-  await scroller.hover(); await page.mouse.wheel(0, 1000);
-  await expect.poll(() => scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(top + 300);
+  const pageStep = await first.locator('.pdf-sheet[data-page-index="0"]').evaluate(sheet => sheet.getBoundingClientRect().height + 24);
+  await scroller.hover(); await page.mouse.wheel(0, pageStep + 10);
+  await expect.poll(() => scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(top + pageStep);
   await expect(first.getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
   await scroller.evaluate(async node => {
     node.scrollTop += 90;

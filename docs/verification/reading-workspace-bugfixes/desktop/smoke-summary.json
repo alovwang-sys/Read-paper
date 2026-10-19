@@ -1,0 +1,39 @@
+{
+  "version": "0.1.7",
+  "date": "2026-10-19",
+  "realUserDataUsed": false,
+  "realModelRequests": 0,
+  "composer": {
+    "status": "passed",
+    "command": "npm run test:desktop:e2e -- tests/desktop/composer-controls.spec.ts",
+    "elapsedSeconds": 11.8,
+    "covered": [
+      "packaged launch",
+      "collapsed materials",
+      "1024x800 controls",
+      "draft restored after restart",
+      "no page errors",
+      "no model calls"
+    ]
+  },
+  "installWorkflow": {
+    "status": "incomplete",
+    "command": "npm run test:desktop:e2e -- tests/desktop/desktop.spec.ts --grep 安装产物：",
+    "passed": [
+      "papertrail://app/ startup",
+      "app version 0.1.7",
+      "asar safety checks",
+      "PDF and card at 1440x900",
+      "whiteboard and source at 1280x800"
+    ],
+    "failure": "tests/desktop/desktop.spec.ts:91 保存连接 click timed out after 30000ms while saving a synthetic key",
+    "cause": "unconfirmed; synchronous native keychain interaction may be involved",
+    "remainingNotVerified": [
+      "API settings save",
+      "writing and AI at 1440x900 / 1024x800",
+      "storage view at 1280x800",
+      "large conclusion close and restart"
+    ]
+  },
+  "previousVerificationScreenshotsRestored": true
+}

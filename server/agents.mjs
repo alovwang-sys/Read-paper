@@ -461,6 +461,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
     let eventQueue = Promise.resolve();
     let outputChars = 0;
     let streamed = false;
+    const toolActivity = new Map();
     let nativeLock;
     const unlockNative = () => { if (nativeLock && nativeBusy.get(nativeLock) === request) nativeBusy.delete(nativeLock); };
     const send = (event) => {
@@ -478,7 +479,11 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       return eventQueue;
     };
     const disconnect = () => { if (!res.writableEnded) controller?.abort(); };
-    const armTimer = () => { clearTimeout(timer); timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs); };
+    const armTimer = () => {
+      if (!registered || !controller || controller.signal.aborted || [...pending.values()].some(item => item.request === request)) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    };
     try {
       checkCaller(req, ports);
       if (lifecycle.signal.aborted) throw failure(503, 'service_stopped', '本机助手服务已停止。');
@@ -635,7 +640,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       if (body.agentId === 'codex' && body.purpose === 'chat' && prompt.length > MAX_CHARS) throw failure(413, 'context_too_large', '本次问题、材料与需要补入的历史超过 120,000 字符的单次输入上限。原生会话中已有的历史由 Codex 管理；请缩小本次材料或补入的历史范围。');
       const run = adapters[body.agentId].run({ prompt, title: body.prompt.slice(0, 80), cwd, ...(project ? { materialCwd } : {}), nativeSessionId, nativeModel, signal: controller.signal,
         ...(imagePaths.length ? { imagePaths } : {}),
-        skillIds: body.skillIds, codex: body.codex,
+        skillIds: body.skillIds, codex: body.codex, onActivity: armTimer,
         ...(body.agentId === 'codex' && body.purpose === 'chat' && body.codex !== undefined ? { onInteraction: input => {
           if (controller.signal.aborted) return Promise.reject(failure(499, 'stopped', '生成已停止。'));
           if (!record(input) || !['approval', 'question'].includes(input.kind)) return Promise.reject(failure(502, 'invalid_interaction', 'Codex 交互格式无效。'));
@@ -654,17 +659,26 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
           });
         } } : {}),
         onEvent(event) {
-          if (controller.signal.aborted) return;
+          if (!registered || controller.signal.aborted) return;
           if (event.type === 'session' && typeof event.nativeSessionId === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(event.nativeSessionId)) persist(event.nativeSessionId, event.model).then(savedRef => send({ ...event, ...(savedRef ? { nativeSessionRef: savedRef } : {}) })).catch(() => controller.abort());
-          else if (event.type === 'delta' && typeof event.text === 'string') send({ type: 'delta', text: event.text }).catch(() => controller.abort());
+          else if (event.type === 'delta' && typeof event.text === 'string') {
+            if (event.text.trim()) armTimer();
+            send({ type: 'delta', text: event.text }).catch(() => controller.abort());
+          }
           else if (event.type === 'progress') {
             const progress = sanitizeAgentProgress(event, env);
-            if (progress) send(progress).catch(() => controller.abort());
+            if (progress) {
+              if (progress.kind === 'tool' && progress.id && progress.toolName && progress.status) {
+                const state = JSON.stringify([progress.toolName, progress.status, progress.command, progress.output, progress.exitCode]);
+                if (toolActivity.get(progress.id) !== state) { toolActivity.set(progress.id, state); armTimer(); }
+              }
+              send(progress).catch(() => controller.abort());
+            }
           }
         },
       });
       runCompletion = run.catch(error => { runFailure = error; });
-      const result = await Promise.race([run, new Promise((_, reject) => { const cancel = () => reject(failure(timedOut ? 504 : 499, timedOut ? 'timeout' : 'stopped', timedOut ? 'Agent 响应超时，已停止并保留收到的内容，请重试。' : '生成已停止。')); controller.signal.addEventListener('abort', cancel, { once: true }); if (controller.signal.aborted) cancel(); })]);
+      const result = await Promise.race([run, new Promise((_, reject) => { const cancel = () => reject(failure(timedOut ? 504 : 499, timedOut ? 'timeout' : 'stopped', timedOut ? '本机助手长时间未返回新进展，已请求停止并保留收到的内容，请重试。' : '生成已停止。')); controller.signal.addEventListener('abort', cancel, { once: true }); if (controller.signal.aborted) cancel(); })]);
       if (typeof result.nativeSessionId !== 'string' || !/^[A-Za-z0-9_-]{1,200}$/.test(result.nativeSessionId) || typeof result.body !== 'string' || result.body.length > 1_000_000 || (result.model !== undefined && (typeof result.model !== 'string' || result.model.length > 200))) throw failure(502, 'invalid_agent_response', 'Agent 返回的会话或回答格式不正确。');
       await persist(result.nativeSessionId, result.model); await mappingWrites;
       if (!streamed && result.body) await send({ type: 'delta', text: result.body });
@@ -686,7 +700,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       if (unconfirmed && project && nativeSessionId) await projects.markUnconfirmed(project, body.agentId, nativeSessionId).catch(() => {});
       const projectRequest = req.url.startsWith('/api/ai/agents/projects/');
       const fallback = projectRequest ? projectMessages[error.code] || '研究目录操作失败，应用内资料已保留。请重试并检查目录连接。' : runtimeMessages[error.code] || '本机 Agent 连接失败，请检查 CLI 配置后重试。';
-      const message = unconfirmed ? runtimeMessages.stop_unconfirmed : timedOut ? 'Agent 响应超时，已请求停止并保留收到的内容，请检查原生记录后重试。' : stopped ? '已请求停止；收到的内容已保留。' : error.status ? error.message : fallback;
+      const message = unconfirmed ? runtimeMessages.stop_unconfirmed : timedOut ? '本机助手长时间未返回新进展，已请求停止并保留收到的内容，请检查原生记录后重试。' : stopped ? '已请求停止；收到的内容已保留。' : error.status ? error.message : fallback;
       if (!res.headersSent) res.statusCode = timedOut ? 504 : stopped ? 200 : error.status || (projectRequest ? 500 : 502);
       if (body && record(body)) {
         eventQueue = eventQueue.catch(() => {});
@@ -696,7 +710,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
     } finally {
       clearTimeout(timer); if (controller?.signal.aborted && runCompletion) await runCompletion; await mappingWrites.catch(() => {});
       if (runFailure?.code === 'stop_unconfirmed' && project && nativeSessionId) await projects.markUnconfirmed(project, body.agentId, nativeSessionId).catch(() => {});
-      if (registered) { active.delete(request); busy.delete(key); unlockNative(); }
+      if (registered) { active.delete(request); busy.delete(key); unlockNative(); registered = false; }
       req.off('aborted', disconnect); res.off('close', disconnect); res.off('error', disconnect);
     }
     return true;

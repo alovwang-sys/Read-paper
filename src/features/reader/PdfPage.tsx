@@ -84,7 +84,7 @@ export function PdfPage({ pdf, documentId, title, pageIndex, size, active, selec
       });
     }
     for (const item of excerpts) if (item.kind !== 'region') highlight(item.quote, 'pdf-excerpt-highlight', item.id);
-    if (source?.kind !== 'region' && source?.quote) highlight(source.quote, 'pdf-source-highlight');
+    if (source?.kind !== 'region' && source?.quote) highlight(source.quote, 'pdf-source-highlight', source.id);
   }, [textReady, excerpts, source?.id, source?.quote]);
 
   return <div className={`pdf-sheet ${active ? '' : 'pdf-sheet-placeholder'}`} style={{ width: size.width, height: size.height, '--total-scale-factor': size.scale, '--scale-round-x': '1px', '--scale-round-y': '1px' } as CSSProperties} data-document-id={documentId} data-page-index={pageIndex}>

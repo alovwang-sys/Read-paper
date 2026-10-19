@@ -25,11 +25,21 @@ export function extractSourceLinks(text: string): SourceCandidate[] {
     } catch { /* Non-web references stay readable in the answer. */ }
   };
   const withoutCode = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
-  const rest = withoutCode.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s]+?)(?:\s+"[^"\n]*")?\)(?=[\s.,;，。；]|$)/g, (_all, title: string, url: string) => { add(url, title); return ''; });
+  const rest = withoutCode.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s]+?)(?:\s+"[^"\n]*")?\)(?=[\s.,;:!?，。；：！？、]|$)/g, (_all, title: string, url: string) => { add(url, title); return ''; });
   for (const match of rest.matchAll(/https?:\/\/[^\s<>"\[\]，。；]+/g)) add(match[0].replace(/[.,;!?)]+$/, ''));
   for (const match of rest.matchAll(/\b(?:doi:\s*)(10\.\d{4,9}\/[^\s<>，。；]+)/gi)) add(match[1].replace(/[.,;]+$/, ''));
   for (const match of rest.matchAll(/\barxiv:\s*((?:\d{4}\.\d{4,5}|[a-z-]+\/[0-9]{7})(?:v\d+)?)/gi)) add(`arxiv:${match[1]}`);
   return links;
+}
+
+export function sourceRecommendation(body: string, candidate: SourceCandidate): string | undefined {
+  if (!body.trim()) return undefined;
+  const matches = (source: SourceCandidate) => source.url === candidate.url || (['doi', 'arxiv'] as const).some(key => source.identifiers?.[key] && source.identifiers[key] === candidate.identifiers?.[key]);
+  const lines = body.replace(/```[\s\S]*?```/g, '').trim().split(/\r?\n/);
+  const line = lines.find(value => extractSourceLinks(value).some(matches)) ?? (lines.length === 1 && !extractSourceLinks(lines[0]).length ? lines[0] : undefined);
+  const excerpt = line?.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/^[\s#>*+-]*(?:\d+[.)]\s*)?/, '').replace(/[*`]/g, '').trim();
+  // A long paragraph or several sources on one line is not a description of this paper.
+  return line && excerpt && excerpt.length <= 300 && extractSourceLinks(line).length <= 1 ? excerpt : candidate.title.slice(0, 300);
 }
 
 export function findSource(candidate: SourceCandidate): PaperDocument | undefined {

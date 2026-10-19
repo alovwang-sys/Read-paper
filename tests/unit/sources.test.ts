@@ -4,7 +4,7 @@ import { loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { workspace } from '../../src/services/workspace';
 import { attachPdf } from '../../src/services/pdf';
-import { acquireFullText, collectSource, extractSourceLinks, sourceCandidate } from '../../src/services/sources';
+import { acquireFullText, collectSource, extractSourceLinks, sourceCandidate, sourceRecommendation } from '../../src/services/sources';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), restoreWorkspaceBackup: vi.fn() }));
 vi.mock('../../src/services/pdf', () => ({ attachPdf: vi.fn() }));
@@ -25,6 +25,18 @@ beforeEach(async () => {
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('来源收录', () => {
+  it('连续列表只保存各自的推荐说明，不复制整段对话或匹配同名文献', () => {
+    const body = '研究问题的完整讨论不应成为文献内容。\n1. [同名论文](https://example.org/first)：用于分析检索效果。\n2. [同名论文](https://example.org/second)：用于比较长期记忆。\n最后给出整体建议。';
+    const candidates = extractSourceLinks(body);
+    expect(sourceRecommendation(body, candidates[0])).toBe('同名论文：用于分析检索效果。');
+    expect(sourceRecommendation(body, candidates[1])).toBe('同名论文：用于比较长期记忆。');
+    expect(sourceRecommendation('[第一篇](https://example.org/first) 与 [第二篇](https://example.org/second)，后面是完整研究讨论。', candidates[0])).toBe('同名论文');
+    expect(sourceRecommendation(`${'整段聊天'.repeat(100)}[同名论文](https://example.org/first)`, candidates[0])).toBe('同名论文');
+    expect(sourceRecommendation('[其他资料](https://example.org/other)：不应成为该篇推荐说明。', candidates[0])).toBe('同名论文');
+    expect(sourceRecommendation('旧版本保存的推荐说明', candidates[0])).toBe('旧版本保存的推荐说明');
+    expect(sourceRecommendation('', candidates[0])).toBeUndefined();
+  });
+
   it('只识别真实链接与标识，保留标题、去重，并忽略代码和搜索导航', () => {
     const links = extractSourceLinks('[注意力论文](https://arxiv.org/abs/1706.03762v7)\nhttps://arxiv.org/pdf/1706.03762.pdf\nDOI:10.1000/abc\n[搜索](https://www.google.com/search?q=paper)\n`https://example.org/code`\n```\nhttps://example.org/script\n```');
     expect(links).toHaveLength(2);

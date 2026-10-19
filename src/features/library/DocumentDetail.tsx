@@ -3,9 +3,10 @@ import { FileText, RefreshCw, Upload } from 'lucide-react';
 import type { SourceDiscovery } from '../../domain/types';
 import { hasFullText } from '../../domain/knowledge';
 import { attachPdf } from '../../services/pdf';
-import { acquireFullText } from '../../services/sources';
+import { acquireFullText, sourceRecommendation } from '../../services/sources';
 import { useWorkspace } from '../../services/workspace';
 import { externalSourceUrl, sourceUrl } from './SourcesView';
+import { ResourceOpenMenu } from './ResourceOpenMenu';
 import './library.css';
 import './source-intake.css';
 
@@ -53,7 +54,7 @@ export function DocumentDetail({ documentId }: { documentId: string }) {
     actions.openConversationSource({ researchId: request.researchId, conversationId: request.conversationId, conversationTitle: data.conversations[request.conversationId]?.title || '原研究对话', requestId: request.id, prompt: request.prompt, answer: request.body, answerEvidenceIds: [...request.evidenceIds], selection: '', context: request.context, createdAt: request.createdAt, model: request.model, connectionId: request.connectionId, generationRequestIds: [], incomplete: request.status !== 'done' || !!request.legacy || !!request.nativeImported }, { kind: 'document', id: doc.id });
   };
   return <div className="page-content document-detail" onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); event.stopPropagation(); if (!hasFullText(doc)) void attach(event.dataTransfer.files[0]); }}>
-    <div className="eyebrow">SOURCE DETAILS</div><h1>{doc.title}</h1>
+    <div className="library-heading"><div><div className="eyebrow">SOURCE DETAILS</div><h1>{doc.title}</h1></div><ResourceOpenMenu resource={{ kind: 'document', id: documentId }} scope={data.scope}/></div>
     <p className="page-lead">{hasFullText(doc) ? '全文已就绪，可以开始阅读。' : acquisition?.status === 'fetching' ? '已加入 · 正在获取全文…' : doc.abstract ? '已收录 · 暂无全文，可先查看摘要。' : doc.sourceKind === 'web' ? '已收录 · 仅链接' : '资料已收下，添加 PDF 后就能阅读和摘录。'}</p>
     {!hasFullText(doc) && acquisition && <div className="source-intake-status source-acquisition-status" role={acquisition.status === 'fetching' ? 'status' : undefined}>{acquisition.status === 'fetching' && <RefreshCw size={15}/>}<p>{acquisition.message || (acquisition.status === 'fetching' ? '正在尝试获取可访问的全文。可继续阅读其他资料。' : acquisition.status === 'conflict' ? '取得的全文与已有资料发生冲突，请核对后再继续。' : '暂未取得全文，文献信息已保留。')}</p>{url && acquisition.status !== 'fetching' && <button className="text-button" disabled={retrying || busy} onClick={() => void retry()}>{retrying ? '正在获取…' : '重试获取全文'}</button>}{acquisition.status === 'conflict' && conflictId && hiddenConflict === conflictId && <button className="text-button" onClick={() => setHiddenConflict(undefined)}>查看重复资料</button>}</div>}
     {doc.abstract && <section className="source-abstract"><h2>{doc.sourceKind === 'web' ? '原网页简介' : '作者摘要'}</h2><p>{doc.abstract.text}</p><a className="text-button" href={externalSourceUrl(doc.abstract.url)} target="_blank" rel="noreferrer">摘要来源 ↗</a><p className="muted">{doc.abstract.retrievedAt && `获取于 ${new Date(doc.abstract.retrievedAt).toLocaleDateString('zh-CN')}`}</p></section>}
@@ -72,7 +73,8 @@ export function DocumentDetail({ documentId }: { documentId: string }) {
     {research?.documentIds.includes(documentId) && <section className="source-research-record"><h2>本研究的收录记录</h2><label className="field">为什么收下这份资料<textarea aria-label="本研究收录备注" placeholder="记下它与当前研究问题的关系…" value={record?.note ?? ''} onChange={event => { const note = event.target.value, researchId = research.id; actions.updateData(data => { const current = data.researches[researchId]; current.sourceRecords ??= {}; const entry = current.sourceRecords[documentId] ??= { note: '', discoveries: [] }; entry.note = note; }); }}/></label>{!!record?.discoveries.length && <div className="source-discovery-list">{record.discoveries.map((discovery, index) => {
       const request = data.requests[discovery.requestId ?? ''];
       const title = data.conversations[discovery.conversationId ?? '']?.title;
-      return <article className="source-discovery" key={`${discovery.requestId ?? discovery.url}-${index}`}><div className="source-discovery-meta"><strong>{discovery.kind === 'ai' ? `发现于 AI 对话${title ? ` · ${title}` : ''}` : '从链接收录'}</strong><small>{new Date(discovery.createdAt).toLocaleDateString('zh-CN')}</small></div>{request && <p>{request.prompt}</p>}{discovery.recommendation && <p><span className="muted">AI 推荐说明：</span>{discovery.recommendation}</p>}<div className="button-row">{request && <button className="text-button" onClick={() => openDiscovery(discovery)}>回看原问答</button>}<a className="text-button" href={externalSourceUrl(discovery.url)} target="_blank" rel="noreferrer">发现时的链接 ↗</a></div></article>;
+      const recommendation = sourceRecommendation(request?.body ?? discovery.recommendation ?? '', { url: discovery.url, title: doc.title, kind: doc.sourceKind ?? 'paper', identifiers: doc.identifiers });
+      return <article className="source-discovery" key={`${discovery.requestId ?? discovery.url}-${index}`}><div className="source-discovery-meta"><strong>{discovery.kind === 'ai' ? `发现于 AI 对话${title ? ` · ${title}` : ''}` : '从链接收录'}</strong><small>{new Date(discovery.createdAt).toLocaleDateString('zh-CN')}</small></div>{recommendation && <p><span className="muted">AI 推荐说明：</span>{recommendation}</p>}<div className="button-row">{request && <button className="text-button" onClick={() => openDiscovery(discovery)}>回看原问答</button>}<a className="text-button" href={externalSourceUrl(discovery.url)} target="_blank" rel="noreferrer">发现时的链接 ↗</a></div></article>;
     })}</div>}</section>}
   </div>;
 }

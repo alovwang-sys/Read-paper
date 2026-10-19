@@ -72,6 +72,14 @@ test('OpenCode verifies session project before retrieving paged history and excl
   assert.equal(result.canResume, false);
 }));
 
+test('OpenCode removes materials and history before applying visible question limits', () => fixture(async ({ cwd }) => {
+  const prompt = `[Read-paper requestId=large-request]\n${'原文材料与历史。'.repeat(15_000)}\n用户本次问题：\n真正的问题。`;
+  const fake = fakeProcesses([{ data: info(cwd) }, { data: [{ id: 'msg_u', type: 'user', text: prompt }], cursor: { next: null } }, { data: {} }]);
+  const result = await createOpenCodeRuntime({ spawnImpl: fake.spawnImpl }).readSession({ cwd, sessionId: sid });
+  assert.deepEqual(result.messages, [{ id: 'msg_u', role: 'user', text: '真正的问题。', requestId: 'large-request' }]);
+  assert.equal(result.truncated, undefined);
+}));
+
 test('OpenCode bound projects create in the shared store with native deny rules and preserve model selection', () => fixture(async ({ cwd }) => {
   const fake = fakeProcesses([
     [{ type: 'document', info: { model: 'local/selected' } }],
@@ -134,10 +142,11 @@ test('Claude local discovery needs no authentication, isolates canonical cwd and
 }));
 
 test('Claude uses supported activity metadata only to mark busy and extracts user-facing Read-paper titles', () => fixture(async ({ cwd, other, path, config }) => {
-  await writeFile(join(path, `${uuid}.jsonl`), JSON.stringify(row(cwd, 'u1', 'user', '[Read-paper requestId=internal-id]\n材料说明\n用户本次问题：\n真正的问题\n第二行')));
+  await writeFile(join(path, `${uuid}.jsonl`), JSON.stringify(row(cwd, 'u1', 'user', `[Read-paper requestId=internal-id]\n${'材料说明'.repeat(30_000)}\n用户本次问题：\n真正的问题\n第二行`)));
   const fake = fakeProcesses([[{ sessionId: uuid, cwd: other, status: 'busy' }], [{ sessionId: uuid, cwd, status: 'waiting', kind: 'interactive' }]]);
   const runtime = createClaudeRuntime({ env: { CLAUDE_CONFIG_DIR: config }, spawnImpl: fake.spawnImpl });
   const first = await runtime.readSession({ cwd, sessionId: uuid }); assert.equal(first.state, 'unknown'); assert.equal(first.title, '真正的问题');
+  assert.equal(first.messages[0].text, '真正的问题\n第二行'); assert.equal(first.messages[0].requestId, 'internal-id'); assert.equal(first.truncated, undefined);
   const second = await runtime.readSession({ cwd, sessionId: uuid }); assert.equal(second.state, 'busy'); assert.equal(second.canResume, false);
 }));
 

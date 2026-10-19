@@ -118,6 +118,51 @@ test('显式 AI 来源可在中央预览而不收录，三尺寸保留回答与�
   noErrors();
 });
 
+test('连续推荐列表收录局部说明，旧版整段快照刷新后也不展示成聊天记录', async ({ page }) => {
+  const noErrors = await start(page);
+  const candidates = [source('https://research.example.org/first-local', '局部推荐第一篇'), source('https://research.example.org/second-local', '局部推荐第二篇')];
+  const prompt = '这是原始研究问题，不应直接复制到文献正文。';
+  const body = `先讨论研究整体背景，不属于任何一篇论文。\n1. [${candidates[0].title}](${candidates[0].url})：用于分析检索效果。\n2. [${candidates[1].title}](${candidates[1].url})：用于比较长期记忆。\n最后给出综合建议，不属于文献说明。`;
+  await page.route('**/api/sources/resolve', route => route.fulfill({ json: candidates.find(candidate => candidate.url === route.request().postDataJSON().url) }));
+  await page.route('**/api/ai/chat', route => route.fulfill({ contentType: 'application/x-ndjson', body: `${JSON.stringify({ type: 'delta', text: body })}\n${JSON.stringify({ type: 'done', model: 'source-intake-e2e' })}\n` }));
+  await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+  await panel(page).getByLabel('向 AI 提问').fill(prompt);
+  await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
+  const item = recommendations(page).locator('article').filter({ hasText: candidates[0].title });
+  await expect(item).toBeVisible();
+  await item.getByRole('button', { name: '查看文献', exact: true }).click();
+  await expect(main(page).locator('.source-preview-recommendation')).toHaveText('局部推荐第一篇：用于分析检索效果。');
+  await expect(main(page).locator('.source-preview-discovery > p.muted')).toHaveCount(0);
+  await item.getByRole('button', { name: '加入本研究', exact: true }).click();
+  const doc = await documentFor(page, candidates[0].url);
+  await expect.poll(async () => (await state(page)).documents[doc.id].acquisition?.status).toBe('unavailable');
+  await item.getByRole('button', { name: '打开', exact: true }).click();
+  const discovery = main(page).locator('.source-discovery');
+  await expect(discovery).toContainText('局部推荐第一篇：用于分析检索效果。');
+  await expect(discovery).not.toContainText('局部推荐第二篇');
+  await expect(discovery.locator(':scope > p')).not.toContainText(prompt);
+  await expect(main(page)).not.toContainText('先讨论研究整体背景');
+  await panel(page).getByLabel('向 AI 提问').fill(pendingInput);
+  await saved(page);
+  const data = await state(page), request = Object.values(data.requests).find(value => value.prompt === prompt)!;
+  expect(data.researches['research-a'].sourceRecords?.[doc.id].discoveries[0].recommendation).toBe('局部推荐第一篇：用于分析检索效果。');
+  data.researches['research-a'].sourceRecords![doc.id].discoveries[0].recommendation = body;
+  await page.evaluate(value => localStorage.setItem('papertrail-recovery-v3', JSON.stringify(value)), data);
+  await page.reload();
+  await expect(discovery).toContainText('局部推荐第一篇：用于分析检索效果。');
+  await expect(discovery).not.toContainText('局部推荐第二篇');
+  await expect(discovery.locator(':scope > p')).not.toContainText(prompt);
+  await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue(pendingInput);
+  await discovery.getByRole('button', { name: '回看原问答', exact: true }).click();
+  await expect(panel(page).locator('.ai-source-view')).toContainText('最后给出综合建议');
+  await expect(panel(page).locator('.ai-source-view .ai-user-message')).toHaveText(prompt);
+  expect((await state(page)).requests[request.id].body).toBe(body);
+  await saved(page);
+  await mkdir('docs/verification/reading-workspace-bugfixes', { recursive: true });
+  await page.screenshot({ path: 'docs/verification/reading-workspace-bugfixes/source-local-description-1440.png' });
+  noErrors();
+});
+
 test('直接加入在后台取得有效 PDF，保持主区并在刷新后本地阅读', async ({ page }) => {
   const noErrors = await start(page);
   const pdf = await uniquePdf('后台收录的独立全文');

@@ -23,3 +23,5 @@
 - 2026-10-19 | inline-assistant-ci | root_cause=dependency-assets-and-ui-test-contract | 新依赖的 tests 普通文件会进入产物，portal 和入口变化也须同步桌面验收。排除 tests/docs 目录并保留运行文件与许可证；真实拖选验证可见范围、命中及选区归属，三平台通过后再合入。证据：[事件记录](incidents/2026-10-19-inline-assistant-ci/record.md)。
 
 - 2026-10-19 | directory-sync-poll | root_cause=filesystem-poll-before-transaction-commit | 目录事务先暂存旧文件再落地新文件，保存期间读取可短暂ENOENT。测试仅将该状态视为未就绪并继续轮询，其他错误继续抛出，保留最终内容与界面成功断言。证据：[续验记录](incidents/2026-10-19-inline-assistant-ci/record.md#续验intel-目录读取时机)。
+
+- 2026-10-19 · `root_cause: absolute_timeout_on_active_agent` · 本机助手的活跃长任务不能用整轮固定时长判定卡死；watchdog 应依据当前请求的真实进展计时，并测试静默思考、工具、审批等待和停止。证据见 [incident](incidents/2026-10-19-agent-timeout/record.md)。本项目本档 1 次，全局次数未知。

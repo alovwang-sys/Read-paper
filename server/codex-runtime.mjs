@@ -13,6 +13,14 @@ const safeError = (message, code = 'agent_failed') => Object.assign(new Error(me
 const abortError = () => safeError('生成已停止。', 'stopped');
 const TOOL_TYPES = new Set(['commandExecution', 'mcpToolCall', 'dynamicToolCall', 'fileChange', 'webSearch']);
 
+export function readPaperHistoryMessage(message) {
+  if (message.role !== 'user' || message.requestId) return message;
+  const match = message.text.match(/^\[Read-paper requestId=([A-Za-z0-9._:-]+)\]\n/);
+  const marker = '\n用户本次问题：\n';
+  const index = match ? message.text.lastIndexOf(marker) : -1;
+  return index < 0 ? message : { ...message, requestId: match[1], text: message.text.slice(index + marker.length) };
+}
+
 function toolText(value, env, limit) {
   let text = stripVTControlCharacters(value).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
   const secrets = Object.entries(env).filter(([key, secret]) => /API_?KEY|TOKEN|PASSWORD|SECRET|CREDENTIAL|AUTHORIZATION|ACCESS_KEY/i.test(key) && typeof secret === 'string' && secret.length >= 4).map(([, secret]) => secret).sort((a, b) => b.length - a.length);
@@ -361,11 +369,12 @@ function visibleHistory(turns, env) {
       if (!sessionIdValid(item.id)) continue;
       if (item.type === 'userMessage') {
         const raw = (item.content || []).map(part => part.type === 'text' ? part.text : part.type === 'skill' ? `$${part.name}` : '[此视图未加载原始附件]').filter(text => typeof text === 'string').join('\n');
-        const contentComplete = raw.length <= 60_000;
+        const message = readPaperHistoryMessage({ role: 'user', text: raw });
+        const contentComplete = message.text.length <= 60_000;
         if (!contentComplete) { truncated = true; historyComplete = false; }
-        const text = toolText(raw, env, 60_000);
+        const text = toolText(message.text, env, 60_000);
         visibleItems.push({ id: item.id, type: 'userMessage', status: 'done', text, contentComplete, ...(sessionIdValid(item.clientId) ? { clientId: item.clientId, clientUserMessageId: item.clientId } : {}) });
-        if (raw.trim()) messages.push({ id: `${turn.id}:${item.id}`, turnId: turn.id, itemId: item.id, ...(sessionIdValid(item.clientId) ? { clientId: item.clientId, clientUserMessageId: item.clientId } : {}), role: 'user', text, contentComplete, ...(isoTime(turn.startedAt) ? { createdAt: isoTime(turn.startedAt) } : {}) });
+        if (message.text.trim()) messages.push({ ...message, id: `${turn.id}:${item.id}`, turnId: turn.id, itemId: item.id, ...(sessionIdValid(item.clientId) ? { clientId: item.clientId, clientUserMessageId: item.clientId } : {}), text, contentComplete, ...(isoTime(turn.startedAt) ? { createdAt: isoTime(turn.startedAt) } : {}) });
         continue;
       }
       const visible = sanitizeAgentItem(item, item.status !== 'inProgress' && turn.status !== 'inProgress', env);
@@ -578,7 +587,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         return { state: error.code === 'not-installed' ? 'not-installed' : 'error', detail: error.message };
       } finally { clearTimeout(timeout); if (client) await client.shutdown(); await rm(root, { recursive: true, force: true }); }
     },
-    async run({ prompt, title, cwd, materialCwd, nativeSessionId, nativeToolsVersion, managedKey, requestId, signal, onEvent = () => {}, skillIds, codex, onInteraction, imagePaths = [] }) {
+    async run({ prompt, title, cwd, materialCwd, nativeSessionId, nativeToolsVersion, managedKey, requestId, signal, onEvent = () => {}, onActivity = () => {}, skillIds, codex, onInteraction, imagePaths = [] }) {
       if (materialCwd !== undefined) {
         cwd = await projectCwd(cwd);
         materialCwd = await projectCwd(materialCwd);
@@ -653,6 +662,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
       const turnReady = new Promise((resolve) => { readyTurn = resolve; });
       const earlyNotifications = [];
       const toolItems = new Map();
+      const activityItems = new Map();
       const completed = new Promise((resolve, reject) => { finish = resolve; fail = reject; });
       completed.catch(() => {});
       const isCurrent = (params) => !currentTurn && acceptingEvents && (!params?.threadId || params.threadId === threadId) && (!params?.turnId || !turnId || params.turnId === turnId);
@@ -671,7 +681,17 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
           if (earlyNotifications.length >= 256) { fail(safeError('Codex 回合确认前的事件过多。')); return; }
           earlyNotifications.push({ method, params }); return;
         }
-        if (method === 'turn/completed' && params?.turn?.id !== turnId) return;
+        if (method === 'turn/completed' && (params?.threadId !== threadId || params?.turn?.id !== turnId)) return;
+        const threadNotification = ['thread/tokenUsage/updated', 'thread/status/changed'].includes(method);
+        if (method !== 'turn/completed' && method !== 'error' && (params?.threadId !== threadId || (!threadNotification && params?.turnId !== turnId))) return;
+        // Refresh liveness without exposing private reasoning or raw command output.
+        if (['item/agentMessage/delta', 'item/plan/delta', 'item/reasoning/textDelta', 'item/reasoning/summaryTextDelta', 'item/commandExecution/outputDelta', 'item/fileChange/outputDelta'].includes(method)
+          && typeof params.itemId === 'string' && params.itemId.trim() && typeof params.delta === 'string' && params.delta.trim()) onActivity();
+        if (['item/started', 'item/completed'].includes(method) && ['reasoning', ...VISIBLE_ITEM_TYPES].includes(params?.item?.type)
+          && typeof params.item.id === 'string' && params.item.id.trim() && params.item.id.length <= 200) {
+          const state = `${params.item.type}:${method}`;
+          if (activityItems.get(params.item.id) !== state) { activityItems.set(params.item.id, state); onActivity(); }
+        }
         if (method === 'item/agentMessage/delta') {
           const id = typeof params.itemId === 'string' ? params.itemId : 'legacy-agent-message';
           const previous = items.get(id);

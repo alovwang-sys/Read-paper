@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname, basename, parse } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { sanitizeAgentProgress } from './codex-runtime.mjs';
+import { readPaperHistoryMessage, sanitizeAgentProgress } from './codex-runtime.mjs';
 import { imageRequestManifest, writeRegionImages } from './images.mjs';
 
 const agents = ['codex', 'opencode', 'claude'];
@@ -206,9 +206,9 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       const finalItems = answerItems.filter(item => item.phase === 'final_answer');
       const selectedAnswers = finalItems.length ? finalItems : answerItems.filter(item => item.phase !== 'commentary');
       const selectedMessage = message.role === 'assistant' && (!message.itemId || selectedAnswers.some(item => item.id === message.itemId));
-      let original = message.text, requestId;
-      const match = message.role === 'user' && original.match(/^\[Read-paper requestId=([A-Za-z0-9._:-]+)\]\n/);
-      const candidate = message.role === 'user' && (match?.[1] || message.requestId);
+      const visible = readPaperHistoryMessage(message);
+      let original = visible.text, requestId;
+      const candidate = message.role === 'user' && (visible.requestId || message.text.match(/^\[Read-paper requestId=([A-Za-z0-9._:-]+)\]\n/)?.[1]);
       if (validId(candidate)) {
         try {
           const path = join(await managed(project.path), `request-${digest(candidate)}.json`);
@@ -222,7 +222,6 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
           }
         } catch { /* Unavailable archives never manufacture a trusted request association. */ }
       }
-      if (!requestId && match && original.includes('\n用户本次问题：\n')) original = original.slice(original.lastIndexOf('\n用户本次问题：\n') + '\n用户本次问题：\n'.length);
       let text = safeText(original, 100_000);
       if (text.length < original.length) {
         truncated = true;

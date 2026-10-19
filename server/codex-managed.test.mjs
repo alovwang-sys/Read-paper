@@ -135,21 +135,47 @@ test('native ordered items retain commentary and sanitized tools while final ans
 });
 
 test('compaction, plan and token/status notifications expose bounded state without raw reasoning', async t => {
+  let activities = 0;
   const f = await fixture(t, { onTurn(turn) {
-    turn.notify('thread/status/changed', { status: { type: 'active', activeFlags: ['waitingOnApproval', 'unknown'] } });
-    turn.notify('thread/tokenUsage/updated', { tokenUsage: { total: { totalTokens: 120, private: 'secret' }, last: { inputTokens: 20 }, modelContextWindow: 1000, private: 'secret' } });
+    turn.notify('thread/status/changed', { turnId: undefined, status: { type: 'active', activeFlags: ['waitingOnApproval', 'unknown'] } });
+    turn.notify('thread/tokenUsage/updated', { turnId: undefined, tokenUsage: { total: { totalTokens: 120, private: 'secret' }, last: { inputTokens: 20 }, modelContextWindow: 1000, private: 'secret' } });
+    turn.notify('thread/status/changed', { threadId: 'foreign', turnId: undefined, status: { type: 'systemError' } });
+    turn.notify('thread/tokenUsage/updated', { threadId: 'foreign', turnId: undefined, tokenUsage: { total: { totalTokens: 999 } } });
+    assert.equal(activities, 0);
     turn.notify('item/started', { item: { id: 'compact', type: 'contextCompaction', private: 'secret' } });
     turn.notify('item/completed', { item: { id: 'compact', type: 'contextCompaction', private: 'secret' } });
     turn.notify('turn/plan/updated', { plan: [{ status: 'completed', step: 'Read selected material' }] });
     turn.finish();
   } });
   const events = [];
-  const result = await f.runtime.run({ managedKey: 'usage', cwd: f.cwd, prompt: 'Q', onEvent: event => events.push(event) });
+  const result = await f.runtime.run({ managedKey: 'usage', cwd: f.cwd, prompt: 'Q', onEvent: event => events.push(event), onActivity: () => activities++ });
   assert.equal(result.body, ''); assert.equal(result.status, 'completed');
   assert.deepEqual(events.find(event => event.type === 'usage').usage, { total: { totalTokens: 120 }, last: { inputTokens: 20 }, modelContextWindow: 1000 });
   assert.deepEqual(events.find(event => event.type === 'status').activeFlags, ['waitingOnApproval']);
   assert.equal(result.items[0].type, 'contextCompaction'); assert.equal(result.items[0].status, 'done');
   assert.ok(result.items.some(item => item.type === 'plan')); assert.doesNotMatch(JSON.stringify(events), /private|secret|unknown/);
+  assert.equal(activities, 2);
+  assert.equal(events.filter(event => event.type === 'status').length, 1);
+  assert.equal(events.filter(event => event.type === 'usage').length, 1);
+});
+
+test('a reused managed client binds private activity only to its current turn callback', async t => {
+  const events = [];
+  const counts = [0, 0];
+  const f = await fixture(t, { onTurn(turn) {
+    if (turn.id !== 'turn-1') turn.notify('item/reasoning/textDelta', { turnId: 'turn-1', itemId: 'previous', delta: 'PRIVATE PREVIOUS TURN' });
+    turn.notify('item/started', { item: { id: 'reasoning', type: 'reasoning' } });
+    turn.notify('item/reasoning/textDelta', { itemId: 'reasoning', delta: 'PRIVATE CURRENT REASONING' });
+    turn.notify('item/completed', { item: { id: 'reasoning', type: 'reasoning' } });
+    turn.answer();
+  } });
+  const first = await f.runtime.run({ managedKey: 'activity', cwd: f.cwd, prompt: 'first', onActivity: () => counts[0]++, onEvent: event => events.push(event) });
+  assert.deepEqual(counts, [5, 0]);
+  const second = await f.runtime.run({ managedKey: 'activity', cwd: f.cwd, nativeSessionId: first.nativeSessionId, prompt: 'second', onActivity: () => counts[1]++, onEvent: event => events.push(event) });
+  assert.deepEqual(counts, [5, 5]);
+  assert.equal(first.nativeSessionId, second.nativeSessionId);
+  assert.equal(f.children.length, 1);
+  assert.doesNotMatch(JSON.stringify(events), /PRIVATE PREVIOUS TURN|PRIVATE CURRENT REASONING/);
 });
 
 test('steer appends to the expected active turn and compact retains the existing native thread', async t => {

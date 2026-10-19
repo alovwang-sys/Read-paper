@@ -1,0 +1,53 @@
+import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { createSeed } from '../../src/data/seed';
+import { mockProjectService } from './project-fixture';
+import { openSource } from './knowledge-helpers';
+import { main, panel, saved } from './workspace-split-helpers';
+
+for (const width of [1440, 1280, 1024]) {
+  test(`阅读时可缩小 AI、折叠材料并恢复未发送问题 ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
+    const seed = createSeed();
+    seed.panelWidth = 900;
+    seed.sessions['research-a'].panel.mode = 'ai';
+    for (const conversation of Object.values(seed.conversations)) conversation.connectionId = 'demo';
+    seed.conversations['conversation-research-a'].contextIds = ['evidence-a', 'evidence-b'];
+    await mockProjectService(page, { bound: false, seed });
+    await page.route('**/api/ai/config', route => route.fulfill({ json: { configured: false, model: 'layout-fixture', mode: 'demo' } }));
+    await page.route('**/api/ai/agents', route => route.fulfill({ json: { agents: [] } }));
+    await page.goto('/');
+    await openSource(page, seed.documents['paper-a'].title);
+    await expect(main(page).locator('canvas').first()).toBeVisible();
+    await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
+    const separator = page.getByRole('separator', { name: '调整右侧宽度' });
+    await separator.focus();
+    await page.keyboard.press('Home');
+    await expect.poll(() => panel(page).evaluate(element => element.getBoundingClientRect().width)).toBe(320);
+    expect(await page.locator('.main-column').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(560);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    const options = panel(page).locator('.ai-context-options');
+    await expect(options).not.toHaveAttribute('open', '');
+    await expect(options.locator(':scope > summary')).toContainText('本轮材料 · 2');
+    const chat = panel(page).getByRole('log', { name: '对话消息' });
+    const collapsedHeight = (await chat.boundingBox())!.height;
+    expect(collapsedHeight).toBeGreaterThan(300);
+    await options.locator(':scope > summary').click();
+    await expect(panel(page).getByRole('button', { name: '移除本轮材料 1', exact: true })).toBeVisible();
+    expect((await chat.boundingBox())!.height).toBeLessThan(collapsedHeight);
+    await options.locator(':scope > summary').click();
+    await panel(page).getByLabel('向 AI 提问').fill('收起面板后继续编辑的问题');
+    await page.getByRole('button', { name: '关闭右侧面板', exact: true }).click();
+    await expect(panel(page)).toHaveCount(0);
+    await page.getByRole('button', { name: '展开右侧面板', exact: true }).click();
+    await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('收起面板后继续编辑的问题');
+    await saved(page);
+    await page.reload();
+    await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('收起面板后继续编辑的问题');
+    await expect.poll(() => panel(page).evaluate(element => element.getBoundingClientRect().width)).toBe(320);
+    await expect(main(page).locator('canvas').first()).toBeVisible();
+    await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
+    await mkdir('docs/verification/reading-workspace-bugfixes', { recursive: true });
+    await page.screenshot({ path: `docs/verification/reading-workspace-bugfixes/pdf-ai-${width}.png` });
+  });
+}

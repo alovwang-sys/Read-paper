@@ -159,6 +159,7 @@ test('显式材料与原生累计范围保持，排除前序需明确新建干�
   const closeNotice = page.getByRole('button', { name: '关闭提示', exact: true });
   if (await closeNotice.isVisible()) await closeNotice.click();
   await page.screenshot({ path: 'docs/verification/native-continuity/native-materials.png' });
+  await panel(page).locator('.ai-context-options > summary').click();
   await panel(page).getByRole('button', { name: '移除本轮材料 1', exact: true }).click();
   await expect(panel(page).locator('.ai-scope-notice')).toContainText('前序消息仍可能包含');
   await expect(panel(page).locator('.ai-native-scope')).toContainText('1 条已发材料');

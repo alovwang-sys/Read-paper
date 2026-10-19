@@ -145,13 +145,14 @@ export function App() {
   const sidebarRef = useRef<HTMLElement>(null);
   const inspectorRef = useRef<HTMLElement>(null);
   const [columnBounds, setColumnBounds] = useState({ left: 240, leftMaximum: window.innerWidth - 320, right: 360, rightMaximum: window.innerWidth - 560 });
+  function mainMinimum() { return Math.min(560, window.innerWidth - (window.innerWidth > 1024 ? 200 : 0) - 320); }
   function sidebarMaximum() {
-    return Math.max(200, window.innerWidth - 320 - (inspectorRef.current?.getBoundingClientRect().width ?? 0));
+    return Math.max(200, window.innerWidth - mainMinimum() - (inspectorRef.current?.getBoundingClientRect().width ?? 0));
   }
-  function panelMinimum() { return session.panel.mode === 'ai' && window.innerWidth >= 1024 ? 420 : 320; }
+  function panelMinimum() { return 320; }
   function panelMaximum() {
     const left = window.innerWidth > 1024 ? sidebarRef.current?.getBoundingClientRect().width ?? 0 : 0;
-    return Math.max(panelMinimum(), window.innerWidth - (window.innerWidth >= 1024 ? left + 320 : 40));
+    return Math.max(panelMinimum(), window.innerWidth - (window.innerWidth >= 1024 ? left + mainMinimum() : 40));
   }
   useEffect(() => {
     const element = sidebarRef.current;

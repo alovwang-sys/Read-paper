@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { hasFullText } from '../../src/domain/knowledge';
 import { createSeed } from '../../src/data/seed';
+import { migrateWorkspace } from '../../src/data/migrations';
 import { paneGroups } from '../../src/services/panes';
 import { linkCard, scopeKey, workspace } from '../../src/services/workspace';
 import {
@@ -371,5 +372,88 @@ describe('AI 上下文快照与引用', () => {
     appendAIToDraft(data, 'draft-a', request);
     expect(data.drafts['draft-a'].body).toBe(`${before}\n\n依据第二论文 [2]`);
     expect(() => appendAIToDraft(data, 'draft-b', request)).toThrow(/研究/);
+  });
+});
+
+describe('资料移出与删除', () => {
+  it('移出只清理本研究的关联和打开项，保留全局实体及其他研究，刷新数据有效', async () => {
+    const scope = { kind: 'research' as const, researchId: 'research-a' };
+    const { documentId } = workspace.addSource({ kind: 'title', title: '临时资料' }, scope);
+    workspace.associateDocument('research-b', documentId);
+    workspace.openResource({ kind: 'document', id: documentId }, { scope, target: 'main' });
+    workspace.openResource({ kind: 'document', id: documentId }, { scope, target: 'main', split: 'right' });
+    workspace.openResource({ kind: 'document', id: documentId }, { scope, target: 'inspector' });
+    workspace.updateData(data => {
+      data.researches['research-a'].sourceRecords = { [documentId]: { note: '收录备注', discoveries: [] } };
+      data.drafts['draft-a'].body = '保留未完成的写作';
+      data.conversations['conversation-research-a'].input = '保留未发送的问题';
+    });
+    workspace.removeDocumentFromResearch('research-a', documentId);
+    const data = workspace.getState().data;
+    expect(data.documents[documentId].title).toBe('临时资料');
+    expect(data.researches['research-a'].documentIds).not.toContain(documentId);
+    expect(data.researches['research-b'].documentIds).toContain(documentId);
+    expect(data.researches['research-a'].sourceRecords?.[documentId]).toBeUndefined();
+    expect(data.sessions['research-a'].panel.ref).toBeUndefined();
+    expect(paneGroups(data.sessions['research-a'].layout!.root).flatMap(pane => pane.tabs).some(tab => tab.ref.id === documentId)).toBe(false);
+    expect(data.drafts['draft-a'].body).toBe('保留未完成的写作');
+    expect(data.conversations['conversation-research-a'].input).toBe('保留未发送的问题');
+    expect(() => migrateWorkspace(structuredClone(data))).not.toThrow();
+    await workspace.flushSave();
+    expect(vi.mocked(saveWorkspace).mock.calls.at(-1)?.[0].researches['research-a'].documentIds).not.toContain(documentId);
+  });
+  it('删除资料库独立条目时关闭其标签，其他资料和引用保持不变', () => {
+    const scope = { kind: 'library' as const };
+    const { documentId } = workspace.addSource({ kind: 'title', title: '可删除资料' }, scope);
+    workspace.openResource({ kind: 'document', id: documentId }, { scope, target: 'main' });
+    workspace.openResource({ kind: 'document', id: documentId }, { scope, target: 'inspector' });
+    workspace.deleteDocument(documentId);
+    const data = workspace.getState().data;
+    expect(data.documents[documentId]).toBeUndefined();
+    expect(data.documents['paper-a']).toBeDefined();
+    expect(data.evidence['evidence-a'].documentId).toBe('paper-a');
+    expect(data.sessions.library.panel.ref).toBeUndefined();
+    expect(() => migrateWorkspace(structuredClone(data))).not.toThrow();
+  });
+  it('被引用或关联的资料拒绝删除，失败不改变任何数据', () => {
+    const before = structuredClone(workspace.getState().data);
+    expect(() => workspace.removeDocumentFromResearch('research-a', 'paper-a')).toThrow(/引用/);
+    expect(() => workspace.deleteDocument('paper-a')).toThrow(/引用/);
+    expect(workspace.getState().data).toEqual(before);
+  });
+  it('移出未引用资料时保留独立摘录，但清理本轮未发送材料', () => {
+    workspace.updateData(data => {
+      data.researches['research-b'].documentIds = ['paper-c'];
+      data.evidence['standalone'] = { id: 'standalone', documentId: 'paper-c', researchId: 'research-b', pageIndex: 0, quote: '独立摘录', createdAt: new Date().toISOString() };
+      data.conversations['conversation-research-b'].contextIds = ['standalone'];
+    });
+    workspace.removeDocumentFromResearch('research-b', 'paper-c');
+    const data = workspace.getState().data;
+    expect(data.evidence.standalone.quote).toBe('独立摘录');
+    expect(data.conversations['conversation-research-b'].contextIds).toEqual([]);
+    expect(() => workspace.deleteDocument('paper-c')).toThrow(/引用/);
+    expect(() => migrateWorkspace(structuredClone(data))).not.toThrow();
+  });
+  it('原文旁问答尚未发送时也保留其来源及材料', () => {
+    workspace.associateDocument('research-b', 'paper-c');
+    const evidenceId = workspace.captureExcerpt('research-b', { documentId: 'paper-c', pageIndex: 0, quote: '旁问答来源' });
+    workspace.updateData(data => {
+      const conversation = data.conversations['conversation-research-b'];
+      conversation.inlineSource = { documentId: 'paper-c', pageIndex: 0, evidenceId };
+      conversation.contextIds = [evidenceId];
+    });
+    expect(() => workspace.removeDocumentFromResearch('research-b', 'paper-c')).toThrow(/引用/);
+    expect(workspace.getState().data.conversations['conversation-research-b'].contextIds).toEqual([evidenceId]);
+    expect(() => migrateWorkspace(structuredClone(workspace.getState().data))).not.toThrow();
+  });
+  it('删除独立资料不改变其他研究已关闭全部标签的工作区', () => {
+    workspace.openResearchView('research-b', 'sources');
+    const layout = workspace.getState().data.sessions['research-b'].layout!;
+    for (const pane of paneGroups(layout.root)) for (const tab of pane.tabs) workspace.closePaneTab(pane.id, tab.id);
+    const { documentId } = workspace.addSource({ kind: 'title', title: '独立条目' }, { kind: 'library' });
+    const before = structuredClone(workspace.getState().data.sessions['research-b']);
+    expect(paneGroups(before.layout!.root).flatMap(pane => pane.tabs)).toEqual([]);
+    workspace.deleteDocument(documentId);
+    expect(workspace.getState().data.sessions['research-b']).toEqual(before);
   });
 });

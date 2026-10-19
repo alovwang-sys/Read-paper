@@ -7,7 +7,7 @@ import { DirectoryBrowser } from './DirectoryPicker';
 import { ProjectFileStatus } from './ProjectFileStatus';
 import './research-directory.css';
 
-export function ResearchDirectory({ researchId, settings = false, inherited = false, label = '选择研究目录' }: { researchId: string; settings?: boolean; inherited?: boolean; label?: string }) {
+export function ResearchDirectory({ researchId, settings = false, label = '选择研究目录' }: { researchId: string; settings?: boolean; label?: string }) {
   const { data, actions } = useWorkspace();
   const research = data.researches[researchId];
   const directory = research?.directory;
@@ -107,8 +107,8 @@ export function ResearchDirectory({ researchId, settings = false, inherited = fa
   if (!research) return null;
   const status = directory ? checking ? '正在检查' : connected ? '已连接' : '需要重新连接' : '尚未选择目录';
   return <>
-    <button ref={trigger} type="button" className={`research-directory-trigger ${settings ? 'is-settings' : ''} ${inherited ? 'is-inherited' : ''}`} title={settings || inherited ? `项目设置 · ${status}${directory ? `\n${directory.path}` : ''}` : label} aria-label={settings || inherited ? `项目设置 · ${research.title}` : label} aria-haspopup="dialog" onClick={show}>
-      {settings ? <Ellipsis size={18} /> : inherited ? <><FolderOpen size={16} /><span><strong>{research.title}</strong><small>{!directory ? '关联研究目录' : checking ? '正在检查目录…' : connected ? '沿用研究目录' : '目录需要重新连接'}</small></span></> : <><FolderOpen size={16} /><span>{label}</span></>}
+    <button ref={trigger} type="button" className={`research-directory-trigger ${settings ? 'is-settings' : ''}`} title={settings ? `项目设置 · ${status}${directory ? `\n${directory.path}` : ''}` : label} aria-label={settings ? `项目设置 · ${research.title}` : label} aria-haspopup="dialog" onClick={show}>
+      {settings ? <Ellipsis size={18} /> : <><FolderOpen size={16} /><span>{label}</span></>}
     </button>
     <dialog ref={dialog} className="research-directory-dialog" aria-labelledby={titleId} onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }} onCancel={event => { event.preventDefault(); if (!binding) close(); }} onClose={() => { setOpen(false); trigger.current?.focus(); }}>
       <header><div><h2 id={titleId}>项目设置</h2><p>{research.title}</p></div><button type="button" className="directory-icon-button" aria-label="关闭项目设置" disabled={binding} onClick={close}><X size={18} /></button></header>
