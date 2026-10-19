@@ -81,11 +81,35 @@ test('打包桌面：内置 Pi 真实启动、就地解释、右侧输入隔离�
     const span = page.locator('.pdf-text-layer span').filter({ hasText: 'This self-authored fixture describes' }).first();
     await expect(span).toBeVisible();
     await expect(page.locator('.pdf-page-loading')).toHaveCount(0);
-    const bounds = (await span.boundingBox())!;
-    await page.mouse.move(bounds.x + 2, bounds.y + bounds.height / 2);
+    await page.bringToFront();
+    await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+    await span.scrollIntoViewIfNeeded();
+    await span.hover({ position: { x: 4, y: 4 } });
+    // Use visible glyphs rather than assuming the entire text span is a safe drag target.
+    const bounds = await span.evaluate(element => {
+      const text = element.firstChild!;
+      const range = document.createRange();
+      range.setStart(text, 0); range.setEnd(text, Math.min(55, text.textContent!.length));
+      const rect = range.getBoundingClientRect();
+      const viewport = element.closest('.pdf-scroll')!.getBoundingClientRect();
+      const start = { x: rect.left + 1, y: rect.top + rect.height / 2 };
+      const end = { x: rect.right - 1, y: start.y };
+      return { start, end, viewport: { x: viewport.x, y: viewport.y, width: viewport.width, height: viewport.height },
+        window: { width: innerWidth, height: innerHeight, devicePixelRatio }, focused: document.hasFocus(),
+        visible: start.x > viewport.left && end.x < viewport.right && start.y > viewport.top && start.y < viewport.bottom,
+        hit: element.contains(document.elementFromPoint(start.x, start.y)) && element.contains(document.elementFromPoint(end.x, end.y)) };
+    });
+    await test.info().attach('mouse-selection-geometry', { body: JSON.stringify(bounds, null, 2), contentType: 'application/json' });
+    expect(bounds.visible).toBe(true);
+    expect(bounds.hit).toBe(true);
+    await page.mouse.move(bounds.start.x, bounds.start.y);
     await page.mouse.down();
-    await page.mouse.move(bounds.x + bounds.width - 2, bounds.y + bounds.height / 2, { steps: 12 });
+    await page.mouse.move(bounds.end.x, bounds.end.y, { steps: 12 });
     await page.mouse.up();
+    const selection = await page.evaluate(() => ({ text: window.getSelection()?.toString() ?? '',
+      inPDF: !!window.getSelection()?.anchorNode?.parentElement?.closest('.pdf-text-layer') }));
+    expect(selection.inPDF).toBe(true);
+    expect(selection.text).toContain('This self-authored fixture describes');
     await expect(page.getByLabel('原文选区操作', { exact: true })).toBeVisible();
     await page.getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '解释这段', exact: true }).click();
     await expect(inline(page)).toContainText(answer.replace(' [1]', ''));
