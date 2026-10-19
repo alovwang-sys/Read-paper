@@ -464,16 +464,19 @@ export function AIPanel() {
         caught instanceof Error ? caught.message : '当前材料无法发送';
     }
   }
+  // Save before native cursor listeners can flush other workspace updates.
+  const updateComposerInput = (value: string) => {
+    const current = actions.getState().data.conversations[conversation.id];
+    if (!current || current.input === value) return;
+    actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].input = value; });
+  };
   const composerInput = (<textarea
           ref={input}
           aria-label="向 AI 提问"
           placeholder="基于这些材料提问，或继续追问…"
           value={prompt}
-          onChange={(event) =>
-            actions.updateData((next) => {
-              next.conversations[conversation.id].input = event.target.value;
-            })
-          }
+          onInputCapture={event => updateComposerInput(event.currentTarget.value)}
+          onChange={event => updateComposerInput(event.currentTarget.value)}
           onKeyDown={(event) => {
             if (
               (event.ctrlKey || event.metaKey) &&

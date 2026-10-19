@@ -1,0 +1,44 @@
+{
+  "version": "0.1.9",
+  "browserRegression": {
+    "command": "npx playwright test tests/e2e/composer-input-order.spec.ts",
+    "passed": 2,
+    "failed": 0,
+    "durationSeconds": 7.6,
+    "actualModelCalls": 0,
+    "sharedStateMatchesInput": true,
+    "refreshAndFurtherTypingRetained": true,
+    "rightAndInlineDraftsIsolated": true,
+    "simulatedCompositionEnterDidNotSubmit": true
+  },
+  "controlledProductionProbe": {
+    "trigger": "textarea target input listener microtask clicks existing collapse-sidebar button",
+    "privateReactCallbackInvoked": false,
+    "oldPackagedApplication": "original 15-second input value assertion fails after successful fill",
+    "candidateProductionBundle": "full original desktop recovery assertions pass",
+    "sameTextareaNode": true,
+    "nativeAndRendererFocused": true,
+    "candidateJournalWrites": "one input commit plus one unrelated sidebar update; no duplicate onChange commit"
+  },
+  "naturalIntelDiagnostic": {
+    "runId": "39237529756",
+    "samples": 5,
+    "allInputAndPersistenceCorrect": true,
+    "naturalFailureCauseConfirmed": false
+  },
+  "integrationReportedByRoot": {
+    "typecheck": "passed",
+    "frontendUnitPassed": 338,
+    "serverPassed": 264,
+    "desktopUnitPassed": 27,
+    "packaged019ArmDesktopPassed": 16
+  },
+  "screenshots": [
+    "writing-ai-1440.png",
+    "writing-ai-1280.png",
+    "writing-ai-1024.png",
+    "pdf-inline-1440.png",
+    "pdf-inline-1280.png",
+    "pdf-inline-1024.png"
+  ]
+}
