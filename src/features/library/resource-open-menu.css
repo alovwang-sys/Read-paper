@@ -2,6 +2,10 @@
 .resource-open-options { position: fixed; z-index: 70; min-width: 150px; max-height: calc(100vh - 16px); overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface, #fff); box-shadow: 0 5px 18px #00000016; }
 .resource-open-options button { display: block; width: 100%; border: 0; border-radius: 4px; padding: 8px 10px; color: inherit; background: transparent; font: inherit; text-align: left; white-space: nowrap; }
 .resource-open-options button:hover, .resource-open-options button:focus-visible { background: var(--hover, #f1f3ef); }
+.resource-open-options .resource-removal-action { color: #a73d36; }
+.resource-removal-description, .resource-removal-error { max-width: 230px; margin: 7px 10px 10px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.resource-removal-description { color: var(--muted); }
+.resource-removal-error { color: #a73d36; }
 .resource-split-option { display: flex; }
 .resource-split-option > button:first-child { flex: 1; }
 .resource-split-option > button:last-child { display: flex; align-items: center; width: 30px; padding: 7px; border-left: 1px solid var(--line); border-radius: 0 4px 4px 0; }

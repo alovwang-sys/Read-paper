@@ -164,6 +164,23 @@ describe('研究项目原生历史的公开服务路径', () => {
     expect(data().conversations[id].requestIds).toEqual(['own-request']); expect(data().requests['own-request']).toEqual(original);
   });
 
+  it('刷新清除旧版长材料包装造成的重复聊天，保留原问答与来源存档', async () => {
+    const id = workspace.getActiveConversation('research-a').id;
+    workspace.updateData(next => {
+      const conversation = next.conversations[id], original = ownRequest(id);
+      Object.assign(conversation, { connectionId: 'codex', nativeSessionId: 'native-thread', nativeSessionRef: 'opaque-session-ref', requestIds: [original.id, 'polluted-import'] });
+      next.requests[original.id] = original;
+      next.requests['polluted-import'] = { ...original, id: 'polluted-import', nativeImported: true, nativeMessageId: 'native-own-user', prompt: '[Read-paper requestId=own-request]\n被截断的原文与历史材料' };
+    });
+    const original = structuredClone(data().requests['own-request']);
+    mockSnapshot(snapshot({ messages: [{ id: 'native-own-user', role: 'user', text: original.prompt, requestId: original.id }, { id: 'native-own-answer', role: 'assistant', text: original.body }] }));
+    await refreshProjectConversation('research-a', id);
+    await refreshProjectConversation('research-a', id);
+    expect(data().conversations[id].requestIds).toEqual([original.id]);
+    expect(data().requests[original.id]).toEqual(original);
+    expect(data().requests['polluted-import']).toBeDefined();
+  });
+
   it('新增原生消息按稳定ID归并，外部引用保持可读而不会伪造本研究证据', async () => {
     const mock = mockSnapshot(snapshot()); const originalEvidence = structuredClone(data().evidence);
     const id = await openProjectSession('research-a', summary()); const first = data().conversations[id].requestIds[0];

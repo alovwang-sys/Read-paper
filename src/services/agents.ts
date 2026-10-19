@@ -137,9 +137,11 @@ function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot)
     if (!existing || !conversation.updatedAt || snapshot.updatedAt > conversation.updatedAt) conversation.updatedAt = snapshot.updatedAt;
     let turn: { id: string; prompt: string; body: string; createdAt: string; original?: string; events?: AgentEvent[]; turnId?: string; turnStatus?: 'inProgress' | 'completed' | 'interrupted' | 'failed'; items?: NativeTurnItem[]; supplementalInputs?: NativeUserInput[]; answerComplete?: boolean } | undefined;
     const saveTurn = () => {
-      if (!turn || !turn.prompt && !turn.body) return;
-      const own = turn.original && next.requests[turn.original];
-      if (own && own.researchId === researchId && own.conversationId === id) {
+        if (!turn || !turn.prompt && !turn.body) return;
+        const own = turn.original && next.requests[turn.original];
+        const prior = conversation.requestIds.map(id => next.requests[id]).find(r => r?.nativeImported && r.nativeMessageId === turn!.id);
+        if (own && own.researchId === researchId && own.conversationId === id) {
+          if (prior && prior.id !== own.id) conversation.requestIds = conversation.requestIds.filter(requestId => requestId !== prior.id);
         if (own.nativeRun?.managed && own.nativeSessionId === snapshot.nativeSessionId && turn.turnId
           && (!own.nativeTurnId || own.nativeTurnId === turn.turnId) && turn.turnStatus && turn.turnStatus !== 'inProgress') {
           if (own.status !== 'done' && turn.answerComplete !== false) {
@@ -171,9 +173,8 @@ function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot)
             own.error = own.status === 'done' ? undefined : '已从原生记录恢复这轮的结束状态，已有内容已保留。';
           }
         }
-        return;
-      }
-      const prior = conversation.requestIds.map(id => next.requests[id]).find(r => r?.nativeImported && r.nativeMessageId === turn!.id);
+          return;
+        }
       const requestId = prior?.id ?? uid('request');
       const old = next.requests[requestId];
       if (old?.status === 'generating') return;

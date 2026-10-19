@@ -227,19 +227,24 @@ test('questions advertise native freeform permission and reject secret questions
 
 test('cancel during a pending interaction closes only the owned process and ignores late replies and other-thread events', async (t) => {
   const controller = new AbortController(); const inputs = []; const events = [];
+  let activities = 0;
   let answer;
   const f = await fixture(t, { onTurn: async ({ notify, request }) => {
     notify('item/agentMessage/delta', { threadId: 'other-thread', delta: 'WRONG THREAD' });
     await request('item/commandExecution/requestApproval', { threadId: 'other-thread', command: 'WRONG COMMAND' });
     await request('item/commandExecution/requestApproval', { command: 'cat materials.md' });
-  }, onKill: ({ notify }) => notify('item/agentMessage/delta', { delta: 'LATE ANSWER' }) });
-  const running = f.runtime.run({ cwd: f.cwd, prompt: 'Q', codex: {}, signal: controller.signal, onEvent: (event) => events.push(event), onInteraction: (input) => { inputs.push(input); controller.abort(); return new Promise((resolve) => { answer = resolve; }); } });
+  }, onKill: ({ notify }) => {
+    notify('item/agentMessage/delta', { delta: 'LATE ANSWER' });
+    notify('item/reasoning/textDelta', { itemId: 'late-reasoning', delta: 'LATE REASONING' });
+  } });
+  const running = f.runtime.run({ cwd: f.cwd, prompt: 'Q', codex: {}, signal: controller.signal, onActivity: () => activities++, onEvent: (event) => events.push(event), onInteraction: (input) => { inputs.push(input); controller.abort(); return new Promise((resolve) => { answer = resolve; }); } });
   await assert.rejects(running, { code: 'stopped' });
   answer({ decision: 'allowOnce' }); await new Promise((resolve) => setImmediate(resolve));
   assert.equal(inputs.length, 1); assert.equal(inputs[0].command, 'cat materials.md');
   assert.doesNotMatch(JSON.stringify(events), /WRONG|LATE/);
   assert.ok(f.children.every((child) => child.killed));
   assert.ok(!f.nativeReplies.some((reply) => reply.result?.decision === 'accept'));
+  assert.equal(activities, 0);
 });
 
 test('chat resets native collaboration mode and resume replaces the previous selected skill roots', async (t) => {
@@ -421,4 +426,59 @@ test('native credential file patches are hidden while ordinary fileChange retain
   assert.equal(events.find(event => event.id === 'turn-diff').output, '[已隐藏配置或凭据文件输出]');
   assert.match(events.find(event => event.id === 'file-patch').output, /-old\n\+new/);
   assert.doesNotMatch(JSON.stringify(events), /private-content/);
+});
+
+test('native reasoning and real tool activity refresh liveness without exposing private content', async t => {
+  const events = [], activityArguments = [];
+  let countBeforeAnswer;
+  const f = await fixture(t, { onTurn({ notify, finish }) {
+    notify('item/started', { item: { id: 'reasoning1', type: 'reasoning', summary: [], content: [] } });
+    notify('item/reasoning/textDelta', { itemId: 'reasoning1', contentIndex: 0, delta: 'PRIVATE REASONING' });
+    notify('item/reasoning/summaryTextDelta', { itemId: 'reasoning1', summaryIndex: 0, delta: 'PRIVATE SUMMARY' });
+    notify('item/completed', { item: { id: 'reasoning1', type: 'reasoning', summary: ['PRIVATE SUMMARY'], content: ['PRIVATE REASONING'] } });
+    notify('item/started', { item: { id: 'command1', type: 'commandExecution', command: 'cat materials.md', status: 'inProgress' } });
+    notify('item/commandExecution/outputDelta', { itemId: 'command1', delta: 'PRIVATE RAW OUTPUT' });
+    notify('item/fileChange/outputDelta', { itemId: 'file1', delta: 'PRIVATE RAW PATCH' });
+    countBeforeAnswer = activityArguments.length;
+    finish();
+  } });
+  const result = await f.runtime.run({ cwd: f.cwd, prompt: 'Q', codex: {}, onEvent: event => events.push(event), onActivity: (...args) => activityArguments.push(args) });
+  assert.equal(countBeforeAnswer, 7);
+  assert.ok(activityArguments.every(args => args.length === 0));
+  assert.equal(result.body, 'Original model answer');
+  assert.doesNotMatch(JSON.stringify(events), /PRIVATE REASONING|PRIVATE SUMMARY|PRIVATE RAW OUTPUT|PRIVATE RAW PATCH/);
+});
+
+test('foreign, missing-scope, empty, duplicate and late native notifications cannot fake activity', async t => {
+  let activities = 0;
+  const events = [];
+  const f = await fixture(t, { onTurn({ notify, send, finish }) {
+    for (const scope of [
+      { threadId: 'foreign', turnId: 'turn1' }, { threadId: 'thread1', turnId: 'foreign' },
+      { threadId: null, turnId: 'turn1' }, { threadId: 'thread1', turnId: null },
+    ]) {
+      for (const method of ['item/reasoning/textDelta', 'item/reasoning/summaryTextDelta', 'item/agentMessage/delta', 'item/commandExecution/outputDelta']) notify(method, { ...scope, itemId: 'ignored', delta: 'FOREIGN CONTENT' });
+      notify('item/completed', { ...scope, item: { id: 'ignored', type: 'reasoning' } });
+    }
+    send({ method: 'item/reasoning/textDelta', params: { itemId: 'missing', delta: 'MISSING SCOPE' } });
+    for (const delta of ['', '  ', null, 10]) notify('item/reasoning/textDelta', { itemId: 'empty', delta });
+    notify('item/reasoning/textDelta', { delta: 'Missing item ID' });
+    notify('item/completed', { item: { type: 'reasoning' } });
+    notify('item/completed', { item: { id: 'unknown', type: 'unknown' } });
+    notify('thread/tokenUsage/updated', { tokenUsage: { total: { totalTokens: 1 } } });
+    notify('heartbeat', {});
+    assert.equal(activities, 0);
+    notify('item/completed', { item: { id: 'reasoning1', type: 'reasoning' } });
+    assert.equal(activities, 1);
+    notify('item/completed', { item: { id: 'reasoning1', type: 'reasoning' } });
+    assert.equal(activities, 1);
+    finish();
+    const afterCompletion = activities;
+    notify('item/reasoning/textDelta', { itemId: 'late', delta: 'LATE REASONING' });
+    notify('item/completed', { item: { id: 'late', type: 'reasoning' } });
+    assert.equal(activities, afterCompletion);
+  }, onKill({ notify }) { notify('item/reasoning/textDelta', { itemId: 'late-kill', delta: 'LATE AFTER CLOSE' }); } });
+  const result = await f.runtime.run({ cwd: f.cwd, prompt: 'Q', codex: {}, onEvent: event => events.push(event), onActivity: () => activities++ });
+  assert.equal(result.body, 'Original model answer');
+  assert.doesNotMatch(JSON.stringify(events), /FOREIGN CONTENT|MISSING SCOPE|LATE REASONING|LATE AFTER CLOSE/);
 });

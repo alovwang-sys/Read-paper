@@ -96,6 +96,24 @@ test('Codex history bounds pagination, deduplicates overlapping native turns and
   assert.equal(f.calls.filter((c) => c.method === 'thread/turns/list').length, 2); assert.equal(result.messages.length, 1); assert.equal(result.messages[0].text.length, 60_000); assert.equal(result.truncated, true);
 });
 
+test('Codex removes supplied materials before clipping imported native questions', async (t) => {
+  const prompt = `[Read-paper requestId=large-material-request]\n${'材料与历史问答。'.repeat(12_000)}\n用户本次问题：\n只保留这条真正的问题。`;
+  const f = await fixture(t, (request, { cwd }) => request.method === 'thread/read' ? { thread: summary(cwd) } : request.method === 'thread/turns/list' ? { data: [turn('turn', [
+    { id: 'u', type: 'userMessage', content: [{ type: 'text', text: prompt }] },
+    { id: 'a', type: 'agentMessage', text: '这是真正的回复。' },
+  ])], nextCursor: null } : undefined);
+  const result = await f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session' });
+  assert.deepEqual(result.messages.map(({ role, text, requestId }) => ({ role, text, requestId })), [
+    { role: 'user', text: '只保留这条真正的问题。', requestId: 'large-material-request' },
+    { role: 'assistant', text: '这是真正的回复。', requestId: undefined },
+  ]);
+  assert.equal(result.truncated, false);
+  assert.equal(result.turns[0].items[0].text, '只保留这条真正的问题。');
+  assert.equal(result.turns[0].items[0].contentComplete, true);
+  assert.equal(result.turns[0].historyComplete, true);
+  assert.doesNotMatch(JSON.stringify(result.turns), /材料与历史问答|Read-paper requestId/);
+});
+
 test('project run uses the actual research cwd plus readonly material root without probing writes in the research', async (t) => {
   const f = await fixture(t);
   const events = [];

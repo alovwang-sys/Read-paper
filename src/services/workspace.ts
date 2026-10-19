@@ -118,6 +118,34 @@ export function resourceExists(data: WorkspaceData, ref: WorkspaceViewRef) {
           ? data.boards[ref.id]
           : data.drafts[ref.id]);
 }
+function closeDocumentViews(session: Session, documentId: string, fallback: WorkspaceViewRef) {
+  const matches = (ref?: { kind: string; id: string }) => ref?.kind === 'document' && ref.id === documentId;
+  session.history = session.history.filter(ref => !matches(ref));
+  session.openItems = session.openItems.filter(ref => !matches(ref));
+  session.recentItems = session.recentItems?.filter(ref => !matches(ref));
+  session.pinnedIds = session.pinnedIds.filter(id => id !== documentId);
+  session.panel.history = session.panel.history.filter(ref => !matches(ref));
+  if (matches(session.panel.ref)) { session.panel.ref = undefined; session.panel.anchor = undefined; session.panel.pinned = false; }
+  if (matches(session.panel.sourceReturnRef)) session.panel.sourceReturnRef = undefined;
+  if (matches(session.mainSplit?.ref)) session.mainSplit = undefined;
+  if (session.documentInfoId === documentId) session.documentInfoId = undefined;
+  for (const key of Object.keys(session.readers)) if (key.endsWith(`:${documentId}`)) delete session.readers[key];
+  if (session.layout && paneGroups(session.layout.root).some(pane => pane.tabs.some(tab => matches(tab.ref)))) {
+    for (const pane of paneGroups(session.layout.root)) pane.tabs = pane.tabs.filter(tab => !matches(tab.ref));
+    session.layout.root = collapseEmptyPanes(session.layout.root);
+    syncPaneSession(session);
+    const focused = paneGroups(session.layout.root).find(pane => pane.id === session.layout!.focusedPaneId)!;
+    if (!focused.tabs.length) openPaneView(session, fallback);
+  } else if (matches(session.active)) { session.active = fallback; session.anchor = undefined; }
+}
+function clearEvidenceAnchors(data: WorkspaceData, evidenceId: string) {
+  for (const session of Object.values(data.sessions)) {
+    const anchors = [session.anchor, session.panel.anchor, session.mainSplit?.anchor,
+      ...(session.layout ? paneGroups(session.layout.root).flatMap(pane => pane.tabs.map(tab => tab.anchor)) : [])];
+    for (const anchor of anchors) if (anchor?.evidenceId === evidenceId) delete anchor.evidenceId;
+    if (session.panel.citation?.evidenceId === evidenceId) session.panel.citation = undefined;
+  }
+}
 export function validateEvidence(data: WorkspaceData, ids: string[]) {
   return ids.map((id) => {
     const evidence = data.evidence[id];
@@ -403,6 +431,42 @@ export const workspace = {
     });
     return { documentId, created };
   },
+  removeDocumentFromResearch(researchId: string, documentId: string) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      const research = data.researches[researchId];
+      if (!research || !data.documents[documentId]) throw new Error('研究或资料不存在。');
+      const cites = (ids: string[]) => ids.some(id => data.evidence[id]?.documentId === documentId);
+      if (research.cardIds.some(id => data.cards[id] && cites(data.cards[id].evidenceIds))
+        || Object.values(data.drafts).some(draft => draft.researchId === researchId && cites(draft.evidenceIds))
+        || Object.values(data.cardDrafts).some(draft => draft.researchId === researchId && cites(draft.evidenceIds))
+        || Object.values(data.placements).some(placement => data.boards[placement.boardId]?.researchId === researchId && placement.resourceRef.kind === 'document' && placement.resourceRef.id === documentId)
+        || Object.values(data.requests).some(request => request.researchId === researchId && (request.context.some(item => item.documentId === documentId) || request.history?.some(turn => turn.context.some(item => item.documentId === documentId))))
+        || Object.values(data.conversations).some(conversation => conversation.researchId === researchId && (conversation.inlineSource?.documentId === documentId || conversation.sentContext?.some(item => item.documentId === documentId))))
+        throw new Error('这份资料仍被本研究的卡片、文稿、白板或对话引用，请先处理相关引用。');
+      research.documentIds = research.documentIds.filter(id => id !== documentId);
+      if (research.sourceRecords) delete research.sourceRecords[documentId];
+      for (const conversation of Object.values(data.conversations)) if (conversation.researchId === researchId) conversation.contextIds = conversation.contextIds.filter(id => data.evidence[id]?.documentId !== documentId);
+      closeDocumentViews(data.sessions[researchId], documentId, { kind: 'researchView', id: 'sources' });
+    });
+    status({ selection: undefined });
+  },
+  deleteDocument(documentId: string) {
+    flushPaneReaders();
+    workspace.updateData(data => {
+      if (!data.documents[documentId]) throw new Error('资料不存在。');
+      if (Object.values(data.researches).some(research => research.documentIds.includes(documentId))
+        || Object.values(data.evidence).some(evidence => evidence.documentId === documentId)
+        || Object.values(data.placements).some(placement => placement.resourceRef.kind === 'document' && placement.resourceRef.id === documentId)
+        || Object.values(data.requests).some(request => request.context.some(item => item.documentId === documentId) || request.history?.some(turn => turn.context.some(item => item.documentId === documentId)))
+        || Object.values(data.conversations).some(conversation => conversation.inlineSource?.documentId === documentId || conversation.sentContext?.some(item => item.documentId === documentId)))
+        throw new Error('这份资料仍被研究、摘录或对话引用，无法删除。请先移出研究并处理相关引用。');
+      for (const [key, session] of Object.entries(data.sessions)) closeDocumentViews(session, documentId, key === 'library' ? { kind: 'collection', id: 'documents' } : { kind: 'researchView', id: 'sources' });
+      // shortcut: cached PDF assets stay for recovery snapshots; reclaim them when recovery retention is defined.
+      delete data.documents[documentId];
+    });
+    status({ selection: undefined });
+  },
   mergeDocuments(stubId: string, intoId: string) {
     workspace.updateData(data => {
       const stub = data.documents[stubId], target = data.documents[intoId];
@@ -448,7 +512,7 @@ export const workspace = {
   captureExcerpt(researchId: string, range: { documentId: string; pageIndex: number; quote: string }) {
     const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.researchId === researchId && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim());
     if (existing) {
-      if (existing.contextOnly) workspace.updateData(data => { delete data.evidence[existing.id].contextOnly; });
+      if (existing.contextOnly || existing.annotationHidden) workspace.updateData(data => { delete data.evidence[existing.id].contextOnly; delete data.evidence[existing.id].annotationHidden; });
       return existing.id;
     }
     const id = uid('evidence');
@@ -459,15 +523,18 @@ export const workspace = {
     });
     return id;
   },
+  setExcerptMarked(evidenceId: string, marked: boolean) {
+    workspace.updateData(data => {
+      const evidence = data.evidence[evidenceId];
+      if (!evidence) throw new Error('摘录不存在，请重新打开原文。');
+      if (marked) { delete evidence.annotationHidden; delete evidence.contextOnly; }
+      else { evidence.annotationHidden = true; clearEvidenceAnchors(data, evidenceId); }
+    });
+  },
   removeExcerpt(evidenceId: string) {
     workspace.updateData(data => {
-      if (Object.values(data.cards).some(c => c.evidenceIds.includes(evidenceId)) || Object.values(data.drafts).some(d => d.evidenceIds.includes(evidenceId)) || Object.values(data.conversations).some(c => c.contextIds.includes(evidenceId)) || Object.values(data.requests).some(r => r.context.some(c => c.evidenceId === evidenceId)) || Object.values(data.cardDrafts).some(d => d.evidenceIds.includes(evidenceId))) throw new Error('摘录已被引用，请先移除引用。');
-      for (const session of Object.values(data.sessions)) {
-        const anchors = [session.anchor, session.panel.anchor, session.mainSplit?.anchor,
-          ...(session.layout ? paneGroups(session.layout.root).flatMap(pane => pane.tabs.map(tab => tab.anchor)) : [])];
-        for (const anchor of anchors) if (anchor?.evidenceId === evidenceId) delete anchor.evidenceId;
-        if (session.panel.citation?.evidenceId === evidenceId) session.panel.citation = undefined;
-      }
+      if (Object.values(data.cards).some(c => c.evidenceIds.includes(evidenceId)) || Object.values(data.drafts).some(d => d.evidenceIds.includes(evidenceId) || d.cardRefs?.some(ref => ref.evidenceIds?.includes(evidenceId))) || Object.values(data.conversations).some(c => c.contextIds.includes(evidenceId) || c.inlineSource?.evidenceId === evidenceId) || Object.values(data.requests).some(r => r.context.some(c => c.evidenceId === evidenceId)) || Object.values(data.cardDrafts).some(d => d.evidenceIds.includes(evidenceId))) throw new Error('摘录已被引用，请先移除引用。');
+      clearEvidenceAnchors(data, evidenceId);
       delete data.evidence[evidenceId];
     });
   },

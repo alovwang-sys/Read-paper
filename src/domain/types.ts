@@ -87,6 +87,7 @@ export type PaperDocument = {
 };
 export type Evidence = {
   contextOnly?: boolean;
+  annotationHidden?: boolean;
   researchId?: string;
   dismissed?: boolean;
   note?: string;

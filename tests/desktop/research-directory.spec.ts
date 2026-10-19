@@ -122,8 +122,8 @@ test('打包桌面：原生目录选择取消无残留，创建后左右沿用�
     await expect(navigation(page).getByRole('button', { name: `项目设置 · ${title}`, exact: true })).toBeVisible();
     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
     await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click(); await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();
-    await expect(panel(page)).toContainText('沿用研究目录');
-    expect(await panel(page).getByRole('button', { name: `项目设置 · ${title}`, exact: true }).getAttribute('title')).toContain(project);
+    await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
+    expect(await navigation(page).getByRole('button', { name: `项目设置 · ${title}`, exact: true }).getAttribute('title')).toContain(project);
     await expect(panel(page).getByRole('button', { name: '选择研究目录', exact: true })).toHaveCount(0);
     await panel(page).getByLabel('向 AI 提问').fill('重启后继续，尚未发送的问题'); await saved(page);
     await expect.poll(() => exists(join(project, 'Papertrail', 'research.json'))).toBe(true);
@@ -133,7 +133,7 @@ test('打包桌面：原生目录选择取消无残留，创建后左右沿用�
     session = await launch(f.userData, f.home, modelRequests); application = session.application; page = session.page;
     await expect(page.getByLabel('切换研究')).toHaveValue(research.id);
     await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('重启后继续，尚未发送的问题');
-    await expect(panel(page)).toContainText('沿用研究目录');
+    await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
     expect((await data(page)).researches[research.id].directory).toMatchObject(research.directory!);
     expect(JSON.parse(await readFile(join(project, '.read-paper', 'project.json'), 'utf8')).projectId).toBe(manifest.projectId);
     expect(modelRequests).toEqual([]);

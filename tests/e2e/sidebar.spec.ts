@@ -5,7 +5,7 @@ import { mockProjectService } from './project-fixture';
 import { openResearchNavigation, switchResearch } from './knowledge-helpers';
 import { main, panel, saved, state } from './workspace-split-helpers';
 
-const evidence = 'docs/verification/sidebar-update';
+const evidence = 'docs/verification/reading-workspace-bugfixes';
 const sidebar = (page: Page) => page.getByRole('complementary', { name: '左侧导航', exact: true });
 const handle = (page: Page) => page.getByRole('separator', { name: '调整左侧宽度', exact: true });
 const width = (page: Page) => page.locator('.sidebar').evaluate(element => element.getBoundingClientRect().width);
@@ -42,7 +42,7 @@ async function dragRightWidth(page: Page, target: number) {
 }
 
 async function bodyFits(page: Page) {
-  await expect.poll(() => page.locator('.main-column').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(319.5);
+  await expect.poll(() => page.locator('.main-column').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(559.5);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
   await expect.poll(async () => Number(await rightHandle(page).getAttribute('aria-valuenow'))).toBeCloseTo(await rightWidth(page), 0);
 }
@@ -99,14 +99,14 @@ test('左栏随窗口和右侧 AI 保留正文空间，不沿用旧的固定上�
     await expect.poll(() => width(page)).toBeGreaterThan(240);
     await expect.poll(async () => Number(await handle(page).getAttribute('aria-valuenow'))).toBeCloseTo(await width(page), 0);
     const sizes = await page.evaluate(() => ({ sidebar: document.querySelector('.sidebar')!.getBoundingClientRect().width, body: document.querySelector('.main-column')!.getBoundingClientRect().width, right: document.querySelector('.inspector')!.getBoundingClientRect().width, total: document.documentElement.scrollWidth }));
-    expect(sizes.body).toBeGreaterThanOrEqual(319.5); expect(sizes.right).toBeGreaterThanOrEqual(420);
+    expect(sizes.body).toBeGreaterThanOrEqual(559.5); expect(sizes.right).toBeGreaterThanOrEqual(320);
     expect(sizes.sidebar + sizes.body + sizes.right).toBeLessThanOrEqual(viewportWidth + 1); expect(sizes.total).toBeLessThanOrEqual(viewportWidth);
     await saved(page); await page.screenshot({ path: `${evidence}/sidebar-ai-${viewportWidth}.png` });
     await page.getByRole('button', { name: '关闭右侧面板', exact: true }).click();
-    await dragWidth(page, viewportWidth - 325); await expect.poll(() => width(page)).toBeGreaterThan(viewportWidth - 350);
+    await dragWidth(page, viewportWidth - 565); await expect.poll(() => width(page)).toBeGreaterThan(viewportWidth - 590);
     await page.getByRole('button', { name: '展开右侧面板', exact: true }).click();
     await expect(panel(page)).toBeVisible();
-    await expect.poll(() => page.locator('.main-column').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(319.5);
+    await expect.poll(() => page.locator('.main-column').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(559.5);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);
   }
 });
@@ -133,7 +133,7 @@ test('右栏三尺寸真实拖宽越过旧上限，并以实际可用空间作�
   await main(page).getByLabel('结论正文', { exact: true }).fill('证据与论证\n\n先核对材料的相关性，再判断检索是否改善回答；可靠性结论应保留来源和适用条件。');
   await panel(page).getByLabel('向 AI 提问').fill('请比较两篇论文的实验条件：\n1. 证据语料是否与问题相关？\n2. 对照组是否使用相同模型？\n3. 哪些结论仍需要返回原文核查？');
   await mkdir(evidence, { recursive: true });
-  for (const [viewportWidth, viewportHeight, desiredWidth] of [[1440, 900, 800], [1280, 800, 700], [1024, 800, 650]]) {
+  for (const [viewportWidth, viewportHeight, desiredWidth] of [[1440, 900, 640], [1280, 800, 480], [1024, 800, 464]]) {
     await page.setViewportSize({ width: viewportWidth, height: viewportHeight });
     await dragRightWidth(page, desiredWidth);
     await expect.poll(() => rightWidth(page)).toBe(desiredWidth); await bodyFits(page); await saved(page);
@@ -141,8 +141,8 @@ test('右栏三尺寸真实拖宽越过旧上限，并以实际可用空间作�
     await rightHandle(page).focus(); await page.keyboard.press('End'); await bodyFits(page);
     const maximum = Number(await rightHandle(page).getAttribute('aria-valuemax'));
     await expect.poll(() => rightWidth(page)).toBeCloseTo(maximum, 0);
-    expect(maximum).toBeGreaterThan(viewportWidth === 1024 ? viewportWidth * .42 : 520);
-    await dragRightWidth(page, 200); await expect.poll(() => rightWidth(page)).toBe(420); await bodyFits(page);
+    expect(maximum).toBeGreaterThan(320);
+    await dragRightWidth(page, 200); await expect.poll(() => rightWidth(page)).toBe(320); await bodyFits(page);
     await dragRightWidth(page, desiredWidth);
   }
 });
@@ -152,31 +152,31 @@ test('右栏宽度键盘调整、重置、切模式与刷新保留正文和 AI �
   await sidebar(page).getByRole('button', { name: '研究结论', exact: true }).click();
   await main(page).getByLabel('结论正文', { exact: true }).fill('右栏调整后仍保留的结论。');
   await panel(page).getByLabel('向 AI 提问').fill('切换模式、研究和刷新后保留的未发送问题。');
-  await dragRightWidth(page, 720); await expect.poll(() => rightWidth(page)).toBe(720);
-  await rightHandle(page).focus(); await page.keyboard.press('ArrowLeft'); await expect.poll(() => rightWidth(page)).toBe(730);
-  await page.keyboard.press('Shift+ArrowRight'); await expect.poll(() => rightWidth(page)).toBe(690);
-  await expect(rightHandle(page)).toHaveAttribute('aria-valuemin', '420'); await saved(page);
-  await page.reload(); await expect.poll(() => rightWidth(page)).toBe(690);
-  expect((await state(page)).panelWidth).toBe(690);
-  await panel(page).getByRole('tab', { name: '卡片', exact: true }).click(); await expect.poll(() => rightWidth(page)).toBe(690);
+  await dragRightWidth(page, 560); await expect.poll(() => rightWidth(page)).toBe(560);
+  await rightHandle(page).focus(); await page.keyboard.press('ArrowLeft'); await expect.poll(() => rightWidth(page)).toBe(570);
+  await page.keyboard.press('Shift+ArrowRight'); await expect.poll(() => rightWidth(page)).toBe(530);
+  await expect(rightHandle(page)).toHaveAttribute('aria-valuemin', '320'); await saved(page);
+  await page.reload(); await expect.poll(() => rightWidth(page)).toBe(530);
+  expect((await state(page)).panelWidth).toBe(530);
+  await panel(page).getByRole('tab', { name: '卡片', exact: true }).click(); await expect.poll(() => rightWidth(page)).toBe(530);
   await expect(rightHandle(page)).toHaveAttribute('aria-valuemin', '320');
   await rightHandle(page).dblclick(); await expect.poll(() => rightWidth(page)).toBe(360);
   await rightHandle(page).focus(); await page.keyboard.press('Home'); await expect.poll(() => rightWidth(page)).toBe(320);
-  await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await expect.poll(() => rightWidth(page)).toBe(420);
-  await rightHandle(page).dblclick(); await expect.poll(() => rightWidth(page)).toBe(420);
-  await dragRightWidth(page, 800); await expect.poll(() => rightWidth(page)).toBe(800);
+  await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await expect.poll(() => rightWidth(page)).toBe(320);
+  await rightHandle(page).dblclick(); await expect.poll(() => rightWidth(page)).toBe(360);
+  await dragRightWidth(page, 640); await expect.poll(() => rightWidth(page)).toBe(640);
   await switchResearch(page, 'research-b'); await switchResearch(page, 'research-a');
-  await expect.poll(() => rightWidth(page)).toBe(800);
+  await expect.poll(() => rightWidth(page)).toBe(640);
   await expect(main(page).getByLabel('结论正文', { exact: true })).toHaveValue('右栏调整后仍保留的结论。');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('切换模式、研究和刷新后保留的未发送问题。');
-  await saved(page); await page.reload(); await expect.poll(() => rightWidth(page)).toBe(800);
+  await saved(page); await page.reload(); await expect.poll(() => rightWidth(page)).toBe(640);
   await expect(main(page).getByLabel('结论正文', { exact: true })).toHaveValue('右栏调整后仍保留的结论。');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('切换模式、研究和刷新后保留的未发送问题。');
 });
 
 test('宽右栏随窗口缩小保留正文空间，收起左栏后可以继续拖宽', async ({ page }) => {
   await boot(page);
-  await dragRightWidth(page, 800); await expect.poll(() => rightWidth(page)).toBe(800);
+  await dragRightWidth(page, 640); await expect.poll(() => rightWidth(page)).toBe(640);
   for (const [viewportWidth, viewportHeight] of [[1280, 800], [1024, 800]]) {
     await page.setViewportSize({ width: viewportWidth, height: viewportHeight }); await bodyFits(page);
   }
@@ -184,7 +184,7 @@ test('宽右栏随窗口缩小保留正文空间，收起左栏后可以继续�
   const before = await rightWidth(page);
   await sidebar(page).getByRole('button', { name: '收起左栏', exact: true }).click();
   await expect(sidebar(page)).toBeHidden();
-  await dragRightWidth(page, 900); await expect.poll(() => rightWidth(page)).toBe(900); await bodyFits(page);
+  await dragRightWidth(page, 700); await expect.poll(() => rightWidth(page)).toBe(700); await bodyFits(page);
   expect(await rightWidth(page)).toBeGreaterThan(before);
   await page.getByRole('button', { name: '展开左栏', exact: true }).click(); await bodyFits(page);
   await saved(page);

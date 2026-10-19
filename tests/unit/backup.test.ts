@@ -70,6 +70,7 @@ describe('完整工作区备份', () => {
   it('无损往返全部资料、阅读位置、未发送内容和 PDF 字节，不改写输入', async () => {
     const { data, assets } = await fixture();
     data.cards['card-a'].body = '迁移时保留的编辑内容';
+    data.evidence['evidence-a'].annotationHidden = true;
     data.documents['paper-a'].abstract = { text: '带有来源的作者摘要', url: 'https://example.org/paper', retrievedAt: '2026-10-17T00:00:00Z' };
     data.researches['research-a'].sourceRecords = { 'paper-a': { note: '仅研究A的收录备注', discoveries: [{ url: 'https://example.org/paper', kind: 'ai', requestId: 'original-turn', recommendation: 'AI 推荐段落快照', createdAt: '2026-10-17T00:00:00Z' }] } };
     data.sessions['research-a'].sourcePreview = { candidate: { url: 'https://example.org/another', title: '尚未收录的预览', kind: 'web' } };

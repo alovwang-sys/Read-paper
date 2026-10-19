@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, Check, ChevronDown, Plus } from 'lucide-react';
 import type { AIRequest, SourceCandidate, SourceDiscovery } from '../../domain/types';
-import { collectSource, extractSourceLinks, findSource, isCollectingSource } from '../../services/sources';
+import { collectSource, extractSourceLinks, findSource, isCollectingSource, sourceRecommendation } from '../../services/sources';
 import { useWorkspace } from '../../services/workspace';
 import '../library/source-intake.css';
 
@@ -14,9 +14,7 @@ export function SourceRecommendations({ request }: { request: AIRequest }) {
   if (!sources.length) return null;
   const scope = { kind: 'research' as const, researchId: request.researchId };
   const discovery = (candidate: SourceCandidate): SourceDiscovery => {
-    const identifiers = [candidate.url, candidate.title, ...Object.values(candidate.identifiers ?? {})].filter(Boolean);
-    const paragraph = request.body.split(/\n\s*\n/).find(text => identifiers.some(value => text.includes(value)));
-    const recommendation = paragraph?.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim().slice(0, 1000);
+    const recommendation = sourceRecommendation(request.body, candidate);
     return { url: candidate.url, kind: 'ai', conversationId: request.conversationId, requestId: request.id, recommendation, createdAt: request.createdAt };
   };
   const collect = async (candidate: SourceCandidate) => {

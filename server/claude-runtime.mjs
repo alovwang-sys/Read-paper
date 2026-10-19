@@ -4,6 +4,7 @@ import { constants } from 'node:fs';
 import { lstat, open, readdir, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
+import { readPaperHistoryMessage } from './codex-runtime.mjs';
 
 export const runtimeError = (message, code = 'agent_failed') => Object.assign(new Error(message), { code });
 const stopped = () => runtimeError('生成已停止。', 'stopped');
@@ -147,9 +148,10 @@ async function claudeTranscript({ cwd, path, sessionId, signal }) {
       const text = typeof content === 'string' ? content : Array.isArray(content)
         ? content.map(part => part?.type === 'text' && typeof part.text === 'string' ? part.text : part?.type === 'thinking' ? '' : '[附件或工具记录未展开]').filter(Boolean).join('\n') : '';
       if (!text) continue;
-      messages.set(entry.uuid, { id: entry.uuid, role: entry.type, text: text.slice(0, 100_000),
+      const message = readPaperHistoryMessage({ role: entry.type, text });
+      messages.set(entry.uuid, { ...message, id: entry.uuid, text: message.text.slice(0, 100_000),
         ...(typeof entry.timestamp === 'string' && Number.isFinite(Date.parse(entry.timestamp)) ? { createdAt: new Date(entry.timestamp).toISOString() } : {}) });
-      if (text.length > 100_000) truncated = true;
+      if (message.text.length > 100_000) truncated = true;
     }
     if (!matched) throw runtimeError('无法确认此 Claude Code 会话所属目录。', 'invalid_session');
     const all = [...messages.values()];

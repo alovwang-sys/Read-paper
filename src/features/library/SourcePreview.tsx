@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, Check, ExternalLink, RefreshCw } from 'lucide-react';
 import type { SourceCandidate, SourceDiscovery, WorkspaceScope } from '../../domain/types';
-import { collectSource, findSource, resolveSource, isCollectingSource } from '../../services/sources';
+import { collectSource, findSource, resolveSource, isCollectingSource, sourceRecommendation } from '../../services/sources';
 import { useWorkspace } from '../../services/workspace';
 import { externalSourceUrl } from './SourcesView';
 import './library.css';
@@ -27,6 +27,7 @@ export function SourcePreview({ candidate, scope, discovery }: { candidate: Sour
   const linked = !!existing && (scope.kind === 'library' || !!data.researches[scope.researchId]?.documentIds.includes(existing.id));
   const collecting = saving || isCollectingSource(source, scope);
   const saved = linked && saveStatus !== 'error' && !collecting;
+  const recommendation = discovery && sourceRecommendation(data.requests[discovery.requestId ?? '']?.body ?? discovery.recommendation ?? '', candidate);
   const save = async () => {
     setSaving(true); setSaveError('');
     try { await collectSource(source, scope, discovery); }
@@ -48,6 +49,6 @@ export function SourcePreview({ candidate, scope, discovery }: { candidate: Sour
     {(resolvingError || source.warning) && <div className="source-intake-status"><p>{resolvingError || source.warning}</p><p className="muted">可先保存链接，以后在资料详情中补齐信息和 PDF。</p><button className="text-button" disabled={loading} onClick={() => setRetry(value => value + 1)}>重新读取信息</button></div>}
     {!!source.identifiers && <div className="source-identifiers">{Object.entries(source.identifiers).filter(([kind]) => kind !== 'url').map(([kind, value]) => <p key={kind}>{kind === 'arxiv' ? 'arXiv' : kind.toUpperCase()}：{value}</p>)}</div>}
     {source.abstract ? <section className="source-abstract"><h2>{source.kind === 'paper' ? '作者摘要' : '原网页简介'}</h2><p>{source.abstract.text}</p><a className="text-button" href={externalSourceUrl(source.abstract.url)} target="_blank" rel="noreferrer">摘要来源 ↗</a></section> : !loading && <section className="source-abstract"><h2>摘要</h2><p className="muted">原来源暂未提供可读取的摘要。AI 的推荐说明会保留在发现记录中。</p></section>}
-    {discovery?.kind === 'ai' && <section className="source-preview-discovery"><h2>发现于 AI 对话</h2><p>{data.conversations[discovery.conversationId ?? '']?.title || '原研究对话'}</p>{discovery.requestId && data.requests[discovery.requestId] && <p className="muted">{data.requests[discovery.requestId].prompt}</p>}{discovery.recommendation && <><h2>AI 推荐说明</h2><p className="source-preview-recommendation">{discovery.recommendation}</p></>}</section>}
+    {discovery?.kind === 'ai' && <section className="source-preview-discovery"><h2>发现于 AI 对话</h2><p>{data.conversations[discovery.conversationId ?? '']?.title || '原研究对话'}</p>{recommendation && <><h2>AI 推荐说明</h2><p className="source-preview-recommendation">{recommendation}</p></>}</section>}
   </div>;
 }

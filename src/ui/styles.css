@@ -359,7 +359,7 @@ h3 {
 .nav-item > svg { flex-shrink: 0; }
 .sidebar-resize-handle { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; z-index: 9; cursor: col-resize; touch-action: none; }
 .sidebar-resize-handle:hover::after, .sidebar-resize-handle:focus-visible::after { content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: var(--accent); }
-@media (min-width: 1024px) { .app-shell > .main-column { min-width: 320px; } }
+@media (min-width: 1025px) { .app-shell > .main-column { min-width: min(560px, calc(100vw - 520px)); } }
 .nav-count {
   margin-left: auto;
   color: #a9afb7;
@@ -852,7 +852,7 @@ h3 {
   background: #83af9c55;
 }
 .inspector-header {
-  height: 60px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -869,7 +869,7 @@ h3 {
   color: #7e8a94;
 }
 .panel-tabs {
-  height: 48px;
+  height: 36px;
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--border);
@@ -1399,12 +1399,7 @@ h3 {
   }
   .main-column {
     width: auto;
-  }
-}
-@media (min-width: 1024px) {
-  .ai-panel-open .inspector {
-    width: max(var(--panel-width), 420px);
-    min-width: 420px;
+    min-width: 560px;
   }
 }
 .navigation-backdrop {

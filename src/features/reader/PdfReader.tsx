@@ -41,7 +41,7 @@ export function PdfReader({
   target?: ReaderTarget;
   anchor?: ResourceAnchor;
 }) {
-  const { data, session, research, actions } = useWorkspace();
+  const { data, session, research, selection, actions } = useWorkspace();
   const doc = data.documents[documentId];
   const position = getReaderPosition(session, documentId, target);
   const initialPage = Math.min(position.pageIndex, Math.max(0, (doc?.pageCount ?? 1) - 1));
@@ -160,12 +160,13 @@ export function PdfReader({
     };
   }, [documentId, doc?.assetId, doc?.assetRevision, retry]);
 
-  const documentExcerpts = Object.values(data.evidence).filter(item => !item.contextOnly && item.documentId === documentId && (!research || !item.researchId || item.researchId === research.id));
-  const selectedExcerpt = documentExcerpts.find(item => item.pageIndex === selectedPageIndex && (selectionMode === 'region'
-    ? item.kind === 'region' && !!item.region && item.region.rotation === regionPreview?.rotation && JSON.stringify(item.region.rect) === JSON.stringify(regionPreview?.rect)
+  const documentExcerpts = Object.values(data.evidence).filter(item => !item.contextOnly && !item.annotationHidden && item.documentId === documentId && (!research || !item.researchId || item.researchId === research.id));
+  const pickedId = selection?.viewInstanceId === `reader:${viewScope}:${target}:${documentId}` ? selection.evidenceIds[0] : undefined;
+  const pickedExcerpt = pickedId ? data.evidence[pickedId] : undefined;
+  const selectedExcerpt = pickedExcerpt?.documentId === documentId && pickedExcerpt.pageIndex === selectedPageIndex ? pickedExcerpt : [...documentExcerpts, ...(sourceValid && sourceEvidence ? [sourceEvidence] : [])].find(item => item.pageIndex === selectedPageIndex && (selectionMode === 'region'
+    ? item.kind === 'region' && !!item.region && !!regionPreview && JSON.stringify(rotateRegion(item.region.rect, regionPreview.rotation - item.region.rotation)) === JSON.stringify(regionPreview.rect)
     : item.kind !== 'region' && !!quote && item.quote === quote));
   const findCard = session.panel.findEvidenceFor && data.cards[session.panel.findEvidenceFor];
-  const excerptInCard = !!selectedExcerpt && Object.values(data.cards).some(card => card.evidenceIds.includes(selectedExcerpt.id));
 
   useEffect(() => {
     setFinishPrompt(false);
@@ -516,6 +517,7 @@ export function PdfReader({
     }
   }
   function updateRegion(key: keyof RegionRect, value: number) {
+    actions.setSelection(undefined);
     const current = regionRect ?? { x: 0.1, y: 0.1, width: 0.5, height: 0.25 };
     const updated = { ...current, [key]: Math.max(0, Math.min(1, value / 100)) };
     updated.width = Math.min(updated.width, 1 - updated.x);
@@ -562,8 +564,8 @@ export function PdfReader({
       let evidenceId: string;
       const existing = Object.values(actions.getState().data.evidence).find(item =>
         (!item.researchId || item.researchId === selectedResearchId) && item.documentId === selectedDocument && item.pageIndex === selectedPage &&
-        (selectedMode === 'region' ? item.kind === 'region' && !!item.region && item.region.rotation === selectedRegion?.rotation && JSON.stringify(item.region.rect) === JSON.stringify(selectedRegion?.rect) : item.kind !== 'region' && item.quote === selectedQuote));
-      if (existing) { evidenceId = existing.id; if (existing.contextOnly) actions.updateData(next => { delete next.evidence[evidenceId].contextOnly; }); }
+        (selectedMode === 'region' ? item.kind === 'region' && !!item.region && !!selectedRegion && JSON.stringify(rotateRegion(item.region.rect, selectedRegion.rotation - item.region.rotation)) === JSON.stringify(selectedRegion.rect) : item.kind !== 'region' && item.quote === selectedQuote));
+      if (existing) { evidenceId = existing.id; if (existing.contextOnly || existing.annotationHidden) actions.updateData(next => { delete next.evidence[evidenceId].contextOnly; delete next.evidence[evidenceId].annotationHidden; }); }
       else if (selectedMode === 'region' && selectedRegion) {
         const hash = await contentHash(await selectedRegion.blob.arrayBuffer());
         const assetId = crypto.randomUUID();
@@ -594,6 +596,10 @@ export function PdfReader({
   function removeExcerpt(evidenceId: string) {
     try { actions.removeExcerpt(evidenceId); setUndoExcerpt(undefined); clearSelection(); actions.notice('已取消摘录'); }
     catch (problem) { setSelectionError(problem instanceof Error ? problem.message : '取消摘录失败，请重试。'); }
+  }
+  function removeMark(evidenceId: string) {
+    try { actions.setExcerptMarked(evidenceId, false); setUndoExcerpt(undefined); clearSelection(); actions.notice('已移除原文标记，摘录与引用已保留。'); }
+    catch (problem) { setSelectionError(problem instanceof Error ? problem.message : '移除标记失败，请重试。'); }
   }
   function openHighlightedExcerpt(element: HTMLElement, index: number) {
     if (normalize(window.getSelection()?.toString() ?? '')) return;
@@ -638,6 +644,11 @@ export function PdfReader({
   function inlineSource(evidenceId: string) {
     const item = actions.getState().data.evidence[evidenceId];
     if (!item || item.documentId !== documentId) return;
+    actions.openResource({ kind: 'document', id: documentId }, {
+      scope: data.scope, target: target === 'inspector' ? 'inspector' : 'main',
+      ...(target.startsWith('view:') ? { viewId: target.slice(5) } : {}),
+      anchor: { evidenceId, pageIndex: item.pageIndex },
+    });
     const height = pageSizes[item.pageIndex]?.height ?? 1;
     navigatePosition({ pageIndex: item.pageIndex, scale: position.scale, offset: Math.max(0, (selectionAnchor.top - 50) / height) }, true);
   }
@@ -704,10 +715,10 @@ export function PdfReader({
         <button className="button" aria-label="写成卡片" disabled={selectionBusy} onClick={() => void saveSelection('card')}><Layers size={14} />写成卡片 <kbd>C</kbd></button>
         <button className="text-button pdf-inline-explain" data-inline-trigger={`${target}:explain`} disabled={selectionBusy} onClick={() => void saveSelection('explain')}>解释这段</button>
         <button className="text-button" data-inline-trigger={`${target}:ask`} disabled={selectionBusy} onClick={() => void saveSelection('ai')}>提问</button>
-        {selectedExcerpt && <button className="text-button" disabled={excerptInCard || selectionBusy} title={excerptInCard ? '此摘录已被卡片引用，请先在卡片中移除引用。' : '取消这条摘录'} onClick={() => removeExcerpt(selectedExcerpt.id)}>取消摘录</button>}
+        {selectedExcerpt && <button className="text-button" disabled={selectionBusy} title="移除原文标记，保留摘录、卡片和 AI 引用" onClick={() => removeMark(selectedExcerpt.id)}>移除标记</button>}
         <button className="icon-button" aria-label="取消原文选区" onClick={clearSelection}><X size={14} /></button>
       </div>
-      {excerptInCard && <span className="pdf-selection-hint">此摘录已被卡片引用，请先在卡片中移除引用。</span>}
+      {selectedExcerpt && <span className="pdf-selection-hint">移除标记会保留摘录、卡片和 AI 来源。</span>}
       {researchPicker}
     </>
   );
@@ -937,7 +948,7 @@ export function PdfReader({
         {pdf && <div className="pdf-page-stack" style={{ paddingBottom: Math.max(0, viewportHeight - (pageSizes.at(-1)?.height ?? 0)) }}>
           {pageSizes.map((size, index) => {
             const selected = selectedPageIndex === index;
-            const source = inlineEvidence?.pageIndex === index ? inlineEvidence : sourceValid && sourceEvidence.pageIndex === index ? sourceEvidence : undefined;
+            const source = inlineEvidence?.pageIndex === index && !inlineEvidence.annotationHidden ? inlineEvidence : sourceValid && sourceEvidence.pageIndex === index ? sourceEvidence : undefined;
             const sourceRegion = source?.kind === 'region' && source.region ? rotateRegion(source.region.rect, size.rotation - source.region.rotation) : undefined;
             return <PdfPage key={index} pdf={pdf} documentId={documentId} title={doc.title} pageIndex={index} size={size}
               active={Math.abs(index - pageIndex) <= 2 || (!!quote || !!regionRect) && selected}
@@ -946,7 +957,7 @@ export function PdfReader({
               onTextError={() => { setTextState('error'); actions.updateData(next => { if (next.documents[documentId]) next.documents[documentId].textStatus = 'error'; }); }}
               onError={message => setError(message)}
               onSelect={() => captureSelection(index)} onExcerptClick={element => openHighlightedExcerpt(element, index)}>
-              {documentExcerpts.filter(item => item.pageIndex === index && item.kind === 'region' && item.region).map(item => { const rect = rotateRegion(item.region!.rect, size.rotation - item.region!.rotation); return <button key={item.id} className="pdf-saved-region" aria-label={`已摘录区域：PDF 第 ${index + 1} 页`} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} onClick={() => { clearSelection(); activatePage(index); setSelectionMode('region'); setRegionRect(rect); void previewRegion(rect, index); }} />; })}
+              {documentExcerpts.filter(item => item.pageIndex === index && item.kind === 'region' && item.region).map(item => { const rect = rotateRegion(item.region!.rect, size.rotation - item.region!.rotation); return <button key={item.id} className="pdf-saved-region" aria-label={`已摘录区域：PDF 第 ${index + 1} 页`} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} onClick={() => { clearSelection(); activatePage(index); setSelectionMode('region'); setRegionRect(rect); actions.setSelection({ scope: data.scope, viewInstanceId: `reader:${viewScope}:${target}:${documentId}`, selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }], evidenceIds: [item.id] }); void previewRegion(rect, index); }} />; })}
               {sourceRegion && <div className="pdf-region-source" aria-label="来源区域高亮" style={{ left: `${sourceRegion.x * 100}%`, top: `${sourceRegion.y * 100}%`, width: `${sourceRegion.width * 100}%`, height: `${sourceRegion.height * 100}%` }} />}
               {selectionMode === 'region' && <div className="pdf-region-layer" aria-label={index === pageIndex ? '拖动框选当前 PDF 页区域' : `拖动框选 PDF 第 ${index + 1} 页区域`} onPointerDown={event => startRegion(event, index)} onPointerMove={moveRegion} onPointerUp={event => finishRegion(event, index)} onPointerCancel={() => { dragStart.current = undefined; }} onKeyDown={event => { if (event.key === 'Escape') clearSelection(); }} tabIndex={0}>
                 {selected && regionRect && <div className="pdf-region-box" style={{ left: `${regionRect.x * 100}%`, top: `${regionRect.y * 100}%`, width: `${regionRect.width * 100}%`, height: `${regionRect.height * 100}%` }} />}

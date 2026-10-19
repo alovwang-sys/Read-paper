@@ -108,6 +108,7 @@ export function AIPanel() {
   const [allowNewDraft, setAllowNewDraft] = useState(false);
   const [hasNewContent, setHasNewContent] = useState(false);
   const [scopeNotice, setScopeNotice] = useState('');
+  const [contextOptionsOpen, setContextOptionsOpen] = useState(false);
   const [historyStates, setHistoryStates] = useState<Record<string, ConversationHistoryState>>({});
   const [directoryReady, setDirectoryReady] = useState(false);
   const [directoryError, setDirectoryError] = useState('');
@@ -929,13 +930,14 @@ export function AIPanel() {
                 : ''}
       </div>
       <div className="ai-composer-new">
-        {native && directoryReady && <ResearchDirectory researchId={research.id} inherited />}
         <div className="ai-composer-options">
         {native && !directoryReady && <div className="ai-directory-needed" role="status"><strong>{research.directory ? refreshingNative ? '正在检查研究目录…' : '研究目录暂不可用' : '为这个研究选择目录'}</strong><ResearchDirectory researchId={research.id} label={research.directory ? '重新连接目录' : '选择研究目录'} />{directoryError && <p>{directoryError}</p>}</div>}
         {legacyNative && directoryReady && <div className="ai-scope-notice"><strong>旧版阅读对话</strong><p>此记录仍属于旧目录，可继续查看；在研究目录中开始新对话，原记录和输入会保留。</p><button className="text-button" onClick={() => { rememberScroll(); actions.createConversation(research.id); }}>在研究目录开始新对话</button></div>}
         {nativeBlocked && <div className="ai-scope-notice" role="status"><strong>{conversation.nativeState === 'busy' ? '正在原生应用中运行' : '当前可查看记录，暂不能继续发送'}</strong><p>{conversation.nativeReason || (conversation.nativeState === 'busy' ? '任务完成后可在这里继续。当前输入已保留。' : '尚不能确认此会话可以安全续接，请刷新记录。')}</p><button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>刷新会话状态</button></div>}
         {nativeRefreshError && directoryReady && <p className="ai-error" role="status">{nativeRefreshError}<button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>重新读取记录</button></p>}
         {generating?.nativeRun?.managed && <p className="ai-footnote">“补充本轮”只发送文字，使用本轮已提交的材料与设置；未发送的文字会保留为草稿。</p>}
+        <details className="ai-context-options" open={contextOptionsOpen} onToggle={event => { if (event.target === event.currentTarget) setContextOptionsOpen(event.currentTarget.open); }}>
+          <summary>本轮材料 · {conversation.contextIds.length} · 前序 {selectedHistory.length} 轮</summary>
         <details
           className="ai-materials"
           open={conversation.contextIds.length > 0 || undefined}
@@ -1033,6 +1035,7 @@ export function AIPanel() {
             ))}
           </details>
         )}
+        </details>
         </details>
         {scopeNotice && (
           <p className="ai-scope-notice" role="status">

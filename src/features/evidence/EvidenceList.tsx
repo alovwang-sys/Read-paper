@@ -146,6 +146,9 @@ export function EvidenceList({
               <ExternalLink size={12} />
             </button>
             <div className="evidence-actions">
+              <button className="text-button" onClick={() => execute(() => actions.setExcerptMarked(id, !!item.annotationHidden))}>
+                {item.annotationHidden ? '恢复标记' : '移除标记'}
+              </button>
               <button className="text-button" onClick={() => open('main')}>
                 定位原文
               </button>

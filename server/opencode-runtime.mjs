@@ -4,6 +4,7 @@ import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { projectDirectory, runNativeProcess, runtimeError } from './claude-runtime.mjs';
+import { readPaperHistoryMessage } from './codex-runtime.mjs';
 
 const AGENT = 'read-paper';
 const DENY_TOOLS = [{ action: '*', resource: '*', effect: 'deny' }];
@@ -149,9 +150,10 @@ export function createOpenCodeRuntime({ executable, spawnImpl = spawn, env = pro
         const text = typeof entry.text === 'string' ? entry.text : parts.map(part => part?.type === 'text' && typeof part.text === 'string' ? part.text : part?.type === 'reasoning' ? '' : '[附件或工具记录未展开]').filter(Boolean).join('\n');
         if (!text) continue;
         if (budget <= 0) { truncated = true; break; }
-        const visible = text.slice(0, Math.min(100_000, budget)); budget -= visible.length;
-        if (visible.length < text.length) truncated = true;
-        messages.set(entry.id, { id: entry.id, role: entry.type, text: visible,
+        const message = readPaperHistoryMessage({ role: entry.type, text });
+        const visible = message.text.slice(0, Math.min(100_000, budget)); budget -= visible.length;
+        if (visible.length < message.text.length) truncated = true;
+        messages.set(entry.id, { ...message, id: entry.id, text: visible,
           ...(isoTime(entry.time?.created) ? { createdAt: isoTime(entry.time.created) } : {}) });
       }
       const active = await activeSessions(directory, signal);
