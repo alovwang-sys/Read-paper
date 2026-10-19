@@ -188,6 +188,10 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     // Leave a source region, then clone and move its view: the current offset must win over the old anchor.
     await panel(page).getByRole('button', { name: /^引用 1：/ }).click();
     await expect(primary(page).locator('.pdf-region-source')).toHaveCount(1);
+    await expect(primary(page).locator('.pdf-sheet[data-page-index="1"] canvas')).toBeVisible();
+    await expect(primary(page).locator('.pdf-page-loading')).toHaveCount(0);
+    await expect(primary(page).getByLabel('PDF 页码', { exact: true })).toHaveValue('2');
+    await expect(primary(page).locator('.pdf-region-source')).toBeInViewport();
     const citationViewId = (await primary(page).getByRole('region', { name: 'PDF 阅读器', exact: true }).getAttribute('data-view-id'))!;
     expect(ordinaryViews.some(view => `view:${view.id}` === citationViewId)).toBe(false);
     const afterCitation = groups((await state(page)).sessions['research-a'].layout!.root).flatMap(group => group.tabs);
