@@ -149,7 +149,12 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     if (node && followOutput.current) node.scrollTop = node.scrollHeight;
   }, [latest?.body, latest?.nativeRun?.cursor, latest?.status, requests.length, problem]);
   if (!conversation || !source || !evidence) return <div className="inline-ai-missing"><p>这次提问的来源已不存在。</p><button className="button" onClick={close}>返回阅读</button></div>;
-  const updateInput = (value: string) => actions.updateData(next => { if (next.conversations[conversationId]) next.conversations[conversationId].input = value; });
+  // The capture handler persists typing before unrelated workspace updates render.
+  const updateInput = (value: string) => {
+    const current = actions.getState().data.conversations[conversationId];
+    if (!current || current.input === value) return;
+    actions.updateData(next => { if (next.conversations[conversationId]) next.conversations[conversationId].input = value; });
+  };
   const run = (operation: () => void) => { setProblem(''); try { operation(); } catch (error) { setProblem(error instanceof Error ? error.message : '操作失败，内容已保留。'); } };
   const retry = async () => {
     if (!latest || requestBusy.current || busy || scopeProblem) return;
@@ -214,7 +219,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
         <button className="text-button" onClick={() => run(() => { continueInlineInPanel(conversationId); close(); })}>在右侧继续<ChevronRight size={13} /></button>
       </div>
       <form className="inline-ai-composer" onSubmit={event => { event.preventDefault(); void ask(conversation.input ?? ''); }}>
-        <textarea ref={input} rows={2} aria-label="向原文旁助手提问" placeholder={requests.length ? '继续问这段原文…' : '这段是什么意思？'} value={conversation.input ?? ''} onChange={event => updateInput(event.target.value)} onKeyDown={event => {
+        <textarea ref={input} rows={2} aria-label="向原文旁助手提问" placeholder={requests.length ? '继续问这段原文…' : '这段是什么意思？'} value={conversation.input ?? ''} onInputCapture={event => updateInput(event.currentTarget.value)} onChange={event => updateInput(event.currentTarget.value)} onKeyDown={event => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void ask(conversation.input ?? ''); }
         }} />
         {canSupplement && <button className="text-button" type="button" aria-label="补充就地本轮" disabled={supplementing || !conversation.input?.trim()} onClick={() => void supplement()}>补充本轮</button>}

@@ -2,7 +2,9 @@ import { expect, type Page } from '@playwright/test';
 
 export async function openResearchNavigation(page: Page) {
   const sidebar = page.locator('.sidebar');
+  await expect(sidebar).toBeAttached();
   if (!await sidebar.isVisible()) await page.getByRole('button', { name: '展开左栏', exact: true }).click();
+  await expect(sidebar).toBeVisible();
   return sidebar;
 }
 
