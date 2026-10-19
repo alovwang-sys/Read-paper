@@ -41,6 +41,18 @@ test('打包桌面：目录取消、确认、项目列表与重启恢复，不�
     let session = await launch(userData, home); application = session.application; let page = session.page; watch(page);
     expect(page.url()).toBe('papertrail://app/');
     expect(await page.evaluate(async () => (await fetch('/api/ai/config')).json())).toMatchObject({ configured: false });
+    const managedEndpoints = await page.evaluate(async () => {
+      const identity = { workspaceId: 'desktop-protocol-workspace', researchId: 'desktop-protocol-research', conversationId: 'desktop-protocol-conversation', requestId: 'desktop-protocol-request', connectionId: 'codex' };
+      const responses = [];
+      for (const [action, extra] of [['observe', { after: 0 }], ['control', { action: 'steer', text: 'protocol fixture', expectedTurnId: 'fixture-turn', inputId: 'fixture-input' }]] as const) {
+        const response = await fetch(`/api/ai/agents/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...identity, ...extra }) });
+        responses.push({ status: response.status, body: await response.json() });
+      }
+      return responses;
+    });
+    // These domain errors prove the packaged protocol reached the authenticated service, without running a model.
+    expect(managedEndpoints).toMatchObject([{ status: 404, body: { type: 'error', requestId: 'desktop-protocol-request', code: 'run_not_found', error: expect.any(String) } },
+      { status: 409, body: { type: 'error', requestId: 'desktop-protocol-request', code: 'control_unavailable', error: expect.any(String) } }]);
     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
     await panel(page).getByLabel('向 AI 提问').fill('目录绑定前保留的阅读问题');
 

@@ -32,7 +32,7 @@ async function start(page: Page, connectionId: 'codex' | 'model') {
   return conversation.contextIds;
 }
 
-test('Codex 从 AI 面板完整发送超过旧容量的材料与历史，并保留引用及刷新记录', async ({ page }) => {
+test('Codex 完整发送超过旧容量的材料且不重发历史，保留引用及刷新记录', async ({ page }) => {
   const runs: AIRequest[] = [];
   await page.route('**/api/ai/agents/run', route => {
     runs.push(route.request().postDataJSON());
@@ -49,7 +49,7 @@ test('Codex 从 AI 面板完整发送超过旧容量的材料与历史，并保�
   await expect.poll(() => runs.length).toBe(1);
   expect(runs[0].context.map(item => item.evidenceId)).toEqual(ids);
   expect(runs[0].context.reduce((total, item) => total + item.quote.length, 0)).toBeGreaterThan(24_000);
-  expect(runs[0].history![0].body).toBe(longHistory);
+  expect(runs[0]).toMatchObject({ history: [], managed: true });
   expect(longHistory.length).toBeGreaterThan(80_000);
   await expect(panel(page).locator('.ai-answer').last()).toContainText('已完整接收 17 条显式材料');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('');
@@ -59,11 +59,11 @@ test('Codex 从 AI 面板完整发送超过旧容量的材料与历史，并保�
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('');
   await panel(page).getByText('本轮材料 · 17', { exact: true }).click();
   await page.evaluate(() => document.fonts.ready);
-  await mkdir('docs/verification/ai-fixes-017', { recursive: true });
+  await mkdir('docs/verification/native-continuity', { recursive: true });
   for (const width of [1440, 1280]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
     await expect(panel(page).getByLabel('向 AI 提问')).toBeVisible();
-    await page.screenshot({ path: `docs/verification/ai-fixes-017/context-codex-${width}.png` });
+    await page.screenshot({ path: `docs/verification/native-continuity/context-codex-${width}.png` });
   }
 });
 

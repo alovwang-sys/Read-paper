@@ -89,16 +89,17 @@ test('生成中切换助手、后台归属、停止及权限拒绝不回退', as
   let release: () => void = () => {};
   const gate = new Promise<void>(resolve => { release = resolve; });
   const calls: Record<string, unknown>[] = [];
-  let deny = false;
+  let deny = false, stopped = false;
   await page.route('**/api/ai/agents/run', async route => {
     const body = route.request().postDataJSON(); calls.push(body);
     if (!deny) await gate;
     await route.fulfill({ contentType: 'application/x-ndjson', body: deny
       ? ndjson({ type: 'progress', kind: 'permission', text: '拒绝写入文件：当前助手为只读模式。' }, { type: 'error', error: '权限拒绝，已保留输入与原始记录。' })
-      : ndjson({ type: 'session', nativeSessionId: 'codex-session-test', nativeSessionRef: fixtureSessionRef('codex-session-test') }, { type: 'delta', text: 'Codex 的独立回答。' }, { type: 'done', model: 'Codex', nativeSessionId: 'codex-session-test', nativeSessionRef: fixtureSessionRef('codex-session-test') }),
+      : stopped ? ndjson({ type: 'error', state: 'interrupted', code: 'stopped', error: '已停止，原生回合已确认。' }) : ndjson({ type: 'session', nativeSessionId: 'codex-session-test', nativeSessionRef: fixtureSessionRef('codex-session-test') }, { type: 'delta', text: 'Codex 的独立回答。' }, { type: 'done', model: 'Codex', nativeSessionId: 'codex-session-test', nativeSessionRef: fixtureSessionRef('codex-session-test') }),
     }).catch(() => {});
   });
   await start(page);
+  await page.route('**/api/ai/agents/stop', route => { stopped = true; release(); return route.fulfill({ json: { stopped: true, state: 'stopping' } }); });
   await select(page, 'Codex');
   await panel(page).getByLabel('向 AI 提问').fill('请解释研究材料');
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
@@ -125,11 +126,11 @@ test('生成中切换助手、后台归属、停止及权限拒绝不回退', as
   await panel(page).getByText('执行过程 · 1', { exact: true }).click();
   await expect(panel(page).locator('.ai-agent-events')).toContainText('拒绝写入文件');
   await expect(panel(page).getByRole('button', { name: '切换 AI 助手' })).toContainText('Codex');
-  await mkdir('docs/verification/agents', { recursive: true });
-  await page.screenshot({ path: 'docs/verification/agents/permission-denied.png' });
+  await mkdir('docs/verification/native-continuity', { recursive: true });
+  await page.screenshot({ path: 'docs/verification/native-continuity/permission-denied.png' });
 });
 
-test('显式材料、原生累计提示与收缩前序范围', async ({ page }) => {
+test('显式材料与原生累计范围保持，排除前序需明确新建干净对话', async ({ page }) => {
   const calls: { context: { evidenceId: string }[]; history: unknown[]; reset: boolean }[] = [];
   await page.route('**/api/ai/agents/run', route => {
     const body = route.request().postDataJSON(); calls.push(body);
@@ -153,26 +154,25 @@ test('显式材料、原生累计提示与收缩前序范围', async ({ page }) 
   await expect(panel(page).getByRole('button', { name: '整理为卡片', exact: true })).toBeVisible();
   const original = Object.values((await state(page)).requests)[0];
   await expect(panel(page).locator('.ai-native-scope')).toContainText('1 条已发材料');
-  await mkdir('docs/verification/agents', { recursive: true });
+  await mkdir('docs/verification/native-continuity', { recursive: true });
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
   const closeNotice = page.getByRole('button', { name: '关闭提示', exact: true });
   if (await closeNotice.isVisible()) await closeNotice.click();
-  await page.screenshot({ path: 'docs/verification/agents/native-materials.png' });
+  await page.screenshot({ path: 'docs/verification/native-continuity/native-materials.png' });
   await panel(page).getByRole('button', { name: '移除本轮材料 1', exact: true }).click();
   await expect(panel(page).locator('.ai-scope-notice')).toContainText('前序消息仍可能包含');
   await expect(panel(page).locator('.ai-native-scope')).toContainText('1 条已发材料');
   await panel(page).locator('.ai-context-settings > summary').click();
-  await panel(page).getByLabel('前序对话范围').selectOption('none');
-  await panel(page).locator('.ai-native-scope summary').click();
-  await expect(panel(page).locator('.ai-native-scope')).toContainText('新的原生会话');
+  await expect(panel(page).getByLabel('前序对话范围')).toHaveCount(0);
+  await panel(page).getByRole('button', { name: '开启独立对话', exact: true }).click();
   await panel(page).getByLabel('向 AI 提问').fill('仅基于这条问题讨论，不引入旧材料');
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
-  await expect(panel(page).locator('.ai-turn')).toHaveCount(2);
+  await expect(panel(page).locator('.ai-turn')).toHaveCount(1);
   await expect(panel(page).locator('.ai-answer').last()).toContainText('没有直接论文材料');
-  expect(calls[1]).toMatchObject({ history: [], context: [], reset: true });
+  expect(calls[1]).toMatchObject({ history: [], context: [], reset: false });
   expect((await state(page)).requests[original.id].context).toEqual(original.context);
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
-  await page.screenshot({ path: 'docs/verification/agents/native-context-scope.png' });
+  await page.screenshot({ path: 'docs/verification/native-continuity/native-context-scope.png' });
 });
 
 test('演示模式经历史返回 Codex 后，显式选材解释仍使用原助手', async ({ page }) => {
@@ -187,7 +187,7 @@ test('演示模式经历史返回 Codex 后，显式选材解释仍使用原助�
   });
   await start(page);
   await select(page, 'Codex');
-  const codexId = (await state(page)).sessions['research-a'].activeConversationId!;
+  const priorCodexId = (await state(page)).sessions['research-a'].activeConversationId!;
   await select(page, '演示模式');
   await panel(page).getByRole('button', { name: '查看会话历史', exact: true }).click();
   await panel(page).locator('.ai-history-item').filter({ hasText: 'Codex' }).locator('.ai-history-open').click();
@@ -205,11 +205,11 @@ test('演示模式经历史返回 Codex 后，显式选材解释仍使用原助�
   await selectionActions.getByRole('button', { name: '摘录', exact: true }).click();
   await selectionActions.getByRole('button', { name: '提问', exact: true }).click();
   await page.getByRole('dialog', { name: '原文旁提问' }).getByRole('button', { name: '在右侧继续', exact: true }).click();
-  await select(page, 'Codex');
-  await panel(page).getByRole('button', { name: '添加材料', exact: true }).click();
-  const materials = panel(page).getByRole('dialog', { name: '添加对话材料' });
-  await materials.getByRole('button', { name: /PDF 第 1 页.*Abstract/ }).click();
-  await materials.getByRole('button', { name: '完成', exact: true }).click();
+  const promoted = await state(page), codexId = promoted.sessions['research-a'].activeConversationId!;
+  expect(codexId).not.toBe(priorCodexId);
+  expect(promoted.conversations[codexId]).toMatchObject({ connectionId: 'codex' });
+  expect(promoted.conversations[codexId].contextIds).toHaveLength(1);
+  expect(promoted.conversations[priorCodexId].requestIds).toEqual([]);
   await panel(page).getByLabel('向 AI 提问').fill('请解释所选原文，并说明适用条件与限制。');
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
   await expect(panel(page).locator('.ai-answer')).toContainText('Codex 对所选原文的解释');
@@ -240,7 +240,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
-    await mkdir('docs/verification/agents', { recursive: true });
+    await mkdir('docs/verification/native-continuity', { recursive: true });
     await page.screenshot({ path: `docs/verification/agents/assistant-picker-${viewport.width}.png` });
     await page.keyboard.press('Escape');
     await expect(panel(page).getByRole('button', { name: '切换 AI 助手' })).toBeFocused();

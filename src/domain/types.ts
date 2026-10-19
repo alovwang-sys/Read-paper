@@ -57,7 +57,8 @@ export type NativeSessionSummary = {
   origin?: 'native' | 'read-paper';
 };
 export type NativeSessionSnapshot = NativeSessionSummary & {
-  messages: { id: string; role: 'user' | 'assistant'; text: string; createdAt?: string; requestId?: string; events?: AgentEvent[] }[];
+  messages: { id: string; role: 'user' | 'assistant'; text: string; createdAt?: string; requestId?: string; clientUserMessageId?: string; events?: AgentEvent[]; turnId?: string; turnStatus?: 'inProgress' | 'completed' | 'interrupted' | 'failed'; answerComplete?: boolean; contentComplete?: boolean; items?: NativeTurnItem[] }[];
+  nextCursor?: string;
   truncated?: boolean;
   archiveError?: string;
 };
@@ -262,6 +263,7 @@ export type CodexCapabilities = {
   accessModes?: CodexAccess[];
 };
 export type AgentInteraction = {
+  afterItemId?: string;
   id: string;
   kind: 'approval' | 'question';
   title: string;
@@ -281,6 +283,30 @@ export type AgentEvent = {
   output?: string;
   status?: 'running' | 'done' | 'error';
   exitCode?: number;
+};
+export type NativeRunState = 'running' | 'waiting-input' | 'compacting' | 'stopping' | 'completed' | 'failed' | 'interrupted' | 'unknown';
+export type NativeTurnItem = {
+  id: string;
+  type: 'agentMessage' | 'commandExecution' | 'fileChange' | 'mcpToolCall' | 'dynamicToolCall' | 'webSearch' | 'contextCompaction' | 'plan';
+  status: 'running' | 'done' | 'error';
+  text?: string;
+  contentComplete?: boolean;
+  phase?: 'commentary' | 'partial_answer' | 'final_answer';
+  toolName?: string;
+  command?: string;
+  output?: string;
+  exitCode?: number;
+};
+export type NativeUserInput = { id: string; text: string; createdAt: string; afterItemId?: string };
+export type NativeRun = {
+  managed: true;
+  cursor: number;
+  delivery: 'pending' | 'accepted' | 'unknown';
+  state: NativeRunState;
+  transport: 'connected' | 'reconnecting' | 'offline';
+  turnId?: string;
+  items: NativeTurnItem[];
+  pendingSteer?: NativeUserInput;
 };
 export type AgentConnection = {
   id: 'codex' | 'claude' | 'opencode';
@@ -304,6 +330,7 @@ export type AIRequest = {
   error?: string;
   purpose?: 'chat' | 'card' | 'revision';
   history?: AIHistoryTurn[];
+  historyRequestIds?: string[];
   model?: string;
   mode?: 'live' | 'demo';
   rawBody?: string;
@@ -316,12 +343,15 @@ export type AIRequest = {
   draftId?: string;
   connectionId?: AIConnectionId;
   nativeSessionId?: string;
+  nativeTurnId?: string;
+  nativeRun?: NativeRun;
   nativeImported?: boolean;
   nativeMessageId?: string;
   events?: AgentEvent[];
   skills?: AgentSkill[];
   codex?: CodexSettings;
   interactions?: AgentInteraction[];
+  supplementalInputs?: NativeUserInput[];
 };
 export type Conversation = {
   id: string;
@@ -341,6 +371,7 @@ export type Conversation = {
   nativeState?: 'idle' | 'busy' | 'unknown';
   nativeCanResume?: boolean;
   nativeReason?: string;
+  nativeHistoryCursor?: string;
   nativeImported?: boolean;
   sentContext?: ContextSnapshot[];
   skills?: AgentSkill[];

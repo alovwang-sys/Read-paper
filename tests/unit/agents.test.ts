@@ -4,7 +4,7 @@ import { createSeed } from '../../src/data/seed';
 import { getAsset, loadWorkspace, saveWorkspace } from '../../src/data/storage';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { bindResearchDirectory, getAgents, codexSupportsImages, currentAssistantSupportsImages, getResearchDirectory, listProjectSessions, openProjectSession, refreshProjectConversation, selectAgent } from '../../src/services/agents';
-import { commitCardDraft, generateCardDraft, generateCardDraftFromExcerpts, reviseCardDraft, respondToAgent, retryAI, snapshotContext, stopAI, submitAI } from '../../src/services/ai';
+import { commitCardDraft, generateCardDraft, generateCardDraftFromExcerpts, regenerateAI, resumeNativeRuns, reviseCardDraft, respondToAgent, retryAI, snapshotContext, steerNativeRun, stopAI, submitAI } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), contentHash: vi.fn() }));
@@ -144,29 +144,25 @@ describe('研究与助手会话', () => {
     expect(data().requests[id].body).toBe('这是原始回答。');
   });
 
-  it('写锁恢复改用副本后保留原生累计材料与旧消息来源，下一轮沿用新关联', async () => {
+  it('连续原生回合保留累计材料与旧来源，不按本地历史设置换线程', async () => {
     const conversation = selectAgent('research-a', 'codex');
     workspace.addContext({ researchId: 'research-a', conversationId: conversation, evidenceIds: ['evidence-a'] });
     const mock = vi.fn(async (_url: string, _init?: RequestInit) => done('前一轮未引用材料的回答。'));
     vi.stubGlobal('fetch', mock);
     const original = await submitAI('research-a', conversation, '原来的问题');
-    workspace.updateData(next => { next.conversations[conversation].contextIds = ['evidence-b']; });
-    mock.mockImplementation(async () => frames([
-      { type: 'session', nativeSessionId: 'native-fork', nativeSessionRef: 'ref-fork', forkedFromId: 'native-1' },
-      { type: 'progress', kind: 'status', id: 'session-fork', text: '原会话由 Codex 后台保留，已保留历史并在独立会话继续。原会话不受影响。' },
-      { type: 'delta', text: '继续核对本轮材料 [1]' },
-      { type: 'done', nativeSessionId: 'native-fork', nativeSessionRef: 'ref-fork', model: 'runtime-model' },
-    ]));
-    const recovered = await submitAI('research-a', conversation, '继续讨论');
-    expect(data().requests[recovered].context.map(item => item.evidenceId)).toEqual(['evidence-b']);
+    workspace.updateData(next => { next.conversations[conversation].contextIds = ['evidence-b']; next.conversations[conversation].historyRange = 'none'; });
+    mock.mockImplementation(async () => done('继续核对本轮材料 [2]'));
+    const next = await submitAI('research-a', conversation, '继续讨论');
+    expect(data().requests[next].context.map(item => item.evidenceId)).toEqual(['evidence-a', 'evidence-b']);
     expect(data().conversations[conversation].sentContext?.map(item => item.evidenceId)).toEqual(['evidence-a', 'evidence-b']);
     expect(data().requests[original].nativeSessionId).toBe('native-1');
-    expect(data().requests[recovered]).toMatchObject({ nativeSessionId: 'native-fork', status: 'done', events: [expect.objectContaining({ id: 'session-fork' })] });
-    expect(data().conversations[conversation]).toMatchObject({ nativeSessionId: 'native-fork', nativeSessionRef: 'ref-fork', nativeState: 'idle', nativeCanResume: true });
-    await submitAI('research-a', conversation, '下一轮');
-    expect(JSON.parse(mock.mock.calls[2][1]!.body as string).sessionRef).toBe('ref-fork');
-    expect(mock).toHaveBeenCalledTimes(3);
+    expect(data().requests[next]).toMatchObject({ nativeSessionId: 'native-1', status: 'done', history: [], historyRequestIds: [original] });
+    expect(data().conversations[conversation]).toMatchObject({ nativeSessionId: 'native-1', nativeSessionRef: 'ref-native-1', nativeState: 'idle', nativeCanResume: true });
+    const third = await submitAI('research-a', conversation, '下一轮');
+    expect(JSON.parse(mock.mock.calls[2][1]!.body as string)).toMatchObject({ sessionRef: 'ref-native-1', history: [], reset: false });
+    expect(data().requests[third].historyRequestIds).toEqual([next]); expect(mock).toHaveBeenCalledTimes(3);
   });
+
   it('切换复用各自对话与输入，首次只带显式材料，干净会话继承助手而无材料', () => {
     const original = workspace.getActiveConversation('research-a').id;
     workspace.addContext({ researchId: 'research-a', conversationId: original, evidenceIds: ['evidence-a'] });
@@ -212,18 +208,18 @@ describe('研究与助手会话', () => {
     expect(data().researches['research-b'].cardIds).not.toContain(card);
   });
 
-  it('无效引用保留原答且阻止来源入库；重试绑定原连接并创建新尝试', async () => {
+  it('无效引用不改变原生完成状态且阻止来源入库，再回答沿用原连接而不重建线程', async () => {
     const conversation = selectAgent('research-a', 'codex');
     workspace.addContext({ researchId: 'research-a', conversationId: conversation, evidenceIds: ['evidence-a'] });
     const mock = vi.fn(async () => done('越界引用 [99]'));
     vi.stubGlobal('fetch', mock);
     const id = await submitAI('research-a', conversation, '核查');
-    expect(data().requests[id]).toMatchObject({ status: 'error', body: '越界引用 [99]' });
+    expect(data().requests[id]).toMatchObject({ status: 'done', body: '越界引用 [99]', validationError: expect.stringContaining('引用'), nativeRun: { state: 'completed' } });
     await expect(generateCardDraft(id)).rejects.toThrow(/引用/);
     mock.mockImplementation(async () => done());
-    const next = await retryAI(id, 'demo');
-    expect(data().requests[next]).toMatchObject({ retryOf: id, connectionId: 'codex', status: 'done' });
-    expect(JSON.parse((mock.mock.calls as unknown as [string, RequestInit][])[1][1].body as string).reset).toBe(true);
+    const next = await regenerateAI(id, 'demo');
+    expect(data().requests[next]).toMatchObject({ regeneratedFrom: id, connectionId: 'codex', status: 'done' });
+    expect(JSON.parse((mock.mock.calls as unknown as [string, RequestInit][])[1][1].body as string)).toMatchObject({ reset: false, managed: true, history: [] });
   });
 
   it('Codex 提交冻结技能和模型模式，重试沿用原快照，整理卡片不继承技能', async () => {
@@ -246,13 +242,13 @@ describe('研究与助手会话', () => {
       next.conversations[conversation].skills = [];
       next.conversations[conversation].codex = { model: 'later-model', mode: 'chat' };
     });
-    release(done('越界的来源编号 [99]'));
+    release(frames([{ type: 'error', error: '原生执行失败', state: 'failed', delivery: 'accepted' }]));
     const original = await pending;
     expect(data().requests[original]).toMatchObject({ status: 'error', skills: [skill], codex: settings });
     expect(JSON.parse(mock.mock.calls[0][1]!.body as string)).toMatchObject({ skillIds: [skill.id], codex: settings });
     const retry = await retryAI(original);
     expect(data().requests[retry]).toMatchObject({ status: 'done', retryOf: original, skills: [skill], codex: settings });
-    expect(JSON.parse(mock.mock.calls[1][1]!.body as string)).toMatchObject({ skillIds: [skill.id], codex: settings, reset: true });
+    expect(JSON.parse(mock.mock.calls[1][1]!.body as string)).toMatchObject({ skillIds: [skill.id], codex: settings, reset: false, managed: true, history: [] });
     await generateCardDraft(retry);
     const cardPayload = JSON.parse(mock.mock.calls[2][1]!.body as string);
     expect(cardPayload.purpose).toBe('card');
@@ -263,12 +259,12 @@ describe('研究与助手会话', () => {
     expect(cardRequest.codex).toBeUndefined();
   });
 
-  it('跨研究交互回应绑定原请求，断流和停止均让未完成交互失效', async () => {
+  it('跨研究交互绑定原请求，断线通过快照恢复，停止等待原生终态', async () => {
     const conversation = selectAgent('research-a', 'codex');
     const streams: ReadableStreamDefaultController<Uint8Array>[] = [];
     const mock = vi.fn((url: string, _init?: RequestInit): Promise<Response> => {
       if (url.endsWith('/respond')) return Promise.resolve(Response.json({ accepted: true }));
-      if (url.endsWith('/stop')) return Promise.resolve(Response.json({ stopped: true }));
+      if (url.endsWith('/stop')) return Promise.resolve(Response.json({ stopped: true, state: 'stopping' }));
       return Promise.resolve(new Response(new ReadableStream<Uint8Array>({ start(controller) { streams.push(controller); } })));
     });
     const emit = (index: number, ...events: object[]) => streams[index].enqueue(new TextEncoder().encode(events.map(event => JSON.stringify(event)).join('\n') + '\n'));
@@ -276,37 +272,27 @@ describe('研究与助手会话', () => {
     const pending = submitAI('research-a', conversation, '需要确认后再继续');
     await vi.waitFor(() => expect(streams).toHaveLength(1));
     const request = Object.values(data().requests).find(item => item.conversationId === conversation)!;
-    emit(0, { type: 'interaction', interaction: { id: 'question-1', kind: 'question', title: '核查范围', questions: [{ id: 'scope', question: '核查哪些材料？', options: [{ label: '当前材料' }] }] } });
+    const question = { id: 'question-1', kind: 'question', title: '核查范围', status: 'pending', questions: [{ id: 'scope', question: '核查哪些材料？', options: [{ label: '当前材料' }] }] };
+    emit(0, { type: 'session', seq: 1, nativeSessionId: 'stable-thread', nativeSessionRef: 'stable-ref', nativeTurnId: 'turn-1' }, { type: 'interaction', seq: 2, interaction: question });
     await vi.waitFor(() => expect(data().requests[request.id].interactions?.[0].status).toBe('pending'));
-    workspace.switchResearch('research-b');
-    selectAgent('research-b', 'opencode');
-    const reply = { answers: { scope: ['当前材料'] } };
-    await respondToAgent(request.id, 'question-1', reply);
-    const responseCall = mock.mock.calls.find(([url]) => url.endsWith('/respond'))!;
-    expect(JSON.parse(responseCall[1]!.body as string)).toEqual({ workspaceId: data().agentWorkspaceId, requestId: request.id, researchId: 'research-a', conversationId: conversation, connectionId: 'codex', interactionId: 'question-1', reply });
-    emit(0,
-      { type: 'interaction-resolved', id: 'question-1', status: 'answered' },
-      { type: 'delta', text: '已开始分析当前材料。' },
-      { type: 'interaction', interaction: { id: 'approval-1', kind: 'approval', title: '继续读取材料' } },
-    );
+    workspace.switchResearch('research-b'); selectAgent('research-b', 'opencode');
+    await respondToAgent(request.id, 'question-1', { answers: { scope: ['当前材料'] } });
+    expect(JSON.parse(mock.mock.calls.find(([url]) => url.endsWith('/respond'))![1]!.body as string)).toMatchObject({ requestId: request.id, researchId: 'research-a', conversationId: conversation, connectionId: 'codex' });
+    emit(0, { type: 'interaction-resolved', seq: 3, id: 'question-1', status: 'answered' }, { type: 'delta', seq: 4, text: '已开始分析当前材料。' });
     streams[0].close();
-    expect(await pending).toBe(request.id);
-    expect(data().requests[request.id]).toMatchObject({ status: 'error', researchId: 'research-a', body: '已开始分析当前材料。', interactions: [{ id: 'question-1', status: 'answered' }, { id: 'approval-1', status: 'expired' }] });
-    const sent = mock.mock.calls.length;
-    await expect(respondToAgent(request.id, 'approval-1', { decision: 'allowOnce' })).rejects.toThrow(/结束/);
-    expect(mock).toHaveBeenCalledTimes(sent);
-
-    const retrying = retryAI(request.id);
+    await vi.waitFor(() => expect(data().requests[request.id].nativeRun?.transport).toBe('reconnecting'));
+    await vi.advanceTimersByTimeAsync(500);
     await vi.waitFor(() => expect(streams).toHaveLength(2));
-    const retry = Object.values(data().requests).find(item => item.retryOf === request.id)!;
-    emit(1, { type: 'interaction', interaction: { id: 'approval-2', kind: 'approval', title: '读取本轮材料' } });
-    await vi.waitFor(() => expect(data().requests[retry.id].interactions?.[0].status).toBe('pending'));
-    stopAI(retry.id);
-    expect(data().requests[retry.id]).toMatchObject({ status: 'stopped', interactions: [{ id: 'approval-2', status: 'expired' }] });
-    await expect(respondToAgent(retry.id, 'approval-2', { decision: 'allowOnce' })).rejects.toThrow(/结束/);
-    streams[1].close(); await retrying;
-    const stopCall = mock.mock.calls.find(([url]) => url.endsWith('/stop'))!;
-    expect(JSON.parse(stopCall[1]!.body as string)).toMatchObject({ requestId: retry.id, researchId: 'research-a', conversationId: conversation, connectionId: 'codex', workspaceId: data().agentWorkspaceId });
+    const observe = mock.mock.calls.find(([url]) => url.endsWith('/observe'))!;
+    expect(JSON.parse(observe[1]!.body as string)).toMatchObject({ requestId: request.id, after: 4 });
+    emit(1, { type: 'snapshot', seq: 4, body: '已开始分析当前材料。', state: 'running', delivery: 'accepted', items: [], interactions: [{ ...question, status: 'answered' }] },
+      { type: 'delta', seq: 4, text: '重复事件不得追加' });
+    stopAI(request.id);
+    expect(data().requests[request.id]).toMatchObject({ status: 'generating', nativeRun: { state: 'stopping' } });
+    emit(1, { type: 'error', seq: 5, code: 'stopped', state: 'interrupted', error: '原生回合已停止' });
+    streams[1].close(); await pending;
+    expect(data().requests[request.id]).toMatchObject({ status: 'stopped', body: '已开始分析当前材料。', interactions: [{ status: 'answered' }] });
+    expect(mock.mock.calls.filter(([url]) => url.endsWith('/run'))).toHaveLength(1);
     expect(data().scope).toEqual({ kind: 'research', researchId: 'research-b' });
     expect(workspace.getActiveConversation('research-b').requestIds).toEqual([]);
   });
@@ -323,19 +309,20 @@ describe('研究与助手会话', () => {
     expect(data().conversations[conversation].sentContext?.map(item => item.evidenceId)).toEqual(['evidence-a', 'evidence-b']);
   });
 
-  it('取消后迟到内容不覆盖部分回答，停止命令包含原研究和工作区', async () => {
+  it('停止尚未确认时不提前丢弃原生最终结果，停止命令包含原研究与工作区', async () => {
     const conversation = selectAgent('research-a', 'codex');
     let release!: (response: Response) => void;
-    const mock = vi.fn((url: string) => url.endsWith('/stop') ? Promise.resolve(Response.json({ stopped: true })) : new Promise<Response>(resolve => { release = resolve; }));
+    const mock = vi.fn((url: string, _init?: RequestInit) => url.endsWith('/stop') ? Promise.resolve(Response.json({ stopped: true, state: 'stopping' })) : new Promise<Response>(resolve => { release = resolve; }));
     vi.stubGlobal('fetch', mock);
     const pending = submitAI('research-a', conversation, '停止测试');
     await vi.waitFor(() => expect(release).toBeDefined());
     const request = Object.values(data().requests).find(item => item.conversationId === conversation)!;
     stopAI(request.id);
-    release(done('迟到的文本'));
+    expect(data().requests[request.id]).toMatchObject({ status: 'generating', nativeRun: { state: 'stopping' } });
+    release(done('停止送达前已完成的文本'));
     await pending;
-    expect(data().requests[request.id]).toMatchObject({ status: 'stopped', body: '' });
-    expect(mock.mock.calls[1][0]).toBe('/api/ai/agents/stop');
+    expect(data().requests[request.id]).toMatchObject({ status: 'done', body: '停止送达前已完成的文本' });
+    expect(JSON.parse(mock.mock.calls[1][1]!.body as string)).toMatchObject({ requestId: request.id, researchId: 'research-a', workspaceId: data().agentWorkspaceId });
   });
 
   it('旧schema 2无损读取新增连接字段并拒绝未知连接，不清除输入', () => {
@@ -396,7 +383,9 @@ it('Codex 不再受 16 条、24,000 字材料与 80,000 字历史限制，快照
   const payload = JSON.parse(mock.mock.calls[1][1]!.body as string);
   expect(payload.context).toHaveLength(17);
   expect(payload.context.reduce((total: number, item: { quote: string }) => total + item.quote.length, 0)).toBeGreaterThan(24_000);
-  expect(payload.history[0].body).toBe(longAnswer);
+  expect(payload.history).toEqual([]);
+  expect(data().requests[second].history).toEqual([]);
+  expect(data().requests[second].historyRequestIds).toEqual([first]);
   expect(payload.context.map((item: { evidenceId: string }) => item.evidenceId)).toEqual(data().conversations[id].contextIds);
   const model = selectAgent('research-a', 'model');
   workspace.updateData(next => { next.conversations[model].contextIds = [...next.conversations[id].contextIds]; });
@@ -404,4 +393,150 @@ it('Codex 不再受 16 条、24,000 字材料与 80,000 字历史限制，快照
   workspace.updateData(next => { next.documents[next.evidence['context-evidence-0'].documentId].hash = 'changed-source'; });
   await expect(submitAI('research-a', id, '不能绕过来源验证')).rejects.toThrow('请求来源已变化');
   expect(mock).toHaveBeenCalledTimes(2);
+});
+
+it('managed 刷新恢复只观察原回合，快照替换而非重复追加，保留有序item与答复草稿', async () => {
+  const conversation = selectAgent('research-a', 'codex');
+  workspace.updateData(next => {
+    next.agentWorkspaceId = 'workspace-restored';
+    next.requests.restored = { id: 'restored', researchId: 'research-a', conversationId: conversation, connectionId: 'codex', purpose: 'chat', prompt: '已送达的问题',
+      body: '已收到的部分', rawBody: '已收到的部分', evidenceIds: [], context: [], history: [], status: 'generating', createdAt: '', nativeSessionId: 'stable-thread', nativeTurnId: 'turn-restored',
+      nativeRun: { managed: true, cursor: 5, delivery: 'accepted', state: 'waiting-input', transport: 'reconnecting', turnId: 'turn-restored', items: [] },
+      interactions: [{ id: 'question', kind: 'question', title: '范围', status: 'pending', answerDrafts: { scope: ['用户还未提交的草稿'] } }] };
+    next.conversations[conversation].requestIds.push('restored'); next.conversations[conversation].input = '下一条未发送的草稿';
+  });
+  const items = [{ id: 'commentary', type: 'agentMessage', status: 'done', phase: 'commentary', text: '先检查材料' }, { id: 'tool', type: 'commandExecution', status: 'done', command: 'cat source.md', output: '完整结果' }, { id: 'answer', type: 'agentMessage', status: 'done', phase: 'final_answer', text: '恢复后的完整回答' }];
+  const mock = vi.fn(async (_url: string, _init?: RequestInit) => frames([{ type: 'snapshot', seq: 8, state: 'completed', delivery: 'accepted', body: '恢复后的完整回答', nativeSessionId: 'stable-thread', nativeTurnId: 'turn-restored', items,
+    interactions: [{ id: 'question', kind: 'question', title: '范围', status: 'answered' }] }]));
+  vi.stubGlobal('fetch', mock);
+  await resumeNativeRuns();
+  expect(mock).toHaveBeenCalledTimes(1); expect(mock.mock.calls[0][0]).toBe('/api/ai/agents/observe');
+  expect(data().requests.restored).toMatchObject({ status: 'done', body: '恢复后的完整回答', nativeRun: { cursor: 8, state: 'completed', items }, interactions: [{ status: 'answered', answerDrafts: { scope: ['用户还未提交的草稿'] } }] });
+  expect(data().conversations[conversation].input).toBe('下一条未发送的草稿');
+});
+
+it('原生无文字回合正常完成，不伪报回答接收失败', async () => {
+  const conversation = selectAgent('research-a', 'codex');
+  vi.stubGlobal('fetch', vi.fn(async () => frames([{ type: 'snapshot', seq: 1, body: '', items: [{ id: 'plan', type: 'plan', status: 'done', text: '计划已更新' }], state: 'completed', delivery: 'accepted' }])));
+  const id = await submitAI('research-a', conversation, '更新计划');
+  expect(data().requests[id]).toMatchObject({ status: 'done', body: '', nativeRun: { state: 'completed', delivery: 'accepted' } });
+  expect(data().requests[id].error).toBeUndefined();
+});
+
+it('送达不确定时只退避观察，失败后提供手动恢复而不重新发送问题', async () => {
+  const conversation = selectAgent('research-a', 'codex');
+  workspace.updateData(next => { next.conversations[conversation].input = '绝不能重发的问题'; });
+  const mock = vi.fn(async (_url: string, _init?: RequestInit): Promise<Response> => { throw new Error('network disconnected'); });
+  vi.stubGlobal('fetch', mock);
+  const pending = submitAI('research-a', conversation, '绝不能重发的问题');
+  await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+  await vi.advanceTimersByTimeAsync(6000); const id = await pending;
+  const calls = mock.mock.calls as unknown as [string, RequestInit][];
+  expect(calls.filter(([url]) => url.endsWith('/run'))).toHaveLength(1);
+  expect(calls.filter(([url]) => url.endsWith('/observe'))).toHaveLength(3);
+  expect(data().requests[id]).toMatchObject({ status: 'generating', nativeRun: { delivery: 'unknown', transport: 'offline', state: 'unknown' } });
+  expect(data().conversations[conversation].input).toBe('');
+  await expect(submitAI('research-a', conversation, '下一问')).rejects.toThrow('当前会话正在回答');
+  mock.mockImplementation(async () => frames([{ type: 'snapshot', seq: 9, state: 'completed', delivery: 'accepted', body: '实际已经完成的回答', items: [] }]));
+  await resumeNativeRuns(id);
+  expect(data().requests[id]).toMatchObject({ status: 'done', body: '实际已经完成的回答' });
+});
+
+function activeNativeTurn(text: string) {
+  const conversation = selectAgent('research-a', 'codex');
+  workspace.updateData(next => {
+    next.agentWorkspaceId = 'steer-workspace'; next.conversations[conversation].input = text;
+    next.requests['active-turn'] = { id: 'active-turn', researchId: 'research-a', conversationId: conversation, connectionId: 'codex', purpose: 'chat', prompt: '原问题', context: [], history: [], evidenceIds: [], body: '', status: 'generating', createdAt: '', nativeTurnId: 'expected-turn',
+      nativeRun: { managed: true, cursor: 3, state: 'running', transport: 'connected', delivery: 'accepted', turnId: 'expected-turn', items: [{ id: 'tool-before-input', type: 'commandExecution', status: 'done' }] } };
+    next.conversations[conversation].requestIds.push('active-turn');
+  });
+  return conversation;
+}
+
+it('补充绑定预期原生回合，迟到确认不清用户新草稿，也不改变当前研究', async () => {
+  const conversation = activeNativeTurn('补充原有条件');
+  let confirm!: (response: Response) => void;
+  const mock = vi.fn((_url: string, _init?: RequestInit) => new Promise<Response>(resolve => { confirm = resolve; }));
+  vi.stubGlobal('fetch', mock);
+  const pending = steerNativeRun('active-turn', '补充原有条件');
+  expect(data().requests['active-turn'].nativeRun?.pendingSteer?.text).toBe('补充原有条件');
+  workspace.switchResearch('research-b'); const other = workspace.getActiveConversation('research-b').id;
+  workspace.updateData(next => { next.conversations[conversation].input = '用户后写的新草稿'; next.conversations[other].input = '研究B的草稿'; });
+  confirm(Response.json({ accepted: true, nativeTurnId: 'expected-turn' })); await pending;
+  const payload = JSON.parse(mock.mock.calls[0][1]!.body as string);
+  expect(payload).toMatchObject({ action: 'steer', expectedTurnId: 'expected-turn', requestId: 'active-turn', researchId: 'research-a', text: '补充原有条件' });
+  expect(payload.context).toBeUndefined(); expect(payload.codex).toBeUndefined(); expect(payload.inputId).toBeTruthy();
+  expect(data().requests['active-turn'].supplementalInputs).toEqual([expect.objectContaining({ id: payload.inputId, text: '补充原有条件', afterItemId: 'tool-before-input' })]);
+  expect(data().requests['active-turn'].nativeRun?.pendingSteer).toBeUndefined();
+  expect(data().conversations[conversation].input).toBe('用户后写的新草稿'); expect(data().conversations[other].input).toBe('研究B的草稿');
+  expect(data().scope).toEqual({ kind: 'research', researchId: 'research-b' });
+  mock.mockImplementation(async () => Response.json({ accepted: true }));
+  await steerNativeRun('active-turn', '用户后写的新草稿'); expect(data().conversations[conversation].input).toBe('');
+});
+
+it('回合变化409保留补充草稿，不伪造已确认输入', async () => {
+  const conversation = activeNativeTurn('不能发给另一个回合');
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ code: 'turn_changed', error: '原生回合已经变化。' }, { status: 409 })));
+  await expect(steerNativeRun('active-turn', '不能发给另一个回合')).rejects.toThrow('回合已经变化');
+  expect(data().conversations[conversation].input).toBe('不能发给另一个回合');
+  expect(data().requests['active-turn'].supplementalInputs).toBeUndefined(); expect(data().requests['active-turn'].nativeRun?.pendingSteer).toBeUndefined();
+});
+
+it('补充确认丢失后刷新仅observe，快照确认inputId后只合并一次并清原草稿', async () => {
+  const conversation = activeNativeTurn('仅补充一次');
+  const mock = vi.fn(async (_url: string, _init?: RequestInit): Promise<Response> => { throw new Error('ack disconnected'); });
+  vi.stubGlobal('fetch', mock);
+  await expect(steerNativeRun('active-turn', '仅补充一次')).rejects.toThrow('ack disconnected');
+  const pending = structuredClone(data().requests['active-turn'].nativeRun!.pendingSteer!);
+  expect(data().conversations[conversation].input).toBe('仅补充一次');
+  mock.mockImplementation(async () => frames([{ type: 'snapshot', seq: 9, state: 'completed', delivery: 'accepted', body: '补充后的回答', items: [], supplementalInputs: [pending] }]));
+  await resumeNativeRuns('active-turn');
+  expect(mock.mock.calls.map(([url]) => url)).toEqual(['/api/ai/agents/control', '/api/ai/agents/observe']);
+  expect(data().requests['active-turn'].supplementalInputs).toEqual([pending]); expect(data().requests['active-turn'].nativeRun?.pendingSteer).toBeUndefined();
+  expect(data().conversations[conversation].input).toBe('');
+});
+
+it('原生先完成且补充确认丢失时仍只读对账，绝不改写已完成回答或再次发送补充', async () => {
+  const conversation = activeNativeTurn('完成前的补充');
+  const mock = vi.fn(async (_url: string, _init?: RequestInit): Promise<Response> => { throw new Error('ack lost'); });
+  vi.stubGlobal('fetch', mock);
+  await expect(steerNativeRun('active-turn', '完成前的补充')).rejects.toThrow('ack lost');
+  const input = structuredClone(data().requests['active-turn'].nativeRun!.pendingSteer!);
+  workspace.updateData(next => { const request = next.requests['active-turn']; request.status = 'done'; request.body = '必须保持不可改写的完成原答'; request.nativeRun!.state = 'completed'; });
+  mock.mockImplementation(async () => frames([{ type: 'snapshot', seq: 12, state: 'completed', delivery: 'accepted', body: '不得用此快照覆盖原答', items: [], supplementalInputs: [input] }]));
+  await resumeNativeRuns('active-turn');
+  expect(mock.mock.calls.map(([url]) => url)).toEqual(['/api/ai/agents/control', '/api/ai/agents/observe']);
+  expect(data().requests['active-turn']).toMatchObject({ status: 'done', body: '必须保持不可改写的完成原答', supplementalInputs: [input] });
+  expect(data().requests['active-turn'].nativeRun?.pendingSteer).toBeUndefined(); expect(data().conversations[conversation].input).toBe('');
+});
+
+for (const [status, code] of [[409, 'session_busy'], [429, 'concurrency_limit']] as const) {
+  it(`首次/run明确${code}拒绝未送达，恢复原输入而不进入未知观察循环`, async () => {
+    const conversation = selectAgent('research-a', 'codex'), prompt = '服务拒绝前尚未送达的问题';
+    workspace.updateData(next => { next.conversations[conversation].input = prompt; });
+    const mock = vi.fn(async () => Response.json({ code, error: '明确拒绝：本次问题未发送。' }, { status })); vi.stubGlobal('fetch', mock);
+    const id = await submitAI('research-a', conversation, prompt);
+    expect(mock).toHaveBeenCalledTimes(1); expect(data().requests[id]).toMatchObject({ status: 'error', error: '明确拒绝：本次问题未发送。', nativeRun: { state: 'failed', delivery: 'pending' } });
+    expect(data().conversations[conversation].input).toBe(prompt);
+  });
+}
+
+for (const [status, code] of [[409, 'duplicate_request'], [410, 'run_expired']] as const) {
+  it(`首次/run返回${code}不能当作未发送，仍仅观察对账且不恢复成可重发输入`, async () => {
+    const conversation = selectAgent('research-a', 'codex'), prompt = '可能已送达的问题';
+    workspace.updateData(next => { next.conversations[conversation].input = prompt; });
+    const mock = vi.fn(async (url: string, _init?: RequestInit) => url.endsWith('/run') ? Response.json({ code, error: '已有提交记录。' }, { status }) : Response.json({ code: 'run_not_found' }, { status: 404 })); vi.stubGlobal('fetch', mock);
+    const pending = submitAI('research-a', conversation, prompt); await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1)); await vi.advanceTimersByTimeAsync(6000); const id = await pending;
+    expect(mock.mock.calls.filter(([url]) => url.endsWith('/run'))).toHaveLength(1); expect(mock.mock.calls.filter(([url]) => url.endsWith('/observe'))).toHaveLength(3);
+    expect(data().requests[id]).toMatchObject({ status: 'generating', nativeRun: { state: 'unknown', delivery: 'unknown', transport: 'offline' } }); expect(data().conversations[conversation].input).toBe('');
+  });
+}
+
+it('服务只返回unknown快照且保持连接时也有限退避对账，避免永远显示正在回答', async () => {
+  activeNativeTurn('保留未知回合的草稿');
+  const mock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode(JSON.stringify({ type: 'snapshot', seq: 10, body: '', items: [], interactions: [], state: 'unknown', delivery: 'accepted' }) + '\n')); } })));
+  vi.stubGlobal('fetch', mock);
+  const pending = resumeNativeRuns('active-turn'); await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1)); await vi.advanceTimersByTimeAsync(6000); await pending;
+  expect(mock.mock.calls.map(([url]) => url)).toEqual(Array(4).fill('/api/ai/agents/observe'));
+  expect(data().requests['active-turn']).toMatchObject({ status: 'generating', nativeRun: { state: 'unknown', transport: 'offline', delivery: 'accepted' } });
 });

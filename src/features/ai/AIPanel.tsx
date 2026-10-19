@@ -28,14 +28,17 @@ import {
   generateCardDraft,
   getAIConfig,
   historyForConversation,
+  originalRequestPrompt,
   regenerateAI,
+  resumeNativeRuns,
   retryAI,
   snapshotContext,
   stopAI,
+  steerNativeRun,
   submitAI,
 } from '../../services/ai';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
-import { codexSupportsImages, connectionLabel, conversationConnection, getAgents, getResearchDirectory, refreshProjectConversation, selectAgent } from '../../services/agents';
+import { codexSupportsImages, connectionLabel, conversationConnection, getAgents, getResearchDirectory, loadOlderProjectConversation, refreshProjectConversation, selectAgent } from '../../services/agents';
 import { CardDraftEditor } from '../cards/CardDraftEditor';
 import { MarkdownContent } from './MarkdownContent';
 import { ConversationHistory, initialHistoryState, type ConversationHistoryState } from './ConversationHistory';
@@ -45,6 +48,7 @@ import { AgentPicker, agentStateLabel } from './AgentPicker';
 import { AgentActivity } from './AgentActivity';
 import { CodexComposerTools, type CodexComposerToolsHandle } from './CodexComposerTools';
 import { AgentInteractionCard } from './AgentInteractionCard';
+import { NativeRunTimeline } from './NativeRunTimeline';
 import { ComposerMaterials } from './ComposerMaterials';
 import { VoiceInput } from './VoiceInput';
 import { ReportedChanges } from './ReportedChanges';
@@ -63,7 +67,7 @@ function toSource(request: AIRequest, title: string): CardProvenance {
     conversationId: request.conversationId,
     conversationTitle: title,
     requestId: request.id,
-    prompt: request.prompt,
+    prompt: originalRequestPrompt(request),
     answer: request.body,
     answerEvidenceIds: [...request.evidenceIds],
     selection: '',
@@ -109,6 +113,9 @@ export function AIPanel() {
   const [directoryError, setDirectoryError] = useState('');
   const [refreshingNative, setRefreshingNative] = useState(false);
   const [nativeRefreshError, setNativeRefreshError] = useState('');
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState('');
+  const [steeringBusy, setSteeringBusy] = useState(false);
   const nativeRefreshVersion = useRef(0);
   const nativeRefreshRunning = useRef(false);
   const scroll = useRef<HTMLDivElement>(null);
@@ -129,7 +136,8 @@ export function AIPanel() {
   const mode = connectionId === 'demo' ? 'demo' : 'live';
   const native = connectionId !== 'demo' && connectionId !== 'model';
   const legacyNative = native && !!conversation?.nativeSessionId && !conversation.nativeSessionRef;
-  const nativeBlocked = native && (!!conversation?.nativeSessionRef && (conversation.nativeState === 'busy' || conversation.nativeCanResume !== true));
+  const managedActive = conversation?.requestIds.some(id => data.requests[id]?.nativeRun?.managed && data.requests[id].status === 'generating');
+  const nativeBlocked = native && !managedActive && (!!conversation?.nativeSessionRef && (conversation.nativeState === 'busy' || conversation.nativeCanResume !== true));
   const agent = agents.find(item => item.id === connectionId);
   const backgroundTasks = Object.values(data.requests).filter(request =>
     request.researchId === research?.id && request.conversationId !== conversation?.id && request.status === 'generating',
@@ -146,7 +154,8 @@ export function AIPanel() {
     (request) => request.status === 'generating' && !request.nativeImported,
   );
   const selectedHistory = conversation
-    ? historyForConversation(data, conversation.id)
+    ? connectionId === 'codex' ? requests.filter(request => request.status === 'done' && !request.superseded && !request.validationError && !request.legacy)
+      .map(request => ({ requestId: request.id, prompt: originalRequestPrompt(request), body: request.body, evidenceIds: request.evidenceIds, context: request.context })) : historyForConversation(data, conversation.id)
     : [];
   const openDrafts = conversation
     ? Object.values(data.cardDrafts).filter(
@@ -167,6 +176,9 @@ export function AIPanel() {
     (!native || (directoryReady && !legacyNative && !nativeBlocked && !nativeRefreshError)) &&
     (mode === 'demo' || (native ? agent?.state === 'ready' && !loadingAgents && !agentError : !!config?.configured && !configError)) &&
     !missingImages;
+  const canSteer = !!prompt.trim() && !!generating?.nativeRun?.managed && !steeringBusy
+    && !!(generating.nativeTurnId ?? generating.nativeRun.turnId) && generating.nativeRun.transport === 'connected'
+    && ['running', 'compacting'].includes(generating.nativeRun.state) && !generating.nativeRun.pendingSteer;
   const updatePanel = (
     nextView: 'chat' | 'history' | 'draft' | 'source',
     draftId?: string,
@@ -215,6 +227,11 @@ export function AIPanel() {
     void loadAgents();
     return window.papertrailDesktop?.onAISettingsChanged(() => void loadConfig());
   }, []);
+  useEffect(() => {
+    const resume = () => { void resumeNativeRuns(); };
+    resume(); window.addEventListener('focus', resume);
+    return () => window.removeEventListener('focus', resume);
+  }, []);
   const refreshNative = useCallback(async () => {
     if (!research || !native || nativeRefreshRunning.current) return;
     const version = nativeRefreshVersion.current;
@@ -258,6 +275,8 @@ export function AIPanel() {
     setScopeNotice('');
     setSelectedFragment(undefined);
     setIntent(undefined);
+    setOlderError('');
+    setLoadingOlder(false);
   }, [conversation?.id]);
   useEffect(() => {
     if (intent && !dialog.current?.open) {
@@ -278,7 +297,7 @@ export function AIPanel() {
     if (atBottom.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
     else if (latest?.body) setHasNewContent(true);
-  }, [latest?.body, latest?.id, latest?.status, latest?.interactions?.length, view]);
+  }, [latest?.body, latest?.id, latest?.status, latest?.interactions?.length, latest?.nativeRun?.items.length, latest?.nativeRun?.state, view]);
   useLayoutEffect(() => {
     const element = input.current;
     if (view !== 'chat' || !element) return;
@@ -427,7 +446,7 @@ export function AIPanel() {
     pendingRequest?.body
       .split(/\n\s*\n/)
       .filter((paragraph) => paragraph.trim()) ?? [];
-  const regenerationHistory = intent?.regenerate
+  const regenerationHistory = intent?.regenerate && connectionId !== 'codex'
     ? historyForConversation(data, conversation.id, intent.requestId)
     : [];
   let regenerationContext: ContextSnapshot[] = [],
@@ -468,8 +487,11 @@ export function AIPanel() {
           }}
         />);
   const composerLeading = <><ComposerMaterials key={conversation.id} researchId={research.id} conversationId={conversation.id} disabled={!!generating} /><AgentPicker current={connectionId} agents={agents} loading={loadingAgents} error={agentError} model={config?.model} configured={!!config?.configured && !configError} onSelect={switchAgent} onRefresh={() => { void loadAgents(); void loadConfig(); }} /></>;
-  const composerTrailing = <><VoiceInput key={conversation.id} inputRef={input} />{generating ? (
-    <button type="button" className="ai-composer-stop" aria-label="停止生成" title="停止当前生成" onClick={() => stopAI(generating.id)}><Square size={13} fill="currentColor" /></button>
+  const composerTrailing = <><VoiceInput key={conversation.id} inputRef={input} />{generating ? (<>
+    {generating.nativeRun?.managed && <button type="button" className="text-button" disabled={!canSteer} onClick={() => {
+      setSteeringBusy(true); void execute(() => steerNativeRun(generating.id, prompt)).finally(() => setSteeringBusy(false));
+    }}>{steeringBusy ? '正在补充…' : '补充本轮'}</button>}
+    <button type="button" className="ai-composer-stop" aria-label="停止生成" title="停止当前生成" disabled={generating.nativeRun?.state === 'stopping'} onClick={() => stopAI(generating.id)}><Square size={13} fill="currentColor" /></button></>
   ) : <button type="button" className="primary ai-send" aria-label="发送问题" disabled={!canSend} onClick={() => void send()}><ArrowUp size={17} /></button>}</>;
   return (
     <section className="reading-ai ai-desktop-chat" aria-label="AI 阅读对话">
@@ -585,6 +607,7 @@ export function AIPanel() {
         role="log"
         aria-live="off"
         aria-label="对话消息"
+        data-conversation-id={conversation.id}
         tabIndex={0}
         ref={scroll}
         onScroll={() => {
@@ -606,6 +629,15 @@ export function AIPanel() {
           );
         }}
       >
+        {conversation.nativeHistoryCursor && <button className="text-button" disabled={loadingOlder} onClick={() => {
+          if (!scroll.current) return;
+          const element = scroll.current, top = element.scrollTop, height = element.scrollHeight, id = conversation.id;
+          setLoadingOlder(true); setOlderError('');
+          void loadOlderProjectConversation(research.id, id).then(() => requestAnimationFrame(() => {
+            if (element.dataset.conversationId === id) element.scrollTop = element.scrollHeight - height + top;
+          })).catch(caught => setOlderError(caught instanceof Error ? caught.message : '较早记录读取失败，请重试。')).finally(() => setLoadingOlder(false));
+        }}>{loadingOlder ? '正在读取…' : '加载更早对话'}</button>}
+        {olderError && <p className="ai-error" role="status">{olderError}</p>}
         {!requests.length && (
           <div className="ai-welcome-new">
             <h3>新对话</h3>
@@ -661,8 +693,8 @@ export function AIPanel() {
                   <span className="ai-badge">保留的旧版本</span>
                 )}
               </div>
-              {!!request.events?.length && <AgentActivity events={request.events} generating={request.status === 'generating'} />}
-              {request.interactions?.map(interaction => <AgentInteractionCard key={interaction.id} request={request} interaction={interaction} />)}
+              {!request.nativeRun && !!request.events?.length && <AgentActivity events={request.events} generating={request.status === 'generating'} />}
+              {!request.nativeRun && request.interactions?.map(interaction => <AgentInteractionCard key={interaction.id} request={request} interaction={interaction} />)}
               <div
                 className="ai-answer"
                 tabIndex={0}
@@ -673,10 +705,10 @@ export function AIPanel() {
                   captureFragment(request.id, event.currentTarget)
                 }
               >
-                <MarkdownContent text={request.body} />
+                {request.nativeRun ? <NativeRunTimeline request={request} /> : <MarkdownContent text={request.body} />}
               </div>
               {request.status !== 'generating' && <SourceRecommendations request={request}/>}
-              {request.status === 'generating' && (
+              {request.status === 'generating' && !request.nativeRun && (
                 <div className="ai-generating">
                   <span />
                   {request.interactions?.some(interaction => interaction.status === 'pending') ? '等待你的答复…' : request.events?.at(-1)?.status === 'running' ? request.events.at(-1)?.text : '正在生成回答…'}
@@ -686,14 +718,14 @@ export function AIPanel() {
               {request.status !== 'generating' && incomplete && (
                 <div className="ai-error" role="alert">
                   {request.error ||
-                    '回答未完成，已保留收到的内容。此轮不会进入后续默认历史。'}
+                    (request.nativeRun ? '本轮未完成，原生会话仍保留已发送内容。' : '回答未完成，已保留收到的内容。此轮不会进入后续默认历史。')}
                   {!request.nativeImported && <button
                     className="text-button"
                     onClick={() =>
                       void execute(() => retryAI(request.id, mode))
                     }
                   >
-                    按原范围重试
+                    {request.nativeRun ? '在此对话中重试' : '按原范围重试'}
                   </button>}
                 </div>
               )}
@@ -801,7 +833,7 @@ export function AIPanel() {
                         }
                       >
                         <RefreshCw size={13} />
-                        重新生成
+                        {request.nativeRun ? '再回答一次' : '重新生成'}
                       </button>
                     )}
                   {!!request.body &&
@@ -900,6 +932,7 @@ export function AIPanel() {
         {legacyNative && directoryReady && <div className="ai-scope-notice"><strong>旧版阅读对话</strong><p>此记录仍属于旧目录，可继续查看；在研究目录中开始新对话，原记录和输入会保留。</p><button className="text-button" onClick={() => { rememberScroll(); actions.createConversation(research.id); }}>在研究目录开始新对话</button></div>}
         {nativeBlocked && <div className="ai-scope-notice" role="status"><strong>{conversation.nativeState === 'busy' ? '正在原生应用中运行' : '当前可查看记录，暂不能继续发送'}</strong><p>{conversation.nativeReason || (conversation.nativeState === 'busy' ? '任务完成后可在这里继续。当前输入已保留。' : '尚不能确认此会话可以安全续接，请刷新记录。')}</p><button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>刷新会话状态</button></div>}
         {nativeRefreshError && directoryReady && <p className="ai-error" role="status">{nativeRefreshError}<button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>重新读取记录</button></p>}
+        {generating?.nativeRun?.managed && <p className="ai-footnote">“补充本轮”只发送文字，使用本轮已提交的材料与设置；未发送的文字会保留为草稿。</p>}
         <details
           className="ai-materials"
           open={conversation.contextIds.length > 0 || undefined}
@@ -952,8 +985,8 @@ export function AIPanel() {
           </div>
         </details>
         <details className="ai-context-settings">
-          <summary>对话范围 · 前序 {selectedHistory.length} 轮{native ? ` · Agent 已发 ${conversation.sentContext?.length ?? 0} 条材料` : ''}</summary>
-        <div className="ai-history-range">
+          <summary>{connectionId === 'codex' ? '连续对话' : `对话范围 · 前序 ${selectedHistory.length} 轮`}{native ? ` · Agent 已发 ${conversation.sentContext?.length ?? 0} 条材料` : ''}</summary>
+        {connectionId === 'codex' ? <div className="ai-history-range"><p>每轮继续同一个 Codex 会话，上下文由 Codex 管理。需要排除旧历史时，请新建干净对话。</p><button className="text-button" onClick={() => { rememberScroll(); actions.createConversation(research.id); }}>开启独立对话</button></div> : <div className="ai-history-range">
           <label htmlFor={`history-${conversation.id}`}>
             前序对话 · {selectedHistory.length} 轮
           </label>
@@ -972,17 +1005,17 @@ export function AIPanel() {
             <option value="latest">最近 1 轮</option>
             <option value="none">不含前序对话</option>
           </select>
-        </div>
+        </div>}
         {native && <details className="ai-native-scope">
           <summary>Agent 累计范围 · {conversation.sentContext?.length ?? 0} 条已发材料</summary>
           <p>原生会话可能保留此前发送的问答、材料和工具结果。移除本轮材料不会清除这些历史。</p>
           {conversation.nativeReason && <p>{conversation.nativeReason}</p>}
           {!!conversation.sentContext?.length && <ContextDetails items={conversation.sentContext} />}
-          <p>{conversation.historyRange && conversation.historyRange !== 'all' ? '下次请求将从所选前序范围建立新的原生会话；旧会话记录仍保留。' : '如需完全独立的范围，请新建干净对话。'}</p>
+          <p>{connectionId !== 'codex' && conversation.historyRange && conversation.historyRange !== 'all' ? '下次请求将从所选前序范围建立新的原生会话；旧会话记录仍保留。' : '如需完全独立的范围，请新建干净对话。'}</p>
         </details>}
         {!!selectedHistory.length && (
           <details className="ai-history-scope">
-            <summary>查看将发送的历史与旧材料</summary>
+            <summary>{connectionId === 'codex' ? '查看本地保存的历史与来源' : '查看将发送的历史与旧材料'}</summary>
             {selectedHistory.map((turn, index) => (
               <details key={turn.requestId}>
                 <summary>
@@ -991,7 +1024,7 @@ export function AIPanel() {
                 <MarkdownContent text={turn.body} />
                 <ContextDetails items={originalAnswerContext(turn)} />
                 <p className="ai-footnote">
-                  历史原答引用；提交时将按本次材料重编号。
+                  {connectionId === 'codex' ? '保留原始回答与来源；后续轮次不重复发送历史正文。' : '历史原答引用；提交时将按本次材料重编号。'}
                 </p>
               </details>
             ))}
@@ -1040,7 +1073,7 @@ export function AIPanel() {
             <div className="ai-dialog-heading">
               <h3 id="ai-intent-title">
                 {intent?.regenerate
-                  ? '确认重新生成范围'
+                  ? connectionId === 'codex' ? '在当前对话再回答一次' : '确认重新生成范围'
                   : intent?.paragraphChoice
                     ? '选择值得留下的知识点'
                     : intent?.manual
@@ -1093,7 +1126,7 @@ export function AIPanel() {
                 {intent?.regenerate ? (
                   <>
                     <p className="ai-info">
-                      使用当前材料和所选历史生成新版本，原始回答与已有卡片来源会保留。
+                      {connectionId === 'codex' ? '在同一个 Codex 会话中继续一轮。原始回答仍在原生上下文中，已有卡片来源会保留；需要独立范围时请新建对话。' : '使用当前材料和所选历史生成新版本，原始回答与已有卡片来源会保留。'}
                     </p>
                     <h4>再次提问</h4>
                     <p className="ai-dialog-question">

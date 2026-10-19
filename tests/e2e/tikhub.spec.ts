@@ -70,7 +70,7 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
       }
       pending.delete(reply.requestId); json({ accepted: true }); return;
     }
-    if (path.endsWith('/stop')) { api.stops.push(body as Identity); pending.get(body.requestId)?.response.end(); pending.delete(body.requestId); json({ stopped: true }); return; }
+    if (path.endsWith('/stop')) { api.stops.push(body as Identity); pending.get(body.requestId)?.response.end(JSON.stringify({ type: 'error', state: 'interrupted', code: 'stopped', error: '原生回合已确认停止。' }) + '\n'); pending.delete(body.requestId); json({ stopped: true, state: 'interrupted' }); return; }
     res.statusCode = 404; json({ error: 'not found' });
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening'); api.url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -104,25 +104,25 @@ test('TikHub 技能已接入且未知MCP仍禁用，目录工具过程独立于�
   await expect(panel(page).getByRole('option', { name: /\$unknown-mcp/ })).toHaveAttribute('aria-disabled', 'true');
   await expect(panel(page).getByRole('option', { name: /\$unknown-mcp/ })).toContainText('MCP 服务未接入');
   await chooseTikHub(page); await send(page, '检查抖音接口目录');
-  await expect(panel(page).locator('.ai-answer')).toHaveText(checkAnswer);
+  await expect(panel(page).locator('.ai-answer .ai-markdown')).toHaveText(checkAnswer);
   expect(api.runs[0].skillIds).toEqual(['tikhub']); expect(api.replies).toHaveLength(0); expect(api.dataCalls).toHaveLength(0);
   await panel(page).locator('.ai-agent-events > summary').click(); await expect(panel(page).locator('.ai-tool-call')).toHaveCount(1);
   const tool = panel(page).locator('.ai-tool-call'); await expect(tool.locator('summary')).toContainText('read_paper_tikhub'); await expect(tool.locator('summary')).toContainText('已完成');
   await tool.locator('summary').click(); await expect(tool.locator('.ai-tool-output')).toHaveText(checkOutput); await expect(tool.locator('pre').first()).toHaveText(checkArgs);
-  await expect(panel(page).locator('.ai-answer')).not.toContainText('319');
+  await expect(panel(page).locator('.ai-answer .ai-markdown')).not.toContainText('319');
 });
 
 test('TikHub 数据调用逐次审批，拒绝不查询、允许绑定原研究、停止使审批失效', async ({ page, api }) => {
   await start(page, api); await chooseTikHub(page); await send(page, '查询这条抖音视频');
   await expect(approval(page)).toContainText('可能消耗额度'); await expect(approval(page)).toContainText('douyin'); await expect(approval(page)).toContainText('fetch_one_video'); await expect(approval(page).locator('pre')).toHaveText(callArgs);
   expect(api.replies).toHaveLength(0); expect(api.dataCalls).toHaveLength(0);
-  await approval(page).getByRole('button', { name: '拒绝', exact: true }).click(); await expect(panel(page).locator('.ai-answer')).toHaveText('你已拒绝，本次没有调用 TikHub 数据接口。');
+  await approval(page).getByRole('button', { name: '拒绝', exact: true }).click(); await expect(panel(page).locator('.ai-answer .ai-markdown')).toHaveText('你已拒绝，本次没有调用 TikHub 数据接口。');
   expect(api.replies[0].reply).toEqual({ decision: 'deny' }); expect(api.dataCalls).toHaveLength(0); await expect(panel(page).locator('.ai-tool-call')).toHaveCount(0);
   await send(page, '再次查询这条抖音视频'); await expect(approval(page).getByRole('button', { name: '允许本次', exact: true })).toBeEnabled();
   expect(api.replies).toHaveLength(1); expect(api.dataCalls).toHaveLength(0);
   await page.getByLabel('切换研究').selectOption('research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await expect(approval(page)).toHaveCount(0);
   await page.getByLabel('切换研究').selectOption('research-a'); await approval(page).getByRole('button', { name: '允许本次', exact: true }).click();
-  await expect(panel(page).locator('.ai-answer').last()).toHaveText(dataAnswer);
+  await expect(panel(page).locator('.ai-answer .ai-markdown').last()).toHaveText(dataAnswer);
   expect(api.replies[1]).toMatchObject({ ...Object.fromEntries((['workspaceId', 'requestId', 'researchId', 'conversationId', 'connectionId'] as const).map(key => [key, api.runs[1][key]])), reply: { decision: 'allowOnce' } });
   expect(api.dataCalls.map(run => run.requestId)).toEqual([api.runs[1].requestId]);
   await send(page, '第三次查询这条抖音视频'); await expect(approval(page).getByRole('button', { name: '允许本次', exact: true })).toBeEnabled(); expect(api.replies).toHaveLength(2);
@@ -144,7 +144,7 @@ test('TikHub 缺少本机凭据时说明原因，刷新能力后原会话可选�
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 800 }]) {
   test(`中央PDF与TikHub目录说明并列 ${viewport.width}×${viewport.height}`, async ({ page, api }) => {
     await page.setViewportSize(viewport); await start(page, api, true); await chooseTikHub(page); await send(page, '检查抖音接口目录');
-    await expect(panel(page).locator('.ai-answer')).toHaveText(checkAnswer); await panel(page).locator('.ai-agent-events > summary').click();
+    await expect(panel(page).locator('.ai-answer .ai-markdown')).toHaveText(checkAnswer); await panel(page).locator('.ai-agent-events > summary').click();
     await panel(page).getByRole('log', { name: '对话消息' }).evaluate(element => { element.scrollTop = 0; });
     await panel(page).getByLabel('向 AI 提问').fill('$'); await expect(panel(page).getByRole('option', { name: /\$tikhub/ })).toContainText(scope);
     const right = (await panel(page).boundingBox())!, pdf = (await page.getByRole('main').locator('canvas').first().boundingBox())!;

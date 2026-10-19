@@ -8,7 +8,7 @@
 
 目录文件随应用编辑自动更新，侧栏与项目设置分别显示状态和重试。资产按 hash 校验，未变 PDF 不重传/重写；所有文件限定在专用 `Papertrail/`，不改研究根目录已有文件。保存事务先暂存、保留旧字节、最后提交清单；失败可恢复。用户或 Codex 改过的导出文件会被保留并阻止后续覆盖，不自动回写应用。应用数据库继续提供编辑与恢复副本；共享来源在各研究目录各存一份。单资产 64 MiB、文件集 256 MiB 上限在错误中明确显示。
 
-`sessions/index.md` 和会话 Markdown 保存已获得的讨论、原生 Session ID 与续接提示；真正的原生日志仍由 Codex/其他助手管理。同机用 Codex 打开研究根目录，可读取文件；保留原生记录时用 `codex resume <ID>` 定位对应会话。[官方 CLI 文档](https://learn.chatgpt.com/docs/cli/reference)。本轮一次真实生产适配器调用验证了读取卡片、正确回答、同 cwd 的 list/read 与原生 ID 匹配，见[探针](../verification/research-directory/codex-files-probe.md)。独立 Codex 桌面列表和第二轮接续未验，目录复制到新电脑不承诺恢复原生身份。
+`sessions/index.md` 和会话 Markdown 保存已获得的讨论、原生 Session ID 与续接提示；真正的原生日志仍由 Codex/其他助手管理。同机用 Codex 打开研究根目录，可读取文件；保留原生记录时用 `codex resume <ID>` 定位对应会话。[官方 CLI 文档](https://learn.chatgpt.com/docs/cli/reference)。早期生产适配器调用验证了读取卡片、正确回答、同 cwd 的 list/read 与原生 ID 匹配，见[目录探针](../verification/research-directory/codex-files-probe.md)。2026-10-19 的[连续对话增量](native-continuity.md)另验证真实三轮同线程、断流观察恢复及运行时手动压缩后继续记忆。独立 Codex 桌面列表与两端往返仍未验，目录复制到新电脑不承诺恢复原生身份。
 
 ## 产品判断
 

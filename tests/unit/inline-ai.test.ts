@@ -41,22 +41,34 @@ describe('原文旁问答', () => {
     expect(findInlineConversation('research-a', source)?.id).toBe(id);
   });
 
-  it('右侧选中本机助手或目录故障时，轻问仍使用同一内置模型服务，不调用CLI或目录同步', async () => {
+  it('右侧选中 Codex 时新轻问继承连接与设置，移到右侧仍是同一会话', async () => {
     workspace.updateData(data => {
       data.conversations[rightId].connectionId = 'codex';
-      data.researches['research-a'].directory = { id: 'binding', projectId: 'project', path: '/unavailable' };
+      data.conversations[rightId].codex = { model: 'native-model', effort: 'high' };
+      data.conversations[rightId].skills = [{ id: 'skill-a', name: '阅读', description: '', enabled: true }];
+      data.researches['research-a'].directory = { id: 'binding', projectId: 'project', path: '/research' };
     });
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
-      if (url === '/api/ai/config') return new Response(JSON.stringify({ configured: true, runtime: 'pi', model: 'glm-5.3-flash', images: false }));
-      if (url === '/api/ai/chat') return new Response('{"type":"delta","text":"对所选原文的解释 [1]"}\n{"type":"done"}\n');
-      throw new Error('不应访问CLI或目录服务');
+      if (url === '/api/ai/agents/codex/capabilities') return Response.json({ skills: [], models: [{ id: 'native-model', inputModalities: ['text', 'image'], isDefault: true }], plan: true });
+      throw new Error('读取配置不应提交模型请求');
     });
     vi.stubGlobal('fetch', fetchMock);
     const id = createInlineConversation('research-a', source);
-    const requestId = await submitAI('research-a', id, '解释这段');
-    expect(state().requests[requestId].status).toBe('done');
-    expect(state().requests[requestId].connectionId).toBe('model');
-    expect(fetchMock.mock.calls.map(call => call[0])).toEqual(['/api/ai/config', '/api/ai/chat']);
+    expect(state().conversations[id]).toMatchObject({ connectionId: 'codex', codex: { model: 'native-model', effort: 'high' }, skills: [{ id: 'skill-a' }] });
+    expect(await inlineAIConfig('research-a', id)).toMatchObject({ configured: true, provider: 'Codex', model: 'native-model', images: true });
+    continueInlineInPanel(id);
+    expect(getActiveConversation(state(), 'research-a')?.id).toBe(id);
+    expect(state().conversations[id].nativeSessionId).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('改用 Codex 不会把已有 Pi 原文问答转换成另一种原生身份', () => {
+    const previous = createInlineConversation('research-a', source);
+    workspace.updateData(data => { data.conversations[rightId].connectionId = 'codex'; });
+    const next = createInlineConversation('research-a', source);
+    expect(next).not.toBe(previous);
+    expect(state().conversations[previous].connectionId).toBe('model');
+    expect(state().conversations[next].connectionId).toBe('codex');
   });
 
   it('未配置模型时明确说明模型设置，不将问题归咎于CLI', async () => {

@@ -12,6 +12,10 @@ describe('研究目录的完整可读文件集', () => {
     const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
     Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
     Object.assign(seed.conversations['conversation-research-a'], { connectionId: 'codex', nativeSessionId: 'native-session-a' });
+    seed.requests['native-complete'] = { id: 'native-complete', researchId: 'research-a', conversationId: 'conversation-research-a', connectionId: 'codex',
+      prompt: '最初的问题', body: '完整回答', supplementalInputs: [{ id: 'steer-export', text: '已确认的本轮补充', createdAt: '2026-10-19T00:00:00.000Z' }],
+      status: 'done', context: [], evidenceIds: [], createdAt: '2026-10-19T00:00:00.000Z', purpose: 'chat', mode: 'live' };
+    seed.conversations['conversation-research-a'].requestIds.push('native-complete');
     const { files } = await buildResearchFiles(seed, 'research-a');
     const map = Object.fromEntries(files.map(file => [file.path, file]));
     expect(Buffer.from(map['library/paper-a.pdf'].content, 'base64')).toEqual(Buffer.from(await pdf.arrayBuffer()));
@@ -19,10 +23,12 @@ describe('研究目录的完整可读文件集', () => {
     expect(map['cards/card-a.md'].content).toContain('PDF 第');
     expect(map['library/paper-stub.md'].content).toContain('尚未添加全文');
     expect(map['sessions/conversation-research-a.md'].content).toContain('codex resume native-session-a');
+    expect(map['sessions/conversation-research-a.md'].content).toContain('已确认的本轮补充');
     const saved = JSON.parse(map['research.json'].content);
     expect(saved.format).toBe('papertrail-research');
     expect(Object.keys(saved.entities.research)).toContain('documentIds');
     expect(saved.entities.research.id).toBe('research-a');
+    expect(saved.entities.requests['native-complete'].supplementalInputs[0].text).toBe('已确认的本轮补充');
     expect(map['README.md'].content).toContain('原生会话');
     for (const file of files) expect(file.hash).toBe(digest(file.encoding === 'base64' ? Buffer.from(file.content, 'base64') : new TextEncoder().encode(file.content).buffer));
   });

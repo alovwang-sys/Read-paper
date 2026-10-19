@@ -112,7 +112,7 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
   for (const c of Object.values(entities.conversations)) {
     const heading = c.title || '研究对话';
     const native = c.nativeSessionId ? `助手：${c.connectionId || '未知'}  \n原生 Session ID：\`${c.nativeSessionId}\`\n\n${c.connectionId === 'codex' && /^[a-zA-Z0-9_-]+$/.test(c.nativeSessionId) ? `在本研究目录运行：\n\n\`\`\`sh\ncodex resume ${c.nativeSessionId}\n\`\`\`\n` : ''}` : '此对话尚无原生 Session ID，或使用模型直连/演示模式。';
-    const turns = c.requestIds.map(id => entities.requests[id]).filter(Boolean).map(r => `## 用户\n\n${r.prompt}\n\n## 助手\n\n${r.body}\n\n状态：${r.status}`).join('\n\n');
+    const turns = c.requestIds.map(id => entities.requests[id]).filter(Boolean).map(r => `## 用户\n\n${r.prompt}${r.supplementalInputs?.map(input => '\n\n### 本轮补充\n\n' + input.text).join('') || ''}\n\n## 助手\n\n${r.body}\n\n状态：${r.status}`).join('\n\n');
     await text(`sessions/${safeId(c.id)}.md`, `# ${heading}\n\n${native}\n\n${turns}${c.input ? '\n\n## 未发送输入\n\n' + c.input : ''}\n`);
     sessionIndex.push(`- [${heading}](${safeId(c.id)}.md)${c.nativeSessionId ? ` · ${c.connectionId} · \`${c.nativeSessionId}\`` : ''}`);
   }

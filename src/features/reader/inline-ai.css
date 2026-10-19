@@ -58,3 +58,22 @@
 .inline-ai-materials { max-height: 140px; overflow-y: auto; }
 .inline-ai-materials > div { margin-top: 8px; }
 .inline-ai-materials strong { font-size: 12px; font-weight: 500; }
+.inline-ai .ai-native-timeline { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.inline-ai .ai-native-message.is-commentary { color: var(--text-secondary, #637668); font-size: 12px; }
+.inline-ai .ai-footnote { display: block; font-size: 11px; color: #6b7e70; }
+.inline-ai .ai-generating, .inline-ai .ai-info { color: #52715d; font-size: 12px; line-height: 1.6; }
+.inline-ai .ai-agent-events { font-size: 12px; border: 1px solid #e1e8de; border-radius: 7px; padding: 8px; }
+.inline-ai .ai-agent-events pre { max-height: 150px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+.inline-ai .agent-interaction-card { padding: 10px; border: 1px solid #d5e3d9; border-radius: 8px; background: #f7faf6; }
+.inline-ai .agent-interaction-heading { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; font-size: 12px; }
+.inline-ai .agent-interaction-heading small { color: #6b7e70; font-size: 11px; }
+.inline-ai .agent-interaction-card pre { max-height: 120px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+.inline-ai .agent-interaction-card fieldset { min-width: 0; border: 0; padding: 0; margin: 8px 0; }
+.inline-ai .agent-interaction-card legend { font-size: 12px; margin-bottom: 6px; }
+.inline-ai .agent-question-options { display: flex; flex-direction: column; gap: 6px; }
+.inline-ai .agent-question-options label { display: flex; align-items: flex-start; gap: 7px; padding: 7px; border: 1px solid #dfe7dc; border-radius: 5px; background: white; }
+.inline-ai .agent-question-options input { width: 14px; flex: 0 0 14px; margin-top: 3px; }
+.inline-ai .agent-question-options span { display: flex; flex-direction: column; font-size: 12px; }
+.inline-ai .agent-question-options small { font-size: 11px; color: #6b7e70; }
+.inline-ai .agent-interaction-card textarea { width: 100%; min-height: 54px; margin: 7px 0; font: inherit; resize: vertical; }
+.inline-ai .agent-interaction-actions { display: flex; gap: 8px; margin-top: 8px; }

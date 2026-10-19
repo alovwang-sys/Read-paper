@@ -7,7 +7,7 @@ import type { AIConnectionId, WorkspaceData } from '../../src/domain/types';
 import { fixtureSessionRef, mockProjectService } from './project-fixture';
 import { openSource, switchResearch } from './knowledge-helpers';
 
-type Run = { requestId: string; researchId?: string; conversationId?: string; prompt?: string; messages?: { role: string; content: string }[] };
+type Run = { requestId: string; managed?: boolean; researchId?: string; conversationId?: string; prompt?: string; messages?: { role: string; content: string }[] };
 type API = { url: string; runs: Run[]; delta: (requestId: string, text: string) => void; finish: (requestId: string) => void; disconnect: (requestId: string) => void };
 const answer = '模拟回答：已完整接收问题，继续保留原文条件。';
 const test = base.extend<{ api: API }>({ api: async ({}, use) => {
@@ -28,7 +28,9 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
     disconnect(requestId) {
       const response = pending.get(requestId);
       if (!response) throw new Error(`No pending request: ${requestId}`);
-      response.destroy(); pending.delete(requestId);
+      if (api.runs.find(run => run.requestId === requestId)?.managed) response.end(JSON.stringify({ type: 'error', state: 'failed', delivery: 'accepted', error: '原生执行失败，已有内容已保留。' }) + '\n');
+      else response.destroy();
+      pending.delete(requestId);
     },
   };
   const server = createServer(async (request, response) => {
@@ -142,13 +144,13 @@ for (const connection of ['codex', 'model'] as const) {
     await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
     await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
     await saved(page); await page.evaluate(() => document.fonts.ready);
-    await mkdir('docs/verification/ai-fixes-017', { recursive: true });
+    await mkdir('docs/verification/native-continuity', { recursive: true });
     for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) {
       await page.setViewportSize(viewport);
       await expect(input(page)).toBeVisible();
-      await page.screenshot({ path: `docs/verification/ai-fixes-017/composer-${connection}-${viewport.width}.png` });
+      await page.screenshot({ path: `docs/verification/native-continuity/composer-${connection}-${viewport.width}.png` });
     }
-    await panel(page).getByRole('button', { name: '按原范围重试', exact: true }).click();
+    await panel(page).getByRole('button', { name: connection === 'codex' ? '在此对话中重试' : '按原范围重试', exact: true }).click();
     await expect.poll(() => api.runs.length).toBe(2);
     const retry = api.runs[1];
     expect(connection === 'model' ? retry.messages?.at(-1)?.content : retry.prompt).toBe(prompt);
@@ -169,8 +171,8 @@ test('原生发送前同步失败保留输入，且不建立或发送请求', as
   await saved(page); await page.reload(); await expect(input(page)).toHaveValue(prompt);
 });
 
-test('网络中断且没有新草稿时恢复原输入，刷新后可重试', async ({ page, api }) => {
-  await start(page, api);
+test('模型网络中断且没有新草稿时恢复原输入，刷新后可重试', async ({ page, api }) => {
+  await start(page, api, 'model');
   const prompt = '网络中断后需要恢复的原问题。';
   const run = await send(page, api, prompt); await expect(input(page)).toHaveValue('');
   api.disconnect(run.requestId); await ended(page, run, 'error');
@@ -221,8 +223,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await saved(page); await page.evaluate(() => document.fonts.ready);
-    await mkdir('docs/verification/composer-fixes', { recursive: true });
-    await page.screenshot({ path: `docs/verification/composer-fixes/composer-${viewport.width}.png` });
+    await mkdir('docs/verification/native-continuity', { recursive: true });
+    await page.screenshot({ path: `docs/verification/native-continuity/composer-${viewport.width}.png` });
     api.finish(run.requestId); await ended(page, run, 'done');
     await expect(input(page)).toHaveValue('下一条草稿：这些条件是否适用于新的证据集？');
   });

@@ -33,7 +33,11 @@ const test = base.extend<{ api: API }>({ api: async ({}, use) => {
       event({ type: 'progress', kind: 'tool', id: 'turn-diff', toolName: 'fileChange', text: '本轮文件变更 · 模拟记录', status: 'done', output: patch });
       event({ type: 'done', model: body.codex?.model || 'research-model', ...session }); response.end(); return;
     }
-    if (path.endsWith('/stop')) { api.stops.push({ requestId: body.requestId }); pending.get(body.requestId)?.end(); pending.delete(body.requestId); response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ stopped: true })); return; }
+    if (path.endsWith('/stop')) {
+      api.stops.push({ requestId: body.requestId });
+      pending.get(body.requestId)?.end(JSON.stringify({ type: 'error', state: 'interrupted', code: 'stopped', error: '原生回合已确认停止。' }) + '\n');
+      pending.delete(body.requestId); response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ stopped: true, state: 'interrupted' })); return;
+    }
     response.writeHead(404); response.end();
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening'); api.url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;

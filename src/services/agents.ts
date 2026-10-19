@@ -1,4 +1,5 @@
-import type { AgentConnection, AgentEvent, AIConnectionId, CodexCapabilities, Conversation, ResearchDirectory, NativeSessionSummary, NativeSessionSnapshot } from '../domain/types';
+import type { AgentConnection, AgentEvent, AIConnectionId, CodexCapabilities, Conversation, ResearchDirectory, NativeSessionSummary, NativeSessionSnapshot, NativeTurnItem, NativeUserInput } from '../domain/types';
+import { mapCitationNumbers } from '../domain/citations';
 import { getActiveConversation, workspace, uid } from './workspace';
 
 export function connectionLabel(id?: AIConnectionId) {
@@ -112,11 +113,11 @@ export function listProjectSessions(researchId: string): Promise<{ sessions: Nat
   return projectRequest(researchId, 'list');
 }
 const historyReads = new Map<string, number>();
-async function readLatestHistory(researchId: string, sessionRef: string) {
+async function readLatestHistory(researchId: string, sessionRef: string, cursor?: string) {
   const key = JSON.stringify([workspace.getState().data.agentWorkspaceId, researchId, sessionRef]);
   const version = (historyReads.get(key) ?? 0) + 1;
   historyReads.set(key, version);
-  const snapshot = await projectRequest<NativeSessionSnapshot>(researchId, 'read', { sessionRef });
+  const snapshot = await projectRequest<NativeSessionSnapshot>(researchId, 'read', { sessionRef, ...(cursor ? { cursor } : {}) });
   return historyReads.get(key) === version ? snapshot : undefined;
 }
 
@@ -132,25 +133,74 @@ function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot)
     conversation.nativeState = snapshot.state;
     conversation.nativeCanResume = snapshot.canResume;
     conversation.nativeReason = [snapshot.reason, snapshot.archiveError].filter(Boolean).join(' ') || undefined;
+    conversation.nativeHistoryCursor = snapshot.nextCursor;
     if (!existing || !conversation.updatedAt || snapshot.updatedAt > conversation.updatedAt) conversation.updatedAt = snapshot.updatedAt;
-    let turn: { id: string; prompt: string; body: string; createdAt: string; original?: string; events?: AgentEvent[] } | undefined;
+    let turn: { id: string; prompt: string; body: string; createdAt: string; original?: string; events?: AgentEvent[]; turnId?: string; turnStatus?: 'inProgress' | 'completed' | 'interrupted' | 'failed'; items?: NativeTurnItem[]; supplementalInputs?: NativeUserInput[]; answerComplete?: boolean } | undefined;
     const saveTurn = () => {
       if (!turn || !turn.prompt && !turn.body) return;
       const own = turn.original && next.requests[turn.original];
-      if (own && own.researchId === researchId && own.conversationId === id) return;
+      if (own && own.researchId === researchId && own.conversationId === id) {
+        if (own.nativeRun?.managed && own.nativeSessionId === snapshot.nativeSessionId && turn.turnId
+          && (!own.nativeTurnId || own.nativeTurnId === turn.turnId) && turn.turnStatus && turn.turnStatus !== 'inProgress') {
+          if (own.status !== 'done' && turn.answerComplete !== false) {
+            const rawBody = turn.items?.filter(item => item.type === 'agentMessage' && item.phase === 'final_answer').map(item => item.text || '').join('\n\n') || turn.body;
+            const ids: string[] = [];
+            let body = rawBody, validationError: string | undefined;
+            try {
+              body = mapCitationNumbers(rawBody, number => {
+                const source = own.context[number - 1];
+                const evidence = source && next.evidence[source.evidenceId], document = source && next.documents[source.documentId];
+                if (!source || !evidence || document?.hash !== source.documentHash || evidence.documentId !== source.documentId || evidence.quote !== source.quote || evidence.pageIndex !== source.pageIndex || source.kind === 'region' && JSON.stringify(source.region) !== JSON.stringify(evidence.region)) throw new Error(`引用 [${number}] 的原文来源尚未核实，回答已保留。`);
+                if (!ids.includes(source.evidenceId)) ids.push(source.evidenceId);
+                return `[${ids.indexOf(source.evidenceId) + 1}]`;
+              });
+            } catch (error) { validationError = error instanceof Error ? error.message : '原文引用尚未核实。'; ids.length = 0; body = rawBody; }
+            own.body = body; own.rawBody = rawBody; own.evidenceIds = ids; own.validationError = validationError;
+            own.nativeTurnId = turn.turnId;
+          }
+          if (turn.supplementalInputs?.length) {
+            own.supplementalInputs = [...new Map([...(own.supplementalInputs ?? []), ...turn.supplementalInputs].map(input => [input.id, input])).values()];
+            if (turn.supplementalInputs.some(input => input.id === own.nativeRun?.pendingSteer?.id)) {
+              if (conversation.input === own.nativeRun.pendingSteer?.text) conversation.input = '';
+              own.nativeRun.pendingSteer = undefined;
+            }
+          }
+          if (own.status !== 'done' && turn.answerComplete !== false) {
+            own.nativeRun = { ...own.nativeRun, turnId: turn.turnId, delivery: 'accepted', transport: 'connected', state: turn.turnStatus === 'completed' ? 'completed' : turn.turnStatus === 'failed' ? 'failed' : 'interrupted', items: turn.items ?? own.nativeRun.items };
+            own.status = turn.turnStatus === 'completed' ? 'done' : turn.turnStatus === 'failed' ? 'error' : 'stopped';
+            own.error = own.status === 'done' ? undefined : '已从原生记录恢复这轮的结束状态，已有内容已保留。';
+          }
+        }
+        return;
+      }
       const prior = conversation.requestIds.map(id => next.requests[id]).find(r => r?.nativeImported && r.nativeMessageId === turn!.id);
       const requestId = prior?.id ?? uid('request');
       const old = next.requests[requestId];
       if (old?.status === 'generating') return;
-      next.requests[requestId] = { id: requestId, researchId, conversationId: id, connectionId: snapshot.agentId, nativeSessionId: snapshot.nativeSessionId, nativeImported: true, nativeMessageId: turn.id, prompt: turn.prompt, body: turn.body, events: turn.events, context: [], evidenceIds: [], createdAt: turn.createdAt, status: turn.body.trim() ? 'done' : 'interrupted', ...(!turn.body.trim() ? { error: '这轮原生记录尚无可见回答，请先核对原生记录。' } : {}), purpose: 'chat', mode: 'live', history: [] };
+      const complete = turn.answerComplete !== false && (turn.turnStatus ? turn.turnStatus === 'completed' : snapshot.state !== 'busy' && !!turn.body.trim());
+      next.requests[requestId] = { id: requestId, researchId, conversationId: id, connectionId: snapshot.agentId, nativeSessionId: snapshot.nativeSessionId, nativeTurnId: turn.turnId, nativeImported: true, nativeMessageId: turn.id, prompt: turn.prompt, supplementalInputs: turn.supplementalInputs, body: turn.body, events: turn.events, context: [], evidenceIds: [], createdAt: turn.createdAt, status: complete ? 'done' : turn.turnStatus === 'failed' ? 'error' : 'interrupted', ...(!complete ? { error: turn.answerComplete === false ? '当前只读取到这轮回答的预览，完整回答仍由原生客户端保存。' : turn.turnStatus === 'inProgress' ? '此原生回合仍在运行，刷新后更新记录。' : !turn.body.trim() ? '这轮原生记录尚无可见回答，请先核对原生记录。' : '这轮原生记录尚未完成，请先核对原生记录。' } : {}), purpose: 'chat', mode: 'live', history: [] };
       if (!conversation.requestIds.includes(requestId)) conversation.requestIds.push(requestId);
     };
     for (const message of snapshot.messages) {
-      if (message.role === 'user') { saveTurn(); turn = { id: message.id, prompt: message.text, body: '', createdAt: message.createdAt || snapshot.updatedAt || new Date(0).toISOString(), original: message.requestId }; }
+      if (message.role === 'user') {
+        if (turn && message.turnId && message.turnId === turn.turnId) {
+          turn.supplementalInputs = [...(turn.supplementalInputs ?? []), { id: message.clientUserMessageId || message.id, text: message.text, createdAt: message.createdAt || turn.createdAt, afterItemId: turn.items?.at(-1)?.id }];
+        } else {
+          saveTurn(); turn = { id: message.id, prompt: message.text, body: '', createdAt: message.createdAt || snapshot.updatedAt || new Date(0).toISOString(), original: message.requestId, turnId: message.turnId, turnStatus: message.turnStatus };
+        }
+      }
       else { turn ??= { id: message.id, prompt: '', body: '', createdAt: message.createdAt || snapshot.updatedAt || new Date(0).toISOString() }; turn.body += (turn.body ? '\n\n' : '') + message.text; }
       if (message.events?.length && turn) turn.events = [...(turn.events ?? []), ...message.events].slice(0, 200);
+      if (turn) {
+        turn.turnId ??= message.turnId; turn.turnStatus = message.turnStatus ?? turn.turnStatus;
+        if (message.answerComplete === false) turn.answerComplete = false;
+        else if (message.answerComplete === true && turn.answerComplete !== false) turn.answerComplete = true;
+        else if (turn.answerComplete === undefined && (message.role === 'assistant' && message.contentComplete === false || message.items?.some(item => item.type === 'agentMessage' && item.contentComplete === false))) turn.answerComplete = false;
+        if (message.items?.length) turn.items = [...new Map([...(turn.items ?? []), ...message.items].map(item => [item.id, item])).values()];
+      }
     }
     saveTurn();
+    conversation.requestIds.sort((left, right) => (next.requests[left]?.createdAt || '').localeCompare(next.requests[right]?.createdAt || ''));
     if (snapshot.truncated) conversation.nativeReason = [conversation.nativeReason, '当前仅载入部分原生历史，完整原始记录仍由原生客户端管理。'].filter(Boolean).join(' ');
   }, { nativeHistoryRef: snapshot.id });
   return id;
@@ -164,8 +214,17 @@ export async function openProjectSession(researchId: string, summary: NativeSess
 }
 export async function refreshProjectConversation(researchId: string, conversationId: string): Promise<void> {
   const conversation = workspace.getState().data.conversations[conversationId];
-  if (!conversation?.nativeSessionRef || conversation.researchId !== researchId || conversation.requestIds.some(id => workspace.getState().data.requests[id]?.status === 'generating')) return;
+  if (!conversation?.nativeSessionRef || conversation.researchId !== researchId || conversation.requestIds.some(id => {
+    const request = workspace.getState().data.requests[id];
+    return request?.status === 'generating' && (!request.nativeRun || request.nativeRun.transport === 'connected' && request.nativeRun.state !== 'unknown');
+  })) return;
   const snapshot = await readLatestHistory(researchId, conversation.nativeSessionRef);
+  if (snapshot) mergeNativeSession(researchId, snapshot);
+}
+export async function loadOlderProjectConversation(researchId: string, conversationId: string): Promise<void> {
+  const conversation = workspace.getState().data.conversations[conversationId];
+  if (!conversation?.nativeSessionRef || !conversation.nativeHistoryCursor || conversation.researchId !== researchId) return;
+  const snapshot = await readLatestHistory(researchId, conversation.nativeSessionRef, conversation.nativeHistoryCursor);
   if (snapshot) mergeNativeSession(researchId, snapshot);
 }
 

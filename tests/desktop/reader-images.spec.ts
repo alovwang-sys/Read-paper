@@ -162,11 +162,10 @@ test('打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区
     await selection.getByRole('button', { name: '摘录', exact: true }).click();
     await selection.getByRole('button', { name: '提问', exact: true }).click();
     await page.getByRole('dialog', { name: '原文旁提问' }).getByRole('button', { name: '在右侧继续', exact: true }).click();
-    await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
-    await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();
+    await expect(panel(page).getByRole('button', { name: '切换 AI 助手', exact: true })).toContainText('Codex');
     await panel(page).getByRole('button', { name: '添加材料', exact: true }).click();
     const materials = panel(page).getByRole('dialog', { name: '添加对话材料', exact: true });
-    await materials.getByRole('button', { name: /Adaptive Retrieval.*PDF 第 2 页.*已保存的原文区域/ }).click();
+    await expect(materials.getByRole('button', { name: /Adaptive Retrieval.*PDF 第 2 页.*已保存的原文区域/ })).toBeDisabled();
     await materials.getByRole('button', { name: '完成', exact: true }).click();
     await expect(panel(page).locator('.ai-material')).toHaveCount(1);
     await input(page).fill('解释第二页这张区域截图，并核查它的条件。');

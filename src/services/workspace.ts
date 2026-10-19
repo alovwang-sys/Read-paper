@@ -263,7 +263,7 @@ export const workspace = {
       });
     }
   },
-  updateData(change: (data: WorkspaceData) => void, options?: { nativeHistoryRef: string }) {
+  updateData(change: (data: WorkspaceData) => void, options?: { nativeHistoryRef?: string; nativeRunRef?: string }) {
     if (restoring) throw new Error('正在恢复资料，请稍后再编辑。');
     if (!state.loaded || state.loadError)
       throw new Error('数据尚未成功加载，请重试加载后编辑');
@@ -281,7 +281,20 @@ export const workspace = {
         && request.nativeMessageId === next.nativeMessageId && request.nativeSessionId === next.nativeSessionId
         && request.prompt === next.prompt && request.conversationId === next.conversationId
         && data.conversations[request.conversationId]?.nativeSessionRef === options.nativeHistoryRef;
-      if (request.status !== 'generating' && next && next.body !== request.body && !nativeRefresh)
+      const nativeRecovery = options?.nativeRunRef === request.id && request.nativeRun?.managed && next?.nativeRun?.managed
+        && request.status !== 'done' && request.connectionId === 'codex' && next.connectionId === request.connectionId
+        && request.researchId === next.researchId && request.conversationId === next.conversationId && request.prompt === next.prompt
+        && (!request.nativeSessionId || request.nativeSessionId === next.nativeSessionId)
+        && (!request.nativeTurnId || request.nativeTurnId === next.nativeTurnId)
+        && JSON.stringify(request.context) === JSON.stringify(next.context);
+      const nativeHistoryRecovery = options?.nativeHistoryRef && request.nativeRun?.managed && next?.nativeRun?.managed
+        && request.status !== 'done' && request.connectionId === 'codex' && next.connectionId === request.connectionId
+        && request.nativeSessionId && request.nativeSessionId === next.nativeSessionId && next.nativeTurnId
+        && (!request.nativeTurnId || request.nativeTurnId === next.nativeTurnId)
+        && request.prompt === next.prompt && request.researchId === next.researchId && request.conversationId === next.conversationId
+        && data.conversations[request.conversationId]?.nativeSessionRef === options.nativeHistoryRef
+        && JSON.stringify(request.context) === JSON.stringify(next.context);
+      if (request.status !== 'generating' && next && next.body !== request.body && !nativeRefresh && !nativeRecovery && !nativeHistoryRecovery)
         throw new Error('原始问答不可改写，请编辑独立卡片草稿。');
     }
     revision++;
