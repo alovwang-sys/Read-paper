@@ -16,6 +16,18 @@ const identity = body => {
   if (!object(body) || !validId(body.workspaceId) || !validId(body.researchId)) throw fail(400, 'invalid_request', '研究身份无效。');
 };
 const safeText = (value, limit = 200) => typeof value === 'string' ? value.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '').slice(0, limit) : '';
+function visibleItems(values) {
+  if (!Array.isArray(values)) return [];
+  return values.slice(0, 2000).flatMap(item => {
+    if (!object(item) || !['agentMessage', 'commandExecution', 'fileChange', 'mcpToolCall', 'dynamicToolCall', 'webSearch', 'contextCompaction', 'plan'].includes(item.type) || typeof item.id !== 'string') return [];
+    const progress = sanitizeAgentProgress({ ...item, kind: 'tool', text: '' }) || {};
+    return [{ id: safeText(item.id, 200), type: item.type, status: ['running', 'done', 'error'].includes(item.status) ? item.status : 'done',
+      ...(typeof item.text === 'string' ? { text: safeText(item.text, 100_000) } : {}),
+      ...(item.type === 'agentMessage' ? { contentComplete: item.contentComplete !== false && (typeof item.text !== 'string' || item.text.length <= 100_000) } : {}),
+      ...(['commentary', 'partial_answer', 'final_answer'].includes(item.phase) ? { phase: item.phase } : {}),
+      ...Object.fromEntries(['toolName', 'command', 'output', 'exitCode'].filter(key => progress[key] !== undefined).map(key => [key, progress[key]])) }];
+  });
+}
 const present = path => lstat(path).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
 const creationUnknown = () => fail(409, 'creation_unconfirmed', '目录可能已创建，但尚不能核实完整关联。请保留当前表单并检查目录，不要重复创建或删除其中内容。');
 
@@ -179,18 +191,47 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     const project = await binding(body), item = await session(body, project);
     const adapter = runtimes[item.agentId];
     if (!adapter?.readSession) throw fail(503, 'sessions_unsupported', '此运行时暂不支持读取原生记录。');
-    const native = await nativeQuery(adapter, 'readSession', { cwd: project.path, sessionId: item.nativeId });
+    if (body.cursor !== undefined && (typeof body.cursor !== 'string' || !body.cursor || body.cursor.length > 8192)) throw fail(400, 'invalid_cursor', '历史分页位置无效。');
+    const native = await nativeQuery(adapter, 'readSession', { cwd: project.path, sessionId: item.nativeId, ...(body.cursor ? { cursor: body.cursor } : {}) });
     if (native.id !== item.nativeId || !Array.isArray(native.messages)) throw fail(502, 'invalid_session', '原生历史格式无效。');
     let size = 0, truncated = native.truncated === true;
+    const turns = new Map((Array.isArray(native.turns) ? native.turns : []).filter(turn => object(turn) && typeof turn.id === 'string').map(turn => [turn.id, turn]));
+    const includedTurns = new Set();
+    const incompleteAnswers = new Set();
     const messages = [];
     for (const message of native.messages.slice(0, 2000)) {
       if (!message || !['user', 'assistant'].includes(message.role) || typeof message.id !== 'string' || typeof message.text !== 'string') continue;
-      let text = safeText(message.text, 100_000), requestId;
-      if (text.length < message.text.length) truncated = true;
-      // Only our exact envelope is shortened; external prompts remain readable source material.
-      const match = message.role === 'user' && text.match(/^\[Read-paper requestId=([A-Za-z0-9._:-]+)\]\n/);
-      if (match && text.includes('\n用户本次问题：\n')) { requestId = match[1]; text = text.slice(text.lastIndexOf('\n用户本次问题：\n') + '\n用户本次问题：\n'.length); }
-      if ((size += text.length) > 1_000_000) break;
+      const turn = turns.get(message.turnId);
+      const answerItems = (turn?.items || []).filter(item => item.type === 'agentMessage');
+      const finalItems = answerItems.filter(item => item.phase === 'final_answer');
+      const selectedAnswers = finalItems.length ? finalItems : answerItems.filter(item => item.phase !== 'commentary');
+      const selectedMessage = message.role === 'assistant' && (!message.itemId || selectedAnswers.some(item => item.id === message.itemId));
+      let original = message.text, requestId;
+      const match = message.role === 'user' && original.match(/^\[Read-paper requestId=([A-Za-z0-9._:-]+)\]\n/);
+      const candidate = message.role === 'user' && (match?.[1] || message.requestId);
+      if (validId(candidate)) {
+        try {
+          const path = join(await managed(project.path), `request-${digest(candidate)}.json`);
+          const info = await lstat(path);
+          if (info.isFile() && !info.isSymbolicLink() && info.size <= 16_000_000) {
+            const archived = JSON.parse(await readFile(path, 'utf8'));
+            if (archived.requestId === candidate && archived.workspaceId === body.workspaceId && archived.researchId === body.researchId
+              && archived.nativeSessionId === item.nativeId && (!archived.nativeTurnId || archived.nativeTurnId === message.turnId) && typeof archived.prompt === 'string') {
+              requestId = candidate; original = archived.prompt;
+            }
+          }
+        } catch { /* Unavailable archives never manufacture a trusted request association. */ }
+      }
+      if (!requestId && match && original.includes('\n用户本次问题：\n')) original = original.slice(original.lastIndexOf('\n用户本次问题：\n') + '\n用户本次问题：\n'.length);
+      let text = safeText(original, 100_000);
+      if (text.length < original.length) {
+        truncated = true;
+        if (selectedMessage && message.turnId) incompleteAnswers.add(message.turnId);
+      }
+      if ((size += text.length) > 1_000_000) {
+        for (const remaining of native.messages.slice(native.messages.indexOf(message))) if (remaining.role === 'assistant' && remaining.turnId) incompleteAnswers.add(remaining.turnId);
+        break;
+      }
       const events = [];
       for (const value of Array.isArray(message.events) ? message.events.slice(0, 200) : []) {
         const sanitized = sanitizeAgentProgress(value);
@@ -200,11 +241,25 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
         if (size + length > 1_000_000) { truncated = true; break; }
         size += length; events.push(event);
       }
-      messages.push({ id: safeText(message.id, 200), role: message.role, text, ...(events.length ? { events } : {}), ...(requestId ? { requestId } : {}), ...(message.createdAt ? { createdAt: safeText(message.createdAt, 40) } : {}) });
+      const items = visibleItems(message.turnId && includedTurns.has(message.turnId) ? [] : message.items ?? turn?.items);
+      const itemSize = items.length ? JSON.stringify(items).length : 0;
+      if (size + itemSize <= 1_000_000) size += itemSize;
+      else { items.length = 0; truncated = true; if (message.turnId) incompleteAnswers.add(message.turnId); }
+      if (items.some(item => item.type === 'agentMessage' && item.contentComplete === false && (!turn || selectedAnswers.some(answer => answer.id === item.id))) && message.turnId) incompleteAnswers.add(message.turnId);
+      if (items.length && message.turnId) includedTurns.add(message.turnId);
+      messages.push({ id: safeText(message.id, 200), role: message.role, text, ...(events.length ? { events } : {}), ...(items.length ? { items } : {}),
+        ...(typeof message.clientUserMessageId === 'string' && validId(message.clientUserMessageId) ? { clientUserMessageId: message.clientUserMessageId } : {}),
+        ...(typeof message.turnId === 'string' ? { turnId: safeText(message.turnId, 200) } : {}),
+        ...(message.answerComplete !== undefined || turn?.answerComplete !== undefined ? { answerComplete: (message.answerComplete ?? turn?.answerComplete) !== false } : {}),
+        contentComplete: message.contentComplete !== false && text.length === original.length,
+        ...(['inProgress', 'completed', 'interrupted', 'failed'].includes(message.turnStatus ?? turn?.status) ? { turnStatus: message.turnStatus ?? turn.status } : {}),
+        ...(requestId ? { requestId } : {}), ...(message.createdAt ? { createdAt: safeText(message.createdAt, 40) } : {}) });
     }
+    for (const message of messages) if (message.turnId && incompleteAnswers.has(message.turnId)) message.answerComplete = false;
     const busy = isBusy(item.agentId, item.nativeId);
     const owned = (item.managed || item.origin === 'read-paper') && native.state !== 'busy' && !item.stopUnconfirmed;
     const result = { ...summary({ ...native, agentId: item.agentId, ...(owned ? { canResume: true } : {}), ...(item.stopUnconfirmed ? unresolvedStop : {}), ...(busy ? { state: 'busy', canResume: false, reason: '此会话正在生成，请等待本轮结束。' } : {}) }, body.sessionRef, item.origin), messages,
+      ...(typeof native.nextCursor === 'string' && native.nextCursor.length <= 8192 ? { nextCursor: native.nextCursor } : {}),
       ...(truncated || messages.length < native.messages.length ? { truncated: true } : {}) };
     try {
       const directory = await managed(project.path, true);
@@ -218,10 +273,20 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       await Promise.allSettled([...queries, ready, writes, bindingWrites]);
     },
     binding, remember, read,
-    async markUnconfirmed(project, agentId, nativeId) {
+    async markUnconfirmed(project, agentId, nativeId, proof) {
+      if (proof && (!validId(proof.requestId) || proof.nativeTurnId !== undefined && !/^[A-Za-z0-9_-]{1,200}$/.test(proof.nativeTurnId))) throw fail(400, 'invalid_request', '未确认回合的身份无效。');
       const ref = await remember(project, agentId, nativeId, 'read-paper');
       registry.sessions[ref].stopUnconfirmed = true;
+      if (proof) registry.sessions[ref].unconfirmedRun = { requestId: proof.requestId, ...(proof.nativeTurnId ? { nativeTurnId: proof.nativeTurnId } : {}) };
       await save();
+    },
+    async confirmManagedTerminal(body) {
+      const project = await binding(body), item = await session(body, project);
+      if (item.agentId !== 'codex' || item.nativeId !== body.nativeSessionId || !validId(body.requestId) || typeof body.nativeTurnId !== 'string' || !/^[A-Za-z0-9_-]{1,200}$/.test(body.nativeTurnId) || !['completed', 'failed', 'interrupted'].includes(body.status)) return false;
+      if (!item.stopUnconfirmed) return true;
+      if (item.unconfirmedRun?.requestId !== body.requestId || item.unconfirmedRun.nativeTurnId && item.unconfirmedRun.nativeTurnId !== body.nativeTurnId) return false;
+      delete item.stopUnconfirmed; delete item.unconfirmedRun;
+      await save(); return true;
     },
     preview,
     async defaults(body) {

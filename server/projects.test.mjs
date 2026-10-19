@@ -128,15 +128,27 @@ test('owned session continuation remains distinct from unsupported external sess
   await assert.rejects(f.store.resume({ ...identity(), sessionRef: owned }), { code: 'session_busy' });
 });
 
-test('only an exact owned user envelope extracts request deduplication identity; ordinary external text stays intact', async (t) => {
+test('request deduplication identity requires a matching accepted archive; ordinary external text stays intact', async (t) => {
   const f = await fixture(t); const project = await f.bind(); const ref = await f.store.remember(project, 'codex', 'envelopes');
   const envelope = '[Read-paper requestId=request-1]\nInternal materials\n用户本次问题：\nWhat is the evidence?';
   const ordinary = 'Please explain this literal example: [Read-paper requestId=request-1]\n用户本次问题：\nAn example';
   f.set(f.first, { history: { envelopes: { ...native('envelopes'), messages: [visible('u', envelope, 'user'), visible('external', ordinary, 'user'), visible('a', envelope)] } } });
+  const untrusted = await f.store.read({ ...identity(), sessionRef: ref });
+  assert.equal(untrusted.messages[0].requestId, undefined);
+  await f.store.archiveRequest(project, { ...identity(), requestId: 'request-1', nativeSessionId: 'envelopes', prompt: 'What is the evidence?' });
   const result = await f.store.read({ ...identity(), sessionRef: ref });
   assert.equal(result.messages[0].requestId, 'request-1'); assert.equal(result.messages[0].text, 'What is the evidence?');
   assert.equal(result.messages[1].text, ordinary); assert.equal(result.messages[1].requestId, undefined);
   assert.equal(result.messages[2].text, envelope); assert.equal(result.messages[2].requestId, undefined);
+});
+
+test('accepted request archive restores the real question before native display truncation', async (t) => {
+  const f = await fixture(t); const project = await f.bind(); const ref = await f.store.remember(project, 'codex', 'long-thread');
+  await f.store.archiveRequest(project, { ...identity(), requestId: 'long-request', nativeSessionId: 'long-thread', nativeTurnId: 'turn-1', prompt: '问题位于长材料之后' });
+  f.set(f.first, { history: { 'long-thread': { ...native('long-thread'), messages: [{ ...visible('u', '[Read-paper requestId=long-request]\n' + '材料'.repeat(30_000), 'user'), turnId: 'turn-1' }], turns: [{ id: 'turn-1', status: 'completed', items: [{ id: 'answer', type: 'agentMessage', status: 'done', text: '答复', phase: 'final_answer' }] }] } } });
+  const result = await f.store.read({ ...identity(), sessionRef: ref });
+  assert.equal(result.messages[0].text, '问题位于长材料之后');
+  assert.equal(result.messages[0].requestId, 'long-request');
 });
 
 test('conversation and request archives preserve readable material and stable native identity without raw filenames', async (t) => {

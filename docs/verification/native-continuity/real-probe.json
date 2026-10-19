@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "candidateVersion": "0.1.8",
+  "runtime": "Codex CLI 0.162.1 / App Server",
+  "startedAt": "2026-10-19T07:59:20.050Z",
+  "completedAt": "2026-10-19T08:01:37.886Z",
+  "success": true,
+  "rounds": [
+    {
+      "requestId": "round-1",
+      "threadId": "01a1532c-1f9f-7273-81d4-2e82fde387c0",
+      "turnId": "01a1532c-221e-7d61-9880-edc065dcb740",
+      "body": "已记住",
+      "disconnectedAndRecovered": true
+    },
+    {
+      "requestId": "round-2",
+      "threadId": "01a1532c-1f9f-7273-81d4-2e82fde387c0",
+      "turnId": "01a1532d-efc9-7dc1-93dd-3d60d6385558",
+      "body": "海盐松鼠731"
+    },
+    {
+      "requestId": "round-3",
+      "threadId": "01a1532c-1f9f-7273-81d4-2e82fde387c0",
+      "turnId": "01a1532e-21fe-7031-b7b4-e0c3789ace37",
+      "body": "海盐松鼠731"
+    }
+  ],
+  "compactionEvents": [
+    "progress",
+    "session",
+    "contextCompaction",
+    "contextCompaction",
+    "progress"
+  ],
+  "verified": [
+    "three turns use the same native thread",
+    "first-turn HTTP reader disconnected and observe recovered without resend",
+    "second turn recalled the synthetic token without history replay",
+    "manual runtime compaction completed before the third turn",
+    "third turn recalled the same token after manual compaction"
+  ],
+  "notVerified": [
+    "automatic context-threshold compaction",
+    "real steering, stop or approvals",
+    "independent Codex desktop round trip",
+    "Windows or Intel native model execution"
+  ]
+}

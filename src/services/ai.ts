@@ -1,9 +1,9 @@
-import type { AgentInteraction, AgentReply, AIHistoryTurn, AIRequest, CardDraft, CardProvenance, ContextSnapshot, WorkspaceData } from '../domain/types';
+import type { AgentEvent, AgentInteraction, AgentReply, AIHistoryTurn, AIRequest, CardDraft, CardProvenance, ContextSnapshot, NativeRunState, NativeTurnItem, NativeUserInput, WorkspaceData } from '../domain/types';
 import { contentHash, getAsset } from '../data/storage';
 import { hasFullText } from '../domain/knowledge';
 import { mapCitationNumbers, remapCitationNumbers } from '../domain/citations';
 import { linkCard, uid, validateEvidence, workspace } from './workspace';
-import { codexSupportsImages, conversationConnection, getCodexCapabilities } from './agents';
+import { codexSupportsImages, conversationConnection, getCodexCapabilities, refreshProjectConversation } from './agents';
 import { syncResearchFiles } from './project-files';
 
 export type AIConfig = {
@@ -30,10 +30,18 @@ function evidenceSnapshot(data: WorkspaceData, id: string): ContextSnapshot {
   if (!doc.hash) throw new Error('来源文件尚未就绪，请先打开相应 PDF');
   return { evidenceId: id, documentId: doc.id, documentHash: doc.hash, title: doc.title, pageIndex: evidence.pageIndex, quote: evidence.quote, ...(evidence.kind === 'region' ? { kind: 'region' as const, region: structuredClone(evidence.region) } : {}) };
 }
-export function snapshotContext(data: WorkspaceData, researchId: string, conversationId: string, history = historyForConversation(data, conversationId)): ContextSnapshot[] {
+export function snapshotContext(data: WorkspaceData, researchId: string, conversationId: string, history?: AIHistoryTurn[]): ContextSnapshot[] {
   const research = data.researches[researchId], conversation = data.conversations[conversationId];
   if (!research || !conversation || conversation.researchId !== researchId) throw new Error('会话不属于当前研究');
+  const codex = conversationConnection(conversation) === 'codex';
+  history ??= codex ? [] : historyForConversation(data, conversationId);
   const snapshots = new Map<string, ContextSnapshot>();
+  if (codex) {
+    const previous = conversation.requestIds.map(id => data.requests[id]).filter(request => request && (!request.purpose || request.purpose === 'chat')).at(-1);
+    for (const item of conversation.sentContext ?? previous?.context ?? []) {
+      validateSnapshot(data, item); snapshots.set(item.evidenceId, structuredClone(item));
+    }
+  }
   for (const turn of history) {
     for (const item of turn.context.filter(e => turn.evidenceIds.includes(e.evidenceId))) {
       validateSnapshot(data, item);
@@ -166,15 +174,22 @@ const agentResponder: AIResponder = async (request, options) => {
   const bindingId = researches[request.researchId]?.directory?.id;
   if (request.purpose === 'chat' && !bindingId) throw new Error('请先为当前研究选择目录，输入和材料已保留。');
   if (request.purpose === 'chat' && conversation.nativeSessionId && !conversation.nativeSessionRef) throw new Error('此为旧版临时目录对话，请在研究目录开始新对话；旧记录仍保留。');
+  const payload = { workspaceId, requestId: request.id, researchId: request.researchId, conversationId: request.conversationId,
+    connectionId: request.connectionId, purpose: request.purpose ?? 'chat', prompt: request.prompt,
+    context: request.context, history: request.nativeRun?.managed ? [] : request.history ?? [],
+    ...(images.length ? { images } : {}),
+    ...(bindingId ? { bindingId, ...(request.purpose === 'chat' && conversation.nativeSessionRef ? { sessionRef: conversation.nativeSessionRef } : {}) } : {}),
+    ...(request.connectionId === 'codex' ? request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : request.codex?.model ? { codex: { model: request.codex.model } } : {} : {}),
+    ...(request.nativeRun?.managed ? { managed: true } : {}),
+    reset: request.nativeRun?.managed ? false : !!request.retryOf || !!request.regeneratedFrom || (!!conversation && conversation.historyRange !== 'all') };
+  if (request.nativeRun?.managed) {
+    await observeManagedRequest(request.id, options!.signal, payload);
+    const current = workspace.getState().data.requests[request.id];
+    return { body: current.body, rawBody: current.rawBody, evidenceIds: current.evidenceIds, model: current.model };
+  }
   const response = await fetch('/api/ai/agents/run', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: options?.signal,
-    body: JSON.stringify({ workspaceId, requestId: request.id, researchId: request.researchId, conversationId: request.conversationId,
-      connectionId: request.connectionId, purpose: request.purpose ?? 'chat', prompt: request.prompt,
-      context: request.context, history: request.history ?? [],
-      ...(images.length ? { images } : {}),
-      ...(bindingId ? { bindingId, ...(request.purpose === 'chat' && conversation.nativeSessionRef ? { sessionRef: conversation.nativeSessionRef } : {}) } : {}),
-      ...(request.connectionId === 'codex' ? request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : request.codex?.model ? { codex: { model: request.codex.model } } : {} : {}),
-      reset: !!request.retryOf || !!request.regeneratedFrom || (!!conversation && conversation.historyRange !== 'all') }),
+    body: JSON.stringify(payload),
   });
   if (!response.body) throw new Error('本机助手连接没有返回内容。');
   const reader = response.body.getReader(), decoder = new TextDecoder();
@@ -253,6 +268,255 @@ const agentResponder: AIResponder = async (request, options) => {
   }
   return { ...citedResult(body, request.context), model };
 };
+
+const nativeTerminal = (state: NativeRunState) => ['completed', 'failed', 'interrupted'].includes(state);
+type ManagedFrame = {
+  type: string; seq?: number; body?: string; text?: string; state?: NativeRunState;
+  delivery?: 'pending' | 'accepted' | 'unknown'; nativeSessionId?: string; nativeSessionRef?: string;
+  nativeTurnId?: string; model?: string; error?: string; item?: NativeTurnItem; items?: NativeTurnItem[];
+  events?: AgentEvent[]; interactions?: AgentInteraction[]; interaction?: AgentInteraction;
+  id?: string; status?: string; kind?: AgentEvent['kind']; toolName?: string; command?: string;
+  output?: string; exitCode?: number; code?: string;
+  input?: NativeUserInput; supplementalInputs?: NativeUserInput[];
+};
+function updateNativeRun(requestId: string, change: (request: AIRequest, data: WorkspaceData) => void) {
+  if (!workspace.getState().data.requests[requestId]?.nativeRun?.managed) return;
+  workspace.updateData(data => change(data.requests[requestId], data), { nativeRunRef: requestId });
+}
+function managedIdentity(request: AIRequest) {
+  return { workspaceId: workspace.getState().data.agentWorkspaceId, requestId: request.id,
+    researchId: request.researchId, conversationId: request.conversationId, connectionId: request.connectionId };
+}
+function confirmNativeInput(request: AIRequest, data: WorkspaceData, input: NativeUserInput, authoritative = true) {
+  const pending = request.nativeRun?.pendingSteer;
+  const index = request.supplementalInputs?.findIndex(item => item.id === input.id) ?? -1;
+  if (index < 0) request.supplementalInputs = [...(request.supplementalInputs ?? []), structuredClone(input)];
+  else if (authoritative) request.supplementalInputs![index] = { ...request.supplementalInputs![index], ...structuredClone(input) };
+  if (pending?.id === input.id) {
+    if (data.conversations[request.conversationId]?.input === pending.text) data.conversations[request.conversationId].input = '';
+    request.nativeRun!.pendingSteer = undefined;
+  }
+}
+function reduceManagedFrame(requestId: string, event: ManagedFrame, data: WorkspaceData): boolean {
+  const previous = data.requests[requestId];
+  if (!previous?.nativeRun) return true;
+  const seq = Number.isInteger(event.seq) ? event.seq! : previous.nativeRun.cursor + 1;
+  if (seq < previous.nativeRun.cursor || seq === previous.nativeRun.cursor && event.type !== 'snapshot') return nativeTerminal(previous.nativeRun.state);
+  if (previous.status === 'done') {
+    // A lost steering acknowledgement may arrive after the answer; only reconcile input metadata.
+    if (previous.nativeRun.pendingSteer) {
+      for (const input of event.supplementalInputs ?? []) confirmNativeInput(previous, data, input);
+      if (event.type === 'user-input' && event.input?.id) confirmNativeInput(previous, data, event.input);
+      previous.nativeRun.cursor = seq; previous.nativeRun.transport = 'connected';
+    }
+    return true;
+  }
+  const previousState = previous.nativeRun.state;
+  const apply = (request: AIRequest) => {
+    const run = request.nativeRun!;
+    run.cursor = seq; run.transport = 'connected';
+    if (event.type === 'snapshot') {
+      if (typeof event.body === 'string') request.body = request.rawBody = event.body;
+      if (Array.isArray(event.items)) run.items = structuredClone(event.items);
+      if (Array.isArray(event.events)) request.events = structuredClone(event.events);
+      if (Array.isArray(event.interactions)) {
+        const previousInteractions = new Map(request.interactions?.map(item => [item.id, item]));
+        request.interactions = structuredClone(event.interactions).map(item => ({ ...item, afterItemId: item.afterItemId ?? previousInteractions.get(item.id)?.afterItemId,
+          ...(previousInteractions.get(item.id)?.answerDrafts ? { answerDrafts: previousInteractions.get(item.id)!.answerDrafts } : {}) }));
+      }
+      for (const input of event.supplementalInputs ?? []) confirmNativeInput(request, data, input);
+    }
+    if (event.type === 'user-input' && event.input?.id) confirmNativeInput(request, data, event.input);
+    if (event.type === 'delta' && typeof event.text === 'string') request.body = request.rawBody = (request.rawBody ?? request.body) + event.text;
+    if (event.type === 'item' && event.item?.id) {
+      const index = run.items.findIndex(item => item.id === event.item!.id);
+      if (index >= 0) run.items[index] = { ...run.items[index], ...event.item };
+      else run.items.push(structuredClone(event.item));
+      if (event.item.type === 'contextCompaction' && !['stopping', 'waiting-input'].includes(run.state)) run.state = event.item.status === 'running' ? 'compacting' : 'running';
+    }
+    if (event.type === 'progress' && event.kind && typeof event.text === 'string') {
+      const progress: AgentEvent = { kind: event.kind, text: event.text.slice(0, 2000),
+        ...(event.id ? { id: event.id } : {}), ...(event.toolName ? { toolName: event.toolName } : {}),
+        ...(event.command ? { command: event.command } : {}), ...(event.output !== undefined ? { output: event.output.slice(0, 12000) } : {}),
+        ...(Number.isInteger(event.exitCode) ? { exitCode: event.exitCode } : {}),
+        ...(['running', 'done', 'error'].includes(event.status ?? '') ? { status: event.status as AgentEvent['status'] } : {}) };
+      const index = progress.id ? request.events?.findIndex(item => item.id === progress.id) ?? -1 : -1;
+      if (index >= 0) request.events![index] = { ...request.events![index], ...progress };
+      else request.events = [...(request.events ?? []), progress].slice(-100);
+    }
+    if (event.type === 'interaction' && event.interaction?.id && !request.interactions?.some(item => item.id === event.interaction!.id)) {
+      request.interactions = [...(request.interactions ?? []), { ...structuredClone(event.interaction), afterItemId: event.interaction.afterItemId ?? run.items.at(-1)?.id, status: 'pending' }];
+      run.state = 'waiting-input';
+    }
+    if (event.type === 'interaction-resolved') {
+      const interaction = request.interactions?.find(item => item.id === event.id);
+      if (interaction && ['answered', 'denied'].includes(event.status ?? '')) interaction.status = event.status as 'answered' | 'denied';
+      if (!request.interactions?.some(item => item.status === 'pending') && run.state !== 'stopping') run.state = 'running';
+    }
+    if (event.delivery) run.delivery = event.delivery;
+    if (event.state) run.state = event.state;
+    if (event.nativeTurnId) { request.nativeTurnId = event.nativeTurnId; run.turnId = event.nativeTurnId; run.delivery = 'accepted'; }
+    if (event.nativeSessionId) {
+      request.nativeSessionId = event.nativeSessionId;
+      const conversation = data.conversations[request.conversationId];
+      conversation.nativeSessionId = event.nativeSessionId;
+      if (event.nativeSessionRef) conversation.nativeSessionRef = event.nativeSessionRef;
+      conversation.sentContext = [...new Map([...(conversation.sentContext ?? []), ...structuredClone(request.context)].map(item => [item.evidenceId, item])).values()];
+    }
+    if (event.model) request.model = event.model;
+    if (event.error) request.error = event.error;
+    if (event.type === 'error') {
+      if (typeof event.body === 'string') request.body = request.rawBody = event.body;
+      if (Array.isArray(event.items)) run.items = structuredClone(event.items);
+      run.state = event.state ?? (event.code === 'stopped' ? 'interrupted' : event.code === 'stop_unconfirmed' ? 'unknown' : 'failed');
+    }
+    if (event.type === 'done') {
+      if (typeof event.body === 'string') request.body = request.rawBody = event.body;
+      if (Array.isArray(event.items)) run.items = structuredClone(event.items);
+      run.state = event.state ?? 'completed';
+      run.delivery = 'accepted';
+    }
+    if (nativeTerminal(run.state)) {
+      if (run.state === 'completed') {
+        request.status = 'done'; request.error = undefined;
+        try {
+          const result = citedResult(request.rawBody ?? request.body, request.context);
+          validateResponse(data, request, result.evidenceIds, result.body);
+          Object.assign(request, result); request.validationError = undefined;
+        } catch (error) {
+          request.evidenceIds = [];
+          request.validationError = error instanceof Error ? error.message : '引用检查未通过，原始回答已保留。';
+        }
+        if (request.regeneratedFrom && data.requests[request.regeneratedFrom]) data.requests[request.regeneratedFrom].superseded = true;
+      } else {
+        request.status = run.state === 'interrupted' ? event.code === 'stopped' || previousState === 'stopping' ? 'stopped' : 'interrupted' : 'error';
+        request.error ||= run.state === 'interrupted' ? '本轮已中断，已保留收到的内容。' : '本轮执行失败，已有内容已保留。';
+      }
+      for (const interaction of request.interactions ?? []) if (interaction.status === 'pending') interaction.status = 'expired';
+    } else request.status = 'generating';
+    const conversation = data.conversations[request.conversationId];
+    conversation.nativeState = nativeTerminal(run.state) ? 'idle' : run.state === 'unknown' ? 'unknown' : 'busy';
+    conversation.nativeCanResume = nativeTerminal(run.state);
+  };
+  apply(previous);
+  return nativeTerminal(previous.nativeRun.state);
+}
+function consumeManagedFrames(requestId: string, events: ManagedFrame[]) {
+  let finished = false;
+  updateNativeRun(requestId, (_request, data) => { for (const event of events) finished = reduceManagedFrame(requestId, event, data) || finished; });
+  return finished;
+}
+async function observeManagedRequest(requestId: string, signal: AbortSignal, initial?: object) {
+  const generation = workspace.getGeneration();
+  const delays = [0, 500, 1500, 4000];
+  let initialError = '';
+  for (let attempt = 0; attempt < delays.length && !signal.aborted; attempt++) {
+    if (attempt) await new Promise<void>(resolve => {
+      const timer = setTimeout(finish, delays[attempt]);
+      function finish() { clearTimeout(timer); signal.removeEventListener('abort', finish); resolve(); }
+      signal.addEventListener('abort', finish, { once: true });
+    });
+    if (signal.aborted || workspace.getGeneration() !== generation) return;
+    const request = workspace.getState().data.requests[requestId];
+    if (!request?.nativeRun || (request.status === 'done' || nativeTerminal(request.nativeRun.state)) && !request.nativeRun.pendingSteer) return;
+    updateNativeRun(requestId, current => { current.nativeRun!.transport = initial && !attempt ? 'connected' : 'reconnecting'; });
+    try {
+      const starting = !!initial && !attempt;
+      const response = await fetch(`/api/ai/agents/${starting ? 'run' : 'observe'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+        body: JSON.stringify(starting ? initial : { ...managedIdentity(request), after: request.nativeRun.cursor }) });
+      if (!response.ok && starting) {
+        const rejection = await response.json().catch(() => ({}));
+        const knownUnsent = ['session_busy', 'concurrency_limit', 'agent_unavailable'].includes(rejection.code)
+          || [400, 403, 404, 413, 422].includes(response.status) && !['duplicate_request', 'run_expired', 'run_read_failed', 'delivery_unknown'].includes(rejection.code);
+        if (knownUnsent) {
+          consumeManagedFrames(requestId, [{ type: 'error', state: 'failed', delivery: 'pending', error: rejection.error || '请求尚未送达，请检查连接与材料。' }]);
+          return;
+        }
+        initialError = typeof rejection.error === 'string' ? rejection.error : '';
+      }
+      if (!response.ok || !response.body) throw new Error('正在核对原生会话状态。');
+      const reader = response.body.getReader(), decoder = new TextDecoder();
+      let buffer = '', finished = false, needsReconcile = false;
+      let queued: ManagedFrame[] = [], flushTimer: ReturnType<typeof setTimeout> | undefined;
+      const flush = () => {
+        clearTimeout(flushTimer); flushTimer = undefined;
+        if (queued.length && workspace.getGeneration() === generation) { const events = queued; queued = []; finished = consumeManagedFrames(requestId, events) || finished; }
+      };
+      const consume = (event: ManagedFrame) => {
+        if (['item', 'delta', 'progress'].includes(event.type)) { queued.push(event); flushTimer ??= setTimeout(flush, 80); }
+        else {
+          flush(); finished = consumeManagedFrames(requestId, [event]) || finished;
+          needsReconcile = workspace.getState().data.requests[requestId]?.nativeRun?.state === 'unknown';
+        }
+      };
+      try {
+        while (!finished && !needsReconcile) {
+          const chunk = await reader.read();
+          buffer += decoder.decode(chunk.value, { stream: !chunk.done });
+          const lines = buffer.split('\n'); buffer = lines.pop() ?? '';
+          if (workspace.getGeneration() !== generation) return;
+          for (const line of lines) if (line.trim()) consume(JSON.parse(line));
+          if (chunk.done) { if (buffer.trim()) consume(JSON.parse(buffer)); break; }
+        }
+      } finally { flush(); await reader.cancel().catch(() => {}); }
+      if (finished) return;
+    } catch {
+      if (signal.aborted) return;
+    }
+    updateNativeRun(requestId, current => { current.nativeRun!.transport = 'reconnecting'; });
+  }
+  if (!signal.aborted && workspace.getGeneration() === generation) updateNativeRun(requestId, current => {
+    current.nativeRun!.transport = 'offline';
+    if (current.status === 'done') return;
+    current.nativeRun!.state = 'unknown';
+    if (current.nativeRun!.delivery === 'pending') current.nativeRun!.delivery = 'unknown';
+    current.error = (initialError ? `${initialError} ` : '') + '暂时无法确认原生回合状态。问题和已收到的内容已保留，请恢复连接；不会自动重新发送。';
+  });
+  const current = workspace.getState().data.requests[requestId];
+  if (!signal.aborted && workspace.getGeneration() === generation && current?.nativeRun && (current.nativeRun.state === 'unknown' || current.nativeRun.pendingSteer)) await refreshProjectConversation(current.researchId, current.conversationId).catch(() => {});
+}
+
+/** Reattach saved Codex turns without sending their questions again. */
+export async function resumeNativeRuns(requestId?: string) {
+  const requests = Object.values(workspace.getState().data.requests).filter(request => request.nativeRun?.managed
+    && (!requestId || request.id === requestId) && ((!nativeTerminal(request.nativeRun.state) && request.status !== 'done') || !!request.nativeRun.pendingSteer) && !running.has(request.id));
+  await Promise.all(requests.map(async request => {
+    const controller = new AbortController();
+    running.set(request.id, { controller, flush: () => {}, managed: true });
+    const checkpoint = setInterval(() => workspace.retrySave(), 1200);
+    try { await observeManagedRequest(request.id, controller.signal); }
+    finally { clearInterval(checkpoint); running.delete(request.id); workspace.retrySave(); }
+  }));
+}
+
+const steering = new Set<string>();
+/** Add text to the active turn; materials and model settings remain its submitted snapshot. */
+export async function steerNativeRun(requestId: string, text: string) {
+  if (!text.trim()) throw new Error('请输入要补充的内容。');
+  const request = workspace.getState().data.requests[requestId], run = request?.nativeRun;
+  const turnId = request?.nativeTurnId ?? run?.turnId;
+  if (!run?.managed || request.status !== 'generating' || !turnId || run.transport !== 'connected' || !['running', 'compacting'].includes(run.state)) throw new Error('当前回合暂时不能接收补充，请等待连接恢复或本轮完成。');
+  if (steering.has(requestId)) throw new Error('上一条补充仍在提交，请稍后。');
+  if (run.pendingSteer && run.pendingSteer.text !== text) throw new Error('上一条补充尚未确认，请先恢复连接核对；当前草稿已保留。');
+  const generation = workspace.getGeneration(), input: NativeUserInput = run.pendingSteer ?? { id: uid('input'), text, createdAt: new Date().toISOString(), afterItemId: run.items.at(-1)?.id };
+  updateNativeRun(requestId, current => { current.nativeRun!.pendingSteer = input; });
+  steering.add(requestId);
+  try {
+    const response = await fetch('/api/ai/agents/control', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...managedIdentity(request), action: 'steer', expectedTurnId: turnId, inputId: input.id, text }) });
+    const result = await response.json();
+    if (workspace.getGeneration() !== generation) throw new Error('工作区已恢复，较早的补充结果未写入当前工作区。');
+    if (!response.ok || result.accepted !== true) {
+      if (result.code !== 'input_unknown' && response.status < 500) updateNativeRun(requestId, current => { if (current.nativeRun?.pendingSteer?.id === input.id) current.nativeRun.pendingSteer = undefined; });
+      throw new Error(result.error || '补充尚未送达，草稿已保留。');
+    }
+    updateNativeRun(requestId, (current, data) => confirmNativeInput(current, data, input, false));
+  } finally { steering.delete(requestId); workspace.retrySave(); }
+}
+
+export function originalRequestPrompt(request: AIRequest) {
+  return request.prompt + (request.supplementalInputs?.length ? '\n\n' + request.supplementalInputs.map(input => `本轮补充：${input.text}`).join('\n\n') : '');
+}
 export const demoResponder: AIResponder = async (request, options) => {
   const first = request.context[0];
   const card = { title: '证据与理解需要一起保留', body: `整理后的观点：${first ? `结论需要结合原文的适用条件核查。 [1]\n\n原文：${first.quote || '所选图像区域'}` : '这是基于对话形成的理解，尚无直接论文依据。'}`, evidenceIds: first ? [first.evidenceId] : [] };
@@ -264,7 +528,7 @@ export const demoResponder: AIResponder = async (request, options) => {
   }
   return { body, evidenceIds: request.purpose && request.purpose !== 'chat' ? card.evidenceIds : request.context.map(c => c.evidenceId), model: '演示适配器', ...(request.purpose && request.purpose !== 'chat' ? { result: card } : {}) };
 };
-const running = new Map<string, { controller: AbortController; flush: () => void }>();
+const running = new Map<string, { controller: AbortController; flush: () => void; managed?: boolean }>();
 const pendingConversations = new Set<string>();
 let stoppingAll = false;
 let preparingRequests = 0;
@@ -307,15 +571,22 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
   if (stoppingAll) throw new Error('生成已在关闭前取消。');
   if (workspace.getGeneration() !== generation) throw new Error('工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。');
   if (request.draftId && !workspace.getState().data.cardDrafts[request.draftId]) throw new Error('草稿已放弃，未发送生成请求。');
-  request.history = request.history?.map(turn => ({ ...turn, sentBody: remapCitationNumbers(turn.body, turn.evidenceIds, request.context.map(c => c.evidenceId)) }));
+  const managed = responder === liveResponder && request.connectionId === 'codex' && (!request.purpose || request.purpose === 'chat');
+  if (managed) {
+    request.historyRequestIds ??= request.history?.map(turn => turn.requestId) ?? [];
+    request.history = [];
+    request.nativeTurnId = undefined;
+    request.nativeRun = { managed: true, cursor: 0, delivery: 'pending', state: 'running', transport: 'connected', items: [] };
+  } else request.history = request.history?.map(turn => ({ ...turn, sentBody: remapCitationNumbers(turn.body, turn.evidenceIds, request.context.map(c => c.evidenceId)) }));
   const controller = new AbortController();
   let received = '';
   const flush = () => {
+    if (managed) return;
     if (workspace.getState().data.requests[request.id]?.status !== 'generating') return;
     if (received !== workspace.getState().data.requests[request.id].body)
       workspace.updateData(data => { data.requests[request.id].body = received; });
   };
-  running.set(request.id, { controller, flush });
+  running.set(request.id, { controller, flush, managed });
   let consumedInput = false;
   workspace.updateData(data => {
     data.requests[request.id] = structuredClone(request);
@@ -329,10 +600,16 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
     }
     if ((!request.purpose || request.purpose === 'chat') && !conversation.requestIds.some(id => id !== request.id && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) conversation.title = request.prompt.slice(0, 36);
   });
-  const timer = setInterval(flush, 180);
+  const timer = managed ? undefined : setInterval(flush, 180);
   const checkpoint = setInterval(() => workspace.retrySave(), 1200);
   try {
     const response = await responder(structuredClone(request), { signal: controller.signal, onDelta: text => { if (!controller.signal.aborted) received += text; } });
+    if (managed) {
+      const current = workspace.getState().data.requests[request.id];
+      if (consumedInput && current.nativeRun?.delivery === 'pending' && current.status === 'error' && submittedInput !== undefined && workspace.getGeneration() === generation)
+        workspace.updateData(data => { if (data.conversations[request.conversationId]?.input === '') data.conversations[request.conversationId].input = submittedInput; });
+      return request.id;
+    }
     if (workspace.getState().data.requests[request.id].status !== 'generating') return request.id;
     received = response.rawBody ?? response.body;
     validateResponse(workspace.getState().data, request, response.evidenceIds, response.result?.body ?? response.body);
@@ -346,6 +623,7 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
       workspace.updateData(data => {
         data.requests[request.id].status = controller.signal.aborted ? 'stopped' : 'error';
         data.requests[request.id].error = error instanceof Error ? error.message : '生成失败，请重试';
+        if (managed) { data.requests[request.id].nativeRun!.state = 'failed'; data.requests[request.id].nativeRun!.delivery = 'pending'; }
         const conversation = data.conversations[request.conversationId];
         if (consumedInput && !received.trim() && submittedInput !== undefined && workspace.getGeneration() === generation && conversation?.input === '') conversation.input = submittedInput;
         if (/引用|来源|编号/.test(data.requests[request.id].error!)) data.requests[request.id].validationError = data.requests[request.id].error;
@@ -353,18 +631,28 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
     }
   } finally {
     clearInterval(timer); clearInterval(checkpoint); running.delete(request.id);
-    workspace.updateData(data => { for (const item of data.requests[request.id]?.interactions ?? []) if (item.status === 'pending') item.status = 'expired'; });
+    if (managed && workspace.getState().data.requests[request.id]?.status === 'done' && workspace.getState().data.requests[request.id]?.nativeRun?.pendingSteer)
+      setTimeout(() => { void resumeNativeRuns(request.id); }, 0);
+    if (!managed) workspace.updateData(data => { for (const item of data.requests[request.id]?.interactions ?? []) if (item.status === 'pending') item.status = 'expired'; });
     workspace.retrySave();
   }
   return request.id;
 }
 export function stopAI(requestId: string) {
   const active = running.get(requestId);
+  const request = workspace.getState().data.requests[requestId];
+  if (request?.nativeRun?.managed && !nativeTerminal(request.nativeRun.state)) {
+    updateNativeRun(requestId, current => { current.nativeRun!.state = 'stopping'; });
+    void fetch('/api/ai/agents/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(managedIdentity(request)) })
+      .then(async response => { if (!response.ok) throw new Error((await response.json()).error || '停止尚未确认。'); })
+      .catch(() => updateNativeRun(requestId, current => { if (nativeTerminal(current.nativeRun!.state)) return; current.nativeRun!.state = 'unknown'; current.nativeRun!.transport = 'offline'; current.error = '停止尚未确认，请恢复连接后核对原生回合。'; }));
+    if (!active) void resumeNativeRuns(requestId);
+    return;
+  }
   if (!active) return;
   active.flush();
   workspace.updateData(data => { if (data.requests[requestId].status === 'generating') { data.requests[requestId].status = 'stopped'; data.requests[requestId].error = '已停止，已保留部分内容。'; for (const item of data.requests[requestId].interactions ?? []) if (item.status === 'pending') item.status = 'expired'; } });
   active.controller.abort();
-  const request = workspace.getState().data.requests[requestId];
   if (request.connectionId && !['model', 'demo'].includes(request.connectionId)) {
     void fetch('/api/ai/agents/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId: workspace.getState().data.agentWorkspaceId, requestId, researchId: request.researchId, conversationId: request.conversationId, connectionId: request.connectionId }) }).catch(() => {});
   }
@@ -380,9 +668,15 @@ export async function stopAllAI() {
   stoppingAll = true;
   try {
     for (const id of running.keys()) stopAI(id);
-    while (running.size || pendingConversations.size || preparingRequests) await new Promise(resolve => setTimeout(resolve, 20));
+    for (const request of Object.values(workspace.getState().data.requests)) if (request.nativeRun?.managed && !nativeTerminal(request.nativeRun.state) && !running.has(request.id)) stopAI(request.id);
+    const deadline = Date.now() + 12000;
+    while (running.size || pendingConversations.size || preparingRequests) {
+      if (Date.now() > deadline) throw new Error('原生回合尚未确认停止。已保留工作台，请恢复连接后重试关闭。');
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
     // Card-generation callers finish their error/checkpoint work after the request settles.
     await new Promise(resolve => setTimeout(resolve, 0));
+    if (Object.values(workspace.getState().data.requests).some(request => request.nativeRun?.managed && !nativeTerminal(request.nativeRun.state))) throw new Error('原生回合尚未确认停止。已保留工作台，请恢复连接后重试关闭。');
   } finally { stoppingAll = false; }
 }
 export async function submitAI(researchId: string, conversationId: string, prompt: string, responder?: AIResponder) {
@@ -392,26 +686,30 @@ export async function submitAI(researchId: string, conversationId: string, promp
   const connectionId = responder === demoResponder ? 'demo' : conversationConnection(conversation);
   responder ??= connectionId === 'demo' ? demoResponder : liveResponder;
   if (pendingConversations.has(conversationId) || conversation.requestIds.some(id => data.requests[id]?.status === 'generating' && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) throw new Error('当前会话正在回答，请停止或等待完成。');
-  const history = historyForConversation(data, conversationId), context = snapshotContext(data, researchId, conversationId, history);
+  const history = connectionId === 'codex' ? [] : historyForConversation(data, conversationId), context = snapshotContext(data, researchId, conversationId, history);
   const request: AIRequest = { id: uid('request'), researchId, conversationId, connectionId, prompt: prompt.trim(), context, history, purpose: 'chat', mode: responder === demoResponder ? 'demo' : 'live', createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [] };
-  if (connectionId === 'codex') { request.skills = structuredClone(conversation.skills ?? []); request.codex = structuredClone(conversation.codex ?? {}); }
+  if (connectionId === 'codex') {
+    request.skills = structuredClone(conversation.skills ?? []); request.codex = structuredClone(conversation.codex ?? {});
+    const previous = conversation.requestIds.map(id => data.requests[id]).filter(request => request && (!request.purpose || request.purpose === 'chat')).at(-1);
+    request.historyRequestIds = previous ? [previous.id] : [];
+  }
   return runChatRequest(request, responder, prompt);
 }
 export async function retryAI(requestId: string, mode?: 'live' | 'demo') {
   const old = workspace.getState().data.requests[requestId];
   if (!old || old.nativeImported || !['error', 'stopped', 'interrupted'].includes(old.status) || (old.purpose && old.purpose !== 'chat')) throw new Error('此请求暂时无法重试。');
-  const request: AIRequest = { ...structuredClone(old), id: uid('request'), status: 'generating', events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, validationError: undefined, superseded: false, retryOf: old.id, createdAt: new Date().toISOString() };
+  const request: AIRequest = { ...structuredClone(old), id: uid('request'), prompt: originalRequestPrompt(old), supplementalInputs: [], status: 'generating', events: [], interactions: [], nativeSessionId: undefined, nativeTurnId: undefined, nativeRun: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, validationError: undefined, superseded: false, retryOf: old.id, createdAt: new Date().toISOString() };
   for (const snapshot of request.context) validateSnapshot(workspace.getState().data, snapshot);
   return runChatRequest(request, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }
 export async function regenerateAI(requestId: string, mode?: 'live' | 'demo') {
   const data = workspace.getState().data, old = data.requests[requestId];
   if (!old || old.nativeImported || old.status !== 'done' || data.conversations[old.conversationId].requestIds.map(id => data.requests[id]).filter(r => !r.purpose || r.purpose === 'chat').at(-1)?.id !== old.id) throw new Error('仅最新一轮完成回答可重新生成。');
-  const history = historyForConversation(data, old.conversationId, old.id);
-  return runChatRequest({ ...structuredClone(old), id: uid('request'), context: snapshotContext(data, old.researchId, old.conversationId, history), history, events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, superseded: false, status: 'generating', regeneratedFrom: old.id, createdAt: new Date().toISOString() }, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
+  const history = old.connectionId === 'codex' ? [] : historyForConversation(data, old.conversationId, old.id);
+  return runChatRequest({ ...structuredClone(old), id: uid('request'), prompt: originalRequestPrompt(old), supplementalInputs: [], context: snapshotContext(data, old.researchId, old.conversationId, history), history, events: [], interactions: [], nativeSessionId: undefined, body: '', rawBody: undefined, result: undefined, error: undefined, superseded: false, status: 'generating', regeneratedFrom: old.id, createdAt: new Date().toISOString() }, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }
 function provenance(request: AIRequest, selection: string): CardProvenance {
-  return { researchId: request.researchId, conversationId: request.conversationId, conversationTitle: workspace.getState().data.conversations[request.conversationId]?.title || '阅读对话', requestId: request.id, prompt: request.prompt, answer: request.body, answerEvidenceIds: [...request.evidenceIds], selection, context: structuredClone(request.context), createdAt: new Date().toISOString(), model: request.model, ...(request.codex?.model ? { codexModel: request.codex.model } : {}), connectionId: request.connectionId, generationRequestIds: [], incomplete: request.status !== 'done' || !!request.legacy };
+  return { researchId: request.researchId, conversationId: request.conversationId, conversationTitle: workspace.getState().data.conversations[request.conversationId]?.title || '阅读对话', requestId: request.id, prompt: originalRequestPrompt(request), answer: request.body, answerEvidenceIds: [...request.evidenceIds], selection, context: structuredClone(request.context), createdAt: new Date().toISOString(), model: request.model, ...(request.codex?.model ? { codexModel: request.codex.model } : {}), connectionId: request.connectionId, generationRequestIds: [], incomplete: request.status !== 'done' || !!request.legacy };
 }
 function createDraft(request: AIRequest, selection: string, manual = false) {
   if (!selection.trim() || selection.length > 30000) throw new Error('请选择 30,000 字以内的回答内容。');

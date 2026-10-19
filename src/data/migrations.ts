@@ -5,6 +5,7 @@ import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
+const nativeUserInput = (value: unknown) => record(value) && typeof value.id === 'string' && typeof value.text === 'string' && typeof value.createdAt === 'string' && (value.afterItemId === undefined || typeof value.afterItemId === 'string');
 const connectionIds = ['model', 'demo', 'codex', 'claude', 'opencode'];
 function webLink(value: unknown) {
   if (typeof value !== 'string') return false;
@@ -102,6 +103,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (conversation.connectionId !== undefined && !connectionIds.includes(conversation.connectionId))
       throw new Error('助手连接记录不受支持，未覆盖现有数据。');
     if (conversation.nativeSessionRef !== undefined && typeof conversation.nativeSessionRef !== 'string' || conversation.nativeState !== undefined && !['idle', 'busy', 'unknown'].includes(conversation.nativeState) || conversation.nativeCanResume !== undefined && typeof conversation.nativeCanResume !== 'boolean') throw new Error('原生会话关联损坏，未覆盖现有数据。');
+    if (conversation.nativeHistoryCursor !== undefined && (typeof conversation.nativeHistoryCursor !== 'string' || conversation.nativeHistoryCursor.length > 8192)) throw new Error('原生历史分页位置损坏，未覆盖现有数据。');
     if (conversation.nativeState === 'busy') { conversation.nativeState = 'unknown'; conversation.nativeCanResume = false; }
     if (conversation.inlineSource !== undefined) {
       const source = conversation.inlineSource, evidence = data.evidence[source?.evidenceId];
@@ -121,7 +123,31 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     request.history ??= [];
     if (request.connectionId !== undefined && !connectionIds.includes(request.connectionId))
       throw new Error('请求的助手连接不受支持，未覆盖现有数据。');
+    if (request.historyRequestIds !== undefined && !strings(request.historyRequestIds)) throw new Error('对话历史索引损坏，未覆盖现有数据。');
+    if (request.nativeTurnId !== undefined && typeof request.nativeTurnId !== 'string') throw new Error('原生回合标识损坏，未覆盖现有数据。');
+    if (request.supplementalInputs !== undefined && (!Array.isArray(request.supplementalInputs) || !request.supplementalInputs.every(nativeUserInput))) throw new Error('原生补充输入损坏，未覆盖现有数据。');
+    if (request.nativeRun !== undefined) {
+      const run = request.nativeRun;
+      if (request.connectionId !== 'codex' || request.purpose !== 'chat' || !record(run) || run.managed !== true
+        || !Number.isSafeInteger(run.cursor) || run.cursor < 0
+        || !['pending', 'accepted', 'unknown'].includes(run.delivery)
+        || !['running', 'waiting-input', 'compacting', 'stopping', 'completed', 'failed', 'interrupted', 'unknown'].includes(run.state)
+        || !['connected', 'reconnecting', 'offline'].includes(run.transport)
+        || run.turnId !== undefined && typeof run.turnId !== 'string'
+        || run.pendingSteer !== undefined && !nativeUserInput(run.pendingSteer)
+        || !Array.isArray(run.items) || run.items.length > 2000 || run.items.some(item => !record(item) || typeof item.id !== 'string'
+          || !['agentMessage', 'commandExecution', 'fileChange', 'mcpToolCall', 'dynamicToolCall', 'webSearch', 'contextCompaction', 'plan'].includes(item.type)
+          || !['running', 'done', 'error'].includes(item.status)
+          || item.contentComplete !== undefined && typeof item.contentComplete !== 'boolean'
+          || (['text', 'toolName', 'command', 'output'] as const).some(key => item[key] !== undefined && typeof item[key] !== 'string')
+          || item.phase !== undefined && !['commentary', 'partial_answer', 'final_answer'].includes(item.phase)
+          || item.exitCode !== undefined && !Number.isInteger(item.exitCode))) throw new Error('原生运行记录损坏，未覆盖现有数据。');
+    }
     if (request.status === 'generating') {
+      if (request.nativeRun?.managed) {
+        request.nativeRun.transport = 'reconnecting';
+        continue;
+      }
       request.status = 'interrupted';
       for (const interaction of request.interactions ?? []) if (interaction.status === 'pending') interaction.status = 'expired';
       request.error = '页面已重新加载，已保留最近保存的内容，请按原范围重试。';

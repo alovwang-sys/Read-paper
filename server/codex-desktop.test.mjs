@@ -61,14 +61,15 @@ async function fixture(t, options = {}) {
           result = { turn: { id: 'turn1' } };
           setImmediate(() => Promise.resolve(options.onTurn ? options.onTurn({ send, notify, request, finish, child }) : finish()).catch((error) => { child.emit('error', error); }));
           break;
-        case 'turn/interrupt': result = {}; break;
+        case 'turn/interrupt': result = {}; if (options.confirmInterrupt !== false) setImmediate(() => notify('turn/completed', { turn: { id: 'turn1', status: 'interrupted' } })); options.onInterrupt?.({ send, notify, child }); break;
       }
       if (message.id !== undefined) send({ id: message.id, result: result || {} });
       callback();
     } });
     captured.push({ executable, args, options: spawnOptions }); children.push(child); return child;
   };
-  const runtime = createCodexRuntime({ spawnImpl, tikhubSpawnImpl: options.tikhubSpawnImpl, rpcTimeoutMs: 500, env: { PRIVATE_TOKEN: 'secret-for-redaction', ...options.env } });
+  const runtime = createCodexRuntime({ spawnImpl, tikhubSpawnImpl: options.tikhubSpawnImpl, rpcTimeoutMs: 500, idleTimeoutMs: options.idleTimeoutMs ?? 60_000, interruptTimeoutMs: options.interruptTimeoutMs ?? 100, env: { PRIVATE_TOKEN: 'secret-for-redaction', ...options.env } });
+  t.after(() => runtime.close());
   return { runtime, captured, children, nativeReplies, cwd, skillPath, skillDir, setEnabled(value) { enabled = value; } };
 }
 
@@ -310,6 +311,42 @@ test('TikHub tool requests are rejected when its Skill was not selected, includi
   await f.runtime.run({ cwd: f.cwd, prompt: 'Q', nativeSessionId: 'thread1', skillIds: [], codex: {} });
   assert.equal(replies[0].success, false);
   assert.ok(!f.captured.find(entry => entry.method === 'thread/resume').params.dynamicTools);
+});
+
+test('managed threads register a guarded tool once and enable or deny it per turn without changing threads', async t => {
+  const replies = [], pythonCalls = [];
+  const f = await fixture(t, {
+    env: { TIKHUB_API_KEY: 'fixture-only-credential' },
+    skillText: '---\nname: tikhub\ndescription: TikHub MCP\n---\nUse the TikHub MCP tools.',
+    skills: ({ skillPath, enabled }) => [{ name: 'tikhub', description: 'TikHub MCP', path: skillPath, enabled }],
+    tikhubSpawnImpl: (executable, args) => {
+      const child = new EventEmitter(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.exitCode = null;
+      child.kill = () => { child.exitCode = 0; child.emit('close', 0); };
+      child.stdin = new Writable({ write(_chunk, _encoding, callback) { callback(); }, final(callback) {
+        pythonCalls.push({ executable, args }); queueMicrotask(() => { child.stdout.write(JSON.stringify({ platforms: ['douyin'] })); child.exitCode = 0; child.emit('close', 0); }); callback();
+      } }); return child;
+    },
+    onTurn: async ({ request, finish }) => { replies.push(await request('item/tool/call', { callId: 'controlled', tool: 'read_paper_tikhub', arguments: { action: 'platforms' } })); finish(); },
+  });
+  await mkdir(join(f.skillDir, 'scripts')); await writeFile(join(f.skillDir, 'scripts', 'tikhub.py'), '# fixture only');
+  const capabilities = await f.runtime.capabilities();
+  const first = await f.runtime.run({ managedKey: 'same-chat', cwd: f.cwd, prompt: 'First, no external tool', skillIds: [], codex: {} });
+  const second = await f.runtime.run({ managedKey: 'same-chat', cwd: f.cwd, nativeSessionId: first.nativeSessionId, nativeToolsVersion: first.nativeToolsVersion, prompt: 'Now use my selected TikHub skill', skillIds: [capabilities.skills[0].id], codex: {} });
+  const third = await f.runtime.run({ managedKey: 'same-chat', cwd: f.cwd, nativeSessionId: first.nativeSessionId, prompt: 'Do not use TikHub this turn', skillIds: [], codex: {} });
+  assert.equal(first.nativeToolsVersion, 1); assert.equal(second.nativeSessionId, first.nativeSessionId); assert.equal(third.nativeSessionId, first.nativeSessionId);
+  assert.deepEqual(replies.map(reply => reply.success), [false, true, false]); assert.equal(pythonCalls.length, 1);
+  assert.equal(f.captured.filter(entry => entry.method === 'thread/start').length, 1);
+  assert.equal(f.captured.find(entry => entry.method === 'thread/start').params.dynamicTools[0].name, 'read_paper_tikhub');
+  assert.ok(f.captured.filter(entry => entry.method === 'thread/resume').every(entry => entry.params.dynamicTools === undefined));
+  assert.ok(!f.captured.some(entry => entry.method === 'thread/fork'));
+});
+
+test('an old thread without a registered toolset requires an explicit new conversation before adding TikHub', async t => {
+  const f = await fixture(t, { env: { TIKHUB_API_KEY: 'fixture-only-credential' }, skillText: '---\nname: tikhub\ndescription: TikHub MCP\n---\nUse TikHub MCP tools.', skills: ({ skillPath, enabled }) => [{ name: 'tikhub', description: 'TikHub MCP', path: skillPath, enabled }] });
+  await mkdir(join(f.skillDir, 'scripts')); await writeFile(join(f.skillDir, 'scripts', 'tikhub.py'), '# fixture only');
+  const capabilities = await f.runtime.capabilities();
+  await assert.rejects(f.runtime.run({ managedKey: 'old-chat', cwd: f.cwd, nativeSessionId: 'existing-native', prompt: 'Add TikHub', skillIds: [capabilities.skills[0].id], codex: {} }), { code: 'new_conversation_required' });
+  assert.ok(!f.captured.some(entry => ['thread/start', 'thread/resume', 'thread/fork', 'turn/start'].includes(entry.method)));
 });
 
 test('native reasoning effort catalog drives actual turn and Plan settings, including Ultra only when advertised', async t => {

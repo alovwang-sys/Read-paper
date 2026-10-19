@@ -1,20 +1,27 @@
 import type { Conversation, Evidence, RegionSource } from '../domain/types';
 import { hasFullText } from '../domain/knowledge';
-import { conversationConnection } from './agents';
+import { codexSupportsImages, conversationConnection, getCodexCapabilities } from './agents';
 import { createCardDraftFromAnswer, getAIConfig, type AIConfig } from './ai';
 import { getActiveConversation, uid, workspace } from './workspace';
 
 export type InlineAISelection = { documentId: string; pageIndex: number; quote: string; kind?: 'text' | 'region'; region?: RegionSource };
 
-function inlineConnection(researchId: string): 'model' | 'demo' {
+function inlineConnection(researchId: string): 'model' | 'demo' | 'codex' {
   const conversation = getActiveConversation(workspace.getState().data, researchId);
-  return conversation && conversationConnection(conversation) === 'demo' ? 'demo' : 'model';
+  const connection = conversation && conversationConnection(conversation);
+  return connection === 'demo' || connection === 'codex' ? connection : 'model';
 }
 
 export async function inlineAIConfig(researchId: string, conversationId?: string): Promise<AIConfig> {
   const conversation = conversationId && workspace.getState().data.conversations[conversationId];
   const connection = conversation ? conversationConnection(conversation) : inlineConnection(researchId);
   if (connection === 'demo') return { configured: true, model: '演示模式', provider: '演示', images: true, mode: 'demo', limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } };
+  if (connection === 'codex') {
+    if (!workspace.getState().data.researches[researchId]?.directory) throw new Error('请先在项目设置中关联研究目录，再使用 Codex 原文旁提问。');
+    const capabilities = await getCodexCapabilities();
+    const model = conversation && conversation.codex?.model;
+    return { configured: true, model: model || capabilities.models.find(model => model.isDefault)?.id || capabilities.models[0]?.id || 'Codex', provider: 'Codex', images: codexSupportsImages(capabilities, model), mode: 'live', limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } };
+  }
   const config = await getAIConfig();
   if (!config.configured) throw new Error('请先在设置中配置模型连接；原文旁提问不需要安装本机 CLI。');
   return config;
@@ -31,7 +38,7 @@ export function findInlineConversation(researchId: string, selection: InlineAISe
   const { data } = workspace.getState();
   return Object.values(data.conversations).filter(conversation => {
     const source = conversation.inlineSource, evidence = source && data.evidence[source.evidenceId];
-    return !conversation.archived && conversation.researchId === researchId && evidence
+    return !conversation.archived && conversation.researchId === researchId && conversationConnection(conversation) === inlineConnection(researchId) && evidence
       && matchesSelection(evidence, selection);
   }).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''))[0];
 }
@@ -44,6 +51,7 @@ export function createInlineConversation(researchId: string, selection: InlineAI
   const previous = findInlineConversation(researchId, selection);
   if (previous) return previous.id;
   const connectionId = inlineConnection(researchId), id = uid('conversation');
+  const active = getActiveConversation(data, researchId);
   const existing = Object.values(data.evidence).find(evidence => (!evidence.researchId || evidence.researchId === researchId)
     && matchesSelection(evidence, selection));
   const evidenceId = existing?.id ?? uid('evidence'), now = new Date().toISOString();
@@ -53,6 +61,7 @@ export function createInlineConversation(researchId: string, selection: InlineAI
       ...(selection.region ? { region: structuredClone(selection.region) } : {}), contextOnly: true, createdAt: now };
     next.conversations[id] = { id, researchId, connectionId, title: '原文旁提问', contextIds: [evidenceId], requestIds: [],
       input: '', historyRange: 'all', createdAt: now, updatedAt: now,
+      ...(connectionId === 'codex' && active ? { codex: structuredClone(active.codex ?? {}), skills: structuredClone(active.skills ?? []) } : {}),
       inlineSource: { documentId: selection.documentId, pageIndex: selection.pageIndex, evidenceId } };
   });
   return id;

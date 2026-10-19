@@ -4,7 +4,7 @@ import { createSeed } from '../../src/data/seed';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { getAsset, loadWorkspace, saveMigrationBackup, saveWorkspace } from '../../src/data/storage';
 import type { AIRequest, ContextSnapshot, NativeSessionSnapshot, NativeSessionSummary } from '../../src/domain/types';
-import { bindResearchDirectory, getResearchDirectory, listProjectSessions, openProjectSession, previewResearchDirectory, refreshProjectConversation } from '../../src/services/agents';
+import { bindResearchDirectory, getResearchDirectory, listProjectSessions, loadOlderProjectConversation, openProjectSession, previewResearchDirectory, refreshProjectConversation } from '../../src/services/agents';
 import { createManualCardDraft, regenerateAI, retryAI } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
 
@@ -36,6 +36,110 @@ beforeEach(async () => {
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('研究项目原生历史的公开服务路径', () => {
+  it('截断的原生预览不能覆盖较长的已接收正文或冻结为完整回答', async () => {
+    mockSnapshot(snapshot({ messages: [] }));
+    const id = await openProjectSession('research-a', summary());
+    const partial = '本地已收到的长正文。'.repeat(8000);
+    workspace.updateData(next => {
+      next.requests['own-request'] = { ...ownRequest(id), body: partial, status: 'generating', nativeSessionId: 'native-thread', nativeTurnId: 'turn-long',
+        nativeRun: { managed: true, cursor: 7, delivery: 'accepted', state: 'unknown', transport: 'offline', turnId: 'turn-long', items: [] } };
+      next.conversations[id].requestIds = ['own-request'];
+    });
+    mockSnapshot(snapshot({ truncated: true, messages: [
+      { id: 'u-own', role: 'user', text: 'Original app question', requestId: 'own-request', turnId: 'turn-long', turnStatus: 'completed', answerComplete: false },
+      { id: 'a-own', role: 'assistant', text: partial.slice(0, 60000), contentComplete: false, turnId: 'turn-long', turnStatus: 'completed', answerComplete: false },
+    ] }));
+    await refreshProjectConversation('research-a', id);
+    expect(data().requests['own-request']).toMatchObject({ body: partial, status: 'generating', nativeRun: { state: 'unknown' } });
+    // An incomplete progress preview does not invalidate a separately complete final answer.
+    mockSnapshot(snapshot({ truncated: true, messages: [
+      { id: 'u-own', role: 'user', text: 'Original app question', requestId: 'own-request', turnId: 'turn-long', turnStatus: 'completed', answerComplete: true, items: [
+        { id: 'progress', type: 'agentMessage', status: 'done', phase: 'commentary', text: '省略的长进展', contentComplete: false },
+        { id: 'final', type: 'agentMessage', status: 'done', phase: 'final_answer', text: '完整的最终回答', contentComplete: true },
+      ] },
+      { id: 'a-progress', role: 'assistant', text: '进展预览', contentComplete: false, turnId: 'turn-long', turnStatus: 'completed', answerComplete: true },
+      { id: 'a-final', role: 'assistant', text: '完整的最终回答', contentComplete: true, turnId: 'turn-long', turnStatus: 'completed', answerComplete: true },
+    ] }));
+    await refreshProjectConversation('research-a', id);
+    expect(data().requests['own-request']).toMatchObject({ body: '完整的最终回答', status: 'done' });
+  });
+
+  it('运行中补充属于同一个原生回合，完成后只补确认信息且保留后来写下的草稿', async () => {
+    mockSnapshot(snapshot({ messages: [] }));
+    const id = await openProjectSession('research-a', summary());
+    workspace.updateData(next => {
+      next.requests['own-request'] = { ...ownRequest(id), nativeSessionId: 'native-thread', nativeTurnId: 'turn-own',
+        nativeRun: { managed: true, cursor: 7, delivery: 'accepted', state: 'completed', transport: 'connected', turnId: 'turn-own', items: [],
+          pendingSteer: { id: 'input-own', text: '补充研究条件', createdAt: '2026-10-17T00:01:00.000Z' } } };
+      next.conversations[id].requestIds = ['own-request'];
+      next.conversations[id].input = '后来写下的下一问';
+    });
+    mockSnapshot(snapshot({ messages: [
+      { id: 'u-own', role: 'user', text: 'Original app question', requestId: 'own-request', turnId: 'turn-own', turnStatus: 'completed' },
+      { id: 'a-progress', role: 'assistant', text: '执行中的进展', turnId: 'turn-own', turnStatus: 'completed' },
+      { id: 'u-steer', role: 'user', clientUserMessageId: 'input-own', text: '补充研究条件', turnId: 'turn-own', turnStatus: 'completed' },
+      { id: 'a-final', role: 'assistant', text: '不能覆盖已保存的原答', turnId: 'turn-own', turnStatus: 'completed' },
+    ] }));
+    await refreshProjectConversation('research-a', id);
+    await refreshProjectConversation('research-a', id);
+    expect(data().conversations[id].requestIds).toEqual(['own-request']);
+    expect(data().conversations[id].input).toBe('后来写下的下一问');
+    expect(data().requests['own-request']).toMatchObject({ body: 'Original app answer [1]', status: 'done',
+      supplementalInputs: [{ id: 'input-own', text: '补充研究条件' }] });
+    expect(data().requests['own-request'].nativeRun?.pendingSteer).toBeUndefined();
+  });
+
+  it('较早分页按时间插入且稳定去重，读取游标不改变已载入的最新问答', async () => {
+    const mock = mockSnapshot(snapshot({ nextCursor: 'older-page', messages: [
+      { id: 'u-new', role: 'user', text: '最新问题', createdAt: '2026-10-17T01:00:00.000Z', turnId: 'new-turn', turnStatus: 'completed' },
+      { id: 'a-new', role: 'assistant', text: '最新回答', turnId: 'new-turn', turnStatus: 'completed' },
+    ] }));
+    const id = await openProjectSession('research-a', summary());
+    mock.mockImplementation(async () => Response.json(snapshot({ messages: [
+      { id: 'u-old', role: 'user', text: '较早问题', createdAt: '2026-10-17T00:00:00.000Z', turnId: 'old-turn', turnStatus: 'completed' },
+      { id: 'a-old', role: 'assistant', text: '较早回答', turnId: 'old-turn', turnStatus: 'completed' },
+    ] })));
+    await loadOlderProjectConversation('research-a', id);
+    expect(JSON.parse((mock.mock.calls as unknown as [string, RequestInit][])[1][1].body as string).cursor).toBe('older-page');
+    expect(data().conversations[id].requestIds.map(key => data().requests[key].prompt)).toEqual(['较早问题', '最新问题']);
+    await loadOlderProjectConversation('research-a', id);
+    expect(mock).toHaveBeenCalledTimes(2);
+    expect(data().conversations[id].nativeHistoryCursor).toBeUndefined();
+  });
+
+  it('原生回合仍在执行时，阶段性文字不冒充已完成回答', async () => {
+    mockSnapshot(snapshot({ state: 'busy', canResume: false, messages: [
+      { id: 'u', role: 'user', text: '查证', turnId: 'turn-live', turnStatus: 'inProgress' },
+      { id: 'a', role: 'assistant', text: '正在读取材料', turnId: 'turn-live', turnStatus: 'inProgress' },
+    ] }));
+    const id = await openProjectSession('research-a', summary());
+    const request = data().requests[data().conversations[id].requestIds[0]];
+    expect(request.status).toBe('interrupted');
+    expect(request.error).toContain('仍在运行');
+    expect(request.nativeTurnId).toBe('turn-live');
+  });
+
+  it('同一原生回合可补齐托管中断记录，完成后的原始回答继续不可改写', async () => {
+    mockSnapshot(snapshot({ messages: [] }));
+    const id = await openProjectSession('research-a', summary());
+    workspace.updateData(next => {
+      next.requests['own-request'] = { ...ownRequest(id), status: 'interrupted', body: '半截回答', nativeSessionId: 'native-thread', nativeTurnId: 'turn-own',
+        nativeRun: { managed: true, cursor: 7, delivery: 'accepted', state: 'unknown', transport: 'offline', turnId: 'turn-own', items: [] } };
+      next.conversations[id].requestIds = ['own-request'];
+    });
+    const messages: NativeSessionSnapshot['messages'] = [
+      { id: 'u-own', role: 'user', text: 'Original app question', requestId: 'own-request', turnId: 'turn-own', turnStatus: 'completed' },
+      { id: 'a-own', role: 'assistant', text: '完整回答 [1]', turnId: 'turn-own', turnStatus: 'completed' },
+    ];
+    mockSnapshot(snapshot({ state: 'idle', messages }));
+    await refreshProjectConversation('research-a', id);
+    expect(data().requests['own-request']).toMatchObject({ body: '完整回答 [1]', status: 'done', evidenceIds: ['evidence-a'], nativeRun: { state: 'completed' } });
+    expect(() => workspace.updateData(next => { next.requests['own-request'].body = '改写来源'; }, { nativeRunRef: 'own-request' })).toThrow('原始问答不可改写');
+    mockSnapshot(snapshot({ state: 'idle', messages: messages.map(message => message.role === 'assistant' ? { ...message, text: '不同回答' } : message) }));
+    await refreshProjectConversation('research-a', id);
+    expect(data().requests['own-request'].body).toBe('完整回答 [1]');
+  });
+
   it('重复读取按原生身份复用会话，保留输入、材料、技能及本地编辑标题', async () => {
     const mock = mockSnapshot(snapshot());
     const id = await openProjectSession('research-a', summary());

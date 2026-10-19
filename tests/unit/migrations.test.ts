@@ -162,6 +162,25 @@ describe('工作区 schema 迁移', () => {
     expect(migrated.cardDrafts['draft-in-progress'].error).toMatch(/中断/);
   });
 
+  it('托管 Codex 刷新保留执行和待回应交互，重连后核对真实状态', () => {
+    const data = createSeed();
+    data.requests['managed-request'] = {
+      id: 'managed-request', researchId: 'research-a', conversationId: 'conversation-research-a',
+      prompt: '持续运行', body: '已收到的部分', context: [], evidenceIds: [], status: 'generating',
+      createdAt: '2026-10-19T00:00:00Z', purpose: 'chat', connectionId: 'codex', nativeSessionId: 'thread-a', nativeTurnId: 'turn-a',
+      nativeRun: { managed: true, cursor: 12, delivery: 'accepted', state: 'waiting-input', transport: 'connected', turnId: 'turn-a', items: [] },
+      interactions: [{ id: 'question', kind: 'question', title: '等待回答', status: 'pending', questions: [] }],
+    };
+    const original = structuredClone(data);
+    const recovered = migrateWorkspace(data).requests['managed-request'];
+    expect(recovered.status).toBe('generating');
+    expect(recovered.nativeRun).toMatchObject({ cursor: 12, state: 'waiting-input', transport: 'reconnecting' });
+    expect(recovered.interactions?.[0].status).toBe('pending');
+    expect(data).toEqual(original);
+    data.requests['managed-request'].nativeRun!.cursor = -1;
+    expect(() => migrateWorkspace(data)).toThrow('原生运行记录损坏');
+  });
+
   it('未知版本和损坏记录拒绝迁移，并保持原始数据可供恢复', () => {
     const seed = legacyWorkspace();
     const invalid: unknown[] = [

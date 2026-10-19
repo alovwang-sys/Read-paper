@@ -14,9 +14,7 @@ const executablePath = process.env.PAPERTRAIL_EXECUTABLE || (process.platform ==
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
 const input = (page: Page) => panel(page).getByLabel('向 AI 提问');
 const saved = (page: Page) => expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
-const oldSessionId = 'desktop-original-session', newSessionId = 'desktop-independent-session';
-const recoveryText = '原会话由 Codex 后台保留，已保留历史并在独立会话继续。原会话不受影响。';
-const notice = (page: Page) => panel(page).getByRole('status').filter({ hasText: recoveryText });
+const oldSessionId = 'desktop-original-session', newSessionId = oldSessionId;
 
 async function state(page: Page): Promise<WorkspaceData> {
   return page.evaluate(async () => {
@@ -54,12 +52,12 @@ async function close(application: ElectronApplication) {
 }
 
 // Packaged assets and persistence are real; only the native service responses use a deterministic fixture.
-test('打包桌面：后台占用恢复提示常显，旧来源不变且重启保留新续接身份和累计材料', async () => {
+test('打包桌面：连续会话沿用原生线程，旧来源不变且重启保留同一身份和累计材料', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'papertrail-desktop-recovery-'));
   const userData = join(directory, 'app-data'), home = join(directory, 'isolated-home');
   await Promise.all([mkdir(userData), mkdir(home)]);
   let application: ElectronApplication | undefined;
-  const requests: { requestId: string; sessionRef: string; prompt: string }[] = [], pageErrors: string[] = [];
+  const requests: { requestId: string; sessionRef: string; prompt: string; managed: boolean; history: unknown[]; reset: boolean }[] = [], pageErrors: string[] = [];
   let modelCalls = 0;
   try {
     const seed = createSeed(), conversationId = 'conversation-research-a';
@@ -91,28 +89,30 @@ test('打包桌面：后台占用恢复提示常显，旧来源不变且重启�
     await page.route('**/api/ai/agents/run', route => {
       requests.push(route.request().postDataJSON());
       return route.fulfill({ contentType: 'application/x-ndjson', body: [
-        { type: 'progress', kind: 'status', id: 'session-fork', text: recoveryText },
-        { type: 'session', nativeSessionId: newSessionId, nativeSessionRef: fixtureSessionRef(newSessionId), forkedFromId: oldSessionId },
-        { type: 'delta', text: '桌面模拟恢复回答：已保留历史与来源。 [1]' },
-        { type: 'done', model: '桌面模拟运行时', nativeSessionId: newSessionId, nativeSessionRef: fixtureSessionRef(newSessionId) },
+        { type: 'session', seq: 1, nativeSessionId: newSessionId, nativeSessionRef: fixtureSessionRef(newSessionId), nativeTurnId: 'desktop-turn-2' },
+        { type: 'delta', seq: 2, text: '桌面模拟恢复回答：已保留历史与来源。 [1]' },
+        { type: 'done', seq: 3, body: '桌面模拟恢复回答：已保留历史与来源。 [1]', model: '桌面模拟运行时', nativeSessionId: newSessionId, nativeSessionRef: fixtureSessionRef(newSessionId), nativeTurnId: 'desktop-turn-2' },
       ].map(event => JSON.stringify(event)).join('\n') + '\n' });
     });
     await page.reload(); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+    await openSource(page, 'Retrieval Baselines & Trade-offs');
+    await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
+    await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
     await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
     await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
     const original = (await state(page)).requests['old-request'];
     await input(page).fill('桌面继续核对原研究的证据条件。');
     await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
-    await expect(notice(page)).toBeVisible(); await expect(notice(page)).toContainText('已恢复对话');
+    await expect(panel(page).locator('.ai-answer').last()).toContainText('桌面模拟恢复回答');
     await expect(panel(page).getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0);
-    expect(requests).toHaveLength(1); expect(requests[0].sessionRef).toBe(fixtureSessionRef(oldSessionId));
+    expect(requests).toHaveLength(1); expect(requests[0]).toMatchObject({ sessionRef: fixtureSessionRef(oldSessionId), managed: true, history: [], reset: false });
     const draft = '桌面恢复后尚未发送的下一条问题。'; await input(page).fill(draft); await saved(page);
     const data = await state(page);
     expect(data.requests['old-request']).toEqual(original);
     expect(data.requests[requests[0].requestId].nativeSessionId).toBe(newSessionId);
+    expect(data.requests[requests[0].requestId].nativeTurnId).toBe('desktop-turn-2');
     expect(data.conversations[conversationId].nativeSessionRef).toBe(fixtureSessionRef(newSessionId));
     expect(data.conversations[conversationId].sentContext?.map(item => item.evidenceId).sort()).toEqual(['evidence-a', 'evidence-b', 'evidence-c']);
-    await notice(page).scrollIntoViewIfNeeded();
     await page.screenshot({ path: test.info().outputPath('desktop-session-recovery.png') });
     await close(application); application = undefined;
     session = await launch(userData, home); application = session.application; page = session.page;
@@ -121,7 +121,7 @@ test('打包桌面：后台占用恢复提示常显，旧来源不变且重启�
     // Restart renderer services with the fixture while leaving the persisted workspace untouched.
     await page.evaluate(() => sessionStorage.setItem('papertrail-project-fixture-ready', 'true'));
     await page.reload();
-    await expect(notice(page)).toBeVisible(); await expect(input(page)).toHaveValue(draft);
+    await expect(input(page)).toHaveValue(draft);
     const restored = await state(page);
     expect(restored.requests['old-request']).toEqual(original);
     expect(restored.conversations[conversationId].nativeSessionRef).toBe(fixtureSessionRef(newSessionId));
@@ -129,7 +129,7 @@ test('打包桌面：后台占用恢复提示常显，旧来源不变且重启�
     expect(requests).toHaveLength(1); expect(modelCalls).toBe(0); expect(pageErrors).toEqual([]);
     await writeFile(test.info().outputPath('desktop-session-recovery.json'), JSON.stringify({ executablePath,
       protocol: 'papertrail://app/', requestCount: requests.length, actualModelCalls: 0, oldMessagesUnchanged: true,
-      historyScopeRetained: true, newNativeReferenceRetainedAfterRestart: true, nextDraftRetained: true, pageErrors,
+      historyScopeRetained: true, sameNativeReferenceRetainedAfterRestart: true, nextDraftRetained: true, pageErrors,
     }, null, 2) + '\n');
   } finally {
     const appProcess = application?.process();

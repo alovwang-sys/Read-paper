@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdir, readFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 import type { WorkspaceData } from '../../src/domain/types';
+import { paneGroups } from '../../src/services/panes';
 import { choosePdf, openResearchNavigation, openResearchPage, switchResearch } from './knowledge-helpers';
 
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
@@ -101,6 +102,10 @@ test('补全文冲突先预览，取消不变，确认后原子转移关联与�
   await expect(preview).toContainText('10.1234/merge');
   await preview.scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'docs/verification/knowledge-flow/merge-preview-1440.png' });
+  const previewScrollTop = await preview.evaluate(element => element.closest('.workspace-pane-body')?.scrollTop ?? 0);
+  // Let the preview's intentional scroll persist before comparing the cancel operation.
+  await expect.poll(async () => paneGroups((await state(page)).sessions['research-a'].layout!.root)
+    .flatMap(group => group.tabs).find(tab => tab.ref.id === stub.id)?.viewState?.scrollTop ?? 0).toBe(previewScrollTop);
   const beforeCancel = await state(page);
   await preview.getByRole('button', { name: '取消', exact: true }).click();
   expect(await state(page)).toEqual(beforeCancel);

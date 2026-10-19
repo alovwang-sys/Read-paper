@@ -220,13 +220,20 @@ test('stop is request-scoped, duplicate requests cannot unlock a busy session, a
   assert.equal((await f.post(request())).status, 409);
 });
 
-test('timeout and browser disconnection cancel the underlying runtime', async (t) => {
-  let stops = 0;
-  const runtime = { probe: async () => ({ state: 'ready' }), run({ signal, onEvent }) { onEvent({ type: 'progress', kind: 'status', text: 'Working' }); return new Promise((_, reject) => signal.addEventListener('abort', () => { stops++; reject(new Error('stopped')); }, { once: true })); } };
-  const timed = await fixture(t, runtime, { timeoutMs: 20 });
-  assert.equal((await events(await timed.post(request()))).at(-1).code, 'timeout'); assert.equal(stops, 1);
+test('timeout and browser disconnection cancel the underlying runtime', { timeout: 10_000 }, async (t) => {
+  let stops = 0, acknowledgeStop;
+  const runtime = { probe: async () => ({ state: 'ready' }), run({ signal, onEvent }) {
+    assert.equal(signal.aborted, false, 'this case must exercise a running model rather than a preflight timeout');
+    onEvent({ type: 'progress', kind: 'status', text: 'Working' });
+    return new Promise((_, reject) => signal.addEventListener('abort', () => { stops++; acknowledgeStop?.(); reject(new Error('stopped')); }, { once: true }));
+  } };
+  // Allow real filesystem preflight under loaded CI; verify runtime entry before asserting its timeout cancellation.
+  const timed = await fixture(t, runtime, { timeoutMs: 1000 });
+  const output = await events(await timed.post(request()));
+  assert.equal(output[0].type, 'progress'); assert.equal(output.at(-1).code, 'timeout'); assert.equal(stops, 1);
   const f = await fixture(t, runtime); const controller = new AbortController(); const response = await f.post(request(), undefined, { signal: controller.signal });
-  const reader = response.body.getReader(); await reader.read(); controller.abort(); await new Promise((resolve) => setTimeout(resolve, 25)); assert.equal(stops, 2);
+  const reader = response.body.getReader(); await reader.read();
+  const cancelled = new Promise(resolve => { acknowledgeStop = resolve; }); controller.abort(); await cancelled; assert.equal(stops, 2);
 });
 
 test('rejects untrusted native IDs, images, bad content types and excessive context before runtime', async (t) => {

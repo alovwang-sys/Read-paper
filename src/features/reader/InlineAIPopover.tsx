@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowUp, Check, ChevronRight, GripHorizontal, Layers, MoveDiagonal2, Square, X } from 'lucide-react';
-import { commitCardDraft, retryAI, snapshotContext, stopAI, submitAI } from '../../services/ai';
+import { commitCardDraft, resumeNativeRuns, retryAI, snapshotContext, steerNativeRun, stopAI, submitAI } from '../../services/ai';
 import { continueInlineInPanel, createInlineCardDraft, inlineAIConfig } from '../../services/inline-ai';
 import { useWorkspace } from '../../services/workspace';
 import { MarkdownContent } from '../ai/MarkdownContent';
+import { NativeRunTimeline } from '../ai/NativeRunTimeline';
 import { constrainPopover, type PopoverRect } from './popover-layout';
 import './inline-ai.css';
 
@@ -99,6 +100,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
 }) {
   const { data, actions, saveStatus } = useWorkspace();
   const conversation = data.conversations[conversationId];
+  useEffect(() => { void resumeNativeRuns(); }, [conversationId]);
   const source = conversation?.inlineSource;
   const evidence = source && data.evidence[source.evidenceId];
   let materials: ReturnType<typeof snapshotContext> = [], scopeProblem = '';
@@ -111,6 +113,8 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
   const latest = requests.at(-1);
   const generating = requests.find(request => request.status === 'generating');
   const [preparing, setPreparing] = useState(false);
+  const [supplementing, setSupplementing] = useState(false);
+  const steering = useRef(false);
   const [problem, setProblem] = useState('');
   const [draftOpen, setDraftOpen] = useState(false);
   const draft = source?.draftId ? data.cardDrafts[source.draftId] : undefined;
@@ -143,7 +147,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
   useEffect(() => {
     const node = content.current;
     if (node && followOutput.current) node.scrollTop = node.scrollHeight;
-  }, [latest?.body, latest?.status, requests.length, problem]);
+  }, [latest?.body, latest?.nativeRun?.cursor, latest?.status, requests.length, problem]);
   if (!conversation || !source || !evidence) return <div className="inline-ai-missing"><p>这次提问的来源已不存在。</p><button className="button" onClick={close}>返回阅读</button></div>;
   const updateInput = (value: string) => actions.updateData(next => { if (next.conversations[conversationId]) next.conversations[conversationId].input = value; });
   const run = (operation: () => void) => { setProblem(''); try { operation(); } catch (error) { setProblem(error instanceof Error ? error.message : '操作失败，内容已保留。'); } };
@@ -153,6 +157,15 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     try { await inlineAIConfig(conversation.researchId, conversationId); await retryAI(latest.id); }
     catch (error) { setProblem(error instanceof Error ? error.message : '重试失败，请稍后再试。'); }
     finally { requestBusy.current = false; setPreparing(false); }
+  };
+  const canSupplement = generating?.nativeRun?.transport === 'connected' && !!generating.nativeTurnId
+    && ['running', 'compacting'].includes(generating.nativeRun.state) && !generating.nativeRun.pendingSteer;
+  const supplement = async () => {
+    if (!generating || !canSupplement || steering.current) return;
+    steering.current = true; setSupplementing(true); setProblem('');
+    try { await steerNativeRun(generating.id, conversation.input ?? ''); }
+    catch (error) { setProblem(error instanceof Error ? error.message : '补充尚未确认，草稿已保留。'); }
+    finally { steering.current = false; setSupplementing(false); }
   };
   const updateDraft = (field: 'title' | 'body', value: string) => actions.updateData(next => {
     const current = source.draftId && next.cardDrafts[source.draftId];
@@ -183,11 +196,14 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
         {!requests.length && !busy && <p className="inline-ai-empty">这段哪里不明白？可以直接问。</p>}
         {requests.map((request, index) => <article className="inline-ai-turn" key={request.id}>
           <p className="inline-ai-question">{index === 0 && initialAction === 'explain' && request.prompt.startsWith('请用容易理解') ? '解释这段' : request.prompt}</p>
-          {request.body && <MarkdownContent text={request.body} onCitation={number => {
+          {request.nativeRun ? <NativeRunTimeline request={request} onCitation={number => {
+            const ids = request.status === 'done' ? request.evidenceIds : request.context.map(item => item.evidenceId);
+            if (ids[number - 1]) onSource(ids[number - 1]);
+          }} /> : request.body && <MarkdownContent text={request.body} onCitation={number => {
             const ids = request.status === 'done' ? request.evidenceIds : request.context.map(item => item.evidenceId);
             if (ids[number - 1]) onSource(ids[number - 1]);
           }} />}
-          {request.status === 'generating' && <p className="inline-ai-working" role="status">{request.body ? '正在回答…' : '正在理解所选内容…'}</p>}
+          {request.status === 'generating' && !request.nativeRun && <p className="inline-ai-working" role="status">{request.body ? '正在回答…' : '正在理解所选内容…'}</p>}
           {request.status !== 'done' && request.status !== 'generating' && <div className="inline-ai-request-error" role={request.status === 'stopped' ? 'status' : 'alert'}><span>{request.error || '回答未完成，已有内容已保留。'}</span>{index === requests.length - 1 && <button className="text-button" disabled={busy} onClick={() => void retry()}>重试</button>}</div>}
           {request.mode === 'demo' && <span className="inline-ai-demo">演示回答</span>}
         </article>)}
@@ -201,6 +217,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
         <textarea ref={input} rows={2} aria-label="向原文旁助手提问" placeholder={requests.length ? '继续问这段原文…' : '这段是什么意思？'} value={conversation.input ?? ''} onChange={event => updateInput(event.target.value)} onKeyDown={event => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void ask(conversation.input ?? ''); }
         }} />
+        {canSupplement && <button className="text-button" type="button" aria-label="补充就地本轮" disabled={supplementing || !conversation.input?.trim()} onClick={() => void supplement()}>补充本轮</button>}
         {busy ? <button className="inline-ai-send" type="button" aria-label="停止就地回答" disabled={!generating} onClick={() => generating && stopAI(generating.id)}><Square size={13} /></button> : <button className="inline-ai-send" type="submit" aria-label="发送就地问题" disabled={!conversation.input?.trim() || !!scopeProblem}><ArrowUp size={16} /></button>}
       </form>
     </>}

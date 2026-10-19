@@ -15,4 +15,8 @@ describe('Markdown 中的来源编号', () => {
   it('公式内部的数字下标不充当来源，公式之后的引用仍会重编号', () => {
     expect(remapCitationNumbers('$x[0]$ 和 $$y[99]$$，依据 [2]', ['a', 'b'], ['b', 'a'])).toBe('$x[0]$ 和 $$y[99]$$，依据 [1]');
   });
+  it('数字 Markdown 链接及链接定义不是论文引用', () => {
+    const body = '链接 [1](https://example.com/source) 和 [2][reference]，论文 [2]\n[3]: https://example.com';
+    expect(remapCitationNumbers(body, ['a', 'b'], ['b', 'a'])).toBe('链接 [1](https://example.com/source) 和 [2][reference]，论文 [1]\n[3]: https://example.com');
+  });
 });

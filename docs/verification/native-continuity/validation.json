@@ -1,0 +1,43 @@
+{
+  "candidateVersion": "0.1.8",
+  "verifiedAt": "2026-10-19T08:30:57.411911+00:00",
+  "unit": {
+    "passed": 338
+  },
+  "server": {
+    "passed": 264
+  },
+  "desktopUnit": {
+    "passed": 27
+  },
+  "packagedDesktop": {
+    "platform": "macOS arm64",
+    "passed": 16
+  },
+  "browser": {
+    "lastFullRun": {
+      "total": 174,
+      "passed": 172,
+      "failed": 2
+    },
+    "failures": "Two old fixture timing races fixed without relaxing assertions.",
+    "postFixTargeted": {
+      "sourceLayoutRepeat": 9,
+      "mergeCancelRepeat": 3
+    }
+  },
+  "packageSourceMatches": true,
+  "signed": false,
+  "assets": [
+    {
+      "name": "Papertrail-0.1.8-macos-arm64.dmg",
+      "bytes": 168948084,
+      "sha256": "44a6ebf4bf10621f9e7001b18b3574e88bd75c1611aff8fafc4a557a56831c2c"
+    },
+    {
+      "name": "Papertrail-darwin-arm64-0.1.8.zip",
+      "bytes": 171091170,
+      "sha256": "a53213ed49c0740c69cc61fc3a993be595d60745692c0b7794579621b59c570f"
+    }
+  ]
+}

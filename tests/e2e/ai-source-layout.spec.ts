@@ -53,8 +53,11 @@ async function setup(page: Page) {
   await openResearchPage(page, '检索增强的适用条件');
   await main(page).getByLabel('结论正文').fill(writing);
   for (const question of ['先解释这条材料的适用条件', '进一步核查推断与论文依据']) {
+    const turnCount = await panel(page).locator('.ai-turn').count();
     await panel(page).getByLabel('向 AI 提问').fill(question);
     await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
+    await expect(panel(page).locator('.ai-turn')).toHaveCount(turnCount + 1);
+    await expect(panel(page).locator('.ai-turn').last().locator('.ai-answer')).toContainText(answer);
     await expect(panel(page).getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0);
   }
   await panel(page).getByLabel('向 AI 提问').fill(pendingInput);

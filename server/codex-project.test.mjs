@@ -73,7 +73,7 @@ test('Codex history returns stable visible messages and sanitized activity witho
     turn('turn2', [{ id: 'u', type: 'userMessage', content: [{ type: 'text', text: 'Second question' }] }, { id: 'a', type: 'agentMessage', text: 'Second answer' }]),
     turn('turn1', [
       { id: 'd', type: 'developerMessage', text: 'PRIVATE DEVELOPER' }, { id: 'r', type: 'reasoning', content: ['PRIVATE REASONING'] },
-      { id: 'u', type: 'userMessage', content: [{ type: 'text', text: 'First hidden-value question' }, { type: 'localImage', path: '/private/image.png' }] },
+      { id: 'u', clientId: 'request-original-1', type: 'userMessage', content: [{ type: 'text', text: 'First hidden-value question' }, { type: 'localImage', path: '/private/image.png' }] },
       { id: 'tool', type: 'commandExecution', command: 'cat .env', aggregatedOutput: 'SENSITIVE FILE', exitCode: 0, status: 'completed' },
       { id: 'a', type: 'agentMessage', text: 'First answer' },
     ]),
@@ -81,6 +81,7 @@ test('Codex history returns stable visible messages and sanitized activity witho
   const first = await f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session' });
   const second = await f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session' });
   assert.deepEqual(first, second); assert.deepEqual(first.messages.map((m) => m.id), ['turn1:u', 'turn1:a', 'turn2:u', 'turn2:a']);
+  assert.equal(first.turns[0].items.find(item => item.type === 'userMessage').clientId, 'request-original-1'); assert.equal(first.messages[0].clientId, 'request-original-1'); assert.equal(first.messages[0].clientUserMessageId, 'request-original-1'); assert.equal(first.turns[0].items.find(item => item.type === 'userMessage').clientUserMessageId, 'request-original-1');
   assert.equal(first.messages[0].role, 'user'); assert.match(first.messages[0].text, /已隐藏凭据/); assert.match(first.messages[0].text, /原始附件/);
   assert.equal(first.messages[1].events[0].kind, 'tool'); assert.match(first.messages[1].events[0].output, /已隐藏/);
   assert.doesNotMatch(JSON.stringify(first), /PRIVATE DEVELOPER|PRIVATE REASONING|hidden-value|SENSITIVE FILE|\/private\/image/);
@@ -110,58 +111,17 @@ test('project run uses the actual research cwd plus readonly material root witho
 });
 
 
-test('native writer ownership forks project history once before sending only to the independent session', async (t) => {
+test('native writer ownership never silently forks or sends the current question', async (t) => {
   const f = await fixture(t, (request, { cwd, send }) => {
     if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
-    if (request.method === 'thread/resume') {
-      send({ id: request.id, error: { code: -32600, message: 'thread locked-thread already has an active writer /private/native/record' } });
-      return {};
-    }
-    if (request.method === 'thread/fork') return { thread: summary(cwd, 'new-thread', { forkedFromId: 'locked-thread' }), model: 'native' };
+    if (request.method === 'thread/resume') { send({ id: request.id, error: { code: -32600, message: 'thread locked-thread already has an active writer /private/native/record' } }); return {}; }
   });
   const events = [];
-  const result = await f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q', title: 'Continue the research', codex: { mode: 'chat' }, onEvent: event => events.push(event) });
-  assert.equal(result.nativeSessionId, 'new-thread'); assert.equal(result.nativeTurnId, 'new-turn');
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q', codex: {}, onEvent: event => events.push(event) }), { code: 'session_busy' });
   assert.equal(f.calls.filter(c => c.method === 'thread/resume').length, 1);
-  assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, 1);
-  const resume = f.calls.find(c => c.method === 'thread/resume').params;
-  const fork = f.calls.find(c => c.method === 'thread/fork').params;
-  const { allowProviderModelFallback: _fallback, ...expected } = resume;
-  assert.deepEqual(fork, { ...expected, ephemeral: false, deferGoalContinuation: true });
-  assert.equal(fork.approvalsReviewer, 'user'); assert.equal(fork.model, 'native');
-  assert.deepEqual(f.calls.find(c => c.method === 'thread/name/set').params, { threadId: 'new-thread', name: 'Continue the research' });
-  assert.deepEqual(f.calls.filter(c => c.method === 'turn/start').map(c => c.params.threadId), ['new-thread']);
-  assert.equal(f.calls.filter(c => c.method === 'turn/start')[0].params.input[0].text, 'Q');
-  const sessions = events.filter(event => event.type === 'session');
-  assert.equal(sessions.length, 2); assert.ok(sessions.every(event => event.nativeSessionId === 'new-thread')); assert.equal(sessions[0].forkedFromId, 'locked-thread'); assert.equal(sessions[1].nativeTurnId, 'new-turn');
-  assert.deepEqual(events.filter(event => event.id === 'session-fork'), [{ type: 'progress', kind: 'status', id: 'session-fork', text: '原会话由 Codex 后台保留，已保留历史并在独立会话继续。原会话不受影响。' }]);
-  assert.ok(!f.calls.some(c => ['thread/start', 'thread/archive', 'thread/delete', 'thread/unsubscribe', 'turn/interrupt'].includes(c.method)));
+  assert.ok(!f.calls.some(c => ['thread/fork', 'thread/start', 'turn/start', 'turn/interrupt'].includes(c.method)));
+  assert.ok(!events.some(event => event.type === 'session'));
   assert.ok(f.children.every(({ child }) => child.killed));
-});
-
-test('failed or invalid project forks preserve a static recovery error without sending the question', async (t) => {
-  for (const invalidFork of ['protocol-error', 'same-id', 'invalid-id', 'wrong-cwd', 'wrong-source', 'exited']) {
-    await t.test(invalidFork, async (t) => {
-      const f = await fixture(t, (request, { cwd, send, child }) => {
-        if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
-        if (request.method === 'thread/resume') { send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {}; }
-        if (request.method === 'thread/fork') {
-          if (invalidFork === 'protocol-error') { send({ id: request.id, error: { code: -32600, message: '/private/failed-fork' } }); return {}; }
-          if (invalidFork === 'exited') { child.exitCode = 1; child.emit('exit', 1); return {}; }
-          return { thread: summary(invalidFork === 'wrong-cwd' ? join(cwd, 'child') : cwd,
-            invalidFork === 'same-id' ? 'locked-thread' : invalidFork === 'invalid-id' ? '../private/invalid-id' : 'new-thread',
-            { forkedFromId: invalidFork === 'wrong-source' ? 'another-thread' : 'locked-thread' }) };
-        }
-      });
-      const events = [];
-      await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q', onEvent: event => events.push(event) }), error => {
-        assert.equal(error.code, 'session_recovery_failed'); assert.doesNotMatch(error.message, /private|writer|locked-thread/); return true;
-      });
-      assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, 1);
-      assert.ok(!f.calls.some(c => c.method === 'turn/start')); assert.ok(!events.some(event => event.type === 'session'));
-      assert.ok(f.children.every(({ child }) => child.exitCode !== null));
-    });
-  }
 });
 
 test('ordinary resume errors and non-project writer conflicts never fork', async (t) => {
@@ -180,39 +140,14 @@ test('ordinary resume errors and non-project writer conflicts never fork', async
   }
 });
 
-test('cancelled recovery never sends a fork or turn after cancellation', async (t) => {
-  for (const phase of ['resume', 'fork', 'session']) {
-    await t.test(phase, async (t) => {
-      const controller = new AbortController();
-      const f = await fixture(t, (request, { cwd, send }) => {
-        if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
-        if (request.method === 'thread/resume') {
-          if (phase === 'resume') controller.abort();
-          send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {};
-        }
-        if (request.method === 'thread/fork') {
-          if (phase === 'fork') controller.abort();
-          return { thread: summary(cwd, 'new-thread', { forkedFromId: 'locked-thread' }) };
-        }
-      });
-      await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q', signal: controller.signal,
-        onEvent: event => { if (phase === 'session' && event.type === 'session') controller.abort(); } }), { code: 'stopped' });
-      assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, phase === 'resume' ? 0 : 1);
-      assert.ok(!f.calls.some(c => c.method === 'turn/start')); assert.ok(f.children.every(({ child }) => child.killed));
-    });
-  }
-});
-
-test('a rejected turn after recovery is never retried or forked again', async (t) => {
-  const f = await fixture(t, (request, { cwd, send }) => {
-    if (request.method === 'thread/read') return { thread: summary(cwd, 'locked-thread') };
-    if (request.method === 'thread/resume') { send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {}; }
-    if (request.method === 'thread/fork') return { thread: summary(cwd, 'new-thread') };
-    if (request.method === 'turn/start') { send({ id: request.id, error: { code: -32600, message: 'thread already has an active writer' } }); return {}; }
+test('cancellation before sending a turn preserves the original thread', async (t) => {
+  const controller = new AbortController();
+  const f = await fixture(t, (request, { cwd }) => {
+    if (request.method === 'thread/read') return { thread: summary(cwd, 'native-session') };
+    if (request.method === 'thread/resume') { controller.abort(); return { thread: { id: 'native-session', cwd } }; }
   });
-  await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'locked-thread', prompt: 'Q' }), { code: 'session_busy' });
-  assert.equal(f.calls.filter(c => c.method === 'thread/fork').length, 1);
-  assert.deepEqual(f.calls.filter(c => c.method === 'turn/start').map(c => c.params.threadId), ['new-thread']);
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'native-session', prompt: 'Q', signal: controller.signal }), { code: 'stopped' });
+  assert.ok(!f.calls.some(c => ['thread/fork', 'turn/start'].includes(c.method)));
   assert.ok(f.children.every(({ child }) => child.killed));
 });
 
@@ -220,4 +155,68 @@ test('project resume validates the stored cwd before acquiring writer ownership'
   const f = await fixture(t, (request, { cwd }) => request.method === 'thread/read' ? { thread: summary(join(cwd, 'child')) } : undefined);
   await assert.rejects(f.runtime.run({ cwd: f.cwd, materialCwd: f.materials, nativeSessionId: 'native-session', prompt: 'Q' }), { code: 'invalid_session' });
   assert.ok(!f.calls.some((c) => ['thread/resume', 'turn/start'].includes(c.method)));
+});
+
+
+test('history pagination exposes next cursor and keeps each retained answer with its user turn', async t => {
+  const f = await fixture(t, (request, { cwd }) => {
+    if (request.method === 'thread/read') return { thread: summary(cwd) };
+    if (request.method === 'thread/turns/list') {
+      const id = request.params.cursor === 'older' ? 'older-turn' : 'latest-turn';
+      return { data: [turn(id, [{ id: 'u', type: 'userMessage', content: [{ type: 'text', text: `question-${id}` }] }, ...Array.from({ length: 150 }, (_, index) => ({ id: `a-${index}`, type: 'agentMessage', text: `answer-${index}` }))])], nextCursor: request.params.cursor ? null : 'older' };
+    }
+  });
+  const result = await f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session' });
+  assert.ok(result.messages.length <= 200);
+  for (const message of result.messages.filter(message => message.role === 'assistant')) assert.ok(result.messages.some(question => question.role === 'user' && question.turnId === message.turnId));
+  const older = await f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session', cursor: 'older' });
+  assert.equal(older.turns[0].id, 'older-turn'); assert.equal(older.turns[0].status, 'completed');
+  assert.ok(f.calls.some(call => call.method === 'thread/turns/list' && call.params.cursor === 'older'));
+  await assert.rejects(f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session', cursor: '../bad\n' }), { code: 'invalid_session' });
+});
+
+test('history distinguishes incomplete answer previews from a truncated question with a complete final answer', async t => {
+  const question = { id: 'user', type: 'userMessage', content: [{ type: 'text', text: 'Question' }] };
+  const f = await fixture(t, (request, { cwd }) => {
+    if (request.method === 'thread/read') return { thread: summary(cwd) };
+    if (request.method === 'thread/turns/list') return { data: [
+      turn('long-answer', [question, { id: 'answer', type: 'agentMessage', phase: 'final_answer', text: 'a'.repeat(90_000) }]),
+      turn('long-question', [{ ...question, content: [{ type: 'text', text: 'q'.repeat(90_000) }] }, { id: 'short-answer', type: 'agentMessage', phase: 'final_answer', text: 'Complete short answer' }]),
+    ] };
+  });
+  const result = await f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session' });
+  const large = result.turns.find(turn => turn.id === 'long-answer'), short = result.turns.find(turn => turn.id === 'long-question');
+  assert.equal(large.answerComplete, false); assert.equal(large.historyComplete, false);
+  assert.equal(large.items.find(item => item.type === 'agentMessage').text.length, 60_000);
+  assert.equal(result.messages.find(message => message.turnId === 'long-answer' && message.role === 'assistant').contentComplete, false);
+  assert.equal(short.answerComplete, true); assert.equal(short.historyComplete, false);
+  assert.equal(result.messages.find(message => message.turnId === 'long-question' && message.role === 'assistant').contentComplete, true);
+});
+
+test('budgeted native history pages traverse every turn without skipping trimmed middle turns or inventing cursors', async t => {
+  const rows = Array.from({ length: 130 }, (_, index) => turn(`history-${130 - index}`, [
+    { id: 'user', type: 'userMessage', content: [{ type: 'text', text: `Question ${130 - index}` }] },
+    { id: 'answer', type: 'agentMessage', phase: 'final_answer', text: `${130 - index}:` + 'long native answer '.repeat(900) },
+  ]));
+  assert.ok(JSON.stringify(rows).length > 1_000_000);
+  const positions = new Map(); let generated = 0;
+  const f = await fixture(t, (request, { cwd }) => {
+    if (request.method === 'thread/read') return { thread: summary(cwd) };
+    if (request.method === 'thread/turns/list') {
+      if (request.params.cursor) assert.ok(positions.has(request.params.cursor), 'Only server-issued opaque cursors may be used');
+      const start = positions.get(request.params.cursor) || 0;
+      const data = rows.slice(start, start + request.params.limit), end = start + data.length;
+      const nextCursor = end < rows.length ? `opaque-${++generated}-${end}` : undefined;
+      if (nextCursor) positions.set(nextCursor, end);
+      return { data, nextCursor };
+    }
+  });
+  const seen = []; let cursor, pages = 0;
+  do {
+    const page = await f.runtime.readSession({ cwd: f.cwd, sessionId: 'native-session', ...(cursor ? { cursor } : {}) });
+    seen.push(...page.turns.slice().reverse().map(turn => turn.id)); cursor = page.nextCursor;
+    assert.ok(++pages < 20);
+  } while (cursor);
+  assert.deepEqual(seen, rows.map(turn => turn.id)); assert.equal(new Set(seen).size, rows.length);
+  assert.ok(f.calls.some(call => call.method === 'thread/turns/list' && call.params.limit < 50));
 });
