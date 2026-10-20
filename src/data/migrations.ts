@@ -1,5 +1,6 @@
 import { hasFullText } from '../domain/knowledge';
 import { ensurePaneLayout, validatePaneLayout, syncPaneSession } from '../services/panes';
+import { boardSnapshot, parseBoardPlan, validateBoardContext, validateBoardHistory, validateBoardSnapshot } from '../domain/board-history';
 import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -19,6 +20,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   if (!record(value) || ![1, 2, 3].includes(value.schemaVersion as number))
     throw new Error('存储版本不受支持，未覆盖现有数据。');
   const data = structuredClone(value) as unknown as WorkspaceData;
+  validateBoardHistory(data);
   const legacy = value.schemaVersion === 1;
   for (const key of [
     'researches', 'documents', 'evidence', 'cards', 'boards', 'placements',
@@ -35,6 +37,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   for (const collection of [data.researches, data.documents, data.cards, data.boards, data.drafts])
     for (const [id, item] of Object.entries(collection))
       if (item.id !== id || typeof item.title !== 'string') throw new Error('资源标识或标题损坏，未覆盖现有数据。');
+  for (const board of Object.values(data.boards)) validateBoardSnapshot(boardSnapshot(data, board.id), board.id, board.researchId);
   for (const research of Object.values(data.researches))
     if (typeof research.question !== 'string' || !strings(research.documentIds) || !strings(research.cardIds)) throw new Error('研究关联损坏，未覆盖现有数据。');
   for (const research of Object.values(data.researches))
@@ -43,6 +46,13 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (research.directory?.name !== undefined && (typeof research.directory.name !== 'string' || !research.directory.name)) throw new Error('研究目录名称损坏，未覆盖现有数据。');
   for (const research of Object.values(data.researches)) {
     if (research.sourceRecords !== undefined && (!record(research.sourceRecords) || Object.entries(research.sourceRecords).some(([id, value]) => !research.documentIds.includes(id) || !record(value) || typeof value.note !== 'string' || !Array.isArray(value.discoveries) || value.discoveries.some(item => !record(item) || typeof item.url !== 'string' || typeof item.createdAt !== 'string' || !['ai', 'link'].includes(item.kind as string) || (['requestId', 'conversationId', 'recommendation'] as const).some(key => item[key] !== undefined && typeof item[key] !== 'string'))))) throw new Error('研究收录记录损坏，未覆盖现有数据。');
+  }
+  for (const research of Object.values(data.researches)) {
+    for (const [field, resources] of [['boardOrder', data.boards], ['draftOrder', data.drafts]] as const) {
+      const order = research[field];
+      if (order !== undefined && (!strings(order) || new Set(order).size !== order.length || order.some(id => Object.hasOwn(resources, id) && resources[id].researchId !== research.id)))
+        throw new Error('研究资源顺序损坏，未覆盖现有数据。');
+    }
   }
   for (const doc of Object.values(data.documents)) {
     const fields = [doc.assetId, doc.hash, doc.filename, doc.pageCount];
@@ -61,6 +71,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions)) {
+    if (session.collapsedNav !== undefined && (!Array.isArray(session.collapsedNav) || session.collapsedNav.some(id => !['boards', 'drafts'].includes(id)) || new Set(session.collapsedNav).size !== session.collapsedNav.length))
+      throw new Error('导航折叠状态损坏，未覆盖现有数据。');
     for (const [key, position] of Object.entries(session.readers)) {
       if (!record(position) || !Number.isInteger(position.pageIndex) || position.pageIndex < 0 || !Number.isFinite(position.scale) || position.scale < 0.5 || position.scale > 2 || position.offset !== undefined && (!Number.isFinite(position.offset) || position.offset < 0 || position.offset > 1)) throw new Error('阅读位置损坏，未覆盖现有数据。');
       const id = key.replace(/^(main|main-secondary|inspector):/, '');
@@ -94,6 +106,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       || ![undefined, 'read-only', 'workspace-write', 'full-access'].includes(settings.access))) throw new Error('Codex 设置损坏，未覆盖现有数据。');
   }
   for (const conversation of Object.values(data.conversations)) {
+    if (conversation.boardSuggestionRequestId !== undefined && typeof conversation.boardSuggestionRequestId !== 'string' || conversation.boardSuggestionDismissed !== undefined && typeof conversation.boardSuggestionDismissed !== 'boolean') throw new Error('白板建议状态损坏。');
+    if (conversation.boardSkill !== undefined && (!record(conversation.boardSkill) || typeof conversation.boardSkill.boardId !== 'string' || !['board', 'research'].includes(conversation.boardSkill.scope) || conversation.boardSkill.allowNewCards !== undefined && typeof conversation.boardSkill.allowNewCards !== 'boolean')) throw new Error('白板技能选择损坏，未覆盖现有数据。');
     if (!Array.isArray(conversation.contextIds) || !Array.isArray(conversation.requestIds))
       throw new Error('对话数据不完整，未覆盖现有数据。');
     conversation.title ??= '阅读对话';
@@ -113,6 +127,12 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     }
   }
   for (const request of Object.values(data.requests)) {
+    if (request.boardApplyError !== undefined && typeof request.boardApplyError !== 'string') throw new Error('白板保存状态损坏。');
+    if (request.boardContext !== undefined) validateBoardContext(request.boardContext, request.researchId);
+    if (request.boardProposal !== undefined) {
+      if (!request.boardContext) throw new Error('白板提案缺少请求快照。');
+      request.boardProposal = parseBoardPlan(JSON.stringify(request.boardProposal), request.boardContext);
+    }
     if (typeof request.prompt !== 'string' || typeof request.body !== 'string' || !Array.isArray(request.context) || !Array.isArray(request.evidenceIds))
       throw new Error('问答记录格式不完整，未覆盖现有数据。');
     if (legacy) {
@@ -150,7 +170,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       }
       request.status = 'interrupted';
       for (const interaction of request.interactions ?? []) if (interaction.status === 'pending') interaction.status = 'expired';
-      request.error = '页面已重新加载，已保留最近保存的内容，请按原范围重试。';
+      request.error = request.nativeImported ? '正在同步原生记录，已收到的内容保留。' : '页面已重新加载，已保留最近保存的内容，请按原范围重试。';
     }
   }
   for (const draft of Object.values(data.cardDrafts)) {

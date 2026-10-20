@@ -1,6 +1,7 @@
 import type { AgentConnection, AgentEvent, AIConnectionId, CodexCapabilities, Conversation, ResearchDirectory, NativeSessionSummary, NativeSessionSnapshot, NativeTurnItem, NativeUserInput } from '../domain/types';
 import { mapCitationNumbers } from '../domain/citations';
 import { getActiveConversation, workspace, uid } from './workspace';
+import { autoApplyBoard, boardSkillResult } from './board-skill';
 
 export function connectionLabel(id?: AIConnectionId) {
   return { model: '模型直连', demo: '演示模式', codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id ?? 'model'];
@@ -121,10 +122,11 @@ async function readLatestHistory(researchId: string, sessionRef: string, cursor?
   return historyReads.get(key) === version ? snapshot : undefined;
 }
 
-function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot): string {
+async function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot): Promise<string> {
   const { data } = workspace.getState();
   const previous = Object.values(data.conversations).find(c => c.researchId === researchId && c.connectionId === snapshot.agentId && (c.nativeSessionRef === snapshot.id || !!snapshot.nativeSessionId && c.nativeSessionId === snapshot.nativeSessionId));
   const id = previous?.id ?? uid('conversation');
+  const recoveredBoards: string[] = [];
   workspace.updateData(next => {
     const existing = next.conversations[id];
     const conversation = next.conversations[id] ??= { id, researchId, connectionId: snapshot.agentId, title: snapshot.title, contextIds: [], requestIds: [], input: '', historyRange: 'all', createdAt: snapshot.updatedAt || new Date().toISOString(), nativeImported: true };
@@ -149,7 +151,14 @@ function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot)
             const ids: string[] = [];
             let body = rawBody, validationError: string | undefined;
             try {
-              body = mapCitationNumbers(rawBody, number => {
+              if (own.boardContext) {
+                own.boardProposal = undefined;
+                if (turn.turnStatus === 'completed') {
+                  if (['stopping', 'failed', 'interrupted'].includes(own.nativeRun.state)) throw new Error('本轮已停止或失败，白板方案未应用。');
+                  Object.assign(own, boardSkillResult(rawBody, own.boardContext));
+                  body = own.body; recoveredBoards.push(own.id);
+                }
+              } else body = mapCitationNumbers(rawBody, number => {
                 const source = own.context[number - 1];
                 const evidence = source && next.evidence[source.evidenceId], document = source && next.documents[source.documentId];
                 if (!source || !evidence || document?.hash !== source.documentHash || evidence.documentId !== source.documentId || evidence.quote !== source.quote || evidence.pageIndex !== source.pageIndex || source.kind === 'region' && JSON.stringify(source.region) !== JSON.stringify(evidence.region)) throw new Error(`引用 [${number}] 的原文来源尚未核实，回答已保留。`);
@@ -177,9 +186,14 @@ function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot)
         }
       const requestId = prior?.id ?? uid('request');
       const old = next.requests[requestId];
-      if (old?.status === 'generating') return;
-      const complete = turn.answerComplete !== false && (turn.turnStatus ? turn.turnStatus === 'completed' : snapshot.state !== 'busy' && !!turn.body.trim());
-      next.requests[requestId] = { id: requestId, researchId, conversationId: id, connectionId: snapshot.agentId, nativeSessionId: snapshot.nativeSessionId, nativeTurnId: turn.turnId, nativeImported: true, nativeMessageId: turn.id, prompt: turn.prompt, supplementalInputs: turn.supplementalInputs, body: turn.body, events: turn.events, context: [], evidenceIds: [], createdAt: turn.createdAt, status: complete ? 'done' : turn.turnStatus === 'failed' ? 'error' : 'interrupted', ...(!complete ? { error: turn.answerComplete === false ? '当前只读取到这轮回答的预览，完整回答仍由原生客户端保存。' : turn.turnStatus === 'inProgress' ? '此原生回合仍在运行，刷新后更新记录。' : !turn.body.trim() ? '这轮原生记录尚无可见回答，请先核对原生记录。' : '这轮原生记录尚未完成，请先核对原生记录。' } : {}), purpose: 'chat', mode: 'live', history: [] };
+      if (old?.status === 'generating' && !old.nativeImported) return;
+      const complete = turn.answerComplete !== false && (turn.turnStatus ? turn.turnStatus === 'completed' : snapshot.state === 'idle' && !!turn.body.trim());
+      const status = complete ? 'done' : turn.turnStatus === 'inProgress' ? 'generating' : turn.turnStatus === 'failed' ? 'error' : turn.turnStatus === 'interrupted' ? 'stopped' : 'interrupted';
+      const error = status === 'error' ? '原生回合执行失败，已收到的内容已保留。'
+        : status === 'stopped' ? '本轮已中断，已收到的内容已保留。'
+        : status === 'interrupted' ? turn.answerComplete === false ? '当前只读取到这轮回答的预览，完整回答仍由原生客户端保存。' : !turn.body.trim() ? '这轮原生记录尚无可见回答，正在核对结束状态。' : '尚未确认这轮原生记录的结束状态，已收到的内容已保留。'
+        : undefined;
+      next.requests[requestId] = { id: requestId, researchId, conversationId: id, connectionId: snapshot.agentId, nativeSessionId: snapshot.nativeSessionId, nativeTurnId: turn.turnId, nativeImported: true, nativeMessageId: turn.id, prompt: turn.prompt, supplementalInputs: turn.supplementalInputs, body: turn.body, events: turn.events, context: [], evidenceIds: [], createdAt: turn.createdAt, status, ...(error ? { error } : {}), purpose: 'chat', mode: 'live', history: [] };
       if (!conversation.requestIds.includes(requestId)) conversation.requestIds.push(requestId);
     };
     for (const message of snapshot.messages) {
@@ -204,11 +218,12 @@ function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot)
     conversation.requestIds.sort((left, right) => (next.requests[left]?.createdAt || '').localeCompare(next.requests[right]?.createdAt || ''));
     if (snapshot.truncated) conversation.nativeReason = [conversation.nativeReason, '当前仅载入部分原生历史，完整原始记录仍由原生客户端管理。'].filter(Boolean).join(' ');
   }, { nativeHistoryRef: snapshot.id });
+  await Promise.all(recoveredBoards.map(autoApplyBoard));
   return id;
 }
 export async function openProjectSession(researchId: string, summary: NativeSessionSummary): Promise<string> {
   const snapshot = await readLatestHistory(researchId, summary.id);
-  const id = snapshot ? mergeNativeSession(researchId, snapshot) : Object.values(workspace.getState().data.conversations).find(c => c.researchId === researchId && c.nativeSessionRef === summary.id)?.id;
+  const id = snapshot ? await mergeNativeSession(researchId, snapshot) : Object.values(workspace.getState().data.conversations).find(c => c.researchId === researchId && c.nativeSessionRef === summary.id)?.id;
   if (!id) throw new Error('正在读取更新的原生记录，请稍后重试。');
   workspace.selectConversation(researchId, id);
   return id;
@@ -217,16 +232,16 @@ export async function refreshProjectConversation(researchId: string, conversatio
   const conversation = workspace.getState().data.conversations[conversationId];
   if (!conversation?.nativeSessionRef || conversation.researchId !== researchId || conversation.requestIds.some(id => {
     const request = workspace.getState().data.requests[id];
-    return request?.status === 'generating' && (!request.nativeRun || request.nativeRun.transport === 'connected' && request.nativeRun.state !== 'unknown');
+    return request?.status === 'generating' && !request.nativeImported && (!request.nativeRun || request.nativeRun.transport === 'connected' && request.nativeRun.state !== 'unknown');
   })) return;
   const snapshot = await readLatestHistory(researchId, conversation.nativeSessionRef);
-  if (snapshot) mergeNativeSession(researchId, snapshot);
+  if (snapshot) await mergeNativeSession(researchId, snapshot);
 }
 export async function loadOlderProjectConversation(researchId: string, conversationId: string): Promise<void> {
   const conversation = workspace.getState().data.conversations[conversationId];
   if (!conversation?.nativeSessionRef || !conversation.nativeHistoryCursor || conversation.researchId !== researchId) return;
   const snapshot = await readLatestHistory(researchId, conversation.nativeSessionRef, conversation.nativeHistoryCursor);
-  if (snapshot) mergeNativeSession(researchId, snapshot);
+  if (snapshot) await mergeNativeSession(researchId, snapshot);
 }
 
 export function selectAgent(researchId: string, connectionId: AIConnectionId) {

@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "executedAt": "2026-10-19T15:14:58.045Z",
+  "status": "failed",
+  "runtime": "production compileAgentPrompt + createCodexRuntime; production parseBoardPlan + previewBoardPlan loaded with installed TypeScript compiler",
+  "fixture": {
+    "data": "synthetic-only",
+    "directory": "<temporary-research-directory>",
+    "originalFiles": [
+      "original.txt"
+    ],
+    "removedAfterVerification": true
+  },
+  "request": {
+    "attemptedModelCalls": 1,
+    "maxModelCalls": 2,
+    "timeoutMs": 90000,
+    "access": "read-only",
+    "nativeSkillIds": [],
+    "builtInSkill": "papertrail-board",
+    "externalDesktopUI": "not-checked"
+  },
+  "checks": {
+    "parserSelfCheck": true,
+    "firstPlanAccepted": false,
+    "followUpAccepted": false,
+    "nativeSessionReturned": true,
+    "sameNativeSessionResumed": false,
+    "originalFilesUnchanged": true
+  },
+  "turns": [
+    {
+      "requestId": "board-probe-1",
+      "usedExistingSession": false,
+      "prompt": "将这三个已有对象组织成输入→编码→输出的方法架构。保留全部已有摆放，使用 flow 布局，建立输入到编码、编码到输出的两条连线。只返回本轮 Skill 规定的 JSON。",
+      "nativeSessionId": "01a154ba-f540-7403-b8a4-98647fe0add4",
+      "nativeTurnId": "01a154ba-f795-7920-90c1-f1d5d814b7be"
+    }
+  ],
+  "tools": [],
+  "error": {
+    "code": "stopped",
+    "message": "生成已停止。"
+  },
+  "durationMs": 90043,
+  "timedOut": true
+}

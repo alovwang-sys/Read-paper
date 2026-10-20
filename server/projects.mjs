@@ -208,7 +208,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       const selectedMessage = message.role === 'assistant' && (!message.itemId || selectedAnswers.some(item => item.id === message.itemId));
       const visible = readPaperHistoryMessage(message);
       let original = visible.text, requestId;
-      const candidate = message.role === 'user' && (visible.requestId || message.text.match(/^\[Read-paper requestId=([A-Za-z0-9._:-]+)\]\n/)?.[1]);
+      const candidate = message.role === 'user' && (visible.requestId || message.clientUserMessageId || message.text.match(/^\[Read-paper requestId=([A-Za-z0-9._:-]+)\]\n/)?.[1]);
       if (validId(candidate)) {
         try {
           const path = join(await managed(project.path), `request-${digest(candidate)}.json`);

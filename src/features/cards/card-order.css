@@ -1,0 +1,4 @@
+.card-order-hint { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #839187; font-size: 11px; line-height: 1.7; margin: -2px 0 14px; }
+.card-order-heading { display: flex; align-items: flex-start; gap: 6px; }
+.card-order-heading .library-card-title { flex: 1; min-width: 0; }
+.card-order-heading .resource-order-trigger { margin: -2px -6px 0 0; }

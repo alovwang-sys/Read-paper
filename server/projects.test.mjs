@@ -156,6 +156,29 @@ test('request deduplication identity requires a matching accepted archive; ordin
   assert.equal(repeated.messages[0].text, envelope); assert.equal(repeated.messages[0].requestId, extracted.requestId);
 });
 
+test('native client user identity restores only an accepted request from the same research and turn', async (t) => {
+  const f = await fixture(t); const project = await f.bind(); const ref = await f.store.remember(project, 'codex', 'client-thread');
+  const original = 'Unwrapped native question';
+  const message = { ...visible('u', original, 'user'), clientUserMessageId: 'client-request', turnId: 'turn-1' };
+  f.set(f.first, { history: { 'client-thread': { ...native('client-thread'), messages: [message, { ...message, id: 'assistant', role: 'assistant' }] } } });
+  const read = () => f.store.read({ ...identity(), sessionRef: ref });
+  const archive = { ...identity(), conversationId: 'conversation-a', requestId: 'client-request', nativeSessionId: 'client-thread', nativeTurnId: 'turn-1', prompt: 'The accepted application question' };
+  assert.equal((await read()).messages[0].requestId, undefined);
+  for (const mismatch of [{ workspaceId: 'other-workspace' }, { researchId: 'other-research' }, { nativeSessionId: 'other-thread' }, { nativeTurnId: 'other-turn' }]) {
+    await f.store.archiveRequest(project, { ...archive, ...mismatch });
+    const rejected = await read();
+    assert.equal(rejected.messages[0].requestId, undefined);
+    assert.equal(rejected.messages[0].text, original);
+  }
+  await f.store.archiveRequest(project, archive);
+  const accepted = await read();
+  assert.equal(accepted.messages[0].requestId, archive.requestId);
+  assert.equal(accepted.messages[0].text, archive.prompt);
+  assert.equal(accepted.messages[0].clientUserMessageId, archive.requestId);
+  assert.equal(accepted.messages[1].requestId, undefined);
+  assert.equal(accepted.messages[1].text, original);
+});
+
 test('accepted request archive restores the real question before native display truncation', async (t) => {
   const f = await fixture(t); const project = await f.bind(); const ref = await f.store.remember(project, 'codex', 'long-thread');
   await f.store.archiveRequest(project, { ...identity(), requestId: 'long-request', nativeSessionId: 'long-thread', nativeTurnId: 'turn-1', prompt: '问题位于长材料之后' });

@@ -82,7 +82,7 @@ test('资料接口仅放行两个 POST 路径，保留 PDF 字节并注入本机
 });
 test('安装包白名单排除.env、真实材料、测试和Git文件', () => {
   const ignore = config.packagerConfig.ignore;
-  for (const file of ['/LICENSE', '/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', ...['ai', 'sources', 'agents', 'managed-runs', 'codex-runtime', 'claude-runtime', 'opencode-runtime', 'projects', 'tikhub-tools', 'images'].map(name => `/server/${name}.mjs`), '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
+  for (const file of ['/LICENSE', '/skills', '/skills/papertrail-board', '/skills/papertrail-board/SKILL.md', '/dist/index.html', '/dist/samples/a.pdf', '/desktop/main.mjs', ...['ai', 'sources', 'agents', 'managed-runs', 'codex-runtime', 'claude-runtime', 'opencode-runtime', 'projects', 'tikhub-tools', 'images'].map(name => `/server/${name}.mjs`), '/node_modules/electron-squirrel-startup/index.js']) assert.equal(ignore(file), false, file);
   for (const file of ['/.env.local', '/desktop/.env.local', '/dist/.env', '/.git/config', '/docs/private.pdf', '/tests/fixtures/a.pdf', '/server/ai.test.mjs', '/server/private.mjs', '/desktop/settings.test.mjs', '/README.md', '/package-lock.json']) assert.equal(ignore(file), true, file);
   for (const file of ['/node_modules/@protobufjs/utf8/tests', '/node_modules/@protobufjs/utf8/tests/data/utf8.txt', '/node_modules/@protobufjs/base64/tests/index.js', '/node_modules/example/docs/README.md', '\\node_modules\\@protobufjs\\utf8\\tests\\index.js']) assert.equal(ignore(file), true, file);
   for (const file of ['/node_modules/@protobufjs/utf8/index.js', '/node_modules/@protobufjs/utf8/LICENSE', '/node_modules/testsupport/index.js']) assert.equal(ignore(file), false, file);

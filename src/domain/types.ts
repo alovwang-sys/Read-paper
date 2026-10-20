@@ -17,6 +17,8 @@ export type Research = {
   question: string;
   documentIds: string[];
   cardIds: string[];
+  boardOrder?: string[];
+  draftOrder?: string[];
   createdAt: string;
   directory?: ResearchDirectory;
   sourceRecords?: Record<string, { note: string; discoveries: SourceDiscovery[] }>;
@@ -152,7 +154,7 @@ export type CardDraft = {
   previous?: { title: string; body: string; evidenceIds: string[] };
   cardId?: string;
 };
-export type Board = { id: string; researchId: string; title: string };
+export type Board = { id: string; researchId: string; title: string; layout?: 'free' | 'tree' };
 export type BoardPlacement = {
   id: string;
   boardId: string;
@@ -160,6 +162,8 @@ export type BoardPlacement = {
   x: number;
   y: number;
   group: string;
+  parentPlacementId?: string;
+  order?: number;
 };
 export type BoardEdge = {
   id: string;
@@ -167,6 +171,38 @@ export type BoardEdge = {
   fromPlacementId: string;
   toPlacementId: string;
   label: string;
+};
+export type BoardSnapshot = { board: Board; placements: BoardPlacement[]; edges: BoardEdge[] };
+export type BoardContext = {
+  intent?: 'create';
+  allowNewCards?: boolean;
+  allowedEvidenceIds?: string[];
+  researchId: string;
+  boardId: string;
+  revision: number;
+  snapshot: BoardSnapshot;
+  resources: { ref: { kind: 'card' | 'document'; id: string }; title: string; body?: string; evidenceIds: string[] }[];
+};
+export type BoardPlan = {
+  summary: string;
+  title: string;
+  layout: 'preserve' | 'groups' | 'flow' | 'tree';
+  nodes: { placementId?: string; resourceRef?: { kind: 'card' | 'document'; id: string }; card?: { title: string; body: string; evidenceIds: string[] }; group: string; parent?: number | null; order?: number }[];
+  edges: { from: number; to: number; label: string }[];
+};
+export type BoardChange = {
+  id: string;
+  boardId: string;
+  researchId: string;
+  actor: string;
+  summary: string;
+  createdAt: string;
+  before: BoardSnapshot | null;
+  after: BoardSnapshot | null;
+  revision: number;
+  requestId?: string;
+  restores?: string;
+  createdCards?: Card[];
 };
 export type Draft = {
   id: string;
@@ -212,6 +248,7 @@ export type Session = {
   sourcePreview?: { candidate: SourceCandidate; discovery?: SourceDiscovery };
   active: WorkspaceViewRef;
   researchView?: ResearchViewId;
+  collapsedNav?: ('boards' | 'drafts')[];
   recentItems?: ResourceRef[];
   libraryFilter?: LibraryFilter;
   libraryResearchId?: string;
@@ -353,6 +390,9 @@ export type AIRequest = {
   codex?: CodexSettings;
   interactions?: AgentInteraction[];
   supplementalInputs?: NativeUserInput[];
+  boardContext?: BoardContext;
+  boardProposal?: BoardPlan;
+  boardApplyError?: string;
 };
 export type Conversation = {
   id: string;
@@ -378,6 +418,9 @@ export type Conversation = {
   skills?: AgentSkill[];
   codex?: CodexSettings;
   inlineSource?: { documentId: string; pageIndex: number; evidenceId: string; draftId?: string; promoted?: boolean };
+  boardSkill?: { boardId: string; scope: 'board' | 'research'; allowNewCards?: boolean };
+  boardSuggestionRequestId?: string;
+  boardSuggestionDismissed?: boolean;
 };
 export type WorkspaceData = {
   schemaVersion: 3;
@@ -398,6 +441,8 @@ export type WorkspaceData = {
   sidebarCollapsed: boolean;
   sidebarWidth?: number;
   panelWidth: number;
+  boardChanges?: Record<string, BoardChange>;
+  boardRevisions?: Record<string, number>;
 };
 export type WorkspaceState = {
   data: WorkspaceData;

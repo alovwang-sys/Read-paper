@@ -1,0 +1,1672 @@
+{
+  "generatedAt": "2026-10-20T02:05:17.282Z",
+  "mode": "真实模型输出 + fixture 渲染回放；不是应用原生聊天端到端验收",
+  "source": "docs/verification/research-map/ai-existing-map/codex-probe.json",
+  "sourceSha256": "58bd32f7feb3b2a81431455b5220d859e1e96a3d579d6a6db87a1fd9ea6814c9",
+  "model": "gpt-6.1-sol",
+  "plan": {
+    "title": "我的训练研究图",
+    "layout": "preserve",
+    "boardMode": "tree",
+    "nodes": 11,
+    "parentChild": 10,
+    "semanticEdges": 6
+  },
+  "checks": {
+    "rawResponseParseMatches": true,
+    "productionPreviewMatches": true,
+    "defaultStructuralOnly": true,
+    "optionalRelationsRender": true,
+    "iconsReflectRootBranchLeaf": true,
+    "factualPrefixDoesNotChangeRoleIcon": true,
+    "reviewStatusIndependentOfIcon": true,
+    "collapseAndSelectionPersist": true,
+    "cardsStructureAndEdgesUnchanged": true,
+    "fullBodyAccessible": true
+  },
+  "captures": [
+    {
+      "name": "titles-1440",
+      "size": {
+        "width": 1440,
+        "height": 900
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 1194,
+          "height": 1262
+        },
+        "viewport": {
+          "width": 1200,
+          "height": 661,
+          "x": 0,
+          "y": 0
+        },
+        "nodes": [
+          {
+            "id": "seed-placement-0",
+            "title": "训练方案研究",
+            "x": 64,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "根主题卡片",
+            "iconClass": "lucide lucide-target",
+            "screenTitleFontPx": 15,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-1",
+            "title": "已有更新方式",
+            "x": 404,
+            "y": 128,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "更新方式对照计划",
+            "x": 744,
+            "y": 64,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "固定输入与对照条件",
+            "x": 744,
+            "y": 192,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-2",
+            "title": "已有运行边界",
+            "x": 404,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "运行条件与产物登记",
+            "x": 744,
+            "y": 320,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "检查点恢复实验",
+            "x": 744,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "环境更新与多机演练",
+            "x": 744,
+            "y": 576,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "评估与选择计划",
+            "x": 404,
+            "y": 768,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "测量与重复运行",
+            "x": 744,
+            "y": 704,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "结果核查与取舍记录",
+            "x": 744,
+            "y": 832,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 7,
+        "clippedTitles": 0,
+        "cardOverlaps": [],
+        "structuralCount": 10,
+        "semanticCount": 0,
+        "paths": [
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-1",
+            "from": "seed-placement-0",
+            "to": "seed-placement-1",
+            "length": 338.2622985839844,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-3",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-3",
+            "length": 107.7722396850586,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-4",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-4",
+            "length": 107.77234649658203,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-2",
+            "from": "seed-placement-0",
+            "to": "seed-placement-2",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-5",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-5",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-6",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-6",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-7",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-7",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->proposal-placement-8",
+            "from": "seed-placement-0",
+            "to": "proposal-placement-8",
+            "length": 338.2621154785156,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-9",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-9",
+            "length": 107.77236938476562,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-10",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-10",
+            "length": 107.77238464355469,
+            "thirdCardIntersections": []
+          }
+        ],
+        "groupRectangles": 0,
+        "documentWidth": 1440
+      }
+    },
+    {
+      "name": "titles-1280",
+      "size": {
+        "width": 1280,
+        "height": 800
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 1194,
+          "height": 1262
+        },
+        "viewport": {
+          "width": 1040,
+          "height": 561,
+          "x": 0,
+          "y": 0
+        },
+        "nodes": [
+          {
+            "id": "seed-placement-0",
+            "title": "训练方案研究",
+            "x": 64,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "根主题卡片",
+            "iconClass": "lucide lucide-target",
+            "screenTitleFontPx": 15,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-1",
+            "title": "已有更新方式",
+            "x": 404,
+            "y": 128,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "更新方式对照计划",
+            "x": 744,
+            "y": 64,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "固定输入与对照条件",
+            "x": 744,
+            "y": 192,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-2",
+            "title": "已有运行边界",
+            "x": 404,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "运行条件与产物登记",
+            "x": 744,
+            "y": 320,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "检查点恢复实验",
+            "x": 744,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "环境更新与多机演练",
+            "x": 744,
+            "y": 576,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "评估与选择计划",
+            "x": 404,
+            "y": 768,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "测量与重复运行",
+            "x": 744,
+            "y": 704,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "结果核查与取舍记录",
+            "x": 744,
+            "y": 832,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 7,
+        "clippedTitles": 0,
+        "cardOverlaps": [],
+        "structuralCount": 10,
+        "semanticCount": 0,
+        "paths": [
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-1",
+            "from": "seed-placement-0",
+            "to": "seed-placement-1",
+            "length": 338.2622985839844,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-3",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-3",
+            "length": 107.7722396850586,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-4",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-4",
+            "length": 107.77234649658203,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-2",
+            "from": "seed-placement-0",
+            "to": "seed-placement-2",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-5",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-5",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-6",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-6",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-7",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-7",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->proposal-placement-8",
+            "from": "seed-placement-0",
+            "to": "proposal-placement-8",
+            "length": 338.2621154785156,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-9",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-9",
+            "length": 107.77236938476562,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-10",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-10",
+            "length": 107.77238464355469,
+            "thirdCardIntersections": []
+          }
+        ],
+        "groupRectangles": 0,
+        "documentWidth": 1280
+      }
+    },
+    {
+      "name": "titles-1024",
+      "size": {
+        "width": 1024,
+        "height": 800
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 1194,
+          "height": 1262
+        },
+        "viewport": {
+          "width": 1024,
+          "height": 563,
+          "x": 0,
+          "y": 0
+        },
+        "nodes": [
+          {
+            "id": "seed-placement-0",
+            "title": "训练方案研究",
+            "x": 64,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "根主题卡片",
+            "iconClass": "lucide lucide-target",
+            "screenTitleFontPx": 15,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-1",
+            "title": "已有更新方式",
+            "x": 404,
+            "y": 128,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "更新方式对照计划",
+            "x": 744,
+            "y": 64,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "固定输入与对照条件",
+            "x": 744,
+            "y": 192,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-2",
+            "title": "已有运行边界",
+            "x": 404,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "运行条件与产物登记",
+            "x": 744,
+            "y": 320,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "检查点恢复实验",
+            "x": 744,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "环境更新与多机演练",
+            "x": 744,
+            "y": 576,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "评估与选择计划",
+            "x": 404,
+            "y": 768,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "测量与重复运行",
+            "x": 744,
+            "y": 704,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "结果核查与取舍记录",
+            "x": 744,
+            "y": 832,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 7,
+        "clippedTitles": 0,
+        "cardOverlaps": [],
+        "structuralCount": 10,
+        "semanticCount": 0,
+        "paths": [
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-1",
+            "from": "seed-placement-0",
+            "to": "seed-placement-1",
+            "length": 338.2622985839844,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-3",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-3",
+            "length": 107.7722396850586,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-4",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-4",
+            "length": 107.77234649658203,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-2",
+            "from": "seed-placement-0",
+            "to": "seed-placement-2",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-5",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-5",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-6",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-6",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-7",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-7",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->proposal-placement-8",
+            "from": "seed-placement-0",
+            "to": "proposal-placement-8",
+            "length": 338.2621154785156,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-9",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-9",
+            "length": 107.77236938476562,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-10",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-10",
+            "length": 107.77238464355469,
+            "thirdCardIntersections": []
+          }
+        ],
+        "groupRectangles": 0,
+        "documentWidth": 1024
+      }
+    },
+    {
+      "name": "relations-1440",
+      "size": {
+        "width": 1440,
+        "height": 900
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 1194,
+          "height": 1262
+        },
+        "viewport": {
+          "width": 1200,
+          "height": 661,
+          "x": 0,
+          "y": 0
+        },
+        "nodes": [
+          {
+            "id": "seed-placement-0",
+            "title": "训练方案研究",
+            "x": 64,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "根主题卡片",
+            "iconClass": "lucide lucide-target",
+            "screenTitleFontPx": 15,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-1",
+            "title": "已有更新方式",
+            "x": 404,
+            "y": 128,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "更新方式对照计划",
+            "x": 744,
+            "y": 64,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "固定输入与对照条件",
+            "x": 744,
+            "y": 192,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-2",
+            "title": "已有运行边界",
+            "x": 404,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "运行条件与产物登记",
+            "x": 744,
+            "y": 320,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "检查点恢复实验",
+            "x": 744,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "环境更新与多机演练",
+            "x": 744,
+            "y": 576,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "评估与选择计划",
+            "x": 404,
+            "y": 768,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "测量与重复运行",
+            "x": 744,
+            "y": 704,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "结果核查与取舍记录",
+            "x": 744,
+            "y": 832,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 7,
+        "clippedTitles": 0,
+        "cardOverlaps": [],
+        "structuralCount": 10,
+        "semanticCount": 6,
+        "paths": [
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-1",
+            "from": "seed-placement-0",
+            "to": "seed-placement-1",
+            "length": 338.2622985839844,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-3",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-3",
+            "length": 107.7722396850586,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-1->proposal-placement-4",
+            "from": "seed-placement-1",
+            "to": "proposal-placement-4",
+            "length": 107.77234649658203,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-2",
+            "from": "seed-placement-0",
+            "to": "seed-placement-2",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-5",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-5",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-6",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-6",
+            "length": 80,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-2->proposal-placement-7",
+            "from": "seed-placement-2",
+            "to": "proposal-placement-7",
+            "length": 159.3171844482422,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->proposal-placement-8",
+            "from": "seed-placement-0",
+            "to": "proposal-placement-8",
+            "length": 338.2621154785156,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-9",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-9",
+            "length": 107.77236938476562,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-10",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-10",
+            "length": 107.77238464355469,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "semantic",
+            "id": "proposal-edge-0",
+            "from": "proposal-placement-4",
+            "to": "proposal-placement-3",
+            "length": 16.79998779296875,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "semantic",
+            "id": "proposal-edge-1",
+            "from": "proposal-placement-5",
+            "to": "proposal-placement-10",
+            "length": 677.030029296875,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "semantic",
+            "id": "proposal-edge-2",
+            "from": "proposal-placement-9",
+            "to": "proposal-placement-3",
+            "length": 804.6533203125,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "semantic",
+            "id": "proposal-edge-3",
+            "from": "proposal-placement-6",
+            "to": "proposal-placement-10",
+            "length": 545.3345336914062,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "semantic",
+            "id": "proposal-edge-4",
+            "from": "proposal-placement-7",
+            "to": "proposal-placement-10",
+            "length": 417.3345642089844,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "semantic",
+            "id": "proposal-edge-5",
+            "from": "proposal-placement-9",
+            "to": "proposal-placement-10",
+            "length": 16.800048828125,
+            "thirdCardIntersections": []
+          }
+        ],
+        "groupRectangles": 0,
+        "documentWidth": 1440
+      }
+    },
+    {
+      "name": "focused-branch-1440",
+      "size": {
+        "width": 1440,
+        "height": 900
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 1194,
+          "height": 878
+        },
+        "viewport": {
+          "width": 1200,
+          "height": 605,
+          "x": 0,
+          "y": 0
+        },
+        "nodes": [
+          {
+            "id": "seed-placement-0",
+            "title": "训练方案研究",
+            "x": 64,
+            "y": 256,
+            "width": 260,
+            "height": 100,
+            "iconRole": "根主题卡片",
+            "iconClass": "lucide lucide-target",
+            "screenTitleFontPx": 15,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-1",
+            "title": "已有更新方式",
+            "x": 404,
+            "y": 64,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-2",
+            "title": "已有运行边界",
+            "x": 404,
+            "y": 192,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "评估与选择计划",
+            "x": 404,
+            "y": 384,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "测量与重复运行",
+            "x": 744,
+            "y": 320,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "结果核查与取舍记录",
+            "x": 744,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          }
+        ],
+        "fullyVisibleNodes": 6,
+        "clippedTitles": 0,
+        "cardOverlaps": [],
+        "structuralCount": 5,
+        "semanticCount": 0,
+        "paths": [
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-1",
+            "from": "seed-placement-0",
+            "to": "seed-placement-1",
+            "length": 216.9586181640625,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-2",
+            "from": "seed-placement-0",
+            "to": "seed-placement-2",
+            "length": 107.77230072021484,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->proposal-placement-8",
+            "from": "seed-placement-0",
+            "to": "proposal-placement-8",
+            "length": 159.31704711914062,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-9",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-9",
+            "length": 107.77233123779297,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-10",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-10",
+            "length": 107.7723617553711,
+            "thirdCardIntersections": []
+          }
+        ],
+        "groupRectangles": 0,
+        "documentWidth": 1440
+      }
+    },
+    {
+      "name": "focused-branch-1280",
+      "size": {
+        "width": 1280,
+        "height": 800
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 1194,
+          "height": 878
+        },
+        "viewport": {
+          "width": 1040,
+          "height": 505,
+          "x": 0,
+          "y": 0
+        },
+        "nodes": [
+          {
+            "id": "seed-placement-0",
+            "title": "训练方案研究",
+            "x": 64,
+            "y": 256,
+            "width": 260,
+            "height": 100,
+            "iconRole": "根主题卡片",
+            "iconClass": "lucide lucide-target",
+            "screenTitleFontPx": 15,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-1",
+            "title": "已有更新方式",
+            "x": 404,
+            "y": 64,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-2",
+            "title": "已有运行边界",
+            "x": 404,
+            "y": 192,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "评估与选择计划",
+            "x": 404,
+            "y": 384,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "测量与重复运行",
+            "x": 744,
+            "y": 320,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "结果核查与取舍记录",
+            "x": 744,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 5,
+        "clippedTitles": 0,
+        "cardOverlaps": [],
+        "structuralCount": 5,
+        "semanticCount": 0,
+        "paths": [
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-1",
+            "from": "seed-placement-0",
+            "to": "seed-placement-1",
+            "length": 216.9586181640625,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-2",
+            "from": "seed-placement-0",
+            "to": "seed-placement-2",
+            "length": 107.77230072021484,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->proposal-placement-8",
+            "from": "seed-placement-0",
+            "to": "proposal-placement-8",
+            "length": 159.31704711914062,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-9",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-9",
+            "length": 107.77233123779297,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-10",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-10",
+            "length": 107.7723617553711,
+            "thirdCardIntersections": []
+          }
+        ],
+        "groupRectangles": 0,
+        "documentWidth": 1280
+      }
+    },
+    {
+      "name": "focused-branch-1024",
+      "size": {
+        "width": 1024,
+        "height": 800
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 1194,
+          "height": 878
+        },
+        "viewport": {
+          "width": 1024,
+          "height": 507,
+          "x": 0,
+          "y": 0
+        },
+        "nodes": [
+          {
+            "id": "seed-placement-0",
+            "title": "训练方案研究",
+            "x": 64,
+            "y": 256,
+            "width": 260,
+            "height": 100,
+            "iconRole": "根主题卡片",
+            "iconClass": "lucide lucide-target",
+            "screenTitleFontPx": 15,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-1",
+            "title": "已有更新方式",
+            "x": 404,
+            "y": 64,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "seed-placement-2",
+            "title": "已有运行边界",
+            "x": 404,
+            "y": 192,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "评估与选择计划",
+            "x": 404,
+            "y": 384,
+            "width": 260,
+            "height": 100,
+            "iconRole": "分支主题卡片",
+            "iconClass": "lucide lucide-git-branch",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "测量与重复运行",
+            "x": 744,
+            "y": 320,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "结果核查与取舍记录",
+            "x": 744,
+            "y": 448,
+            "width": 260,
+            "height": 100,
+            "iconRole": "观点卡片",
+            "iconClass": "lucide lucide-sticky-note",
+            "screenTitleFontPx": 14,
+            "screenBodyFontPx": null,
+            "titleClipped": false,
+            "bodyClipped": false,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 5,
+        "clippedTitles": 0,
+        "cardOverlaps": [],
+        "structuralCount": 5,
+        "semanticCount": 0,
+        "paths": [
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-1",
+            "from": "seed-placement-0",
+            "to": "seed-placement-1",
+            "length": 216.9586181640625,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->seed-placement-2",
+            "from": "seed-placement-0",
+            "to": "seed-placement-2",
+            "length": 107.77230072021484,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "seed-placement-0->proposal-placement-8",
+            "from": "seed-placement-0",
+            "to": "proposal-placement-8",
+            "length": 159.31704711914062,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-9",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-9",
+            "length": 107.77233123779297,
+            "thirdCardIntersections": []
+          },
+          {
+            "kind": "parent-child",
+            "id": "proposal-placement-8->proposal-placement-10",
+            "from": "proposal-placement-8",
+            "to": "proposal-placement-10",
+            "length": 107.7723617553711,
+            "thirdCardIntersections": []
+          }
+        ],
+        "groupRectangles": 0,
+        "documentWidth": 1024
+      }
+    }
+  ],
+  "blockedRequests": [],
+  "pageErrors": [],
+  "limitations": [
+    "合成材料没有对应 PDF，未检验原文跳转。",
+    "fixture 直接装载生产 preview，未测试真实发送、提案确认与历史生成。",
+    "碰撞检查以 DOM 矩形和每条路径 799 个采样点近似判断；不证明任意大图均无碰撞。",
+    "卡片全文通过右侧查看；不要求所有节点在同一屏幕同时可读。"
+  ]
+}

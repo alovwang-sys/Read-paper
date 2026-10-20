@@ -1,0 +1,72 @@
+import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { createSeed } from '../../src/data/seed';
+import { mockProjectService } from './project-fixture';
+import { openResearchPage } from './knowledge-helpers';
+import { main, panel, saved, state } from './workspace-split-helpers';
+
+test('已有图补充AI草稿先预览，折叠不冲突，确认后共享卡片及层级刷新恢复', async ({ page }) => {
+  const seed = createSeed(), errors: string[] = [];
+  seed.boards['board-a'].layout = 'tree';
+  seed.placements['placement-a'].order = 0;
+  seed.placements['placement-b'].parentPlacementId = 'placement-a';
+  seed.placements['placement-b'].order = 0;
+  page.on('pageerror', error => errors.push(error.message));
+  await mockProjectService(page, { bound: false, seed });
+  await page.route('**/api/ai/config', route => route.fulfill({ json: { configured: true, images: false, model: 'tree-fixture' } }));
+  await page.route('**/api/ai/agents', route => route.fulfill({ json: { agents: [] } }));
+  let calls = 0;
+  await page.route('**/api/ai/chat', async route => {
+    calls++;
+    const id = route.request().postDataJSON().requestId;
+    await expect.poll(async () => !!(await state(page)).requests[id]).toBe(true);
+    const request = (await state(page)).requests[id], context = request.boardContext!;
+    expect(context.allowNewCards).toBe(true);
+    expect(context.allowedEvidenceIds).toEqual(request.context.map(c => c.evidenceId));
+    const kept = context.snapshot.placements;
+    const nodes = kept.map(p => ({ placementId: p.id, resourceRef: p.resourceRef, group: p.group, parent: p.parentPlacementId ? kept.findIndex(old => old.id === p.parentPlacementId) : null, order: p.order ?? 0 }));
+    const plan = { title: context.snapshot.board.title, summary: '建议补充对照方法与评估计划，保留既有内容，实验尚未执行。', layout: 'tree', nodes: [
+      ...nodes,
+      { card: { title: '建议：配对比较计划', body: '建议：保持输入、硬件和版本一致，比较方法输出，保存逐运行的测量记录。条件尚待确认，实验未执行。', evidenceIds: [] }, group: '评估', parent: 0, order: 1 },
+    ], edges: context.snapshot.edges.map(e => ({ from: kept.findIndex(p => p.id === e.fromPlacementId), to: kept.findIndex(p => p.id === e.toPlacementId), label: e.label })) };
+    await route.fulfill({ contentType: 'application/x-ndjson', body: [{ type: 'delta', text: JSON.stringify(plan) }, { type: 'done', model: 'tree-fixture' }].map(e => JSON.stringify(e)).join('\n') + '\n' });
+  });
+  await page.goto('/'); await saved(page); await openResearchPage(page, '证据与论证');
+  await main(page).getByRole('button', { name: '让 Agent 整理', exact: true }).click();
+  await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+  await panel(page).getByRole('button', { name: '模型直连', exact: true }).click();
+  await main(page).getByRole('button', { name: '让 Agent 整理', exact: true }).click();
+  await expect(panel(page).getByRole('checkbox', { name: '允许补充方法、计划和待验证问题草稿' })).toBeChecked();
+  const before = await state(page);
+  await panel(page).getByLabel('向 AI 提问').fill('补充方法与可操作的评估计划，并整理层级');
+  await panel(page).getByRole('button', { name: '发送问题', exact: true }).click();
+  const proposal = panel(page).getByRole('region', { name: '白板整理提案' }).last();
+  await expect(proposal.getByText('等待确认', { exact: true })).toBeVisible();
+  expect((await state(page)).placements).toEqual(before.placements);
+  expect((await state(page)).cards).toEqual(before.cards);
+  await proposal.getByRole('button', { name: '预览白板整理', exact: true }).click();
+  await expect(proposal.getByLabel(/^白板层级预览/)).toContainText('建议：配对比较计划');
+  await expect(proposal.getByLabel('白板变更摘要')).toContainText('新草稿 1');
+  const root = main(page).locator('[data-placement-id="placement-a"]');
+  await root.getByRole('button', { name: /^收起分支：/ }).click();
+  expect((await state(page)).boardRevisions).toEqual(before.boardRevisions);
+  await mkdir('docs/verification/tree-board', { recursive: true });
+  await page.screenshot({ path: 'docs/verification/tree-board/ai-tree-preview-1440.png' });
+  await proposal.getByRole('button', { name: '确认应用此批变更', exact: true }).click();
+  await expect(proposal.getByText('已保存', { exact: true })).toBeVisible();
+  await expect(proposal.getByRole('alert')).toHaveCount(0);
+  const after = await state(page), created = Object.values(after.cards).find(c => !before.cards[c.id])!;
+  expect(created.needsReview).toBe(true); expect(created.provenance?.prompt).toContain('补充方法');
+  Object.values(before.cards).forEach(c => expect(after.cards[c.id]).toEqual(c));
+  expect(Object.values(after.boardChanges ?? {}).filter(c => c.requestId)).toHaveLength(1);
+  await root.getByRole('button', { name: /^展开分支：/ }).click();
+  const added = main(page).locator(`[data-resource-id="${created.id}"]`);
+  await expect(added).toContainText('建议：配对比较计划');
+  await added.getByRole('button', { name: /^编辑内容：/ }).click();
+  await expect(panel(page).getByLabel('卡片正文', { exact: true })).toHaveValue(created.body);
+  await panel(page).getByLabel('卡片正文', { exact: true }).fill(`${created.body}\n人工补充：先确认样本范围。`);
+  await saved(page); await page.reload();
+  expect((await state(page)).cards[created.id].body).toContain('人工补充');
+  expect(Object.values((await state(page)).placements).find(p => p.resourceRef.id === created.id)?.parentPlacementId).toBe('placement-a');
+  expect(calls).toBe(1); expect(errors).toEqual([]);
+});

@@ -1,0 +1,19 @@
+{
+  "reviewedAt": "2026-10-20",
+  "reviewType": "Assistant close reading of the single real output against the synthetic fixture; not independent domain-expert verification",
+  "source": "codex-probe.json",
+  "basisCardsReviewed": [0, 2, 3, 4, 7, 11, 14],
+  "observations": [
+    "The seven basis cards faithfully summarize the eight supplied excerpts. The two-source measurement card preserves the distinction between same seed and identical cross-hardware results.",
+    "The response does more than classify documents: it proposes matched method comparisons, measurement conventions, checkpoint interruption/recovery tests, dependency-upgrade comparisons, multi-machine exit drills, run traceability, and a conditional decision table.",
+    "Recommendations describe comparison conditions, observations or metrics, execution steps, and expected artifacts. Missing repeat counts, acceptance criteria, hardware budgets, concrete configurations, and checkpoint contents remain explicitly unconfirmed.",
+    "The nine recommendation cards and two open-question cards contain no evidence IDs or numbered citations. No numerical test results, thresholds, specific library versions, or claims of completed experiments were invented.",
+    "Cross-group relationships connect architectural prerequisites to experiments and prospective decision-making, rather than merely connecting documents in their original order."
+  ],
+  "limitations": [
+    "The materials and all generated research content are synthetic. This result does not validate a real training system or prove consistent performance across research topics.",
+    "Some edge labels such as 提供方法比较结果 are intended as future plan dependencies. A production UI should distinguish planned outputs from results already obtained; the current schema has no structured completion status.",
+    "The model selected flow layout. Production preview spans six x-columns and up to seven y-rows, with 17 cross-group edges. Successful generation and valid graph structure do not prove that the resulting board is easy to read.",
+    "The current board schema does not encode parent-child hierarchy, collapsible branches, semantic relationship types, or explicit node epistemic status. Category prefixes in this probe are text conventions only."
+  ]
+}

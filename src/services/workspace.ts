@@ -6,6 +6,9 @@ import { migrateWorkspace } from '../data/migrations';
 import { hasFullText, normalizeIdentifier } from '../domain/knowledge';
 import { paneGroups, findPaneTab, ensurePaneLayout, replacePane, collapseEmptyPanes, syncPaneSession, isResourceView } from './panes';
 export { getReaderPosition } from './panes';
+import { recordBoardChanges, type BoardChangeInfo } from '../domain/board-history';
+import { layoutBoardTree } from '../domain/board-layout';
+import { researchResourceIds, type ResearchResourceKind } from '../domain/research-order';
 export { hasFullText, normalizeIdentifier, conclusionIssues } from '../domain/knowledge';
 import type {
   BoardPlacement,
@@ -291,7 +294,7 @@ export const workspace = {
       });
     }
   },
-  updateData(change: (data: WorkspaceData) => void, options?: { nativeHistoryRef?: string; nativeRunRef?: string }) {
+  updateData(change: (data: WorkspaceData) => void, options?: { nativeHistoryRef?: string; nativeRunRef?: string; boardChange?: BoardChangeInfo }) {
     if (restoring) throw new Error('正在恢复资料，请稍后再编辑。');
     if (!state.loaded || state.loadError)
       throw new Error('数据尚未成功加载，请重试加载后编辑');
@@ -299,7 +302,7 @@ export const workspace = {
     change(data);
     for (const key of layoutUndo.keys()) {
       const old = state.data.sessions[key];
-      const membership = (d: WorkspaceData) => JSON.stringify([Object.keys(d.documents),Object.keys(d.cards),Object.keys(d.boards),Object.keys(d.drafts),Object.keys(d.evidence),Object.keys(d.placements),d.researches[key]?.documentIds,d.researches[key]?.cardIds]);
+      const membership = (d: WorkspaceData) => JSON.stringify([Object.keys(d.documents),Object.keys(d.cards),Object.keys(d.boards),Object.keys(d.drafts),Object.keys(d.evidence),Object.keys(d.placements),d.researches[key]?.documentIds.slice().sort(),d.researches[key]?.cardIds.slice().sort()]);
       if (scopeKey(data.scope) !== scopeKey(state.data.scope) || structure(old.layout) !== structure(data.sessions[key]?.layout) || membership(data) !== membership(state.data)) layoutUndo.delete(key);
     }
     for (const request of Object.values(state.data.requests)) {
@@ -325,6 +328,7 @@ export const workspace = {
       if (request.status !== 'generating' && next && next.body !== request.body && !nativeRefresh && !nativeRecovery && !nativeHistoryRecovery)
         throw new Error('原始问答不可改写，请编辑独立卡片草稿。');
     }
+    recordBoardChanges(state.data, data, options?.boardChange);
     revision++;
     let journalError: string | undefined;
     try {
@@ -458,6 +462,7 @@ export const workspace = {
       if (Object.values(data.researches).some(research => research.documentIds.includes(documentId))
         || Object.values(data.evidence).some(evidence => evidence.documentId === documentId)
         || Object.values(data.placements).some(placement => placement.resourceRef.kind === 'document' && placement.resourceRef.id === documentId)
+        || Object.values(data.boardChanges ?? {}).some(change => [change.before, change.after].some(snapshot => snapshot?.placements.some(p => p.resourceRef.kind === 'document' && p.resourceRef.id === documentId)) || change.createdCards?.some(card => card.provenance?.context.some(source => source.documentId === documentId)))
         || Object.values(data.requests).some(request => request.context.some(item => item.documentId === documentId) || request.history?.some(turn => turn.context.some(item => item.documentId === documentId)))
         || Object.values(data.conversations).some(conversation => conversation.inlineSource?.documentId === documentId || conversation.sentContext?.some(item => item.documentId === documentId)))
         throw new Error('这份资料仍被研究、摘录或对话引用，无法删除。请先移出研究并处理相关引用。');
@@ -506,7 +511,7 @@ export const workspace = {
       target.sourceKind ??= stub.sourceKind;
       target.pdfUrl ??= stub.pdfUrl;
       delete data.documents[stubId];
-    });
+    }, { boardChange: { summary: '合并重复资料', documentMerge: { fromId: stubId, intoId } } });
     status({ selection: undefined });
   },
   captureExcerpt(researchId: string, range: { documentId: string; pageIndex: number; quote: string }) {
@@ -763,6 +768,21 @@ export const workspace = {
   },
   associateCard(researchId: string, cardId: string) {
     workspace.updateData((data) => linkCard(data, researchId, cardId));
+  },
+  moveResearchResource(researchId: string, kind: ResearchResourceKind, id: string, targetId: string, position: 'before' | 'after') {
+    const ids = researchResourceIds(state.data, researchId, kind);
+    if (!['before', 'after'].includes(position) || !ids.includes(id) || !ids.includes(targetId))
+      throw new Error('只能调整同一研究内、同一类型资源的顺序。');
+    if (id === targetId) return;
+    const ordered = ids.filter(item => item !== id);
+    ordered.splice(ordered.indexOf(targetId) + (position === 'after' ? 1 : 0), 0, id);
+    if (ordered.every((item, index) => item === ids[index])) return;
+    workspace.updateData(data => {
+      const research = data.researches[researchId];
+      if (kind === 'card') research.cardIds = ordered;
+      else if (kind === 'board') research.boardOrder = ordered;
+      else research.draftOrder = ordered;
+    });
   },
   createEvidence(range: {
     documentId: string;
@@ -1073,6 +1093,12 @@ export const workspace = {
         group: '',
       };
       data.placements[id] = placement;
+      if (board.layout === 'tree') {
+        const items = Object.values(data.placements).filter(p => p.boardId === boardId);
+        placement.order = Math.max(-1, ...items.filter(p => !p.parentPlacementId).map(p => p.order ?? 0)) + 1;
+        layoutBoardTree(items).forEach(p => { data.placements[p.id] = p; });
+        placement = data.placements[id];
+      }
     });
     return placement;
   },

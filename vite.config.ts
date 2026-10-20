@@ -20,7 +20,7 @@ export default defineConfig({
       for (const name of codecNames) this.emitFile({ type: 'asset', fileName: `pdfjs/wasm/${name}`, source: readFileSync(new URL(name, pdfCodecs)) });
     },
   }],
-  server: { proxy: { '/api/ai': 'http://127.0.0.1:8787', '/api/sources': 'http://127.0.0.1:8787' } },
+  server: { watch: { ignored: ['**/test-results*/**', '**/playwright-report*/**', '**/out/**'] }, proxy: { '/api/ai': 'http://127.0.0.1:8787', '/api/sources': 'http://127.0.0.1:8787' } },
   preview: { proxy: { '/api/ai': 'http://127.0.0.1:8787', '/api/sources': 'http://127.0.0.1:8787' } },
   test: { include: ['tests/unit/**/*.test.ts'] },
 });

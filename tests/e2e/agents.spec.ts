@@ -115,7 +115,7 @@ test('生成中切换助手、后台归属、停止及权限拒绝不回退', as
   await select(page, 'Codex');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('生成期间写下的下一问');
   await panel(page).getByRole('button', { name: '停止生成', exact: true }).click();
-  await expect(panel(page).getByRole('alert').filter({ hasText: '已停止' })).toBeVisible();
+  await expect(panel(page).getByRole('status').filter({ hasText: '已停止，原生回合已确认。' })).toBeVisible();
   release();
   await expect.poll(async () => calls.length).toBe(1);
   expect(calls[0]).toMatchObject({ connectionId: 'codex', conversationId: codexId, researchId: 'research-a' });

@@ -1,11 +1,13 @@
 import { Plus } from 'lucide-react';
+import { researchResourceIds } from '../../domain/research-order';
 import { useWorkspace, uid } from '../../services/workspace';
 import { ResourceOpenMenu, startResourceDrag } from '../library/ResourceOpenMenu';
 import './research.css';
 
 export function ResourceListView({ researchId, kind }: { researchId: string; kind: 'board' | 'draft' }) {
   const { data, actions } = useWorkspace();
-  const items = Object.values(kind === 'board' ? data.boards : data.drafts).filter(item => item.researchId === researchId);
+  const resources = kind === 'board' ? data.boards : data.drafts;
+  const items = researchResourceIds(data, researchId, kind).map(id => resources[id]);
   const name = kind === 'board' ? '白板' : '文稿';
   const scope = { kind: 'research' as const, researchId };
   function open(id: string) { actions.openResource({ kind, id }, { scope, target: 'main' }); }

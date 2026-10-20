@@ -1,0 +1,778 @@
+{
+  "version": 1,
+  "executedAt": "2026-10-20T01:20:05.856Z",
+  "status": "passed",
+  "runtime": "production compileAgentPrompt + createCodexRuntime + parseBoardPlan + previewBoardPlan",
+  "fixture": {
+    "synthetic": true,
+    "documents": 3,
+    "excerpts": 8,
+    "temporaryDirectoryRemoved": true
+  },
+  "request": {
+    "maxModelCalls": 1,
+    "attemptedModelCalls": 1,
+    "rpcTimeoutMs": 30000,
+    "generationDeadline": null,
+    "modelPolicy": "Production default model and effort; no override or user configuration change",
+    "access": "read-only"
+  },
+  "checks": {
+    "parserSelfCheck": true,
+    "nativeCompleted": true,
+    "productionParserAccepted": true,
+    "previewSnapshotAccepted": true,
+    "nodeCountInRequestedRange": true,
+    "multipleGroups": true,
+    "atLeastTwoCrossGroupEdges": true,
+    "connectedUndirected": true,
+    "citationIdsInScope": true,
+    "allExcerptsCovered": true,
+    "allNodesHaveDeclaredCategory": true,
+    "evidenceNodesHaveSources": true,
+    "uncitedRecommendations": true,
+    "uncitedUnknowns": true,
+    "originalFixtureUnchanged": true
+  },
+  "limitations": [
+    "Programmatic checks validate structure and citation IDs, not whether every cited claim is entailed.",
+    "This one synthetic case does not establish reliability for all user materials.",
+    "Current production schema has groups and links, but no explicit parent-child tree or branch collapse."
+  ],
+  "promptSha256": "0319b246fa3aa90d48d90d79887e7ebfdc1b70d57a7400019a2c74adf62792f6",
+  "turn": {
+    "nativeSessionId": "01a156e4-f817-7543-99e2-3131d92950a3",
+    "nativeTurnId": "01a156e4-fa73-78e3-b13a-55eb44e06149",
+    "model": "gpt-6.1-sol",
+    "status": "completed",
+    "rawBody": "{\n  \"summary\": \"将演示材料综合为18张卡片，围绕更新方法、运行架构、评估计划和待确认条件形成工作路径。依据卡片仅归纳材料，建议与问题单独标示；跨组连线表达方案依赖和核查方向。更新方式优劣、恢复能力、多机行为及业务适用性均未验证，本方案不包含测试成绩或预设阈值。\",\n  \"title\": \"从演示材料到可验证的更新与运行方案\",\n  \"layout\": \"flow\",\n  \"nodes\": [\n    {\n      \"card\": {\n        \"title\": \"两种更新方式的共同入口\",\n        \"body\": \"依据：参数高效微调与全量更新共用接口，接收模型路径、数据路径、配置文件和随机种子，但产生不同的可训练参数集合。记录没有证明任一方式更优。[1]\",\n        \"evidenceIds\": [\"demo-evidence-1\"]\n      },\n      \"group\": \"更新方法与选择\"\n    },\n    {\n      \"card\": {\n        \"title\": \"把更新方式作为比较变量\",\n        \"body\": \"建议：以参数高效微调和全量更新为比较对象，明确各自可训练参数、配置及适用约束。通过后续质量与资源测量形成选择依据；比较前确认两种方式的配置如何保持可比。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"更新方法与选择\"\n    },\n    {\n      \"card\": {\n        \"title\": \"数据检查与产物留存基础\",\n        \"body\": \"依据：更新前执行数据格式转换和检查；执行后保存参数文件、配置、数据清单摘要与日志。数据清单摘要用于区分输入版本。[1]\",\n        \"evidenceIds\": [\"demo-evidence-2\"]\n      },\n      \"group\": \"运行架构与追溯\"\n    },\n    {\n      \"card\": {\n        \"title\": \"类库、镜像与外部启动的边界\",\n        \"body\": \"依据：构建记录包含驱动兼容信息、CUDA组件和Python包版本；运行引用镜像摘要。镜像准备依赖，启动命令由外部提交。材料未提供具体类库名称或版本值。[1]\",\n        \"evidenceIds\": [\"demo-evidence-3\"]\n      },\n      \"group\": \"运行架构与追溯\"\n    },\n    {\n      \"card\": {\n        \"title\": \"提交脚本与训练进程\",\n        \"body\": \"依据：提交脚本读取配置后启动分布式进程，输出进入带运行编号的目录。任务周期性写出检查点；现有观察仅证明文件存在，未证明中断后能够继续执行。[1]\",\n        \"evidenceIds\": [\"demo-evidence-4\"]\n      },\n      \"group\": \"运行架构与追溯\"\n    },\n    {\n      \"card\": {\n        \"title\": \"组织可检查的执行链\",\n        \"body\": \"建议：将数据转换与检查、外部提交、镜像内依赖、训练进程、产物写出和独立评测串成执行链。逐步记录输入、输出、调用入口与失败状态，明确每一步由哪个脚本或组件负责。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"运行架构与追溯\"\n    },\n    {\n      \"card\": {\n        \"title\": \"建立运行关联清单\",\n        \"body\": \"建议：以运行编号关联模型来源、数据清单摘要、配置、种子、硬件、镜像摘要、参数文件、日志和评测结果。产出一份可查询清单，使每个测量值都能追溯到对应运行。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"运行架构与追溯\"\n    },\n    {\n      \"card\": {\n        \"title\": \"已有对比控制与测量入口\",\n        \"body\": \"依据：对比记录保持数据清单、评测样本和种子相同，并登记硬件、镜像摘要及配置；相同种子不保证跨硬件结果完全一致。独立脚本计算任务得分，并记录吞吐、峰值显存和总用时，但没有阈值、置信区间或重复运行汇总方式。[1][2]\",\n        \"evidenceIds\": [\"demo-evidence-5\", \"demo-evidence-6\"]\n      },\n      \"group\": \"评估与验证计划\"\n    },\n    {\n      \"card\": {\n        \"title\": \"开展两种更新方式的配对比较\",\n        \"body\": \"建议：固定模型来源、数据版本和评测样本，在相同硬件与镜像条件下分别执行两种更新方式，登记各自配置及参数规模。比较任务得分、吞吐、峰值显存和总用时，产出逐运行结果表；种子列表、重复次数和配置可比规则待确认。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"评估与验证计划\"\n    },\n    {\n      \"card\": {\n        \"title\": \"先定义测量口径与汇总方法\",\n        \"body\": \"建议：明确任务得分的计算规则、吞吐单位、显存采集范围，以及总用时是否包含数据准备和评测。保存逐次原始值并报告波动；重复次数及适用的区间估计方法待确认，产出测量协议与汇总脚本说明。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"评估与验证计划\"\n    },\n    {\n      \"card\": {\n        \"title\": \"验证检查点恢复能力\",\n        \"body\": \"建议：设置连续运行与受控中断后恢复两个条件，记录中断位置、加载的检查点、恢复后的步数、日志和最终测量值。核查训练状态是否完整恢复，并比较结果差异；中断方式、所需状态及可接受差异待确认。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"评估与验证计划\"\n    },\n    {\n      \"card\": {\n        \"title\": \"升级追溯需求与多机证据缺口\",\n        \"body\": \"依据：维护者希望在包或基础镜像更新后，将新旧运行的产物、日志和测量值对应起来。目前只试过单机样例，多机退出行为尚未演练。[1]\",\n        \"evidenceIds\": [\"demo-evidence-7\"]\n      },\n      \"group\": \"缺失信息与研究问题\"\n    },\n    {\n      \"card\": {\n        \"title\": \"开展依赖升级前后比较\",\n        \"body\": \"建议：分别保留升级前后的镜像摘要与依赖记录，尽量一次改变一个包或基础镜像条件，并保持其余比较条件一致。对照产物可加载性、日志异常、任务得分及资源测量，产出变更清单和差异报告；升级对象与判定标准待确认。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"评估与验证计划\"\n    },\n    {\n      \"card\": {\n        \"title\": \"演练多机退出与故障处理\",\n        \"body\": \"建议：在确认可用多机环境后，分别观察正常结束和受控进程异常时的退出码、其他进程状态、日志完整性及残留资源。产出逐场景记录；节点数、进程拓扑、故障注入方式和预期行为待确认。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"评估与验证计划\"\n    },\n    {\n      \"card\": {\n        \"title\": \"选择依据与业务证据仍缺失\",\n        \"body\": \"依据：便签要求补充不同更新方式的选择依据，以及质量、耗时和显存之间的取舍。负责人尚未确认硬性预算，材料没有真实业务测试分数。[1]\",\n        \"evidenceIds\": [\"demo-evidence-8\"]\n      },\n      \"group\": \"缺失信息与研究问题\"\n    },\n    {\n      \"card\": {\n        \"title\": \"确认任务、数据与资源约束\",\n        \"body\": \"待验证：研究者需要确认目标业务任务、评测样本来源与代表性、任务得分含义、可用硬件，以及质量、耗时和显存是否存在硬性要求。形成条件清单，逐项标明负责人和确认状态；当前不能填写预算或达标阈值。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"缺失信息与研究问题\"\n    },\n    {\n      \"card\": {\n        \"title\": \"补齐可执行的技术配置\",\n        \"body\": \"待验证：需要确认实际模型、数据规模、参数高效微调所用类库与配置、全量更新配置、依赖版本、启动命令及检查点内容。产出可审阅的配置清单后，才能把架构方案转成可执行实验。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"缺失信息与研究问题\"\n    },\n    {\n      \"card\": {\n        \"title\": \"形成有条件的选择结论\",\n        \"body\": \"建议：结合配对比较、恢复测试、升级比较和适用的多机演练，列出各方案的质量、耗时、显存与运行限制。依据已确认约束说明可选方案及取舍，保留尚无证据的问题；产出决策表，结论仅适用于实际测试条件。\",\n        \"evidenceIds\": []\n      },\n      \"group\": \"更新方法与选择\"\n    }\n  ],\n  \"edges\": [\n    {\"from\": 0, \"to\": 1, \"label\": \"提供候选方法，优劣待比较\"},\n    {\"from\": 1, \"to\": 8, \"label\": \"转化为比较实验\"},\n    {\"from\": 2, \"to\": 5, \"label\": \"提供数据与产物环节依据\"},\n    {\"from\": 3, \"to\": 5, \"label\": \"提供依赖与启动边界依据\"},\n    {\"from\": 4, \"to\": 5, \"label\": \"提供执行环节依据\"},\n    {\"from\": 5, \"to\": 6, \"label\": \"建议逐环节关联运行记录\"},\n    {\"from\": 6, \"to\": 8, \"label\": \"支持追溯比较条件与结果\"},\n    {\"from\": 7, \"to\": 8, \"label\": \"提供控制条件与指标基础\"},\n    {\"from\": 7, \"to\": 9, \"label\": \"提示补齐测量与汇总口径\"},\n    {\"from\": 9, \"to\": 8, \"label\": \"比较前需明确测量协议\"},\n    {\"from\": 4, \"to\": 10, \"label\": \"文件存在仍需恢复验证\"},\n    {\"from\": 6, \"to\": 10, \"label\": \"关联中断与恢复记录\"},\n    {\"from\": 11, \"to\": 12, \"label\": \"将升级追溯需求转为测试\"},\n    {\"from\": 6, \"to\": 12, \"label\": \"关联升级前后运行\"},\n    {\"from\": 9, \"to\": 12, \"label\": \"复用一致测量口径\"},\n    {\"from\": 11, \"to\": 13, \"label\": \"将多机缺口转为演练\"},\n    {\"from\": 14, \"to\": 15, \"label\": \"明确需要确认的选择条件\"},\n    {\"from\": 15, \"to\": 8, \"label\": \"约束任务与评测设置\"},\n    {\"from\": 3, \"to\": 16, \"label\": \"依赖边界需落实为具体配置\"},\n    {\"from\": 16, \"to\": 5, \"label\": \"执行链落地前需补齐\"},\n    {\"from\": 16, \"to\": 10, \"label\": \"需确认检查点状态内容\"},\n    {\"from\": 16, \"to\": 13, \"label\": \"需确认多机拓扑与启动配置\"},\n    {\"from\": 8, \"to\": 17, \"label\": \"提供方法比较结果\"},\n    {\"from\": 10, \"to\": 17, \"label\": \"补充恢复能力证据\"},\n    {\"from\": 12, \"to\": 17, \"label\": \"补充升级影响证据\"},\n    {\"from\": 13, \"to\": 17, \"label\": \"补充多机场景适用限制\"},\n    {\"from\": 15, \"to\": 17, \"label\": \"提供取舍与判定条件\"}\n  ]\n}"
+  },
+  "plan": {
+    "summary": "将演示材料综合为18张卡片，围绕更新方法、运行架构、评估计划和待确认条件形成工作路径。依据卡片仅归纳材料，建议与问题单独标示；跨组连线表达方案依赖和核查方向。更新方式优劣、恢复能力、多机行为及业务适用性均未验证，本方案不包含测试成绩或预设阈值。",
+    "title": "从演示材料到可验证的更新与运行方案",
+    "layout": "flow",
+    "nodes": [
+      {
+        "card": {
+          "title": "两种更新方式的共同入口",
+          "body": "依据：参数高效微调与全量更新共用接口，接收模型路径、数据路径、配置文件和随机种子，但产生不同的可训练参数集合。记录没有证明任一方式更优。[1]",
+          "evidenceIds": [
+            "demo-evidence-1"
+          ]
+        },
+        "group": "更新方法与选择"
+      },
+      {
+        "card": {
+          "title": "把更新方式作为比较变量",
+          "body": "建议：以参数高效微调和全量更新为比较对象，明确各自可训练参数、配置及适用约束。通过后续质量与资源测量形成选择依据；比较前确认两种方式的配置如何保持可比。",
+          "evidenceIds": []
+        },
+        "group": "更新方法与选择"
+      },
+      {
+        "card": {
+          "title": "数据检查与产物留存基础",
+          "body": "依据：更新前执行数据格式转换和检查；执行后保存参数文件、配置、数据清单摘要与日志。数据清单摘要用于区分输入版本。[1]",
+          "evidenceIds": [
+            "demo-evidence-2"
+          ]
+        },
+        "group": "运行架构与追溯"
+      },
+      {
+        "card": {
+          "title": "类库、镜像与外部启动的边界",
+          "body": "依据：构建记录包含驱动兼容信息、CUDA组件和Python包版本；运行引用镜像摘要。镜像准备依赖，启动命令由外部提交。材料未提供具体类库名称或版本值。[1]",
+          "evidenceIds": [
+            "demo-evidence-3"
+          ]
+        },
+        "group": "运行架构与追溯"
+      },
+      {
+        "card": {
+          "title": "提交脚本与训练进程",
+          "body": "依据：提交脚本读取配置后启动分布式进程，输出进入带运行编号的目录。任务周期性写出检查点；现有观察仅证明文件存在，未证明中断后能够继续执行。[1]",
+          "evidenceIds": [
+            "demo-evidence-4"
+          ]
+        },
+        "group": "运行架构与追溯"
+      },
+      {
+        "card": {
+          "title": "组织可检查的执行链",
+          "body": "建议：将数据转换与检查、外部提交、镜像内依赖、训练进程、产物写出和独立评测串成执行链。逐步记录输入、输出、调用入口与失败状态，明确每一步由哪个脚本或组件负责。",
+          "evidenceIds": []
+        },
+        "group": "运行架构与追溯"
+      },
+      {
+        "card": {
+          "title": "建立运行关联清单",
+          "body": "建议：以运行编号关联模型来源、数据清单摘要、配置、种子、硬件、镜像摘要、参数文件、日志和评测结果。产出一份可查询清单，使每个测量值都能追溯到对应运行。",
+          "evidenceIds": []
+        },
+        "group": "运行架构与追溯"
+      },
+      {
+        "card": {
+          "title": "已有对比控制与测量入口",
+          "body": "依据：对比记录保持数据清单、评测样本和种子相同，并登记硬件、镜像摘要及配置；相同种子不保证跨硬件结果完全一致。独立脚本计算任务得分，并记录吞吐、峰值显存和总用时，但没有阈值、置信区间或重复运行汇总方式。[1][2]",
+          "evidenceIds": [
+            "demo-evidence-5",
+            "demo-evidence-6"
+          ]
+        },
+        "group": "评估与验证计划"
+      },
+      {
+        "card": {
+          "title": "开展两种更新方式的配对比较",
+          "body": "建议：固定模型来源、数据版本和评测样本，在相同硬件与镜像条件下分别执行两种更新方式，登记各自配置及参数规模。比较任务得分、吞吐、峰值显存和总用时，产出逐运行结果表；种子列表、重复次数和配置可比规则待确认。",
+          "evidenceIds": []
+        },
+        "group": "评估与验证计划"
+      },
+      {
+        "card": {
+          "title": "先定义测量口径与汇总方法",
+          "body": "建议：明确任务得分的计算规则、吞吐单位、显存采集范围，以及总用时是否包含数据准备和评测。保存逐次原始值并报告波动；重复次数及适用的区间估计方法待确认，产出测量协议与汇总脚本说明。",
+          "evidenceIds": []
+        },
+        "group": "评估与验证计划"
+      },
+      {
+        "card": {
+          "title": "验证检查点恢复能力",
+          "body": "建议：设置连续运行与受控中断后恢复两个条件，记录中断位置、加载的检查点、恢复后的步数、日志和最终测量值。核查训练状态是否完整恢复，并比较结果差异；中断方式、所需状态及可接受差异待确认。",
+          "evidenceIds": []
+        },
+        "group": "评估与验证计划"
+      },
+      {
+        "card": {
+          "title": "升级追溯需求与多机证据缺口",
+          "body": "依据：维护者希望在包或基础镜像更新后，将新旧运行的产物、日志和测量值对应起来。目前只试过单机样例，多机退出行为尚未演练。[1]",
+          "evidenceIds": [
+            "demo-evidence-7"
+          ]
+        },
+        "group": "缺失信息与研究问题"
+      },
+      {
+        "card": {
+          "title": "开展依赖升级前后比较",
+          "body": "建议：分别保留升级前后的镜像摘要与依赖记录，尽量一次改变一个包或基础镜像条件，并保持其余比较条件一致。对照产物可加载性、日志异常、任务得分及资源测量，产出变更清单和差异报告；升级对象与判定标准待确认。",
+          "evidenceIds": []
+        },
+        "group": "评估与验证计划"
+      },
+      {
+        "card": {
+          "title": "演练多机退出与故障处理",
+          "body": "建议：在确认可用多机环境后，分别观察正常结束和受控进程异常时的退出码、其他进程状态、日志完整性及残留资源。产出逐场景记录；节点数、进程拓扑、故障注入方式和预期行为待确认。",
+          "evidenceIds": []
+        },
+        "group": "评估与验证计划"
+      },
+      {
+        "card": {
+          "title": "选择依据与业务证据仍缺失",
+          "body": "依据：便签要求补充不同更新方式的选择依据，以及质量、耗时和显存之间的取舍。负责人尚未确认硬性预算，材料没有真实业务测试分数。[1]",
+          "evidenceIds": [
+            "demo-evidence-8"
+          ]
+        },
+        "group": "缺失信息与研究问题"
+      },
+      {
+        "card": {
+          "title": "确认任务、数据与资源约束",
+          "body": "待验证：研究者需要确认目标业务任务、评测样本来源与代表性、任务得分含义、可用硬件，以及质量、耗时和显存是否存在硬性要求。形成条件清单，逐项标明负责人和确认状态；当前不能填写预算或达标阈值。",
+          "evidenceIds": []
+        },
+        "group": "缺失信息与研究问题"
+      },
+      {
+        "card": {
+          "title": "补齐可执行的技术配置",
+          "body": "待验证：需要确认实际模型、数据规模、参数高效微调所用类库与配置、全量更新配置、依赖版本、启动命令及检查点内容。产出可审阅的配置清单后，才能把架构方案转成可执行实验。",
+          "evidenceIds": []
+        },
+        "group": "缺失信息与研究问题"
+      },
+      {
+        "card": {
+          "title": "形成有条件的选择结论",
+          "body": "建议：结合配对比较、恢复测试、升级比较和适用的多机演练，列出各方案的质量、耗时、显存与运行限制。依据已确认约束说明可选方案及取舍，保留尚无证据的问题；产出决策表，结论仅适用于实际测试条件。",
+          "evidenceIds": []
+        },
+        "group": "更新方法与选择"
+      }
+    ],
+    "edges": [
+      {
+        "from": 0,
+        "to": 1,
+        "label": "提供候选方法，优劣待比较"
+      },
+      {
+        "from": 1,
+        "to": 8,
+        "label": "转化为比较实验"
+      },
+      {
+        "from": 2,
+        "to": 5,
+        "label": "提供数据与产物环节依据"
+      },
+      {
+        "from": 3,
+        "to": 5,
+        "label": "提供依赖与启动边界依据"
+      },
+      {
+        "from": 4,
+        "to": 5,
+        "label": "提供执行环节依据"
+      },
+      {
+        "from": 5,
+        "to": 6,
+        "label": "建议逐环节关联运行记录"
+      },
+      {
+        "from": 6,
+        "to": 8,
+        "label": "支持追溯比较条件与结果"
+      },
+      {
+        "from": 7,
+        "to": 8,
+        "label": "提供控制条件与指标基础"
+      },
+      {
+        "from": 7,
+        "to": 9,
+        "label": "提示补齐测量与汇总口径"
+      },
+      {
+        "from": 9,
+        "to": 8,
+        "label": "比较前需明确测量协议"
+      },
+      {
+        "from": 4,
+        "to": 10,
+        "label": "文件存在仍需恢复验证"
+      },
+      {
+        "from": 6,
+        "to": 10,
+        "label": "关联中断与恢复记录"
+      },
+      {
+        "from": 11,
+        "to": 12,
+        "label": "将升级追溯需求转为测试"
+      },
+      {
+        "from": 6,
+        "to": 12,
+        "label": "关联升级前后运行"
+      },
+      {
+        "from": 9,
+        "to": 12,
+        "label": "复用一致测量口径"
+      },
+      {
+        "from": 11,
+        "to": 13,
+        "label": "将多机缺口转为演练"
+      },
+      {
+        "from": 14,
+        "to": 15,
+        "label": "明确需要确认的选择条件"
+      },
+      {
+        "from": 15,
+        "to": 8,
+        "label": "约束任务与评测设置"
+      },
+      {
+        "from": 3,
+        "to": 16,
+        "label": "依赖边界需落实为具体配置"
+      },
+      {
+        "from": 16,
+        "to": 5,
+        "label": "执行链落地前需补齐"
+      },
+      {
+        "from": 16,
+        "to": 10,
+        "label": "需确认检查点状态内容"
+      },
+      {
+        "from": 16,
+        "to": 13,
+        "label": "需确认多机拓扑与启动配置"
+      },
+      {
+        "from": 8,
+        "to": 17,
+        "label": "提供方法比较结果"
+      },
+      {
+        "from": 10,
+        "to": 17,
+        "label": "补充恢复能力证据"
+      },
+      {
+        "from": 12,
+        "to": 17,
+        "label": "补充升级影响证据"
+      },
+      {
+        "from": 13,
+        "to": 17,
+        "label": "补充多机场景适用限制"
+      },
+      {
+        "from": 15,
+        "to": 17,
+        "label": "提供取舍与判定条件"
+      }
+    ]
+  },
+  "preview": {
+    "board": {
+      "id": "demo-board-reasoning",
+      "researchId": "demo-research-reasoning",
+      "title": "从演示材料到可验证的更新与运行方案"
+    },
+    "placements": [
+      {
+        "id": "proposal-placement-0",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-0"
+        },
+        "group": "更新方法与选择",
+        "x": 50,
+        "y": 80
+      },
+      {
+        "id": "proposal-placement-1",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-1"
+        },
+        "group": "更新方法与选择",
+        "x": 390,
+        "y": 80
+      },
+      {
+        "id": "proposal-placement-2",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-2"
+        },
+        "group": "运行架构与追溯",
+        "x": 50,
+        "y": 380
+      },
+      {
+        "id": "proposal-placement-3",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-3"
+        },
+        "group": "运行架构与追溯",
+        "x": 50,
+        "y": 680
+      },
+      {
+        "id": "proposal-placement-4",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-4"
+        },
+        "group": "运行架构与追溯",
+        "x": 50,
+        "y": 980
+      },
+      {
+        "id": "proposal-placement-5",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-5"
+        },
+        "group": "运行架构与追溯",
+        "x": 730,
+        "y": 80
+      },
+      {
+        "id": "proposal-placement-6",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-6"
+        },
+        "group": "运行架构与追溯",
+        "x": 1070,
+        "y": 80
+      },
+      {
+        "id": "proposal-placement-7",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-7"
+        },
+        "group": "评估与验证计划",
+        "x": 50,
+        "y": 1280
+      },
+      {
+        "id": "proposal-placement-8",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-8"
+        },
+        "group": "评估与验证计划",
+        "x": 1410,
+        "y": 80
+      },
+      {
+        "id": "proposal-placement-9",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-9"
+        },
+        "group": "评估与验证计划",
+        "x": 390,
+        "y": 380
+      },
+      {
+        "id": "proposal-placement-10",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-10"
+        },
+        "group": "评估与验证计划",
+        "x": 1410,
+        "y": 380
+      },
+      {
+        "id": "proposal-placement-11",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-11"
+        },
+        "group": "缺失信息与研究问题",
+        "x": 50,
+        "y": 1580
+      },
+      {
+        "id": "proposal-placement-12",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-12"
+        },
+        "group": "评估与验证计划",
+        "x": 1410,
+        "y": 680
+      },
+      {
+        "id": "proposal-placement-13",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-13"
+        },
+        "group": "评估与验证计划",
+        "x": 730,
+        "y": 380
+      },
+      {
+        "id": "proposal-placement-14",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-14"
+        },
+        "group": "缺失信息与研究问题",
+        "x": 50,
+        "y": 1880
+      },
+      {
+        "id": "proposal-placement-15",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-15"
+        },
+        "group": "缺失信息与研究问题",
+        "x": 390,
+        "y": 680
+      },
+      {
+        "id": "proposal-placement-16",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-16"
+        },
+        "group": "缺失信息与研究问题",
+        "x": 390,
+        "y": 980
+      },
+      {
+        "id": "proposal-placement-17",
+        "boardId": "demo-board-reasoning",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-17"
+        },
+        "group": "更新方法与选择",
+        "x": 1750,
+        "y": 80
+      }
+    ],
+    "edges": [
+      {
+        "id": "proposal-edge-0",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-0",
+        "toPlacementId": "proposal-placement-1",
+        "label": "提供候选方法，优劣待比较"
+      },
+      {
+        "id": "proposal-edge-1",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-1",
+        "toPlacementId": "proposal-placement-8",
+        "label": "转化为比较实验"
+      },
+      {
+        "id": "proposal-edge-2",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-2",
+        "toPlacementId": "proposal-placement-5",
+        "label": "提供数据与产物环节依据"
+      },
+      {
+        "id": "proposal-edge-3",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-3",
+        "toPlacementId": "proposal-placement-5",
+        "label": "提供依赖与启动边界依据"
+      },
+      {
+        "id": "proposal-edge-4",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-4",
+        "toPlacementId": "proposal-placement-5",
+        "label": "提供执行环节依据"
+      },
+      {
+        "id": "proposal-edge-5",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-5",
+        "toPlacementId": "proposal-placement-6",
+        "label": "建议逐环节关联运行记录"
+      },
+      {
+        "id": "proposal-edge-6",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-6",
+        "toPlacementId": "proposal-placement-8",
+        "label": "支持追溯比较条件与结果"
+      },
+      {
+        "id": "proposal-edge-7",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-7",
+        "toPlacementId": "proposal-placement-8",
+        "label": "提供控制条件与指标基础"
+      },
+      {
+        "id": "proposal-edge-8",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-7",
+        "toPlacementId": "proposal-placement-9",
+        "label": "提示补齐测量与汇总口径"
+      },
+      {
+        "id": "proposal-edge-9",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-9",
+        "toPlacementId": "proposal-placement-8",
+        "label": "比较前需明确测量协议"
+      },
+      {
+        "id": "proposal-edge-10",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-4",
+        "toPlacementId": "proposal-placement-10",
+        "label": "文件存在仍需恢复验证"
+      },
+      {
+        "id": "proposal-edge-11",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-6",
+        "toPlacementId": "proposal-placement-10",
+        "label": "关联中断与恢复记录"
+      },
+      {
+        "id": "proposal-edge-12",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-11",
+        "toPlacementId": "proposal-placement-12",
+        "label": "将升级追溯需求转为测试"
+      },
+      {
+        "id": "proposal-edge-13",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-6",
+        "toPlacementId": "proposal-placement-12",
+        "label": "关联升级前后运行"
+      },
+      {
+        "id": "proposal-edge-14",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-9",
+        "toPlacementId": "proposal-placement-12",
+        "label": "复用一致测量口径"
+      },
+      {
+        "id": "proposal-edge-15",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-11",
+        "toPlacementId": "proposal-placement-13",
+        "label": "将多机缺口转为演练"
+      },
+      {
+        "id": "proposal-edge-16",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-14",
+        "toPlacementId": "proposal-placement-15",
+        "label": "明确需要确认的选择条件"
+      },
+      {
+        "id": "proposal-edge-17",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-15",
+        "toPlacementId": "proposal-placement-8",
+        "label": "约束任务与评测设置"
+      },
+      {
+        "id": "proposal-edge-18",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-3",
+        "toPlacementId": "proposal-placement-16",
+        "label": "依赖边界需落实为具体配置"
+      },
+      {
+        "id": "proposal-edge-19",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-16",
+        "toPlacementId": "proposal-placement-5",
+        "label": "执行链落地前需补齐"
+      },
+      {
+        "id": "proposal-edge-20",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-16",
+        "toPlacementId": "proposal-placement-10",
+        "label": "需确认检查点状态内容"
+      },
+      {
+        "id": "proposal-edge-21",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-16",
+        "toPlacementId": "proposal-placement-13",
+        "label": "需确认多机拓扑与启动配置"
+      },
+      {
+        "id": "proposal-edge-22",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-8",
+        "toPlacementId": "proposal-placement-17",
+        "label": "提供方法比较结果"
+      },
+      {
+        "id": "proposal-edge-23",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-10",
+        "toPlacementId": "proposal-placement-17",
+        "label": "补充恢复能力证据"
+      },
+      {
+        "id": "proposal-edge-24",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-12",
+        "toPlacementId": "proposal-placement-17",
+        "label": "补充升级影响证据"
+      },
+      {
+        "id": "proposal-edge-25",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-13",
+        "toPlacementId": "proposal-placement-17",
+        "label": "补充多机场景适用限制"
+      },
+      {
+        "id": "proposal-edge-26",
+        "boardId": "demo-board-reasoning",
+        "fromPlacementId": "proposal-placement-15",
+        "toPlacementId": "proposal-placement-17",
+        "label": "提供取舍与判定条件"
+      }
+    ]
+  },
+  "metrics": {
+    "nodes": 18,
+    "edges": 27,
+    "groups": [
+      "更新方法与选择",
+      "运行架构与追溯",
+      "评估与验证计划",
+      "缺失信息与研究问题"
+    ],
+    "crossGroupEdges": 17,
+    "citedEvidence": [
+      "demo-evidence-1",
+      "demo-evidence-2",
+      "demo-evidence-3",
+      "demo-evidence-4",
+      "demo-evidence-5",
+      "demo-evidence-6",
+      "demo-evidence-7",
+      "demo-evidence-8"
+    ],
+    "categoryCounts": {
+      "evidence": 7,
+      "recommendation": 9,
+      "unknown": 2
+    }
+  },
+  "durationMs": 167561
+}

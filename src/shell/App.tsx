@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
-  Home,
   Layers,
   Menu,
   Network,
@@ -56,16 +55,9 @@ import { getAIConfig } from '../services/ai';
 import { WorkspaceSplit } from './WorkspaceSplit';
 import { paneGroups } from '../services/panes';
 import { DesktopWindowControls } from './DesktopWindowControls';
+import { ResearchNavigation } from './ResearchNavigation';
 import { BackupControls } from '../features/settings/BackupControls';
 
-const researchViews: { id: ResearchViewId; name: string; icon: typeof Home; group?: string }[] = [
-  { id: 'home', name: '研究主页', icon: Home },
-  { id: 'sources', name: '资料', icon: BookOpen, group: '阅读' },
-  { id: 'excerpts', name: '摘录', icon: FileText },
-  { id: 'cards', name: '卡片', icon: Layers, group: '思考与写作' },
-  { id: 'boards', name: '白板', icon: Network },
-  { id: 'drafts', name: '文稿', icon: FileText },
-];
 const modes: { id: PanelMode; name: string }[] = [
   { id: 'excerpts', name: '摘录' }, { id: 'cards', name: '卡片' }, { id: 'ai', name: 'AI' },
 ];
@@ -335,13 +327,7 @@ export function App() {
           {research && <ResearchDirectory researchId={research.id} settings />}
         </div>
         <div className="sidebar-actions"><button className="new-research" onClick={() => showDialog('new')}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
-        <nav className="research-nav" aria-label="研究内导航">
-          {research && researchViews.map(({ id, name, icon: Icon, group }) => <div key={id}>
-            {group && <div className="sidebar-section-label">{group}</div>}
-            <button className={`nav-item ${active.kind === 'researchView' && active.id === id ? 'active' : ''}`} onClick={() => navigate(id)}><Icon size={17} />{name}</button>
-            {(id === 'boards' || id === 'drafts') && Object.values(id === 'boards' ? data.boards : data.drafts).filter(item => item.researchId === research.id).map(item => <button key={item.id} className={`nav-item nested-nav ${active.id === item.id ? 'active' : ''}`} title={item.title} onClick={() => { open({ kind: id === 'boards' ? 'board' : 'draft', id: item.id }); if (narrow) closeNavigation(); }}><ResourceIcon kind={id === 'boards' ? 'board' : 'draft'} size={17} /><span>{item.title}</span></button>)}
-          </div>)}
-        </nav>
+        {research && <ResearchNavigation researchId={research.id} active={active} onNavigate={navigate} onOpen={ref => { open(ref); if (narrow) closeNavigation(); }} />}
         <div className="sidebar-bottom-nav"><button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
         <div className="sidebar-footer">
           <span
