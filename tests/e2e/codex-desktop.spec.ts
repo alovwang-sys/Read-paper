@@ -51,16 +51,22 @@ async function start(page: Page, api: API) {
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click(); await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();
 }
+async function selectedSkills(page: Page, count: number) {
+  await panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true }).click();
+  if (count) await expect(panel(page).getByLabel('已选 Codex 技能').locator('span')).toHaveCount(count);
+  else await expect(panel(page).getByLabel('已选 Codex 技能')).toHaveCount(0);
+  await panel(page).getByRole('dialog', { name: 'Codex 操作与技能' }).press('Escape');
+}
 async function send(page: Page, text: string) { await panel(page).getByLabel('向 AI 提问').fill(text); await panel(page).getByRole('button', { name: '发送问题', exact: true }).click(); }
 
 test('Codex 真实目录菜单、技能chips和模型/Plan快照持久化', async ({ page, api }) => {
   await start(page, api); const input = panel(page).getByLabel('向 AI 提问');
   await input.fill('$paper'); await expect(panel(page).getByRole('option', { name: /\$paper-read/ })).toBeVisible(); await input.press('Enter');
-  await expect(panel(page).getByLabel('已选 Codex 技能')).toContainText('$paper-read'); await expect(input).toHaveValue('');
+  await selectedSkills(page, 1); await expect(input).toHaveValue('');
   await input.fill('/model'); await input.press('Enter');
   await panel(page).getByLabel('搜索 Codex 操作与技能').fill('Research'); await panel(page).getByRole('option', { name: /Research model/ }).click();
-  await panel(page).getByRole('button', { name: '切换 Codex Chat/Plan 模式' }).click();
-  await expect(panel(page).getByRole('button', { name: '切换 Codex Chat/Plan 模式' })).toHaveText('Plan');
+  await panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true }).click(); await panel(page).getByRole('option', { name: '切换 Codex Chat/Plan 模式' }).click();
+  await expect(panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true })).toContainText('Plan');
   await input.fill('/'); await expect(panel(page).getByRole('dialog', { name: 'Codex 操作与技能' })).toBeVisible(); await input.press('Escape');
   await expect(panel(page).getByRole('dialog', { name: 'Codex 操作与技能' })).toHaveCount(0); await expect(panel(page)).toBeVisible();
   await input.fill('/compact'); await input.press('Control+Enter'); expect(api.runs).toHaveLength(0); await expect(panel(page)).toContainText('未提供的命令不会被模拟执行'); await input.press('Escape');
@@ -68,21 +74,21 @@ test('Codex 真实目录菜单、技能chips和模型/Plan快照持久化', asyn
   expect(api.runs[0]).toMatchObject({ skillIds: ['paper-reader'], codex: { model: 'model-research', mode: 'plan' } });
   await panel(page).locator('.ai-turn-range > summary').click(); await expect(panel(page).locator('.codex-request-settings')).toContainText('Plan · model-research'); await expect(panel(page).locator('.codex-request-settings')).toContainText('paper-read');
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload();
-  await expect(panel(page).getByLabel('已选 Codex 技能')).toContainText('paper-read'); await expect(panel(page).getByRole('button', { name: '切换 Codex Chat/Plan 模式' })).toHaveText('Plan');
+  await selectedSkills(page, 1); await expect(panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true })).toContainText('Plan');
   for (const name of ['evidence-check', 'compare-results', 'outline']) {
     await input.fill(`$${name}`); await input.press('Enter');
   }
-  await expect(panel(page).getByLabel('已选 Codex 技能').locator('span')).toHaveCount(4);
+  await selectedSkills(page, 4);
   await input.fill('$methods'); await expect(panel(page).getByRole('option', { name: /\$methods/ })).toHaveAttribute('aria-disabled', 'true');
   await expect(panel(page).getByRole('option', { name: /\$methods/ })).toContainText('最多选择 4 个技能'); await input.press('Enter');
-  await expect(panel(page).getByLabel('已选 Codex 技能').locator('span')).toHaveCount(4); await input.press('Escape');
+  await input.press('Escape'); await selectedSkills(page, 4);
   await input.fill('/'); await input.press('ArrowUp');
   const activeBounds = (await panel(page).getByRole('dialog', { name: 'Codex 操作与技能' }).getByRole('option', { selected: true }).boundingBox())!;
   const menuBounds = (await panel(page).getByRole('dialog', { name: 'Codex 操作与技能' }).boundingBox())!;
   expect(activeBounds.y + activeBounds.height).toBeLessThanOrEqual(menuBounds.y + menuBounds.height); await input.press('Escape');
   const conversationId = (await state(page)).sessions['research-a'].activeConversationId!;
   await panel(page).getByLabel('向 AI 提问').fill('/new'); await panel(page).getByLabel('向 AI 提问').press('Enter');
-  await expect(panel(page).getByLabel('已选 Codex 技能')).toHaveCount(0); expect((await state(page)).conversations[conversationId].skills?.[0].id).toBe('paper-reader');
+  await selectedSkills(page, 0); expect((await state(page)).conversations[conversationId].skills?.[0].id).toBe('paper-reader');
 });
 
 test('原生问题草稿按原研究保存，答复继续原请求，停止后交互失效', async ({ page, api }) => {

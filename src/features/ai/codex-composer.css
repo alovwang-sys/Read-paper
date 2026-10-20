@@ -1,25 +1,30 @@
-.reading-ai .codex-composer-tools { min-width: 0; }
-.reading-ai .codex-composer-toolbar { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px 7px; }
-.reading-ai .codex-settings-row,
-.reading-ai .codex-model-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0; }
-.reading-ai .codex-settings-row > button,
-.reading-ai .codex-model-row > button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 36px; min-height: 36px; padding: 6px; border-radius: 7px; color: #636967; font-size: 13px; white-space: nowrap; }
-.reading-ai .codex-settings-row > button:hover,
-.reading-ai .codex-model-row > button:hover { background: #f0f2f1; color: #303936; }
-.reading-ai .codex-settings-row > button:disabled,
-.reading-ai .codex-model-row > button:disabled { opacity: .48; cursor: default; }
-.reading-ai .codex-settings-row > button[aria-pressed='true'] { background: #eef1f0; color: #354b40; }
+.reading-ai .codex-composer-tools { min-width: 0; container-type: inline-size; }
+.reading-ai .codex-composer-toolbar { position: relative; display: flex; align-items: center; gap: 2px; min-width: 0; padding: 0 5px 3px; }
+.reading-ai .codex-composer-toolbar > button { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: 36px; min-height: 36px; padding: 6px 4px; border-radius: 7px; color: #636967; font-size: 12px; white-space: nowrap; }
+.reading-ai .codex-composer-toolbar > button:hover { background: #f0f2f1; color: #303936; }
+.reading-ai .codex-composer-toolbar > button:disabled { opacity: .48; cursor: default; }
 .reading-ai .codex-leading-controls,
-.reading-ai .codex-trailing-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0; }
-.reading-ai .codex-leading-controls { margin-right: auto; }
-.reading-ai .codex-trailing-controls { flex-shrink: 0; margin-left: auto; }
-.reading-ai .codex-model-row:has(.ai-voice-hint) .codex-trailing-controls { flex-basis: 100%; justify-content: flex-end; }
-.reading-ai .codex-model-row .codex-model-button { justify-content: flex-start; max-width: 60%; }
+.reading-ai .codex-trailing-controls { display: flex; align-items: center; gap: 2px; min-width: 0; flex-shrink: 0; }
+.reading-ai .codex-trailing-controls .ai-voice-hint { position: absolute; inset: auto 0 calc(100% + 5px); z-index: 35; box-shadow: 0 8px 25px #233c321a; }
+.reading-ai .codex-composer-toolbar .codex-model-button { flex: 1 1 0; justify-content: flex-start; min-width: 36px; }
 .reading-ai .codex-model-button > span { overflow: hidden; text-overflow: ellipsis; }
 .reading-ai .codex-model-button > svg { flex-shrink: 0; }
-.reading-ai .codex-model-row .codex-effort-button { flex-shrink: 0; color: #7960ad; }
-.reading-ai .codex-model-row .codex-effort-button:hover { background: #f3effa; color: #694b9f; }
-.reading-ai .codex-settings-row .is-full-access { color: #99613e; }
+.reading-ai .codex-composer-toolbar .codex-effort-button { flex-shrink: 0; color: #7960ad; }
+.reading-ai .codex-composer-toolbar .codex-effort-button:hover { background: #f3effa; color: #694b9f; }
+.reading-ai .codex-access-button { flex-shrink: 0; }
+.reading-ai .codex-composer-toolbar .is-full-access { color: #99613e; background: #faf2e9; }
+.reading-ai .codex-plan-badge { color: #5d4d88; font-size: 10px; font-weight: 600; }
+.reading-ai .codex-skill-count { display: grid; place-items: center; min-width: 14px; height: 14px; border-radius: 7px; background: #e6ede8; color: #496a59; font-size: 10px; }
+@container (max-width: 360px) {
+  .reading-ai .codex-composer-toolbar { gap: 1px; padding-inline: 2px; }
+  .reading-ai .codex-composer-toolbar > button { gap: 2px; padding-inline: 2px; font-size: 11px; }
+  .reading-ai .codex-access-button > svg { display: none; }
+  .reading-ai .codex-trailing-controls .ai-voice-button { min-width: 36px; width: 36px; }
+  .reading-ai .codex-trailing-controls .ai-voice-button > span { display: none; }
+  .reading-ai .codex-plan-badge { font-size: 9px; }
+  .reading-ai .codex-skill-count { min-width: 12px; height: 12px; font-size: 9px; }
+}
+.reading-ai .codex-command-menu .codex-skill-chips { max-height: 96px; flex-shrink: 0; padding: 4px 4px 7px; }
 .reading-ai .codex-skill-chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 10px 0; max-height: 96px; overflow: auto; }
 .reading-ai .codex-skill-chips > span { display: inline-flex; align-items: center; gap: 3px; padding-left: 9px; border: 1px solid #dce4df; border-radius: 7px; background: #f4f7f5; }
 .reading-ai .codex-skill-chips strong { font-size: 13px; font-weight: 500; color: #496a59; overflow-wrap: anywhere; }

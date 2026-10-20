@@ -1,0 +1,21 @@
+{
+  "executablePath": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "capabilityStatus": 200,
+  "capabilityBranch": "full-access-cancel",
+  "capabilityError": null,
+  "capabilityErrorCode": null,
+  "modelCount": 8,
+  "fullAccessConfirmationCancelled": true,
+  "fullAccessEnabled": false,
+  "materialDialogCancelled": true,
+  "systemDictationMediaRequests": 0,
+  "modelRequests": [],
+  "pageErrors": [],
+  "viewport": {
+    "width": 1024,
+    "height": 800
+  },
+  "controlsReachableAt1024": true,
+  "draftRetainedAfterRestart": true,
+  "permissionAfterRestart": "read-only"
+}

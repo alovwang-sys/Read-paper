@@ -84,6 +84,7 @@ test('桌面式对话完整保留Markdown，工具卡呈现真实命令、状态
 test('未安装助手提供官方安装入口与命令复制，需登录状态保留真实说明', async ({ page }) => {
   const calls = await setup(page); await select(page, 'OpenCode');
   const connection = panel(page).locator('.ai-connection');
+  await connection.locator(':scope > details > summary').click();
   await expect(connection).toContainText('本机运行时连接组件');
   const link = connection.getByRole('link', { name: 'OpenCode 官方安装说明', exact: true });
   await expect(link).toHaveAttribute('href', 'https://opencode.ai/v2/docs/');
@@ -106,7 +107,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await panel(page).getByLabel('向 AI 提问').fill('下一条尚未发送的问题');
     const settings = panel(page).locator('.ai-context-settings');
     await expect(settings).not.toHaveAttribute('open', '');
-    await expect(settings.locator(':scope > summary')).toHaveText('连续对话 · Agent 已发 1 条材料');
+    await expect(settings.locator(':scope > summary')).toHaveText('连续对话');
+    await expect(settings.locator(':scope > summary')).toHaveAttribute('title', 'Agent 累计已发 1 条材料，展开核对完整范围');
+    await settings.locator(':scope > summary').click();
+    await expect(settings.locator('.ai-native-scope > summary')).toHaveText('Agent 累计范围 · 1 条已发材料');
+    await settings.locator(':scope > summary').click();
     const turn = panel(page).locator('.ai-turn');
     await turn.getByRole('button', { name: /^引用 1：/ }).click();
     await expect(main(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toBeVisible();

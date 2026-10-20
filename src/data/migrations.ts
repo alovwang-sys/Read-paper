@@ -71,6 +71,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   for (const session of Object.values(data.sessions))
     if (!session.active || !Array.isArray(session.openItems) || !Array.isArray(session.history) || !record(session.panel) || !record(session.readers) || !record(session.viewports)) throw new Error('工作区状态损坏，未覆盖现有数据。');
   for (const session of Object.values(data.sessions)) {
+    if (session.boardModes !== undefined && (!record(session.boardModes) || Object.values(session.boardModes).some(mode => !['draw', 'organize'].includes(mode)))) throw new Error('白板模式损坏，未覆盖现有数据。');
     if (session.collapsedNav !== undefined && (!Array.isArray(session.collapsedNav) || session.collapsedNav.some(id => !['boards', 'drafts'].includes(id)) || new Set(session.collapsedNav).size !== session.collapsedNav.length))
       throw new Error('导航折叠状态损坏，未覆盖现有数据。');
     for (const [key, position] of Object.entries(session.readers)) {

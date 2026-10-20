@@ -2,6 +2,7 @@ import type { AIRequest, BoardContext, BoardSnapshot, Card, Session, WorkspaceDa
 import { archivedBoardCard, boardSnapshot, parseBoardPlan, previewBoardPlan, sameBoard, validateBoardContext, validateBoardSnapshot } from '../domain/board-history';
 import { linkCard, uid, validateEvidence, workspace } from './workspace';
 import { remapCitationNumbers } from '../domain/citations';
+import { flushBoardDrawings, loadBoardDrawing } from './drawing-storage';
 import { collapseEmptyPanes, paneGroups, syncPaneSession } from './panes';
 export { captureBoardContext, parseBoardPlan, previewBoardPlan } from '../domain/board-history';
 
@@ -101,6 +102,7 @@ function installSnapshot(data: WorkspaceData, snapshot: BoardSnapshot, source: B
 }
 
 export async function applyBoardProposal(requestId: string): Promise<string> {
+  await flushBoardDrawings();
   const data = workspace.getState().data;
   const existing = Object.values(data.boardChanges ?? {}).find(c => c.requestId === requestId);
   if (existing) {
@@ -166,12 +168,15 @@ function cleanRemovedResources(data: WorkspaceData, boardId: string, cardIds: Se
     }
     for (const anchor of [session.anchor, session.panel.anchor]) if (anchor?.placementId && !data.placements[anchor.placementId]) delete anchor.placementId;
     delete session.viewports[boardId];
+    delete session.viewports[`drawing:${boardId}`];
+    if (session.boardModes) delete session.boardModes[boardId];
   }
   for (const conversation of Object.values(data.conversations)) if (conversation.boardSkill?.boardId === boardId) delete conversation.boardSkill;
   return removedViews;
 }
 
 export async function undoBoardCreation(requestId: string): Promise<void> {
+  await flushBoardDrawings();
   const data = workspace.getState().data;
   const creation = Object.values(data.boardChanges ?? {}).find(change => change.requestId === requestId && !change.before && change.after);
   if (!creation) throw new Error('没有可撤销的白板创建。');
@@ -203,8 +208,10 @@ export async function undoBoardCreation(requestId: string): Promise<void> {
 }
 
 export async function restoreBoardChange(changeId: string, mode: 'safe' | 'copy' = 'safe'): Promise<string> {
+  await flushBoardDrawings();
   const data = workspace.getState().data, change = data.boardChanges?.[changeId];
   if (!change?.before) throw new Error('这条记录没有更早的白板版本，请选择后续修改记录。');
+  if (change.before.board.drawing) await loadBoardDrawing('', change.before.board.drawing);
   if (mode !== 'safe' && mode !== 'copy') throw new Error('恢复方式无效。');
   // A failed save leaves one paired state/history update; retry it, never create a second restore.
   const prior = Object.values(data.boardChanges ?? {}).find(c => c.restores === changeId && (mode === 'copy' ? c.boardId !== change.boardId : c.boardId === change.boardId));

@@ -5,7 +5,7 @@ import { migrateWorkspace } from '../../src/data/migrations';
 import { ensurePaneLayout, paneGroups, syncPaneSession } from '../../src/services/panes';
 import { contentHash } from '../../src/data/storage';
 import { hasFullText } from '../../src/domain/knowledge';
-import { recordBoardChanges } from '../../src/domain/board-history';
+import { captureBoardContext, recordBoardChanges } from '../../src/domain/board-history';
 import type { CardProvenance, ContextSnapshot, RegionSource } from '../../src/domain/types';
 import { createWorkspaceBackup, MAX_BACKUP_BYTES, MAX_BACKUP_ENTRY_BYTES, readWorkspaceBackup, type BackupAsset } from '../../src/services/backup';
 
@@ -19,6 +19,16 @@ async function fixture() {
     assets.push({ id: doc.assetId, blob });
   }
   return { data, assets };
+}
+
+async function drawingAsset(source: string, image = false) {
+  const blob = new Blob([JSON.stringify({ type: 'excalidraw', version: 2, source,
+    elements: image ? [{ id: 'image-a', type: 'image', x: 10, y: 20, width: 80, height: 60, angle: 0, isDeleted: false, fileId: 'file-a' }] : [],
+    appState: { viewBackgroundColor: '#fff', scrollX: 0, scrollY: 0, zoom: { value: 1 } },
+    files: image ? { 'file-a': { id: 'file-a', mimeType: 'image/png', created: 1, dataURL: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==' } } : {},
+  })], { type: 'application/vnd.excalidraw+json' });
+  const hash = await contentHash(await blob.arrayBuffer()), id = `drawing-${hash}`;
+  return { ref: { assetId: id, hash }, asset: { id, blob } };
 }
 
 async function editArchive(blob: Blob, edit: (files: Record<string, Uint8Array>) => void) {
@@ -42,6 +52,53 @@ async function editWorkspace(blob: Blob, edit: (data: ReturnType<typeof createSe
 afterEach(() => vi.unstubAllGlobals());
 
 describe('完整工作区备份', () => {
+  it('绘图、内嵌图片及仅由历史和请求快照引用的场景完整往返，缺失场景拒绝备份和恢复', async () => {
+    const { data, assets } = await fixture();
+    const historical = await drawingAsset('historical', true), current = await drawingAsset('current'), requested = await drawingAsset('requested');
+    data.boards['board-a'].drawing = historical.ref;
+    const before = structuredClone(data);
+    data.boards['board-a'].drawing = current.ref;
+    recordBoardChanges(before, data);
+    const context = captureBoardContext(data, 'research-a', 'board-a', 'board');
+    context.snapshot.board.drawing = requested.ref;
+    data.requests['drawing-request'] = { id: 'drawing-request', researchId: 'research-a', conversationId: 'conversation-research-a', prompt: '整理绘图', body: '', context: [], history: [], evidenceIds: [], createdAt: '', status: 'done', boardContext: context };
+    assets.push(historical.asset, current.asset, requested.asset);
+    const backup = await createWorkspaceBackup(data, assets), restored = await readWorkspaceBackup(backup);
+    expect(restored.data).toEqual(migrateWorkspace(data));
+    for (const scene of [historical, current, requested]) expect(await restored.assets.find(asset => asset.id === scene.asset.id)!.blob.text()).toBe(await scene.asset.blob.text());
+    await expect(createWorkspaceBackup(data, assets.filter(asset => asset.id !== historical.asset.id))).rejects.toThrow(/缺少.*绘图/);
+    const missing = await editArchive(backup, files => {
+      delete files[`assets/${requested.asset.id}`];
+      const manifest = JSON.parse(strFromU8(files['manifest.json']));
+      manifest.assets = manifest.assets.filter((asset: { id: string }) => asset.id !== requested.asset.id);
+      files['manifest.json'] = strToU8(JSON.stringify(manifest));
+    });
+    await expect(readWorkspaceBackup(missing)).rejects.toThrow(/缺少.*绘图/);
+    const corrupt = await editArchive(backup, files => { files[`assets/${current.asset.id}`][0] ^= 1; });
+    await expect(readWorkspaceBackup(corrupt)).rejects.toThrow(/SHA-256/);
+  });
+
+  it('即使重新计算场景及ZIP的hash，损坏的绘图结构和图片仍拒绝进入备份或恢复', async () => {
+    const { data, assets } = await fixture(), valid = await drawingAsset('valid', true);
+    data.boards['board-a'].drawing = valid.ref;
+    const backup = await createWorkspaceBackup(data, [...assets, valid.asset]);
+    for (const raw of ['{}', (await valid.asset.blob.text()).replace('data:image/png;base64,', 'data:image/png;base64,?')]) {
+      const blob = new Blob([raw]), hash = await contentHash(await blob.arrayBuffer()), id = `drawing-${hash}`;
+      data.boards['board-a'].drawing = { assetId: id, hash };
+      await expect(createWorkspaceBackup(data, [...assets, { id, blob }])).rejects.toThrow(/绘图/);
+      const updated = await editWorkspace(backup, value => { value.boards['board-a'].drawing = { assetId: id, hash }; });
+      const forged = await editArchive(updated, files => {
+        delete files[`assets/${valid.asset.id}`]; files[`assets/${id}`] = strToU8(raw);
+        const manifest = JSON.parse(strFromU8(files['manifest.json']));
+        Object.assign(manifest.assets.find((asset: { id: string }) => asset.id === valid.asset.id), { id, path: `assets/${id}`, size: files[`assets/${id}`].length, hash });
+        files['manifest.json'] = strToU8(JSON.stringify(manifest));
+      });
+      await expect(readWorkspaceBackup(forged)).rejects.toThrow(/绘图/);
+    }
+    data.boards['board-a'].drawing = valid.ref;
+    await expect(createWorkspaceBackup(data, [...assets, { id: valid.asset.id, blob: new Blob(['changed']) }])).rejects.toThrow(/hash 不一致/);
+  });
+
   it('多窗布局与同篇独立视图、放大状态完整往返，不按文献去重', async () => {
     const { data, assets } = await fixture();
     const session = data.sessions['research-a'];

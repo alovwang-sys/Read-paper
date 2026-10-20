@@ -1,5 +1,6 @@
 node_modules/
 dist/
+public/excalidraw-assets/
 test-results/
 test-results-*/
 playwright-report/

@@ -16,6 +16,9 @@ test('生产协议仅服务dist与设置文件，阻止路径穿越和未知接�
     const response = await handler(new Request('papertrail://app/'));
     assert.equal(await response.text(), 'app');
     assert.match(response.headers.get('content-security-policy'), /script-src 'self'/);
+    assert.match(response.headers.get('content-security-policy'), /font-src 'self' data:;/);
+    assert.match(response.headers.get('content-security-policy'), /frame-src 'none'/);
+    assert.doesNotMatch(response.headers.get('content-security-policy'), /font-src[^;]*(?:https?:|\*)/);
     assert.equal((await handler(new Request('papertrail://other/'))).status, 403);
     assert.equal((await handler(new Request('papertrail://app/..%2fsecret'))).status, 403);
     assert.equal((await handler(new Request('papertrail://app/api/arbitrary'))).status, 404);

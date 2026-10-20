@@ -2,6 +2,7 @@ import type { BoardChange, BoardContext, BoardPlacement, BoardPlan, BoardSnapsho
 import { remapCitationNumbers } from './citations';
 import { promoteRemovedPlacements, validateBoardStructure } from './board-structure';
 import { layoutBoardTree } from './board-layout';
+import { validateDrawingRef } from './drawing';
 
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -195,6 +196,7 @@ export function validateBoardSnapshot(value: unknown, boardId: string, researchI
   requireValue(safeId(boardId) && safeId(researchId), '白板历史标识无效。');
   requireValue(object(value) && object(value.board) && value.board.id === boardId && value.board.researchId === researchId && text(value.board.title, 10000) && Array.isArray(value.placements) && Array.isArray(value.edges), '白板历史结构损坏，未覆盖现有数据。');
   requireValue([undefined, 'free', 'tree'].includes(value.board.layout as string | undefined), '白板布局类型无效。');
+  if (value.board.drawing !== undefined) validateDrawingRef(value.board.drawing);
   const ids = new Set<string>();
   for (const p of value.placements) {
     requireValue(object(p) && safeId(p.id) && !ids.has(p.id) && p.boardId === boardId && object(p.resourceRef) && ['card', 'document'].includes(String(p.resourceRef.kind)) && safeId(p.resourceRef.id) && Number.isFinite(p.x) && Number.isFinite(p.y) && typeof p.group === 'string', '白板历史摆放损坏。'); ids.add(p.id);

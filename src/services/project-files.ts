@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { contentHash, getAsset } from '../data/storage';
 import { hasFullText } from '../domain/knowledge';
+import { drawingReferences, parseDrawingScene, validateDrawingRef } from '../domain/drawing';
 import type { ContextSnapshot, WorkspaceData } from '../domain/types';
 import { workspace } from './workspace';
 import { DirectoryError, directoryRequest } from './research-directory';
@@ -68,9 +69,13 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
     if (!extension) throw new Error('区域图片格式不受支持，目录保存已暂停。');
     return path.replace(/\.png$/, '.' + extension);
   };
-  const asset = async (id: string, expected: string, path: string, sampleUrl?: string, image = false) => {
-    if (assets.has(id)) return assets.get(id)!.path;
-    const cached = expected && assetCache.get(`${id}:${expected}`);
+  const asset = async (id: string, expected: string, path: string, sampleUrl?: string, image = false, drawing = false) => {
+    const existing = assets.get(id);
+    if (existing) {
+      if (expected && existing.hash !== expected) throw new Error('同一原始资产的 hash 不一致，目录保存已暂停。');
+      return existing.path;
+    }
+    const cached = !drawing && expected && assetCache.get(`${id}:${expected}`);
     if (cached) {
       if (image) path = imagePath(path, cached.type);
       files.push({ path, content: cached.content, hash: cached.hash, encoding: 'base64' });
@@ -87,6 +92,7 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
     if (blob.size > 64 * 1024 * 1024) throw new Error('单个资料超过目录保存的 64 MB 上限。');
     const bytes = new Uint8Array(await blob.arrayBuffer()), hash = await contentHash(bytes.buffer as ArrayBuffer);
     if (expected && hash !== expected) throw new Error('原始资料 hash 不匹配，目录保存已暂停。');
+    if (drawing) parseDrawingScene(new TextDecoder().decode(bytes));
     let binary = ''; for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
     const content = btoa(binary);
     files.push({ path, content, encoding: 'base64', hash });
@@ -94,6 +100,10 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
     assets.set(id, { path, hash, type: blob.type });
     return path;
   };
+  for (const drawing of drawingReferences({ ...data, boards: entities.boards, boardChanges: entities.boardChanges, requests: entities.requests })) {
+    validateDrawingRef(drawing);
+    await asset(drawing.assetId, drawing.hash, `drawings/${safeId(drawing.assetId)}.excalidraw`, undefined, false, true);
+  }
   for (const doc of Object.values(entities.documents)) {
     const path = hasFullText(doc) ? await asset(doc.assetId, doc.hash, `library/${safeId(doc.id)}.pdf`, doc.sampleUrl) : undefined;
     await text(`library/${safeId(doc.id)}.md`, `# ${doc.title}\n\n${doc.authors || '作者未记录'} · ${doc.year || '年份未记录'}\n\n${path ? `[原始 PDF](${doc.id}.pdf) · ${doc.pageCount} 页` : '尚未添加全文。'}\n\n${json(doc.identifiers ?? {})}\n`);
@@ -115,7 +125,7 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
   for (const e of Object.values(entities.evidence)) await text(`excerpts/${safeId(e.id)}.md`, `# 摘录\n\n${sources([e.id])}\n`);
   for (const card of Object.values(entities.cards)) await text(`cards/${safeId(card.id)}.md`, `# ${card.title}\n\n${card.body}\n\n## 原文依据\n\n${sources(card.evidenceIds) || '尚未关联原文依据。'}\n${card.provenance ? `\n## 形成过程\n\n${card.provenance.conversationTitle}\n\n${card.provenance.selection || card.provenance.answer}\n` : ''}`);
   for (const draft of Object.values(entities.drafts)) await text(`drafts/${safeId(draft.id)}.md`, `# ${draft.title}\n\n${draft.body}\n\n## 原文依据\n\n${sources(draft.evidenceIds)}\n`);
-  for (const board of Object.values(entities.boards)) await text(`boards/${safeId(board.id)}.json`, json({ board, placements: Object.values(entities.placements).filter(p => p.boardId === board.id), edges: Object.values(entities.edges).filter(e => e.boardId === board.id) }));
+  for (const board of Object.values(entities.boards)) await text(`boards/${safeId(board.id)}.json`, json({ board, drawingPath: board.drawing ? `../${assets.get(board.drawing.assetId)!.path}` : undefined, placements: Object.values(entities.placements).filter(p => p.boardId === board.id), edges: Object.values(entities.edges).filter(e => e.boardId === board.id) }));
   const sessionIndex: string[] = ['# 研究对话', '', 'Markdown 是可读归档，原生会话日志仍由对应助手保存。原生 ID 可用于在同一台机器继续会话；复制本目录不会复制登录或厂商会话数据库。', ''];
   for (const c of Object.values(entities.conversations)) {
     const heading = c.title || '研究对话';
@@ -127,7 +137,7 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
   await text('sessions/index.md', sessionIndex.join('\n'));
   await text('research.md', `# ${entities.research.title}\n\n${entities.research.question || '研究问题尚待明确。'}\n`);
   await text('research.json', json({ format: 'papertrail-research', version: 1, entities, assets: Object.fromEntries(assets) }));
-  await text('README.md', `# ${entities.research.title}\n\n${entities.research.question}\n\n## 研究文件\n\n- [研究说明](research.md)与[结构化数据](research.json)\n- library/：原始 PDF 和文献信息\n- excerpts/：摘录与页码\n- cards/：观点卡片与原文依据\n- drafts/：文稿与引用\n- boards/：白板布局和关系\n- [会话索引](sessions/index.md)：可读聊天、原生会话 ID 和 Codex 续接方式\n\n这些是当前研究的实际本地文件，原始资料按 hash 校验。应用自动更新此文件集，同时保留本地数据库作为恢复副本。请从应用编辑卡片等内容；外部修改会保留并暂停后续覆盖，不会自动回写到应用。共享资料会在其关联的研究目录各保存一份。\n\n## 在 Codex 中使用\n\n在 Codex 中打开此研究根目录，读取 Papertrail/README.md 即可找到材料。原生会话保留本机记录及原生 ID，属于同一 cwd；必要时查看会话索引并执行 codex resume <Session ID>。Markdown 归档不等于厂商原生日志，原生客户端是否列出特定来源的会话取决于其筛选规则。目录不会复制登录凭据，也不会自动向模型发送全部文件。\n`);
+  await text('README.md', `# ${entities.research.title}\n\n${entities.research.question}\n\n## 研究文件\n\n- [研究说明](research.md)与[结构化数据](research.json)\n- library/：原始 PDF 和文献信息\n- excerpts/：摘录与页码\n- cards/：观点卡片与原文依据\n- drafts/：文稿与引用\n- boards/：白板布局、关系和绘图文件路径\n- drawings/：可由 Excalidraw 直接打开的绘图与内嵌图片（含本研究历史版本）\n- [会话索引](sessions/index.md)：可读聊天、原生会话 ID 和 Codex 续接方式\n\n这些是当前研究的实际本地文件，原始资料按 hash 校验。应用自动更新此文件集，同时保留本地数据库作为恢复副本。请从应用编辑卡片等内容；外部修改会保留并暂停后续覆盖，不会自动回写到应用。共享资料会在其关联的研究目录各保存一份。\n\n## 在 Codex 中使用\n\n在 Codex 中打开此研究根目录，读取 Papertrail/README.md 即可找到材料。原生会话保留本机记录及原生 ID，属于同一 cwd；必要时查看会话索引并执行 codex resume <Session ID>。Markdown 归档不等于厂商原生日志，原生客户端是否列出特定来源的会话取决于其筛选规则。目录不会复制登录凭据，也不会自动向模型发送全部文件。\n`);
   return { files };
 }
 

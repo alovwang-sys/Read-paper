@@ -1,5 +1,7 @@
 # 论文研究工作台的 agent 开发任务
 
+2026-10-20 增量：Excalidraw 绘图模式与绘图资产持久化、历史、备份、项目文件集成；右侧 AI 顶部、材料、范围及输入工具紧凑布局。保留最新 main 的多窗格、原生连续会话、输入并发修复与研究导图。集成验收见[记录](verification/main-integration/README.md)。
+
 2026-10-16 用户扩展交付范围至 macOS / Windows 安装应用。桌面切片沿用现有工作台，新增 Electron 宿主、自动本地 AI 服务与加密连接设置、退出保存、完整备份迁移和 GitHub CI / 草稿 Release 流程。代码与已运行验证分开记录于 [桌面验收](verification/desktop/README.md)；三目标 CI、真实安装与签名状态以该记录为准，不能仅因存在工作流而标记通过。后续功能继续采用短分支 + PR，桌面版本由 main 上的版本标签交付，不设长期 macOS / Windows 分支。
 
 本清单将 [产品规划](product-plan.md) 转成可分配、可集成、可验收的开发任务。首版实际使用 React / TypeScript / Vite / PDF.js，沿用以下模块边界。

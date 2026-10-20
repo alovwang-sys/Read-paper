@@ -1,0 +1,107 @@
+{
+  "executablePath": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "localFonts": [
+    "papertrail://app/assets/Assistant-SemiBold-SCI4bEL9.woff2",
+    "papertrail://app/assets/Assistant-Regular-DVxZuzxb.woff2",
+    "papertrail://app/assets/Assistant-Medium-DrcxCXg3.woff2",
+    "papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-a88b72a24fb54c9f94e3b5fdaa7481c9.woff2",
+    "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-145aa02cdd91946e67dc934e1acffe75.woff2",
+    "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-74e2263a91439c25b91d5132ce9f4d62.woff2",
+    "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-79d494361ae093b69e74ee9dbe65bfd4.woff2",
+    "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-f8ee5d36068a42b51d0e4a1116cfcec1.woff2",
+    "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-13ae07ed2e272d26d59bc0691cd7117a.woff2",
+    "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-09850c4077f3fffe707905872e0e2460.woff2"
+  ],
+  "fontResponses": [
+    {
+      "url": "papertrail://app/assets/Assistant-SemiBold-SCI4bEL9.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/assets/Assistant-Regular-DVxZuzxb.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/assets/Assistant-Medium-DrcxCXg3.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-a88b72a24fb54c9f94e3b5fdaa7481c9.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-74e2263a91439c25b91d5132ce9f4d62.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-79d494361ae093b69e74ee9dbe65bfd4.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-f8ee5d36068a42b51d0e4a1116cfcec1.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-13ae07ed2e272d26d59bc0691cd7117a.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-145aa02cdd91946e67dc934e1acffe75.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-09850c4077f3fffe707905872e0e2460.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/assets/Assistant-SemiBold-SCI4bEL9.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/assets/Assistant-Regular-DVxZuzxb.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/assets/Assistant-Medium-DrcxCXg3.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-09850c4077f3fffe707905872e0e2460.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-13ae07ed2e272d26d59bc0691cd7117a.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-f8ee5d36068a42b51d0e4a1116cfcec1.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-79d494361ae093b69e74ee9dbe65bfd4.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-74e2263a91439c25b91d5132ce9f4d62.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Xiaolai/Xiaolai-Regular-145aa02cdd91946e67dc934e1acffe75.woff2",
+      "status": 200
+    },
+    {
+      "url": "papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-a88b72a24fb54c9f94e3b5fdaa7481c9.woff2",
+      "status": 200
+    }
+  ],
+  "failedFonts": [],
+  "externalRequests": [],
+  "modelRequests": [],
+  "pageErrors": [],
+  "securityErrors": [],
+  "drawingRetainedAfterRestart": true,
+  "drawing": {
+    "assetId": "drawing-e3e2da31abb72c2b1ec8542ecd188ed24c9dc09c2a99add34a5f15a42d4a11ad",
+    "hash": "e3e2da31abb72c2b1ec8542ecd188ed24c9dc09c2a99add34a5f15a42d4a11ad"
+  }
+}

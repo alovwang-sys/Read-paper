@@ -62,7 +62,7 @@ export function AgentPicker({ current, agents, loading, error, model, configured
         <span>{connectionLabel(current)}</span>
         <ChevronDown size={13} />
       </button>
-      {open && bounds && createPortal(<div ref={menu} className="ai-agent-menu" id={id} role="dialog" aria-label="选择 AI 助手" style={{ bottom: window.innerHeight - bounds.top + 8, right: Math.max(12, window.innerWidth - (panelBounds?.right ?? bounds.right) + 12), width: Math.min(370, (panel?.clientWidth ?? window.innerWidth) - 24) }}>
+      {open && bounds && createPortal(<div ref={menu} className="ai-agent-menu" id={id} role="dialog" aria-label="选择 AI 助手" style={{ top: bounds.bottom + 4, maxHeight: Math.min(530, window.innerHeight - bounds.bottom - 16), right: Math.max(12, window.innerWidth - (panelBounds?.right ?? bounds.right) + 12), width: Math.min(370, (panel?.clientWidth ?? window.innerWidth) - 24) }}>
         <div className="ai-agent-menu-head">
           <div><strong>选择 AI 助手</strong><small>每个助手保留独立对话与输入</small></div>
           <button className="icon-button" aria-label="关闭助手选择" onClick={() => { setOpen(false); trigger.current?.focus(); }}><X size={15} /></button>

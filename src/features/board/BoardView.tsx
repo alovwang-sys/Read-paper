@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
   ArrowUpRight,
@@ -41,6 +41,8 @@ import { layoutBoardTree } from '../../domain/board-layout';
 import { addBoardCard, moveBoardBranch, removeBoardPlacements, reorderBoardPlacement, setBoardLayout } from '../../services/board-structure';
 import './board.css';
 
+const BoardDrawing = lazy(() => import('./BoardDrawing'));
+
 type Undo = { placements: BoardPlacement[]; edges: BoardEdge[]; revision: number };
 const recentRemovals = new Map<string, Undo>();
 function stringIds(value: string): string[] {
@@ -57,10 +59,14 @@ function movedPositions(items: PlacementPosition[], dx: number, dy: number) {
 }
 
 export function BoardView({ boardId }: { boardId: string }) {
-  const { data, actions, pane } = useWorkspace();
+  const { data, actions, session, pane } = useWorkspace();
   const domId = useId();
   const board = data.boards[boardId];
   const tree = board?.layout === 'tree';
+  const canvasDefaults = useRef<Record<string, 'draw' | 'organize'>>({});
+  const canvasDefault = canvasDefaults.current[boardId] ??= session.boardModes?.[boardId] ?? (board?.drawing ? 'draw' : 'organize');
+  const [canvasMode, setCanvasMode] = usePaneViewState<'draw' | 'organize'>(`board:${boardId}:canvas`, canvasDefault);
+  const drawingMode = canvasMode === 'draw';
   const boardRevision = data.boardRevisions?.[boardId] ?? 0;
   const [mode, setMode] = usePaneViewState<'select' | 'connect' | 'pan'>(`board:${boardId}:mode`, 'select');
   const [selectedJSON, setSelectedJSON] = usePaneViewState<string>(`board:${boardId}:selected`, '[]');
@@ -173,7 +179,7 @@ export function BoardView({ boardId }: { boardId: string }) {
       viewport.current.scrollLeft = saved.x;
       viewport.current.scrollTop = saved.y;
     }
-  }, [boardId, actions]);
+  }, [boardId, actions, drawingMode]);
   useEffect(() => {
     setGroupName(activePlacements[0]?.group ?? '');
   }, [selected.join(','), boardId]);
@@ -476,7 +482,13 @@ export function BoardView({ boardId }: { boardId: string }) {
   return (
     <div className={`board-view ${tree ? `is-tree ${summary ? 'show-summary' : 'show-titles'}` : ''}`}>
       <div className="toolbar board-toolbar">
-        <div className="board-mode-buttons" aria-label="白板工具">
+        <button className="button" aria-pressed={drawingMode} onClick={() => {
+          const nextMode = drawingMode ? 'organize' : 'draw';
+          setCanvasMode(nextMode);
+          actions.updateData(next => { (next.sessions[board.researchId].boardModes ??= {})[boardId] = nextMode; });
+          setSelected([]); setSelectedEdge(undefined); setConnectingFrom(undefined); setMode('select'); setQuery('');
+        }}><Pencil size={15} />{drawingMode ? '卡片布局' : '绘图'}</button>
+        {!drawingMode && <div className="board-mode-buttons" aria-label="白板工具">
           <button
             className={`icon-button ${mode === 'select' ? 'is-active' : ''}`}
             aria-label={tree ? "选择节点" : "选择与移动"}
@@ -507,7 +519,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           >
             <Link2 size={17} />
           </button>
-        </div>
+        </div>}
         <button
           className="button"
           onClick={() => {
@@ -519,7 +531,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           <Plus size={15} />
           添加资料
         </button>
-        <label className="board-search">
+        {!drawingMode && <label className="board-search">
           <Search size={14} />
           <input
             aria-label="查找白板资料"
@@ -527,8 +539,8 @@ export function BoardView({ boardId }: { boardId: string }) {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="查找白板"
           />
-        </label>
-        <button
+        </label>}
+        {!drawingMode && <button
           className="icon-button"
           aria-label="撤销移出"
           title="撤销上次移出"
@@ -536,9 +548,9 @@ export function BoardView({ boardId }: { boardId: string }) {
           onClick={restoreRemoval}
         >
           <Undo2 size={16} />
-        </button>
+        </button>}
         <span className="board-toolbar-spacer" />
-        <button className="button" onClick={() => {
+        <button className="button" title={drawingMode ? '整理卡片与论文的关系；自由绘图不会自动发送。' : undefined} onClick={() => {
           const conversation = getActiveConversation(data, board.researchId);
           const conversationId = conversation?.id ?? actions.createConversation(board.researchId);
           actions.updateData(next => {
@@ -546,9 +558,9 @@ export function BoardView({ boardId }: { boardId: string }) {
             next.sessions[board.researchId].panel.aiView = 'chat';
           });
           actions.setPanel('ai');
-        }}><Sparkles size={14} />让 Agent 整理</button>
+        }}><Sparkles size={14} />{drawingMode ? '整理资料关系' : '让 Agent 整理'}</button>
         <button className="button" aria-label="白板版本历史" title="查看历史并恢复布局，保留共享卡片正文" aria-expanded={historyOpen} onClick={() => setHistoryOpen(!historyOpen)}><History size={16} />历史与恢复</button>
-        <button
+        {!drawingMode && <><button
           className="icon-button"
           aria-label="缩小白板"
           disabled={scale <= 0.4}
@@ -570,9 +582,9 @@ export function BoardView({ boardId }: { boardId: string }) {
           onClick={() => zoom(scale + 0.1)}
         >
           <ZoomIn size={16} />
-        </button>
+        </button></>}
       </div>
-      <div className="board-structure-toolbar" aria-label="白板结构与展示">
+      {!drawingMode && <div className="board-structure-toolbar" aria-label="白板结构与展示">
         <button className="button" aria-label={tree ? '切换为自由布局' : '预览层级整理'} onClick={() => tree ? structureAction(() => setBoardLayout(boardId, 'free')) : setLayoutPreview(boardRevision)}><GitBranch size={14} />{tree ? '层级整理 · 切换自由布局' : '层级整理'}</button>
         {tree && <>
           <button className="button" aria-expanded={outlineOpen} onClick={() => setOutlineOpen(!outlineOpen)}><ListTree size={14} />大纲与节点</button>
@@ -580,7 +592,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           <button className="button" aria-pressed={showRelations} onClick={() => { setShowRelations(!showRelations); setSelectedEdge(undefined); }}><Link2 size={14} />{showRelations ? '隐藏' : '显示'}关联 · {edges.length}</button>
           {hiddenRelations.length > 0 && <button className="button" title="展开所有分支，查看真实关联端点" onClick={() => { setCollapsedJSON('[]'); setShowRelations(true); }}>{hiddenRelations.length} 条关联因折叠隐藏</button>}
         </>}
-      </div>
+      </div>}
       {layoutPreview !== undefined && <BoardLayoutPreview placements={placements} title={item => resourceTitle(data, item.resourceRef)} stale={layoutPreview !== boardRevision}
         onCancel={() => setLayoutPreview(undefined)} onConfirm={() => structureAction(() => {
           setBoardLayout(boardId, 'tree');
@@ -717,7 +729,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           </div>
         </div>
       )}
-      <div className="board-workarea">
+      {drawingMode ? <Suspense fallback={<div className="empty-state" role="status">正在加载绘图工具…</div>}><BoardDrawing key={boardId} boardId={boardId} /></Suspense> : <div className="board-workarea">
       {tree && outlineOpen && <BoardOutline placements={placements} selected={selected} collapsed={collapsed} title={item => resourceTitle(data, item.resourceRef)} onLocate={locate} onToggle={toggleBranch}
         onReorder={(id, direction) => structureAction(() => reorderBoardPlacement(boardId, id, direction))}
         onMove={(id, parent) => structureAction(() => { moveBoardBranch(boardId, id, parent); if (parent) setCollapsedJSON(JSON.stringify(collapsed.filter(item => item !== parent))); })}
@@ -997,8 +1009,8 @@ export function BoardView({ boardId }: { boardId: string }) {
           </div>
         </div>
       </div>
-      </div>
-      {(activePlacements.length > 0 || edge) && (
+      </div>}
+      {!drawingMode && (activePlacements.length > 0 || edge) && (
         <div className="board-selection-bar" aria-label="白板选中项操作">
           {activePlacements.length > 0 && (
             <>
@@ -1069,7 +1081,7 @@ export function BoardView({ boardId }: { boardId: string }) {
         <span>
           {placements.length} 项资料 · {edges.length} 个关系
         </span>
-        <span>{tree ? '层级模式不拖动改归属 · 在大纲调整顺序与分支 · 点编辑看全文' : '拖动移动 · Shift / Ctrl / ⌘ 多选 · 方向键 1px · Shift + 方向键 10px'}</span>
+        <span>{drawingMode ? '画笔、形状与文字 · 选中资料可查看来源' : tree ? '层级模式不拖动改归属 · 在大纲调整顺序与分支 · 点编辑看全文' : '拖动移动 · Shift / Ctrl / ⌘ 多选 · 方向键 1px · Shift + 方向键 10px'}</span>
       </div>
     </div>
   );

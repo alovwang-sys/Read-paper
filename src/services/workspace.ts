@@ -7,6 +7,7 @@ import { hasFullText, normalizeIdentifier } from '../domain/knowledge';
 import { paneGroups, findPaneTab, ensurePaneLayout, replacePane, collapseEmptyPanes, syncPaneSession, isResourceView } from './panes';
 export { getReaderPosition } from './panes';
 import { recordBoardChanges, type BoardChangeInfo } from '../domain/board-history';
+import { flushBoardDrawings } from './drawing-storage';
 import { layoutBoardTree } from '../domain/board-layout';
 import { researchResourceIds, type ResearchResourceKind } from '../domain/research-order';
 export { hasFullText, normalizeIdentifier, conclusionIssues } from '../domain/knowledge';
@@ -352,6 +353,7 @@ export const workspace = {
     else void persist();
   },
   async flushSave() {
+    await flushBoardDrawings();
     clearTimeout(timer);
     if (!state.loaded || state.loadError) return;
     do {

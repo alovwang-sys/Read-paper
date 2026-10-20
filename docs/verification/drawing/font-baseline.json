@@ -1,0 +1,129 @@
+{
+  "href": "papertrail://app/",
+  "probes": [
+    {
+      "family": "Cascadia",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Cascadia/CascadiaCode-Regular.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Cascadia/CascadiaCode-Regular.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Comic Shanns",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/ComicShanns/ComicShanns-Regular-279a7b317d12eb88de06167bd672b4b4.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-279a7b317d12eb88de06167bd672b4b4.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Comic Shanns",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/ComicShanns/ComicShanns-Regular-fcb0fc02dcbee4c9846b3e2508668039.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-fcb0fc02dcbee4c9846b3e2508668039.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Comic Shanns",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/ComicShanns/ComicShanns-Regular-dc6a8806fa96795d7b3be5026f989a17.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-dc6a8806fa96795d7b3be5026f989a17.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Comic Shanns",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/ComicShanns/ComicShanns-Regular-6e066e8de2ac57ea9283adb9c24d7f0c.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-6e066e8de2ac57ea9283adb9c24d7f0c.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Excalifont",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-a88b72a24fb54c9f94e3b5fdaa7481c9.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Excalifont/Excalifont-Regular-a88b72a24fb54c9f94e3b5fdaa7481c9.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Excalifont",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-be310b9bcd4f1a43f571c46df7809174.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Excalifont/Excalifont-Regular-be310b9bcd4f1a43f571c46df7809174.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Excalifont",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-b9dcf9d2e50a1eaf42fc664b50a3fd0d.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Excalifont/Excalifont-Regular-b9dcf9d2e50a1eaf42fc664b50a3fd0d.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Excalifont",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-41b173a47b57366892116a575a43e2b6.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Excalifont/Excalifont-Regular-41b173a47b57366892116a575a43e2b6.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Excalifont",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-3f2c5db56cc93c5a6873b1361d730c16.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Excalifont/Excalifont-Regular-3f2c5db56cc93c5a6873b1361d730c16.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Excalifont",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-349fac6ca4700ffec595a7150a0d1e1d.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Excalifont/Excalifont-Regular-349fac6ca4700ffec595a7150a0d1e1d.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    },
+    {
+      "family": "Excalifont",
+      "source": "url(papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-623ccf21b21ef6b3a0d87738f77eb071.woff2) format('woff2'), url(https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Excalifont/Excalifont-Regular-623ccf21b21ef6b3a0d87738f77eb071.woff2) format('woff2')",
+      "assetPath": "papertrail://app/excalidraw-assets/"
+    }
+  ],
+  "fontCount": 233,
+  "fetch": {
+    "url": "papertrail://app/excalidraw-assets/fonts/Excalifont/Excalifont-Regular-a88b72a24fb54c9f94e3b5fdaa7481c9.woff2",
+    "status": 200,
+    "bytes": 24956,
+    "contentType": "font/woff2"
+  },
+  "localLoad": "loaded",
+  "fontFaces": [
+    {
+      "family": "KaTeX_AMS",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Caligraphic",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Caligraphic",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Fraktur",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Fraktur",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Main",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Main",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Main",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Main",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Math",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_Math",
+      "status": "unloaded"
+    },
+    {
+      "family": "KaTeX_SansSerif",
+      "status": "unloaded"
+    }
+  ],
+  "resources": [
+    "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Cascadia/CascadiaCode-Regular.woff2",
+    "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-279a7b317d12eb88de06167bd672b4b4.woff2",
+    "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-fcb0fc02dcbee4c9846b3e2508668039.woff2",
+    "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-dc6a8806fa96795d7b3be5026f989a17.woff2"
+  ]
+}

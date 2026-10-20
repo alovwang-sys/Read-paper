@@ -1,0 +1,44 @@
+{
+  "source": "/tmp/papertrail-desktop-drawing-font-probe/drawing-打包桌面真实绘图与中文文字离线可用，字体本地加载且退出重启后保留/desktop-drawing-observation.json",
+  "testStatus": {
+    "status": "failed",
+    "failedTests": [
+      "2f359c293bec9d174e4e-a35ddf274ab206599045"
+    ]
+  },
+  "fontRuntime": {
+    "href": "papertrail://app/",
+    "assetPath": "papertrail://app/excalidraw-assets/",
+    "excalifont": [
+      {
+        "family": "Excalifont",
+        "status": "loaded",
+        "unicodeRange": "U+20-7E, U+A0-A3, U+A5-A6, U+A8-AB, U+AD-B1, U+B4, U+B6-B8, U+BA-FF, U+131, U+152-153, U+2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+2013-2014, U+2018-201A, U+201C-201E, U+2020, U+2022, U+2024-2026, U+2030, U+2039-203A, U+20AC, U+2122, U+2212",
+        "weight": "400",
+        "style": "normal"
+      }
+    ],
+    "fontResources": [
+      "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Cascadia/CascadiaCode-Regular.woff2",
+      "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/ComicShanns/ComicShanns-Regular-279a7b317d12eb88de06167bd672b4b4.woff2"
+    ]
+  },
+  "counts": {
+    "fonts": 230,
+    "fontResponses": 0,
+    "failedFonts": 230,
+    "externalRequests": 230,
+    "modelRequests": 0,
+    "pageErrors": 0,
+    "securityErrors": 230
+  },
+  "firstFontRequest": [
+    "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Cascadia/CascadiaCode-Regular.woff2"
+  ],
+  "firstFailedFont": [
+    "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Cascadia/CascadiaCode-Regular.woff2 csp"
+  ],
+  "firstSecurityError": [
+    "Loading the font 'https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Cascadia/CascadiaCode-Regular.woff2' violates the following Content Security Policy directive: \"font-src 'self' data:\". The action has been blocked."
+  ]
+}

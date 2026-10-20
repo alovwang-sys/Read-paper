@@ -8,6 +8,8 @@ import { syncResearchFiles } from './project-files';
 import { captureBoardContext, createChatBoardContext } from './board-history';
 import { autoApplyBoard, boardSkillPrompt, boardSkillResult, demoBoardPlan } from './board-skill';
 import { detectBoardIntent, isBoardNonAction } from './board-intent';
+import { boardContextForModel } from '../domain/drawing';
+import { flushBoardDrawings } from './drawing-storage';
 
 export type AIConfig = {
   configured: boolean; model: string; provider: string; images: boolean; mode: 'live' | 'demo';
@@ -185,7 +187,7 @@ const agentResponder: AIResponder = async (request, options) => {
   const payload = { workspaceId, requestId: request.id, researchId: request.researchId, conversationId: request.conversationId,
     connectionId: request.connectionId, purpose: request.purpose ?? 'chat', prompt: request.prompt,
     context: request.context, history: request.nativeRun?.managed ? [] : request.history ?? [],
-    ...(request.boardContext ? { boardContext: request.boardContext } : {}),
+    ...(request.boardContext ? { boardContext: boardContextForModel(request.boardContext) } : {}),
     ...(images.length ? { images } : {}),
     ...(bindingId ? { bindingId, ...(request.purpose === 'chat' && conversation.nativeSessionRef ? { sessionRef: conversation.nativeSessionRef } : {}) } : {}),
     ...(request.connectionId === 'codex' ? request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : request.codex?.model ? { codex: { model: request.codex.model } } : {} : {}),
@@ -722,6 +724,7 @@ export async function stopAllAI() {
 }
 export async function submitAI(researchId: string, conversationId: string, prompt: string, responder?: AIResponder, options: { board?: 'create' | 'none' } = {}) {
   if (!prompt.trim()) throw new Error('请输入问题');
+  await flushBoardDrawings();
   const data = workspace.getState().data, conversation = data.conversations[conversationId];
   if (!conversation || conversation.archived) throw new Error('请先恢复此会话再继续讨论。');
   const connectionId = responder === demoResponder ? 'demo' : conversationConnection(conversation);
@@ -751,6 +754,7 @@ export async function retryAI(requestId: string, mode?: 'live' | 'demo') {
   return runChatRequest(request, old.connectionId && !['model', 'demo'].includes(old.connectionId) ? liveResponder : (mode ?? old.mode) === 'demo' ? demoResponder : liveResponder);
 }
 export async function regenerateAI(requestId: string, mode?: 'live' | 'demo') {
+  await flushBoardDrawings();
   const data = workspace.getState().data, old = data.requests[requestId];
   if (!old || old.nativeImported || old.status !== 'done' || data.conversations[old.conversationId].requestIds.map(id => data.requests[id]).filter(r => !r.purpose || r.purpose === 'chat').at(-1)?.id !== old.id) throw new Error('仅最新一轮完成回答可重新生成。');
   const selectedBoard = data.conversations[old.conversationId].boardSkill;

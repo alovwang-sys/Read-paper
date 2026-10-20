@@ -1,0 +1,21 @@
+{
+  "executablePath": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "capabilityStatus": 502,
+  "capabilityBranch": "unavailable",
+  "capabilityError": "本机 Agent 连接失败，请检查 CLI 配置后重试。",
+  "capabilityErrorCode": "agent_failed",
+  "modelCount": null,
+  "fullAccessConfirmationCancelled": false,
+  "fullAccessEnabled": false,
+  "materialDialogCancelled": true,
+  "systemDictationMediaRequests": 0,
+  "modelRequests": [],
+  "pageErrors": [],
+  "viewport": {
+    "width": 1024,
+    "height": 800
+  },
+  "controlsReachableAt1024": true,
+  "draftRetainedAfterRestart": true,
+  "permissionAfterRestart": "read-only"
+}
