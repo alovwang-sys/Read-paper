@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import type { NativeSessionSnapshot, WorkspaceData } from '../../src/domain/types';
 import { createSeed } from '../../src/data/seed';
 import { fixtureSessionRef, mockProjectService } from './project-fixture';
+import { openSource } from './knowledge-helpers';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
@@ -146,6 +147,78 @@ test('外部忙碌不抢发或停止，切换助手恢复各自草稿，刷新�
   await history(page); api.project.sessions.push(native('new-open', 'opencode', '原生端刚创建的讨论'));
   await panel(page).getByRole('button', { name: '刷新', exact: true }).click(); await expect(panel(page).locator('.ai-history-item').filter({ hasText: '原生端刚创建的讨论' })).toHaveCount(1); await panel(page).getByRole('button', { name: '刷新', exact: true }).click(); await expect(panel(page).locator('.ai-history-item').filter({ hasText: '原生端刚创建的讨论' })).toHaveCount(1);
   expect(api.runs).toHaveLength(0);
+});
+
+test('原生进行中历史自动同步至完成，不误报失败或提供停止和重发', async ({ page }) => {
+  const busy = native('history-live', 'codex', '原生长任务', false, 'busy');
+  busy.messages = [
+    { id: 'live-user', role: 'user', text: '核对这篇论文的训练流程。', turnId: 'live-turn', turnStatus: 'inProgress' },
+    { id: 'live-answer', role: 'assistant', text: '正在核对论文材料，后续会补充完整结论。', turnId: 'live-turn', turnStatus: 'inProgress' },
+  ];
+  const api = await setup(page, { sessions: [busy] });
+  const mutations: string[] = [];
+  await page.route(/\/api\/ai\/agents\/(run|stop|control|respond)$/, route => { mutations.push(route.request().url()); return route.fulfill({ status: 500, json: { error: '历史查看不得操作原生任务' } }); });
+  await openSource(page, 'Adaptive Retrieval: Evidence & Reliability');
+  await expect(main(page).locator('canvas').first()).toBeVisible();
+  await history(page); await panel(page).locator('.ai-history-item').filter({ hasText: busy.title }).locator('.ai-history-open').click();
+  const turn = panel(page).locator('.ai-turn');
+  await expect(turn.getByRole('status')).toContainText('原生回合正在运行');
+  await expect(turn.getByRole('alert')).toHaveCount(0);
+  await expect(panel(page).getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0);
+  await expect(turn.getByRole('button', { name: /重试|重新生成/ })).toHaveCount(0);
+  await panel(page).getByLabel('向 AI 提问').fill('完成后再核对运行镜像的关系');
+  await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeDisabled();
+  const original = await state(page), conversationId = original.sessions['research-a'].activeConversationId!, requestId = original.conversations[conversationId].requestIds[0];
+  expect(original.requests[requestId].status).toBe('generating');
+  await mkdir('docs/verification/native-history-state', { recursive: true });
+  for (const width of [1440, 1280, 1024]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
+    await expect(turn.getByRole('status')).toBeVisible();
+    await expect(main(page).locator('.pdf-page-loading')).toHaveCount(0);
+    await page.screenshot({ path: `docs/verification/native-history-state/running-${width}.png` });
+  }
+  await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload();
+  await expect(turn.getByRole('status')).toContainText('原生回合正在运行');
+  await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('完成后再核对运行镜像的关系');
+  busy.messages[1].text = '第二份材料已核对，正在完成结论。';
+  await expect(turn.locator('.ai-answer')).toContainText('第二份材料已核对', { timeout: 20000 });
+  busy.state = 'idle'; busy.canResume = true; delete busy.reason;
+  busy.messages = busy.messages.map(message => ({ ...message, turnStatus: 'completed' })); busy.messages[1].text = '已完成训练流程核对，缺少原文的部分保留为建议。';
+  await expect(turn.locator('.ai-answer')).toContainText('已完成训练流程核对', { timeout: 20000 });
+  await expect(turn.getByRole('status')).toHaveCount(0); await expect(turn.getByRole('alert')).toHaveCount(0);
+  await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeEnabled();
+  const completed = await state(page);
+  expect(completed.conversations[conversationId].requestIds).toEqual([requestId]); expect(completed.requests[requestId].status).toBe('done');
+  expect(api.project.calls.filter(call => call.action === 'read').length).toBeGreaterThan(2); expect(mutations).toEqual([]); expect(api.runs).toEqual([]);
+});
+
+test('原生中断与记录预览使用中性状态，只有确认执行失败才告警', async ({ page }) => {
+  const record = native('history-ended', 'codex', '原生结束状态', false, 'unknown');
+  record.messages = [
+    { id: 'stopped-user', role: 'user', text: '已停止的上一轮', turnId: 'stopped-turn', turnStatus: 'interrupted' },
+    { id: 'stopped-answer', role: 'assistant', text: '停止前已收到的进展', turnId: 'stopped-turn', turnStatus: 'interrupted' },
+    { id: 'preview-user', role: 'user', text: '读取到的长回答预览', turnId: 'preview-turn', turnStatus: 'completed', answerComplete: false },
+    { id: 'preview-answer', role: 'assistant', text: '原生记录中的正文预览', turnId: 'preview-turn', turnStatus: 'completed', answerComplete: false },
+    { id: 'unknown-user', role: 'user', text: '结束状态尚待核对的回合', turnId: 'unknown-turn' },
+    { id: 'unknown-answer', role: 'assistant', text: '已保存的进展记录', turnId: 'unknown-turn' },
+    { id: 'failed-user', role: 'user', text: '真正执行失败的回合', turnId: 'failed-turn', turnStatus: 'failed' },
+    { id: 'failed-answer', role: 'assistant', text: '失败前已有内容', turnId: 'failed-turn', turnStatus: 'failed' },
+  ];
+  const api = await setup(page, { sessions: [record] }); await history(page);
+  await panel(page).locator('.ai-history-item').filter({ hasText: record.title }).locator('.ai-history-open').click();
+  const stopped = panel(page).locator('.ai-turn').filter({ hasText: '已停止的上一轮' });
+  const preview = panel(page).locator('.ai-turn').filter({ hasText: '读取到的长回答预览' });
+  const unknown = panel(page).locator('.ai-turn').filter({ hasText: '结束状态尚待核对的回合' });
+  const failed = panel(page).locator('.ai-turn').filter({ hasText: '真正执行失败的回合' });
+  await expect(stopped.getByRole('status')).toContainText('本轮已中断'); await expect(stopped.getByRole('alert')).toHaveCount(0);
+  await expect(preview.getByRole('status')).toContainText('预览'); await expect(preview.getByRole('alert')).toHaveCount(0);
+  await expect(unknown.getByRole('status')).toContainText('尚未确认'); await expect(unknown.getByRole('alert')).toHaveCount(0);
+  await expect(failed.getByRole('alert')).toContainText('原生回合执行失败'); await expect(panel(page).getByRole('alert')).toHaveCount(1);
+  await expect(panel(page).getByRole('button', { name: /按原范围重试|在此对话中重试|重新生成/ })).toHaveCount(0);
+  await stopped.scrollIntoViewIfNeeded(); await mkdir('docs/verification/native-history-state', { recursive: true });
+  await page.screenshot({ path: 'docs/verification/native-history-state/interrupted-preview-1440.png' });
+  await failed.scrollIntoViewIfNeeded(); await page.screenshot({ path: 'docs/verification/native-history-state/confirmed-failure-1440.png' });
+  expect(api.runs).toEqual([]);
 });
 
 test('Codex 读取后按同一原生身份继续，目录失联保留记录和问题', async ({ page }) => {

@@ -1,0 +1,19 @@
+{
+  "reviewedAt": "2026-10-20",
+  "reviewType": "Assistant close reading against the synthetic fixture; not independent domain-expert review",
+  "source": "codex-probe.json",
+  "observations": [
+    "The short natural-language request did not prescribe node count, layout, category headings, or exact output wording. The production Skill supplied the protocol.",
+    "The output retained all three existing placement IDs, resource identities, parent assignments, sibling orders, groups, and the board title. The returned layout was preserve; the existing tree mode remained tree.",
+    "Eight new cards add method comparison, controlled inputs, run traceability, interruption/recovery experiments, environment-update and multi-machine drills, evaluation planning, repeated measurement, and conditional decision records.",
+    "All eight new cards separate cited source observations from proposed actions and missing or unverified conditions within their bodies. Numbered citations attach to the basis section, not to the newly proposed experiment or an invented result.",
+    "The source observations match the eight supplied excerpts. No numerical outcome, invented acceptance threshold, concrete package version, or claim that a proposed experiment was already executed was found.",
+    "Six semantic links are distinct from the ten parent-child relationships. Their labels use future or pending-verification language rather than implying completed test evidence."
+  ],
+  "limitations": [
+    "This is one existing-map expansion using synthetic materials. It does not prove general reliability, scientific correctness of a real experiment, or that every research task can be completed automatically.",
+    "The categoryCounts metrics overlap: every new card contains basis, suggestion, and open-question sections. Eight cards should not be reported as twenty-four nodes.",
+    "The earlier creation probe and this expansion probe used different requests and starting maps; their sizes and edge counts are not a controlled A/B comparison.",
+    "Programmatic structure and citation checks do not establish visual quality, successful UI confirmation, source navigation, persistence after application, or correctness of packaging and installation. Those require separate product checks."
+  ]
+}

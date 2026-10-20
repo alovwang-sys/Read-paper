@@ -1,0 +1,447 @@
+{
+  "version": 1,
+  "executedAt": "2026-10-20T01:46:56.773Z",
+  "status": "passed",
+  "runtime": "production compileAgentPrompt + createCodexRuntime + parseBoardPlan + previewBoardPlan",
+  "fixture": {
+    "synthetic": true,
+    "documents": 3,
+    "excerpts": 8,
+    "existingCards": 3,
+    "existingMap": true,
+    "temporaryDirectoryRemoved": true
+  },
+  "request": {
+    "maxModelCalls": 1,
+    "attemptedModelCalls": 1,
+    "rpcTimeoutMs": 30000,
+    "generationDeadline": null,
+    "modelPolicy": "Production default model and effort; no override or user configuration change",
+    "access": "read-only"
+  },
+  "checks": {
+    "parserSelfCheck": true,
+    "nativeCompleted": true,
+    "productionParserAccepted": true,
+    "previewSnapshotAccepted": true,
+    "existingMapExpanded": true,
+    "existingIdentityRetained": true,
+    "existingHierarchyAndOrderRetained": true,
+    "treeModeRetained": true,
+    "generatedChildrenPresent": true,
+    "connectedUndirected": true,
+    "citationIdsInScope": true,
+    "recommendationsPresent": true,
+    "openQuestionsPresent": true,
+    "originalFixtureUnchanged": true
+  },
+  "limitations": [
+    "Programmatic checks validate structure and citation IDs, not whether every cited claim is entailed.",
+    "This one synthetic case does not establish reliability for all user materials.",
+    "This script validates existing-map expansion and its generated hierarchy; UI interaction, visual quality, and installation require separate verification."
+  ],
+  "promptSha256": "886dc028a8e9adf94ef0eea3e3e8d47e02e78e6b60020ff386f280018962f352",
+  "turn": {
+    "nativeSessionId": "01a156fd-8de9-7053-91a4-9537de886ba4",
+    "nativeTurnId": "01a156fd-9076-7cc0-bd38-6a451d66a21c",
+    "model": "gpt-6.1-sol",
+    "status": "completed",
+    "rawBody": "{\n  \"summary\": \"保留三张已有卡片及原有层级、顺序，沿方法和运行条件补充研究步骤，并新增评估验证分支。引用仅来自本次演示材料；对照设计、恢复实验和验收方式均为尚未执行的建议，预算、阈值与取舍规则仍待确认。本方案仅为提案，尚未修改白板。\",\n  \"title\": \"我的训练研究图\",\n  \"layout\": \"preserve\",\n  \"nodes\": [\n    {\n      \"placementId\": \"seed-placement-0\",\n      \"resourceRef\": {\n        \"kind\": \"card\",\n        \"id\": \"seed-question\"\n      },\n      \"group\": \"研究问题\",\n      \"parent\": null,\n      \"order\": 0\n    },\n    {\n      \"placementId\": \"seed-placement-1\",\n      \"resourceRef\": {\n        \"kind\": \"card\",\n        \"id\": \"seed-methods\"\n      },\n      \"group\": \"已有材料\",\n      \"parent\": 0,\n      \"order\": 0\n    },\n    {\n      \"placementId\": \"seed-placement-2\",\n      \"resourceRef\": {\n        \"kind\": \"card\",\n        \"id\": \"seed-runtime\"\n      },\n      \"group\": \"已有材料\",\n      \"parent\": 0,\n      \"order\": 1\n    },\n    {\n      \"card\": {\n        \"title\": \"更新方式对照计划\",\n        \"body\": \"依据：两种更新方式共用输入接口，但可训练参数集合不同；材料未证明哪种更优。[1]\\n建议：分别登记更新方式、可训练参数集合与数量、模型路径及配置；先用小规模试运行检查两条路径能否完成更新并接受同一评测。\\n待验证：接口一致是否足以支持公平比较；两种方式的配置差异须逐项记录，不能把全部差异归因于更新方式。\",\n        \"evidenceIds\": [\n          \"demo-evidence-1\"\n        ]\n      },\n      \"group\": \"方法计划\",\n      \"parent\": 1,\n      \"order\": 0\n    },\n    {\n      \"card\": {\n        \"title\": \"固定输入与对照条件\",\n        \"body\": \"依据：数据先经过格式转换与检查；现有对比记录固定数据清单、评测样本和随机种子，并登记硬件、镜像摘要及配置。相同种子不保证跨硬件结果完全一致。[1][2]\\n建议：为两种更新方式使用相同的起始模型、数据版本和评测样本，明确训练预算与调参规则，尽量在相同硬件环境运行；保存转换检查结果与数据清单摘要。\\n待确认：比较目标是相同资源预算下的质量，还是达到目标质量所需的资源；两者需要不同的对照设计。\",\n        \"evidenceIds\": [\n          \"demo-evidence-2\",\n          \"demo-evidence-5\"\n        ]\n      },\n      \"group\": \"方法计划\",\n      \"parent\": 1,\n      \"order\": 1\n    },\n    {\n      \"card\": {\n        \"title\": \"运行条件与产物登记\",\n        \"body\": \"依据：构建记录包含驱动兼容信息、CUDA 组件及 Python 包版本，运行引用镜像摘要；外部脚本启动分布式进程，输出目录带运行编号。结束后保存参数、配置、数据清单摘要与日志。[1][2][3]\\n建议：为每次运行建立登记表，关联运行编号、代码版本、硬件、构建记录、镜像摘要、启动命令、配置、输入摘要及产物路径；运行前检查输入可读、输出可写及进程启动情况。\\n待验证：这些记录能否支持另一次运行复现执行过程；材料尚未证明完整复现已完成。\",\n        \"evidenceIds\": [\n          \"demo-evidence-3\",\n          \"demo-evidence-4\",\n          \"demo-evidence-2\"\n        ]\n      },\n      \"group\": \"运行条件\",\n      \"parent\": 2,\n      \"order\": 0\n    },\n    {\n      \"card\": {\n        \"title\": \"检查点恢复实验\",\n        \"body\": \"依据：现有观察只证明检查点文件存在，未记录中断后继续执行的结果。[1]\\n建议：设置不中断运行作为对照；另一次运行在写出检查点后主动中断，再从指定检查点启动。保存中断位置、恢复命令、恢复日志、后续步数和最终评测结果，并核查训练状态是否按预期恢复。\\n待验证：能否继续推进训练、产物是否完整、恢复后结果与对照的差异是否可接受；比较容差须在实验前确定。尚未执行。\",\n        \"evidenceIds\": [\n          \"demo-evidence-4\"\n        ]\n      },\n      \"group\": \"运行条件\",\n      \"parent\": 2,\n      \"order\": 1\n    },\n    {\n      \"card\": {\n        \"title\": \"环境更新与多机演练\",\n        \"body\": \"依据：维护者希望对应环境更新前后的产物、日志和测量值；目前只试过单机样例，多机退出行为尚未演练。[1]\\n建议：先保留旧环境基线，每次仅改变一个包或基础镜像，使用固定输入执行并关联两次运行记录。具备多机条件后，再分别演练正常退出、单个进程失败及主动中断，保存各进程日志与退出状态。\\n待确认：可用机器、演练资源和通过条件。待验证：环境变更影响及多机退出行为；不能从单机样例推定多机可靠。\",\n        \"evidenceIds\": [\n          \"demo-evidence-7\"\n        ]\n      },\n      \"group\": \"运行条件\",\n      \"parent\": 2,\n      \"order\": 2\n    },\n    {\n      \"card\": {\n        \"title\": \"评估与选择计划\",\n        \"body\": \"依据：材料要求说明更新方式的选择依据及质量、耗时、显存之间的取舍，但预算尚未确认，也没有真实业务测试分数。[1]\\n建议：先确认研究目标与资源约束，再按统一测量方案比较候选方式；将测量结果、运行有效性与最终选择理由分别记录。\\n待确认：任务质量要求、显存上限、时间预算及各指标优先级。当前不能给出优胜方法或业务效果结论。\",\n        \"evidenceIds\": [\n          \"demo-evidence-8\"\n        ]\n      },\n      \"group\": \"评估验证\",\n      \"parent\": 0,\n      \"order\": 2\n    },\n    {\n      \"card\": {\n        \"title\": \"测量与重复运行\",\n        \"body\": \"依据：独立脚本在固定样本上计算任务得分，同时记录吞吐、峰值显存和总用时；材料未给出阈值、置信区间或多次运行汇总方式。[1]\\n建议：固定评测脚本版本、样本和计时边界，明确吞吐单位与显存采集方式；在预算允许时，为每种方法安排多个随机种子，保存逐次结果，并报告均值及离散程度。若估计置信区间，应说明计算方法与样本量。\\n待确认：重复次数、质量阈值及误差容忍范围。尚未执行，也没有可汇总的实测结果。\",\n        \"evidenceIds\": [\n          \"demo-evidence-6\"\n        ]\n      },\n      \"group\": \"评估验证\",\n      \"parent\": 8,\n      \"order\": 0\n    },\n    {\n      \"card\": {\n        \"title\": \"结果核查与取舍记录\",\n        \"body\": \"依据：材料要求关联运行产物、日志和测量值，并解释质量、耗时和显存的取舍。[1][2]\\n建议：建立逐次运行结果表，将方法配置、输入摘要、环境、产物、日志、任务得分及资源指标关联到运行编号；失败或缺失测量的运行单独标记并说明原因。预算确认后，先检查硬性约束，再比较满足约束的方法，记录选择理由与未解决问题。\\n待验证：结论是否在重复运行中稳定；演示材料未提供真实业务分数，后续业务适用性需要另行评测。\",\n        \"evidenceIds\": [\n          \"demo-evidence-7\",\n          \"demo-evidence-8\"\n        ]\n      },\n      \"group\": \"评估验证\",\n      \"parent\": 8,\n      \"order\": 1\n    }\n  ],\n  \"edges\": [\n    {\n      \"from\": 4,\n      \"to\": 3,\n      \"label\": \"将为方法对照约定共同条件\"\n    },\n    {\n      \"from\": 5,\n      \"to\": 10,\n      \"label\": \"将提供可追溯的运行记录\"\n    },\n    {\n      \"from\": 9,\n      \"to\": 3,\n      \"label\": \"将用于测量两种更新方式\"\n    },\n    {\n      \"from\": 6,\n      \"to\": 10,\n      \"label\": \"恢复验证结果待纳入核查\"\n    },\n    {\n      \"from\": 7,\n      \"to\": 10,\n      \"label\": \"环境与多机验证结果待纳入核查\"\n    },\n    {\n      \"from\": 9,\n      \"to\": 10,\n      \"label\": \"将提供逐次测量与波动信息\"\n    }\n  ]\n}"
+  },
+  "plan": {
+    "summary": "保留三张已有卡片及原有层级、顺序，沿方法和运行条件补充研究步骤，并新增评估验证分支。引用仅来自本次演示材料；对照设计、恢复实验和验收方式均为尚未执行的建议，预算、阈值与取舍规则仍待确认。本方案仅为提案，尚未修改白板。",
+    "title": "我的训练研究图",
+    "layout": "preserve",
+    "nodes": [
+      {
+        "placementId": "seed-placement-0",
+        "resourceRef": {
+          "kind": "card",
+          "id": "seed-question"
+        },
+        "group": "研究问题",
+        "parent": null,
+        "order": 0
+      },
+      {
+        "placementId": "seed-placement-1",
+        "resourceRef": {
+          "kind": "card",
+          "id": "seed-methods"
+        },
+        "group": "已有材料",
+        "parent": 0,
+        "order": 0
+      },
+      {
+        "placementId": "seed-placement-2",
+        "resourceRef": {
+          "kind": "card",
+          "id": "seed-runtime"
+        },
+        "group": "已有材料",
+        "parent": 0,
+        "order": 1
+      },
+      {
+        "card": {
+          "title": "更新方式对照计划",
+          "body": "依据：两种更新方式共用输入接口，但可训练参数集合不同；材料未证明哪种更优。[1]\n建议：分别登记更新方式、可训练参数集合与数量、模型路径及配置；先用小规模试运行检查两条路径能否完成更新并接受同一评测。\n待验证：接口一致是否足以支持公平比较；两种方式的配置差异须逐项记录，不能把全部差异归因于更新方式。",
+          "evidenceIds": [
+            "demo-evidence-1"
+          ]
+        },
+        "group": "方法计划",
+        "parent": 1,
+        "order": 0
+      },
+      {
+        "card": {
+          "title": "固定输入与对照条件",
+          "body": "依据：数据先经过格式转换与检查；现有对比记录固定数据清单、评测样本和随机种子，并登记硬件、镜像摘要及配置。相同种子不保证跨硬件结果完全一致。[1][2]\n建议：为两种更新方式使用相同的起始模型、数据版本和评测样本，明确训练预算与调参规则，尽量在相同硬件环境运行；保存转换检查结果与数据清单摘要。\n待确认：比较目标是相同资源预算下的质量，还是达到目标质量所需的资源；两者需要不同的对照设计。",
+          "evidenceIds": [
+            "demo-evidence-2",
+            "demo-evidence-5"
+          ]
+        },
+        "group": "方法计划",
+        "parent": 1,
+        "order": 1
+      },
+      {
+        "card": {
+          "title": "运行条件与产物登记",
+          "body": "依据：构建记录包含驱动兼容信息、CUDA 组件及 Python 包版本，运行引用镜像摘要；外部脚本启动分布式进程，输出目录带运行编号。结束后保存参数、配置、数据清单摘要与日志。[1][2][3]\n建议：为每次运行建立登记表，关联运行编号、代码版本、硬件、构建记录、镜像摘要、启动命令、配置、输入摘要及产物路径；运行前检查输入可读、输出可写及进程启动情况。\n待验证：这些记录能否支持另一次运行复现执行过程；材料尚未证明完整复现已完成。",
+          "evidenceIds": [
+            "demo-evidence-3",
+            "demo-evidence-4",
+            "demo-evidence-2"
+          ]
+        },
+        "group": "运行条件",
+        "parent": 2,
+        "order": 0
+      },
+      {
+        "card": {
+          "title": "检查点恢复实验",
+          "body": "依据：现有观察只证明检查点文件存在，未记录中断后继续执行的结果。[1]\n建议：设置不中断运行作为对照；另一次运行在写出检查点后主动中断，再从指定检查点启动。保存中断位置、恢复命令、恢复日志、后续步数和最终评测结果，并核查训练状态是否按预期恢复。\n待验证：能否继续推进训练、产物是否完整、恢复后结果与对照的差异是否可接受；比较容差须在实验前确定。尚未执行。",
+          "evidenceIds": [
+            "demo-evidence-4"
+          ]
+        },
+        "group": "运行条件",
+        "parent": 2,
+        "order": 1
+      },
+      {
+        "card": {
+          "title": "环境更新与多机演练",
+          "body": "依据：维护者希望对应环境更新前后的产物、日志和测量值；目前只试过单机样例，多机退出行为尚未演练。[1]\n建议：先保留旧环境基线，每次仅改变一个包或基础镜像，使用固定输入执行并关联两次运行记录。具备多机条件后，再分别演练正常退出、单个进程失败及主动中断，保存各进程日志与退出状态。\n待确认：可用机器、演练资源和通过条件。待验证：环境变更影响及多机退出行为；不能从单机样例推定多机可靠。",
+          "evidenceIds": [
+            "demo-evidence-7"
+          ]
+        },
+        "group": "运行条件",
+        "parent": 2,
+        "order": 2
+      },
+      {
+        "card": {
+          "title": "评估与选择计划",
+          "body": "依据：材料要求说明更新方式的选择依据及质量、耗时、显存之间的取舍，但预算尚未确认，也没有真实业务测试分数。[1]\n建议：先确认研究目标与资源约束，再按统一测量方案比较候选方式；将测量结果、运行有效性与最终选择理由分别记录。\n待确认：任务质量要求、显存上限、时间预算及各指标优先级。当前不能给出优胜方法或业务效果结论。",
+          "evidenceIds": [
+            "demo-evidence-8"
+          ]
+        },
+        "group": "评估验证",
+        "parent": 0,
+        "order": 2
+      },
+      {
+        "card": {
+          "title": "测量与重复运行",
+          "body": "依据：独立脚本在固定样本上计算任务得分，同时记录吞吐、峰值显存和总用时；材料未给出阈值、置信区间或多次运行汇总方式。[1]\n建议：固定评测脚本版本、样本和计时边界，明确吞吐单位与显存采集方式；在预算允许时，为每种方法安排多个随机种子，保存逐次结果，并报告均值及离散程度。若估计置信区间，应说明计算方法与样本量。\n待确认：重复次数、质量阈值及误差容忍范围。尚未执行，也没有可汇总的实测结果。",
+          "evidenceIds": [
+            "demo-evidence-6"
+          ]
+        },
+        "group": "评估验证",
+        "parent": 8,
+        "order": 0
+      },
+      {
+        "card": {
+          "title": "结果核查与取舍记录",
+          "body": "依据：材料要求关联运行产物、日志和测量值，并解释质量、耗时和显存的取舍。[1][2]\n建议：建立逐次运行结果表，将方法配置、输入摘要、环境、产物、日志、任务得分及资源指标关联到运行编号；失败或缺失测量的运行单独标记并说明原因。预算确认后，先检查硬性约束，再比较满足约束的方法，记录选择理由与未解决问题。\n待验证：结论是否在重复运行中稳定；演示材料未提供真实业务分数，后续业务适用性需要另行评测。",
+          "evidenceIds": [
+            "demo-evidence-7",
+            "demo-evidence-8"
+          ]
+        },
+        "group": "评估验证",
+        "parent": 8,
+        "order": 1
+      }
+    ],
+    "edges": [
+      {
+        "from": 4,
+        "to": 3,
+        "label": "将为方法对照约定共同条件"
+      },
+      {
+        "from": 5,
+        "to": 10,
+        "label": "将提供可追溯的运行记录"
+      },
+      {
+        "from": 9,
+        "to": 3,
+        "label": "将用于测量两种更新方式"
+      },
+      {
+        "from": 6,
+        "to": 10,
+        "label": "恢复验证结果待纳入核查"
+      },
+      {
+        "from": 7,
+        "to": 10,
+        "label": "环境与多机验证结果待纳入核查"
+      },
+      {
+        "from": 9,
+        "to": 10,
+        "label": "将提供逐次测量与波动信息"
+      }
+    ]
+  },
+  "preview": {
+    "board": {
+      "id": "demo-board-tree",
+      "researchId": "demo-research-tree",
+      "title": "我的训练研究图",
+      "layout": "tree"
+    },
+    "placements": [
+      {
+        "id": "seed-placement-0",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "seed-question"
+        },
+        "group": "研究问题",
+        "x": 64,
+        "y": 448,
+        "order": 0
+      },
+      {
+        "id": "seed-placement-1",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "seed-methods"
+        },
+        "group": "已有材料",
+        "x": 404,
+        "y": 128,
+        "parentPlacementId": "seed-placement-0",
+        "order": 0
+      },
+      {
+        "id": "seed-placement-2",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "seed-runtime"
+        },
+        "group": "已有材料",
+        "x": 404,
+        "y": 448,
+        "parentPlacementId": "seed-placement-0",
+        "order": 1
+      },
+      {
+        "id": "proposal-placement-3",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-3"
+        },
+        "group": "方法计划",
+        "x": 744,
+        "y": 64,
+        "parentPlacementId": "seed-placement-1",
+        "order": 0
+      },
+      {
+        "id": "proposal-placement-4",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-4"
+        },
+        "group": "方法计划",
+        "x": 744,
+        "y": 192,
+        "parentPlacementId": "seed-placement-1",
+        "order": 1
+      },
+      {
+        "id": "proposal-placement-5",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-5"
+        },
+        "group": "运行条件",
+        "x": 744,
+        "y": 320,
+        "parentPlacementId": "seed-placement-2",
+        "order": 0
+      },
+      {
+        "id": "proposal-placement-6",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-6"
+        },
+        "group": "运行条件",
+        "x": 744,
+        "y": 448,
+        "parentPlacementId": "seed-placement-2",
+        "order": 1
+      },
+      {
+        "id": "proposal-placement-7",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-7"
+        },
+        "group": "运行条件",
+        "x": 744,
+        "y": 576,
+        "parentPlacementId": "seed-placement-2",
+        "order": 2
+      },
+      {
+        "id": "proposal-placement-8",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-8"
+        },
+        "group": "评估验证",
+        "x": 404,
+        "y": 768,
+        "parentPlacementId": "seed-placement-0",
+        "order": 2
+      },
+      {
+        "id": "proposal-placement-9",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-9"
+        },
+        "group": "评估验证",
+        "x": 744,
+        "y": 704,
+        "parentPlacementId": "proposal-placement-8",
+        "order": 0
+      },
+      {
+        "id": "proposal-placement-10",
+        "boardId": "demo-board-tree",
+        "resourceRef": {
+          "kind": "card",
+          "id": "proposal-card-10"
+        },
+        "group": "评估验证",
+        "x": 744,
+        "y": 832,
+        "parentPlacementId": "proposal-placement-8",
+        "order": 1
+      }
+    ],
+    "edges": [
+      {
+        "id": "proposal-edge-0",
+        "boardId": "demo-board-tree",
+        "fromPlacementId": "proposal-placement-4",
+        "toPlacementId": "proposal-placement-3",
+        "label": "将为方法对照约定共同条件"
+      },
+      {
+        "id": "proposal-edge-1",
+        "boardId": "demo-board-tree",
+        "fromPlacementId": "proposal-placement-5",
+        "toPlacementId": "proposal-placement-10",
+        "label": "将提供可追溯的运行记录"
+      },
+      {
+        "id": "proposal-edge-2",
+        "boardId": "demo-board-tree",
+        "fromPlacementId": "proposal-placement-9",
+        "toPlacementId": "proposal-placement-3",
+        "label": "将用于测量两种更新方式"
+      },
+      {
+        "id": "proposal-edge-3",
+        "boardId": "demo-board-tree",
+        "fromPlacementId": "proposal-placement-6",
+        "toPlacementId": "proposal-placement-10",
+        "label": "恢复验证结果待纳入核查"
+      },
+      {
+        "id": "proposal-edge-4",
+        "boardId": "demo-board-tree",
+        "fromPlacementId": "proposal-placement-7",
+        "toPlacementId": "proposal-placement-10",
+        "label": "环境与多机验证结果待纳入核查"
+      },
+      {
+        "id": "proposal-edge-5",
+        "boardId": "demo-board-tree",
+        "fromPlacementId": "proposal-placement-9",
+        "toPlacementId": "proposal-placement-10",
+        "label": "将提供逐次测量与波动信息"
+      }
+    ]
+  },
+  "metrics": {
+    "nodes": 11,
+    "existingNodes": 3,
+    "newCards": 8,
+    "semanticEdges": 6,
+    "hierarchyEdges": 10,
+    "groups": [
+      "研究问题",
+      "已有材料",
+      "方法计划",
+      "运行条件",
+      "评估验证"
+    ],
+    "citedEvidence": [
+      "demo-evidence-1",
+      "demo-evidence-2",
+      "demo-evidence-5",
+      "demo-evidence-3",
+      "demo-evidence-4",
+      "demo-evidence-7",
+      "demo-evidence-8",
+      "demo-evidence-6"
+    ],
+    "categoryCounts": {
+      "evidence": 8,
+      "recommendation": 8,
+      "unknown": 8,
+      "inference": 0
+    }
+  },
+  "durationMs": 157309
+}

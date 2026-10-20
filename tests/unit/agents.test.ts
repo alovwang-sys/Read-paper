@@ -423,23 +423,26 @@ it('原生无文字回合正常完成，不伪报回答接收失败', async () =
   expect(data().requests[id].error).toBeUndefined();
 });
 
-it('送达不确定时只退避观察，失败后提供手动恢复而不重新发送问题', async () => {
+it('断线超过旧重试窗口仍自动观察，连接回来后完成且不重发问题', async () => {
   const conversation = selectAgent('research-a', 'codex');
   workspace.updateData(next => { next.conversations[conversation].input = '绝不能重发的问题'; });
   const mock = vi.fn(async (_url: string, _init?: RequestInit): Promise<Response> => { throw new Error('network disconnected'); });
   vi.stubGlobal('fetch', mock);
   const pending = submitAI('research-a', conversation, '绝不能重发的问题');
   await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
-  await vi.advanceTimersByTimeAsync(6000); const id = await pending;
+  await vi.advanceTimersByTimeAsync(60_000);
+  const id = data().conversations[conversation].requestIds.at(-1)!;
   const calls = mock.mock.calls as unknown as [string, RequestInit][];
   expect(calls.filter(([url]) => url.endsWith('/run'))).toHaveLength(1);
-  expect(calls.filter(([url]) => url.endsWith('/observe'))).toHaveLength(3);
-  expect(data().requests[id]).toMatchObject({ status: 'generating', nativeRun: { delivery: 'unknown', transport: 'offline', state: 'unknown' } });
+  expect(calls.filter(([url]) => url.endsWith('/observe')).length).toBeGreaterThan(3);
+  expect(calls.filter(([url]) => url.endsWith('/observe')).length).toBeLessThan(10);
+  expect(data().requests[id]).toMatchObject({ status: 'generating', nativeRun: { transport: 'reconnecting' } });
   expect(data().conversations[conversation].input).toBe('');
   await expect(submitAI('research-a', conversation, '下一问')).rejects.toThrow('当前会话正在回答');
   mock.mockImplementation(async () => frames([{ type: 'snapshot', seq: 9, state: 'completed', delivery: 'accepted', body: '实际已经完成的回答', items: [] }]));
-  await resumeNativeRuns(id);
+  await vi.advanceTimersByTimeAsync(30_000); await pending;
   expect(data().requests[id]).toMatchObject({ status: 'done', body: '实际已经完成的回答' });
+  expect(mock.mock.calls.filter(([url]) => url.endsWith('/run'))).toHaveLength(1);
 });
 
 function activeNativeTurn(text: string) {
@@ -452,6 +455,31 @@ function activeNativeTurn(text: string) {
   });
   return conversation;
 }
+
+it.each(['focus', 'stop'] as const)('断线退避中%s立即恢复观察且不重发，停止等待真实终态', async action => {
+  const conversation = activeNativeTurn('保留下一问草稿');
+  const mock = vi.fn(async (url: string) => {
+    if (url.endsWith('/stop')) return Response.json({ ok: true });
+    throw new TypeError('network disconnected');
+  });
+  vi.stubGlobal('fetch', mock);
+  const pending = resumeNativeRuns('active-turn');
+  await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+  await vi.advanceTimersByTimeAsync(16_000);
+  expect(mock.mock.calls.filter(([url]) => url.endsWith('/observe'))).toHaveLength(5);
+  mock.mockImplementation(async (url: string) => url.endsWith('/stop') ? Response.json({ ok: true }) : frames([
+    { type: 'snapshot', seq: 11, state: action === 'stop' ? 'interrupted' : 'completed', delivery: 'accepted', body: '保存的内容', items: [] },
+  ]));
+  if (action === 'stop') {
+    stopAI('active-turn');
+    expect(data().requests['active-turn'].nativeRun?.state).toBe('stopping');
+  } else await resumeNativeRuns('active-turn');
+  await pending;
+  expect(mock.mock.calls.filter(([url]) => url.endsWith('/observe'))).toHaveLength(6);
+  expect(mock.mock.calls.some(([url]) => url.endsWith('/run'))).toBe(false);
+  expect(data().requests['active-turn'].status).toBe(action === 'stop' ? 'stopped' : 'done');
+  expect(data().conversations[conversation].input).toBe('保留下一问草稿');
+});
 
 it('补充绑定预期原生回合，迟到确认不清用户新草稿，也不改变当前研究', async () => {
   const conversation = activeNativeTurn('补充原有条件');
@@ -532,11 +560,14 @@ for (const [status, code] of [[409, 'duplicate_request'], [410, 'run_expired']] 
   });
 }
 
-it('服务只返回unknown快照且保持连接时也有限退避对账，避免永远显示正在回答', async () => {
+it('服务返回unknown快照时保留待核对状态并自动观察到终态', async () => {
   activeNativeTurn('保留未知回合的草稿');
   const mock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode(JSON.stringify({ type: 'snapshot', seq: 10, body: '', items: [], interactions: [], state: 'unknown', delivery: 'accepted' }) + '\n')); } })));
   vi.stubGlobal('fetch', mock);
-  const pending = resumeNativeRuns('active-turn'); await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1)); await vi.advanceTimersByTimeAsync(6000); await pending;
+  const pending = resumeNativeRuns('active-turn'); await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1)); await vi.advanceTimersByTimeAsync(6000);
   expect(mock.mock.calls.map(([url]) => url)).toEqual(Array(4).fill('/api/ai/agents/observe'));
-  expect(data().requests['active-turn']).toMatchObject({ status: 'generating', nativeRun: { state: 'unknown', transport: 'offline', delivery: 'accepted' } });
+  expect(data().requests['active-turn']).toMatchObject({ status: 'generating', nativeRun: { state: 'unknown', transport: 'reconnecting', delivery: 'accepted' } });
+  mock.mockImplementation(async () => frames([{ type: 'snapshot', seq: 11, state: 'completed', delivery: 'accepted', body: '原生确认完成', items: [] }]));
+  await vi.advanceTimersByTimeAsync(10_000); await pending;
+  expect(data().requests['active-turn']).toMatchObject({ status: 'done', body: '原生确认完成' });
 });

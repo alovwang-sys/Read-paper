@@ -5,6 +5,7 @@ import { migrateWorkspace } from '../../src/data/migrations';
 import { ensurePaneLayout, paneGroups, syncPaneSession } from '../../src/services/panes';
 import { contentHash } from '../../src/data/storage';
 import { hasFullText } from '../../src/domain/knowledge';
+import { recordBoardChanges } from '../../src/domain/board-history';
 import type { CardProvenance, ContextSnapshot, RegionSource } from '../../src/domain/types';
 import { createWorkspaceBackup, MAX_BACKUP_BYTES, MAX_BACKUP_ENTRY_BYTES, readWorkspaceBackup, type BackupAsset } from '../../src/services/backup';
 
@@ -66,6 +67,17 @@ describe('完整工作区备份', () => {
     expect(restored.data.sessions['research-a'].layout).toEqual(normalized.sessions['research-a'].layout);
     expect(paneGroups(restored.data.sessions['research-a'].layout!.root)[1].tabs[0].ref).toEqual({ kind: 'document', id: 'paper-stub' });
     expect(restored.data.documents['paper-stub']).toEqual(normalized.documents['paper-stub']);
+  });
+  it('白板版本与当前状态无损往返，损坏历史端点或来源拒绝恢复', async () => {
+    const { data, assets } = await fixture(), before = structuredClone(data);
+    data.placements['placement-a'].x = 500;
+    recordBoardChanges(before, data, { actor: 'codex', summary: '整理布局' });
+    const backup = await createWorkspaceBackup(data, assets);
+    expect((await readWorkspaceBackup(backup)).data.boardChanges).toEqual(data.boardChanges);
+    const missing = await editWorkspace(backup, value => { Object.values(value.boardChanges!)[0].before!.placements[0].resourceRef.id = 'missing-card'; });
+    await expect(readWorkspaceBackup(missing)).rejects.toThrow(/资源缺失/);
+    const endpoint = await editWorkspace(backup, value => { Object.values(value.boardChanges!)[0].before!.edges[0].toPlacementId = 'missing-placement'; });
+    await expect(readWorkspaceBackup(endpoint)).rejects.toThrow(/历史连线/);
   });
   it('无损往返全部资料、阅读位置、未发送内容和 PDF 字节，不改写输入', async () => {
     const { data, assets } = await fixture();

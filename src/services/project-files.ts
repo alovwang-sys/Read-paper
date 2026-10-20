@@ -30,9 +30,14 @@ export function researchFileData(data: WorkspaceData, researchId: string) {
   const conversations = byResearch(data.conversations, researchId), requests = byResearch(data.requests, researchId), cardDrafts = byResearch(data.cardDrafts, researchId);
   const placements = Object.fromEntries(Object.entries(data.placements).filter(([, p]) => boards[p.boardId]));
   const edges = Object.fromEntries(Object.entries(data.edges).filter(([, edge]) => boards[edge.boardId]));
+  const boardChanges = byResearch(data.boardChanges ?? {}, researchId);
+  const boardIds = new Set([...Object.keys(boards), ...Object.values(boardChanges).map(change => change.boardId)]);
+  const boardRevisions = pick(data.boardRevisions ?? {}, boardIds);
   const cardIds = new Set(research.cardIds), documentIds = new Set(research.documentIds), evidenceIds = new Set<string>();
   const context = (items: ContextSnapshot[] = []) => items.forEach(item => { documentIds.add(item.documentId); evidenceIds.add(item.evidenceId); });
-  for (const p of Object.values(placements)) {
+  const historicalPlacements = Object.values(boardChanges).flatMap(change => [change.before, change.after].flatMap(snapshot => snapshot?.placements ?? []));
+  const requestedPlacements = Object.values(requests).flatMap(request => request.boardContext?.snapshot.placements ?? []);
+  for (const p of [...Object.values(placements), ...historicalPlacements, ...requestedPlacements]) {
     if (p.resourceRef.kind === 'card') cardIds.add(p.resourceRef.id);
     if (p.resourceRef.kind === 'document') documentIds.add(p.resourceRef.id);
   }
@@ -42,6 +47,8 @@ export function researchFileData(data: WorkspaceData, researchId: string) {
     draft.cardSources?.forEach(source => context(source.provenance.context));
   }
   const cards = pick(data.cards, cardIds);
+  const archivedCards = Object.fromEntries(Object.values(boardChanges).flatMap(change => change.createdCards ?? []).filter(card => !Object.hasOwn(cards, card.id)).map(card => [card.id, card]));
+  for (const card of Object.values(archivedCards)) { card.evidenceIds.forEach(id => evidenceIds.add(id)); context(card.provenance?.context); }
   for (const card of Object.values(cards)) { card.evidenceIds.forEach(id => evidenceIds.add(id)); context(card.provenance?.context); }
   for (const c of Object.values(conversations)) { c.contextIds.forEach(id => evidenceIds.add(id)); context(c.sentContext); }
   for (const request of Object.values(requests)) { context(request.context); request.history?.forEach(turn => context(turn.context)); }
@@ -49,7 +56,7 @@ export function researchFileData(data: WorkspaceData, researchId: string) {
   for (const evidence of Object.values(data.evidence)) if (evidence.researchId === researchId || !evidence.researchId && documentIds.has(evidence.documentId)) evidenceIds.add(evidence.id);
   const evidence = pick(data.evidence, evidenceIds);
   Object.values(evidence).forEach(e => documentIds.add(e.documentId));
-  return { research, documents: pick(data.documents, documentIds), evidence, cards, boards, placements, edges, drafts, conversations, requests, cardDrafts };
+  return { research, documents: pick(data.documents, documentIds), evidence, cards, archivedCards, boards, placements, edges, boardChanges, boardRevisions, drafts, conversations, requests, cardDrafts };
 }
 
 export async function buildResearchFiles(data: WorkspaceData, researchId: string): Promise<{ files: ProjectFile[] }> {
@@ -94,6 +101,7 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
   const regions = [
     ...Object.values(entities.evidence).map(e => e.region),
     ...Object.values(entities.cards).flatMap(c => c.provenance?.context.map(c => c.region) ?? []),
+    ...Object.values(entities.archivedCards).flatMap(c => c.provenance?.context.map(c => c.region) ?? []),
     ...Object.values(entities.requests).flatMap(r => [...r.context, ...(r.history?.flatMap(t => t.context) ?? [])].map(c => c.region)),
     ...Object.values(entities.cardDrafts).flatMap(d => d.source.context.map(c => c.region)),
     ...Object.values(entities.conversations).flatMap(c => c.sentContext?.map(c => c.region) ?? []),

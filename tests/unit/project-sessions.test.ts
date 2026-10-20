@@ -12,7 +12,7 @@ vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace
 const data = () => workspace.getState().data;
 const directory = { id: 'binding-a', projectId: 'project-a', path: '/fixture/research-a' };
 const summary = (overrides: Partial<NativeSessionSummary> = {}): NativeSessionSummary => ({ id: 'opaque-session-ref', agentId: 'codex', nativeSessionId: 'native-thread', title: 'Native discussion', updatedAt: '2026-10-17T01:00:00.000Z', state: 'unknown', canResume: true, origin: 'native', ...overrides });
-const snapshot = (overrides: Partial<NativeSessionSnapshot> = {}): NativeSessionSnapshot => ({ ...summary(), messages: [{ id: 'native-user-1', role: 'user', text: 'What does this claim mean?', createdAt: '2026-10-17T00:59:00.000Z' }, { id: 'native-answer-1', role: 'assistant', text: 'An external answer cites [1], but its source is not associated.' }], ...overrides });
+const snapshot = (overrides: Partial<NativeSessionSnapshot> = {}): NativeSessionSnapshot => ({ ...summary(), state: 'idle', messages: [{ id: 'native-user-1', role: 'user', text: 'What does this claim mean?', createdAt: '2026-10-17T00:59:00.000Z' }, { id: 'native-answer-1', role: 'assistant', text: 'An external answer cites [1], but its source is not associated.' }], ...overrides });
 const mockSnapshot = (value: NativeSessionSnapshot) => { const mock = vi.fn(async () => Response.json(value)); vi.stubGlobal('fetch', mock); return mock; };
 function source(): ContextSnapshot {
   const evidence = data().evidence['evidence-a']; const document = data().documents[evidence.documentId];
@@ -107,16 +107,45 @@ describe('研究项目原生历史的公开服务路径', () => {
     expect(data().conversations[id].nativeHistoryCursor).toBeUndefined();
   });
 
-  it('原生回合仍在执行时，阶段性文字不冒充已完成回答', async () => {
-    mockSnapshot(snapshot({ state: 'busy', canResume: false, messages: [
+  it('原生回合仍在执行时显示生成中，并持续刷新同一条记录直至完成', async () => {
+    const mock = mockSnapshot(snapshot({ state: 'busy', canResume: false, messages: [
       { id: 'u', role: 'user', text: '查证', turnId: 'turn-live', turnStatus: 'inProgress' },
       { id: 'a', role: 'assistant', text: '正在读取材料', turnId: 'turn-live', turnStatus: 'inProgress' },
     ] }));
     const id = await openProjectSession('research-a', summary());
     const request = data().requests[data().conversations[id].requestIds[0]];
-    expect(request.status).toBe('interrupted');
-    expect(request.error).toContain('仍在运行');
+    expect(request.status).toBe('generating');
+    expect(request.error).toBeUndefined();
     expect(request.nativeTurnId).toBe('turn-live');
+    mock.mockImplementation(async () => Response.json(snapshot({ state: 'busy', canResume: false, messages: [
+      { id: 'u', role: 'user', text: '查证', turnId: 'turn-live', turnStatus: 'inProgress' },
+      { id: 'a', role: 'assistant', text: '正在核对第二份材料', turnId: 'turn-live', turnStatus: 'inProgress' },
+    ] })));
+    await refreshProjectConversation('research-a', id);
+    expect(data().requests[request.id]).toMatchObject({ status: 'generating', body: '正在核对第二份材料' });
+    mock.mockImplementation(async () => Response.json(snapshot({ state: 'idle', canResume: true, messages: [
+      { id: 'u', role: 'user', text: '查证', turnId: 'turn-live', turnStatus: 'completed' },
+      { id: 'a', role: 'assistant', text: '核对完成', turnId: 'turn-live', turnStatus: 'completed' },
+    ] })));
+    await refreshProjectConversation('research-a', id);
+    expect(data().conversations[id].requestIds).toEqual([request.id]);
+    expect(data().requests[request.id]).toMatchObject({ status: 'done', body: '核对完成' });
+    expect(mock).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    ['interrupted', undefined, 'stopped', '本轮已中断'],
+    ['failed', undefined, 'error', '原生回合执行失败'],
+    ['completed', false, 'interrupted', '预览'],
+    [undefined, false, 'interrupted', '预览'],
+    [undefined, undefined, 'interrupted', '尚未确认'],
+  ] as const)('导入原生状态 %s / 完整性 %s 时如实保留结束与核对信息', async (turnStatus, answerComplete, status, message) => {
+    mockSnapshot(snapshot({ state: turnStatus === 'failed' || turnStatus === 'interrupted' ? 'idle' : 'unknown', messages: [
+      { id: 'u', role: 'user', text: '原生问题', turnId: 'native-turn', turnStatus, answerComplete },
+      { id: 'a', role: 'assistant', text: '已有内容', turnId: 'native-turn', turnStatus, answerComplete },
+    ] }));
+    const id = await openProjectSession('research-a', summary());
+    expect(data().requests[data().conversations[id].requestIds[0]]).toMatchObject({ status, error: expect.stringContaining(message), body: '已有内容' });
   });
 
   it('同一原生回合可补齐托管中断记录，完成后的原始回答继续不可改写', async () => {

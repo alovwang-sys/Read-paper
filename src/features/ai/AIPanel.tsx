@@ -7,6 +7,7 @@ import {
   ExternalLink,
   History,
   MessageSquare,
+  Network,
   Plus,
   RefreshCw,
   Sparkles,
@@ -53,6 +54,10 @@ import { ComposerMaterials } from './ComposerMaterials';
 import { VoiceInput } from './VoiceInput';
 import { ReportedChanges } from './ReportedChanges';
 import { SourceRecommendations } from './SourceRecommendations';
+import { BoardSkillPanel } from './BoardSkillPanel';
+import { BoardProposal } from './BoardProposal';
+import { boardSuggestion } from '../../services/board-intent';
+import { reparseBoardProposal } from '../../services/board-skill';
 import {
   ContextDetails,
   RegionPreview,
@@ -171,8 +176,7 @@ export function AIPanel() {
       (id) => data.evidence[id]?.kind === 'region',
     ) || selectedHistory.some(turn => turn.context.some(item => item.kind === 'region' && turn.evidenceIds.includes(item.evidenceId)))) &&
     !(connectionId === 'codex' ? codexSupportsImages(codexCatalog, conversation?.codex?.model) : native ? agent?.capabilities.images : config?.images);
-  const canSend =
-    !!prompt.trim() &&
+  const canUseAgent =
     !generating &&
     (!native || (directoryReady && !legacyNative && !nativeBlocked && !nativeRefreshError)) &&
     (mode === 'demo' || (native ? agent?.state === 'ready' && !loadingAgents && !agentError : !!config?.configured && !configError)) &&
@@ -180,6 +184,17 @@ export function AIPanel() {
   const canSteer = !!prompt.trim() && !!generating?.nativeRun?.managed && !steeringBusy
     && !!(generating.nativeTurnId ?? generating.nativeRun.turnId) && generating.nativeRun.transport === 'connected'
     && ['running', 'compacting'].includes(generating.nativeRun.state) && !generating.nativeRun.pendingSteer;
+  const canSend = !!prompt.trim() && canUseAgent;
+  const suggestion = conversation ? boardSuggestion(data, conversation) : undefined;
+  const suggestionRequestId = !conversation?.boardSuggestionDismissed
+    ? conversation?.boardSuggestionRequestId ?? suggestion?.requestId : undefined;
+  useEffect(() => {
+    if (view !== 'chat' || !conversation || !suggestion || conversation.boardSuggestionRequestId || conversation.boardSuggestionDismissed) return;
+    actions.updateData(next => {
+      const current = next.conversations[conversation.id];
+      if (current && !current.boardSuggestionRequestId && !current.boardSuggestionDismissed) current.boardSuggestionRequestId = suggestion.requestId;
+    });
+  }, [view, conversation?.id, suggestion?.requestId, conversation?.boardSuggestionRequestId, conversation?.boardSuggestionDismissed, actions]);
   const updatePanel = (
     nextView: 'chat' | 'history' | 'draft' | 'source',
     draftId?: string,
@@ -327,18 +342,26 @@ export function AIPanel() {
       );
     }
   }
-  async function send() {
-    if (connectionId === 'codex' && codexTools.current?.handleSubmit()) return;
-    if (!research || !conversation || !canSend) return;
+  async function send(board?: 'create' | 'none') {
+    if (!board && connectionId === 'codex' && codexTools.current?.handleSubmit()) return;
+    if (!research || !conversation || !(board === 'create' ? canUseAgent : canSend)) return;
     atBottom.current = true;
     await execute(() =>
       submitAI(
         research.id,
         conversation.id,
-        prompt,
+        prompt.trim() ? prompt : '把当前对话整理成白板',
         mode === 'demo' ? demoResponder : undefined,
+        board ? { board } : undefined,
       ),
     );
+  }
+  async function createSuggestedBoard(request: AIRequest) {
+    if (!research || !conversation || !canUseAgent) return;
+    actions.updateData(next => { next.conversations[conversation.id].boardSuggestionDismissed = true; });
+    atBottom.current = true;
+    const description = `将下面这条回答整理成关系白板，保留来源并标记待核查内容。\n问题：${originalRequestPrompt(request).slice(0, 500)}\n回答：${request.body.slice(0, 3000)}`;
+    await execute(() => submitAI(research.id, conversation.id, description, mode === 'demo' ? demoResponder : undefined, { board: 'create' }));
   }
   function showSource(source: CardProvenance, back: 'chat' | 'draft') {
     if (back === 'chat') rememberScroll();
@@ -464,6 +487,8 @@ export function AIPanel() {
       regenerationError =
         caught instanceof Error ? caught.message : '当前材料无法发送';
     }
+    if (pendingRequest?.boardContext && pendingRequest.boardContext.intent !== 'create' && conversation.boardSkill?.boardId !== pendingRequest.boardContext.boardId)
+      regenerationError = '请先关闭此窗口，在“修改已有白板”中重新选择原目标。每次修改只作用于明确选中的白板。';
   }
   // Save before native cursor listeners can flush other workspace updates.
   const updateComposerInput = (value: string) => {
@@ -648,6 +673,7 @@ export function AIPanel() {
             <p>
               输入问题，或选择原文后加入材料。
             </p>
+            <p className="board-capability-example">也可以直接说：“把这些观点画成关系图”。生成的白板会留在聊天中，随时打开或撤销。</p>
           </div>
         )}
         {requests.map((request) => {
@@ -697,6 +723,7 @@ export function AIPanel() {
                   <span className="ai-badge">保留的旧版本</span>
                 )}
               </div>
+              {request.boardContext && <p className="ai-footnote">{request.boardContext.intent === 'create' ? '新建白板 · 提交时的对话与本轮材料' : `修改白板 · ${request.boardContext.snapshot.board.title} · 提交时版本 ${request.boardContext.revision}`} · {request.boardContext.resources.length} 项资料快照</p>}
               {!request.nativeRun && !!request.events?.length && <AgentActivity events={request.events} generating={request.status === 'generating'} />}
               {!request.nativeRun && request.interactions?.map(interaction => <AgentInteractionCard key={interaction.id} request={request} interaction={interaction} />)}
               <div
@@ -709,18 +736,21 @@ export function AIPanel() {
                   captureFragment(request.id, event.currentTarget)
                 }
               >
-                {request.nativeRun ? <NativeRunTimeline request={request} /> : <MarkdownContent text={request.body} />}
+                {request.nativeRun && !(request.status === 'done' && request.boardProposal) ? <NativeRunTimeline request={request} /> : <MarkdownContent text={request.status === 'done' && request.boardProposal ? request.boardProposal.summary : request.body} />}
+                {request.nativeRun && request.status === 'done' && request.boardProposal && <details className="ai-details"><summary>助手执行记录</summary><NativeRunTimeline request={request} /></details>}
               </div>
               {request.status !== 'generating' && <SourceRecommendations request={request}/>}
+              {request.status === 'done' && request.boardProposal && <BoardProposal request={request} />}
+              {request.id === suggestionRequestId && request.status === 'done' && !request.boardContext && <div className="board-chat-suggestion" aria-label="白板建议"><p>这些观点和关系可以放在一张白板上对照。</p><div><button className="text-button" disabled={!canUseAgent} onClick={() => void createSuggestedBoard(request)}><Network size={13} />生成关系图</button><button className="text-button" onClick={() => actions.updateData(next => { next.conversations[conversation.id].boardSuggestionDismissed = true; })}>暂不需要</button></div></div>}
               {request.status === 'generating' && !request.nativeRun && (
-                <div className="ai-generating">
+                <div className="ai-generating" role="status">
                   <span />
-                  {request.interactions?.some(interaction => interaction.status === 'pending') ? '等待你的答复…' : request.events?.at(-1)?.status === 'running' ? request.events.at(-1)?.text : '正在生成回答…'}
+                  {request.nativeImported ? '原生回合正在运行，正在同步记录…' : request.interactions?.some(interaction => interaction.status === 'pending') ? '等待你的答复…' : request.events?.at(-1)?.status === 'running' ? request.events.at(-1)?.text : '正在生成回答…'}
                 </div>
               )}
 
               {request.status !== 'generating' && incomplete && (
-                <div className="ai-error" role="alert">
+                <div className={request.status === 'error' ? 'ai-error' : 'ai-scope-notice'} role={request.status === 'error' ? 'alert' : 'status'}>
                   {request.error ||
                     (request.nativeRun ? '本轮未完成，原生会话仍保留已发送内容。' : '回答未完成，已保留收到的内容。此轮不会进入后续默认历史。')}
                   {!request.nativeImported && <button
@@ -734,10 +764,15 @@ export function AIPanel() {
                 </div>
               )}
               {request.validationError && (
-                <p className="ai-error" role="alert">
-                  引用检查未通过：{request.validationError}
-                  。可修复来源后重试，或整理为仅对话来源的人工草稿。
-                </p>
+                <div className="ai-error" role="alert">
+                  {request.boardContext ? <>
+                    白板方案暂未解析：{request.validationError}
+                    {request.status === 'done' && <button className="text-button" onClick={() => void execute(() => reparseBoardProposal(request.id))}>重新解析白板</button>}
+                  </> : <>
+                    引用检查未通过：{request.validationError}
+                    。可修复来源后重试，或整理为仅对话来源的人工草稿。
+                  </>}
+                </div>
               )}
               {!!request.evidenceIds.length && (
                 <div className="ai-citations">
@@ -832,12 +867,12 @@ export function AIPanel() {
                     !generating && (
                       <button
                         className="text-button"
-                        onClick={() =>
-                          startIntent(request.id, '', false, false, true)
-                        }
+                        onClick={() => request.boardContext?.intent === 'create'
+                          ? void execute(() => regenerateAI(request.id, mode))
+                          : startIntent(request.id, '', false, false, true)}
                       >
                         <RefreshCw size={13} />
-                        {request.nativeRun ? '再回答一次' : '重新生成'}
+                        {request.boardContext?.intent === 'create' ? '再生成一张白板' : request.nativeRun ? '再回答一次' : '重新生成'}
                       </button>
                     )}
                   {!!request.body &&
@@ -1053,6 +1088,7 @@ export function AIPanel() {
           </p>
         )}
         <ReportedChanges diff={latest?.events?.find(event => event.id === 'turn-diff' && event.toolName === 'fileChange')?.output} />
+        <BoardSkillPanel key={conversation.id} conversation={conversation} disabled={!!generating} canCreate={canUseAgent} onCreate={() => void send('create')} />
         </div>
         <div className="ai-input-shell">
           {connectionId === 'codex' ? (
@@ -1062,7 +1098,7 @@ export function AIPanel() {
           ) : <>{composerInput}<div className="ai-composer-footer">{composerLeading}<div className="ai-composer-actions">{composerTrailing}</div></div></>}
         </div>
         <p className="ai-sending-note">
-          ⌘ / Ctrl + Enter 发送 · {native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}
+          ⌘ / Ctrl + Enter 发送 · {conversation.boardSkill ? '本次修改所选白板；发送后恢复普通对话。' : native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}
         </p>
       </div>
       <dialog

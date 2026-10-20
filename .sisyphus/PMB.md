@@ -1,5 +1,7 @@
 # 本地故障经验
 
+- 2026-10-20 | native-observation | root_cause=observation_lifecycle_and_result_contract | 长任务失联要持续观察同一请求，未知、中断、失败分别表达；完成结果解析失败优先本地恢复。升级必须先核对所有运行终态，不能为换包停止活动任务。双客户端共享执行需同一服务端点，读取同一历史不等于共享 writer。证据：[事件记录](incidents/2026-10-20-native-observation/record.md)。
+
 - 2026-10-19 | ci-native-window-state | root_cause=test-native-window-state-and-lifecycle | 原生窗口测试应绑定当前页面的主窗句柄并等待设置窗closed；全屏退出要等待恢复进入前的普通／最大化状态，不能一律断言normal:true。可控最大化旧断言先红，修复后两起点各三次通过，Windows生命周期修复仍由远端门禁实测。证据：[事件记录](incidents/2026-10-19-ci-native-window-state/record.md)。
 
 - 2026-10-19 | ci-editor-baseline | root_cause=test-baseline-before-editor-flush | 布局恢复测试应在真实 blur 与保存后抓取完整编辑器基线，避免将平台原生选区方向的首次落盘误判为恢复失败；保留已有状态的严格比较。本机及远端完整浏览器均 158/158 通过，桌面门禁单独验收。证据：[事件记录](incidents/2026-10-19-ci-editor-baseline/record.md)。

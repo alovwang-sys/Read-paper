@@ -162,6 +162,13 @@ describe('工作区 schema 迁移', () => {
     expect(migrated.cardDrafts['draft-in-progress'].error).toMatch(/中断/);
   });
 
+  it('原生导入的活动回合刷新后等待同步，不提示用户重新提交', () => {
+    const data = migrateWorkspace(legacyWorkspace());
+    data.requests['external-active'] = { ...data.requests['old-answer'], id: 'external-active', legacy: undefined, connectionId: 'codex', nativeImported: true, nativeTurnId: 'turn-active', status: 'generating', body: '已收到的原生过程内容' };
+    const migrated = migrateWorkspace(data);
+    expect(migrated.requests['external-active']).toMatchObject({ status: 'interrupted', body: '已收到的原生过程内容', error: '正在同步原生记录，已收到的内容保留。' });
+  });
+
   it('托管 Codex 刷新保留执行和待回应交互，重连后核对真实状态', () => {
     const data = createSeed();
     data.requests['managed-request'] = {

@@ -1,0 +1,79 @@
+.board-connections .board-edge {
+  color: #83978c;
+}
+.board-connections .board-connection-stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.board-connections .board-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 18;
+  pointer-events: stroke;
+}
+.board-connections .connection-arrow {
+  fill: #83978c;
+}
+.board-connections .connection-arrow.is-selected {
+  fill: #357f6e;
+}
+.board-connections .board-edge:is(:hover, :focus-visible, .is-selected) {
+  color: #357f6e;
+}
+.board-connections .board-edge:is(:focus-visible, .is-selected) .board-connection-stroke {
+  stroke-width: 2.4;
+}
+.board-connections .board-connection-label rect {
+  fill: #fcfdfb;
+  stroke: #d8e2dc;
+  stroke-width: 1;
+}
+.board-connections .board-connection-label text {
+  fill: #5e7568;
+  font-size: 10px;
+  user-select: none;
+}
+.board-connections .board-edge:is(:hover, :focus-visible, .is-selected) .board-connection-label rect {
+  fill: #edf6ef;
+  stroke: #77a994;
+}
+.board-connections .board-edge:focus-visible .board-connection-label rect {
+  stroke-width: 2;
+}
+.board-connections .board-edge.is-unlabelled:not(:hover):not(:focus-visible):not(.is-selected) .board-connection-label {
+  opacity: 0;
+  pointer-events: none;
+}
+.board-connections .board-structure-stroke {
+  fill: none;
+  stroke: #a0b6aa;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.board-connections .board-structure-stroke.is-related {
+  stroke: #4d8b76;
+  stroke-width: 2.2;
+}
+.board-connections.is-structural .board-edge .board-connection-stroke {
+  stroke-dasharray: 5 5;
+  opacity: .65;
+}
+.board-connections.is-structural .board-edge.is-muted {
+  opacity: .3;
+}
+.board-connections.is-structural .board-edge:is(:hover, :focus-visible, .is-related, .is-selected) {
+  opacity: 1;
+  color: #357f6e;
+}
+.board-connections.is-structural .board-edge:is(:hover, :focus-visible, .is-related, .is-selected) .board-connection-stroke {
+  opacity: 1;
+}
+.board-connections.is-structural .board-edge:not(:hover):not(:focus-visible):not(.is-related):not(.is-selected) .board-connection-label {
+  opacity: 0;
+  pointer-events: none;
+}

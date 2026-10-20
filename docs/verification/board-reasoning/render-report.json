@@ -1,0 +1,1957 @@
+{
+  "mode": "真实模型输出的 fixture 渲染回放；不是完整真实发送、应用或 PDF 回源验收",
+  "generatedAt": "2026-10-20T01:25:00.995Z",
+  "source": "codex-probe.json",
+  "sourceSha256": "b8336ed0ab18436924d1482d40954b7e729ba19c70daa8ee3d0ebc4060ba1820",
+  "model": "gpt-6.1-sol",
+  "plan": {
+    "title": "从演示材料到可验证的更新与运行方案",
+    "layout": "flow",
+    "nodes": 18,
+    "edges": 27,
+    "groups": 4
+  },
+  "checks": {
+    "productionPreviewMatches": true,
+    "renderedCountsMatch": true,
+    "fullContentAccessible": true,
+    "refreshPreservesAllCardsPlacementsEdges": true
+  },
+  "captures": [
+    {
+      "name": "1440",
+      "browserViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 2200,
+          "height": 2310
+        },
+        "viewport": {
+          "width": 1200,
+          "height": 703,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "boardBounds": {
+          "left": 50,
+          "top": 80,
+          "right": 2010,
+          "bottom": 2095
+        },
+        "nodes": [
+          {
+            "id": "proposal-placement-0",
+            "title": "两种更新方式的共同入口",
+            "x": 50,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-1",
+            "title": "把更新方式作为比较变量",
+            "x": 390,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-2",
+            "title": "数据检查与产物留存基础",
+            "x": 50,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "类库、镜像与外部启动的边界",
+            "x": 50,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "提交脚本与训练进程",
+            "x": 50,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "组织可检查的执行链",
+            "x": 730,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "建立运行关联清单",
+            "x": 1070,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "已有对比控制与测量入口",
+            "x": 50,
+            "y": 1280,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "开展两种更新方式的配对比较",
+            "x": 1410,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "先定义测量口径与汇总方法",
+            "x": 390,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "验证检查点恢复能力",
+            "x": 1410,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-11",
+            "title": "升级追溯需求与多机证据缺口",
+            "x": 50,
+            "y": 1580,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-12",
+            "title": "开展依赖升级前后比较",
+            "x": 1410,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-13",
+            "title": "演练多机退出与故障处理",
+            "x": 730,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-14",
+            "title": "选择依据与业务证据仍缺失",
+            "x": 50,
+            "y": 1880,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-15",
+            "title": "确认任务、数据与资源约束",
+            "x": 390,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-16",
+            "title": "补齐可执行的技术配置",
+            "x": 390,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-17",
+            "title": "形成有条件的选择结论",
+            "x": 1750,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 6,
+        "clippedCardBodies": 13,
+        "cardOverlaps": [],
+        "groupOverlaps": [
+          {
+            "first": "更新方法与选择",
+            "second": "运行架构与追溯",
+            "width": 1318,
+            "height": 275
+          },
+          {
+            "first": "更新方法与选择",
+            "second": "评估与验证计划",
+            "width": 1658,
+            "height": 275
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "评估与验证计划",
+            "width": 1318,
+            "height": 1175
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 575
+          },
+          {
+            "first": "评估与验证计划",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 875
+          }
+        ],
+        "sampledThirdCardIntersections": [
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-5",
+            "obstructingTitle": "组织可检查的执行链"
+          },
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-3",
+            "obstructingTitle": "类库、镜像与外部启动的边界"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-4",
+            "obstructingTitle": "提交脚本与训练进程"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-10",
+            "label": "文件存在仍需恢复验证",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-13",
+            "label": "关联升级前后运行",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-14",
+            "label": "复用一致测量口径",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-11",
+            "obstructingTitle": "升级追溯需求与多机证据缺口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-21",
+            "label": "需确认多机拓扑与启动配置",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-24",
+            "label": "补充升级影响证据",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-25",
+            "label": "补充多机场景适用限制",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          },
+          {
+            "edgeId": "proposal-edge-26",
+            "label": "提供取舍与判定条件",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          }
+        ],
+        "edgeCount": 27,
+        "relationshipLabelCount": 27
+      }
+    },
+    {
+      "name": "1280",
+      "browserViewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "measurements": {
+        "scale": 1,
+        "canvas": {
+          "width": 2200,
+          "height": 2310
+        },
+        "viewport": {
+          "width": 1040,
+          "height": 603,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "boardBounds": {
+          "left": 50,
+          "top": 80,
+          "right": 2010,
+          "bottom": 2095
+        },
+        "nodes": [
+          {
+            "id": "proposal-placement-0",
+            "title": "两种更新方式的共同入口",
+            "x": 50,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-1",
+            "title": "把更新方式作为比较变量",
+            "x": 390,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-2",
+            "title": "数据检查与产物留存基础",
+            "x": 50,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "类库、镜像与外部启动的边界",
+            "x": 50,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "提交脚本与训练进程",
+            "x": 50,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "组织可检查的执行链",
+            "x": 730,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "建立运行关联清单",
+            "x": 1070,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "已有对比控制与测量入口",
+            "x": 50,
+            "y": 1280,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "开展两种更新方式的配对比较",
+            "x": 1410,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "先定义测量口径与汇总方法",
+            "x": 390,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "验证检查点恢复能力",
+            "x": 1410,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-11",
+            "title": "升级追溯需求与多机证据缺口",
+            "x": 50,
+            "y": 1580,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-12",
+            "title": "开展依赖升级前后比较",
+            "x": 1410,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-13",
+            "title": "演练多机退出与故障处理",
+            "x": 730,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-14",
+            "title": "选择依据与业务证据仍缺失",
+            "x": 50,
+            "y": 1880,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-15",
+            "title": "确认任务、数据与资源约束",
+            "x": 390,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-16",
+            "title": "补齐可执行的技术配置",
+            "x": 390,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-17",
+            "title": "形成有条件的选择结论",
+            "x": 1750,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 15,
+            "bodyScreenFontPx": 12,
+            "bodyClipped": true,
+            "fullyVisible": false
+          }
+        ],
+        "fullyVisibleNodes": 6,
+        "clippedCardBodies": 13,
+        "cardOverlaps": [],
+        "groupOverlaps": [
+          {
+            "first": "更新方法与选择",
+            "second": "运行架构与追溯",
+            "width": 1318,
+            "height": 275
+          },
+          {
+            "first": "更新方法与选择",
+            "second": "评估与验证计划",
+            "width": 1658,
+            "height": 275
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "评估与验证计划",
+            "width": 1318,
+            "height": 1175
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 575
+          },
+          {
+            "first": "评估与验证计划",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 875
+          }
+        ],
+        "sampledThirdCardIntersections": [
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-5",
+            "obstructingTitle": "组织可检查的执行链"
+          },
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-3",
+            "obstructingTitle": "类库、镜像与外部启动的边界"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-4",
+            "obstructingTitle": "提交脚本与训练进程"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-10",
+            "label": "文件存在仍需恢复验证",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-13",
+            "label": "关联升级前后运行",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-14",
+            "label": "复用一致测量口径",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-11",
+            "obstructingTitle": "升级追溯需求与多机证据缺口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-21",
+            "label": "需确认多机拓扑与启动配置",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-24",
+            "label": "补充升级影响证据",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-25",
+            "label": "补充多机场景适用限制",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          },
+          {
+            "edgeId": "proposal-edge-26",
+            "label": "提供取舍与判定条件",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          }
+        ],
+        "edgeCount": 27,
+        "relationshipLabelCount": 27
+      }
+    },
+    {
+      "name": "overview-40",
+      "browserViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "measurements": {
+        "scale": 0.4,
+        "canvas": {
+          "width": 2200,
+          "height": 2310
+        },
+        "viewport": {
+          "width": 1200,
+          "height": 703,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "boardBounds": {
+          "left": 50,
+          "top": 80,
+          "right": 2010,
+          "bottom": 2095
+        },
+        "nodes": [
+          {
+            "id": "proposal-placement-0",
+            "title": "两种更新方式的共同入口",
+            "x": 50,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-1",
+            "title": "把更新方式作为比较变量",
+            "x": 390,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-2",
+            "title": "数据检查与产物留存基础",
+            "x": 50,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "类库、镜像与外部启动的边界",
+            "x": 50,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "提交脚本与训练进程",
+            "x": 50,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "组织可检查的执行链",
+            "x": 730,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "建立运行关联清单",
+            "x": 1070,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "已有对比控制与测量入口",
+            "x": 50,
+            "y": 1280,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "开展两种更新方式的配对比较",
+            "x": 1410,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "先定义测量口径与汇总方法",
+            "x": 390,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "验证检查点恢复能力",
+            "x": 1410,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-11",
+            "title": "升级追溯需求与多机证据缺口",
+            "x": 50,
+            "y": 1580,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-12",
+            "title": "开展依赖升级前后比较",
+            "x": 1410,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-13",
+            "title": "演练多机退出与故障处理",
+            "x": 730,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-14",
+            "title": "选择依据与业务证据仍缺失",
+            "x": 50,
+            "y": 1880,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": false
+          },
+          {
+            "id": "proposal-placement-15",
+            "title": "确认任务、数据与资源约束",
+            "x": 390,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-16",
+            "title": "补齐可执行的技术配置",
+            "x": 390,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-17",
+            "title": "形成有条件的选择结论",
+            "x": 1750,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          }
+        ],
+        "fullyVisibleNodes": 16,
+        "clippedCardBodies": 13,
+        "cardOverlaps": [],
+        "groupOverlaps": [
+          {
+            "first": "更新方法与选择",
+            "second": "运行架构与追溯",
+            "width": 1318,
+            "height": 275
+          },
+          {
+            "first": "更新方法与选择",
+            "second": "评估与验证计划",
+            "width": 1658,
+            "height": 275
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "评估与验证计划",
+            "width": 1318,
+            "height": 1175
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 575
+          },
+          {
+            "first": "评估与验证计划",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 875
+          }
+        ],
+        "sampledThirdCardIntersections": [
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-5",
+            "obstructingTitle": "组织可检查的执行链"
+          },
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-3",
+            "obstructingTitle": "类库、镜像与外部启动的边界"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-4",
+            "obstructingTitle": "提交脚本与训练进程"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-10",
+            "label": "文件存在仍需恢复验证",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-13",
+            "label": "关联升级前后运行",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-14",
+            "label": "复用一致测量口径",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-11",
+            "obstructingTitle": "升级追溯需求与多机证据缺口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-21",
+            "label": "需确认多机拓扑与启动配置",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-24",
+            "label": "补充升级影响证据",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-25",
+            "label": "补充多机场景适用限制",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          },
+          {
+            "edgeId": "proposal-edge-26",
+            "label": "提供取舍与判定条件",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          }
+        ],
+        "edgeCount": 27,
+        "relationshipLabelCount": 27
+      }
+    },
+    {
+      "name": "overview-large-window-40",
+      "browserViewport": {
+        "width": 1380,
+        "height": 1174
+      },
+      "measurements": {
+        "scale": 0.4,
+        "canvas": {
+          "width": 2200,
+          "height": 2310
+        },
+        "viewport": {
+          "width": 1140,
+          "height": 977,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "boardBounds": {
+          "left": 50,
+          "top": 80,
+          "right": 2010,
+          "bottom": 2095
+        },
+        "nodes": [
+          {
+            "id": "proposal-placement-0",
+            "title": "两种更新方式的共同入口",
+            "x": 50,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-1",
+            "title": "把更新方式作为比较变量",
+            "x": 390,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-2",
+            "title": "数据检查与产物留存基础",
+            "x": 50,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-3",
+            "title": "类库、镜像与外部启动的边界",
+            "x": 50,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-4",
+            "title": "提交脚本与训练进程",
+            "x": 50,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-5",
+            "title": "组织可检查的执行链",
+            "x": 730,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-6",
+            "title": "建立运行关联清单",
+            "x": 1070,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-7",
+            "title": "已有对比控制与测量入口",
+            "x": 50,
+            "y": 1280,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-8",
+            "title": "开展两种更新方式的配对比较",
+            "x": 1410,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-9",
+            "title": "先定义测量口径与汇总方法",
+            "x": 390,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-10",
+            "title": "验证检查点恢复能力",
+            "x": 1410,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-11",
+            "title": "升级追溯需求与多机证据缺口",
+            "x": 50,
+            "y": 1580,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-12",
+            "title": "开展依赖升级前后比较",
+            "x": 1410,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-13",
+            "title": "演练多机退出与故障处理",
+            "x": 730,
+            "y": 380,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-14",
+            "title": "选择依据与业务证据仍缺失",
+            "x": 50,
+            "y": 1880,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": false,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-15",
+            "title": "确认任务、数据与资源约束",
+            "x": 390,
+            "y": 680,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-16",
+            "title": "补齐可执行的技术配置",
+            "x": 390,
+            "y": 980,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          },
+          {
+            "id": "proposal-placement-17",
+            "title": "形成有条件的选择结论",
+            "x": 1750,
+            "y": 80,
+            "width": 260,
+            "height": 215,
+            "titleScreenFontPx": 6,
+            "bodyScreenFontPx": 4.800000000000001,
+            "bodyClipped": true,
+            "fullyVisible": true
+          }
+        ],
+        "fullyVisibleNodes": 18,
+        "clippedCardBodies": 13,
+        "cardOverlaps": [],
+        "groupOverlaps": [
+          {
+            "first": "更新方法与选择",
+            "second": "运行架构与追溯",
+            "width": 1318,
+            "height": 275
+          },
+          {
+            "first": "更新方法与选择",
+            "second": "评估与验证计划",
+            "width": 1658,
+            "height": 275
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "评估与验证计划",
+            "width": 1318,
+            "height": 1175
+          },
+          {
+            "first": "运行架构与追溯",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 575
+          },
+          {
+            "first": "评估与验证计划",
+            "second": "缺失信息与研究问题",
+            "width": 638,
+            "height": 875
+          }
+        ],
+        "sampledThirdCardIntersections": [
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-5",
+            "obstructingTitle": "组织可检查的执行链"
+          },
+          {
+            "edgeId": "proposal-edge-1",
+            "label": "转化为比较实验",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-2",
+            "label": "提供数据与产物环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-1",
+            "obstructingTitle": "把更新方式作为比较变量"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-3",
+            "label": "提供依赖与启动边界依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-3",
+            "obstructingTitle": "类库、镜像与外部启动的边界"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-9",
+            "obstructingTitle": "先定义测量口径与汇总方法"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-4",
+            "label": "提供执行环节依据",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-7",
+            "label": "提供控制条件与指标基础",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-4",
+            "obstructingTitle": "提交脚本与训练进程"
+          },
+          {
+            "edgeId": "proposal-edge-8",
+            "label": "提示补齐测量与汇总口径",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-9",
+            "label": "比较前需明确测量协议",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-10",
+            "label": "文件存在仍需恢复验证",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-13",
+            "label": "关联升级前后运行",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-14",
+            "label": "复用一致测量口径",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-15",
+            "label": "将多机缺口转为演练",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-7",
+            "obstructingTitle": "已有对比控制与测量入口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-11",
+            "obstructingTitle": "升级追溯需求与多机证据缺口"
+          },
+          {
+            "edgeId": "proposal-edge-16",
+            "label": "明确需要确认的选择条件",
+            "obstructingPlacementId": "proposal-placement-16",
+            "obstructingTitle": "补齐可执行的技术配置"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-6",
+            "obstructingTitle": "建立运行关联清单"
+          },
+          {
+            "edgeId": "proposal-edge-17",
+            "label": "约束任务与评测设置",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-13",
+            "obstructingTitle": "演练多机退出与故障处理"
+          },
+          {
+            "edgeId": "proposal-edge-19",
+            "label": "执行链落地前需补齐",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-21",
+            "label": "需确认多机拓扑与启动配置",
+            "obstructingPlacementId": "proposal-placement-15",
+            "obstructingTitle": "确认任务、数据与资源约束"
+          },
+          {
+            "edgeId": "proposal-edge-24",
+            "label": "补充升级影响证据",
+            "obstructingPlacementId": "proposal-placement-10",
+            "obstructingTitle": "验证检查点恢复能力"
+          },
+          {
+            "edgeId": "proposal-edge-25",
+            "label": "补充多机场景适用限制",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          },
+          {
+            "edgeId": "proposal-edge-26",
+            "label": "提供取舍与判定条件",
+            "obstructingPlacementId": "proposal-placement-8",
+            "obstructingTitle": "开展两种更新方式的配对比较"
+          }
+        ],
+        "edgeCount": 27,
+        "relationshipLabelCount": 27
+      }
+    }
+  ],
+  "blockedRequests": [],
+  "pageErrors": [],
+  "limitations": [
+    "虚构材料；不证明研究结论正确。",
+    "fixture 直接注入共享数据；未覆盖真实请求发送、自动应用、版本历史生成。",
+    "未修改 AI 输出、production preview 坐标或生产 UI。",
+    "未测试 PDF 原文回跳；演示材料没有原始 PDF。",
+    "线穿卡统计为每条路径 399 个采样点的近似检测，未衡量全部线线交叉与标签遮挡。",
+    "树形父子关系、分支折叠、大纲同步仍未实现。",
+    "40% 总览标题约 6px、正文约 4.8px；可见全图不代表内容可读。"
+  ]
+}

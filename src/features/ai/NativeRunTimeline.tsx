@@ -25,7 +25,7 @@ export function NativeRunTimeline({ request, onCitation }: { request: AIRequest;
   const supplements = request.supplementalInputs ?? [];
   const supplement = (id: string) => { const input = supplements.find(input => input.id === id)!; return <div className="ai-prompt" key={input.id}><small className="ai-footnote">本轮补充</small><p>{input.text}</p></div>; };
   const status = run.transport === 'offline' ? '暂时无法确认原生回合状态'
-    : run.transport === 'reconnecting' ? '正在恢复原生回合…'
+    : run.transport === 'reconnecting' ? '连接暂时中断，正在自动重新连接…'
     : run.state === 'stopping' ? '正在停止，等待原生回合确认…'
     : run.state === 'unknown' ? '正在核对原生回合状态…'
     : run.state === 'compacting' ? '正在整理上下文，随后继续当前对话…'

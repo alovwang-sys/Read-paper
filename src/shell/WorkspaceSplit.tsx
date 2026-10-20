@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type Reac
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, FolderOpen, Maximize2, Minimize2, PanelsTopLeft, Pin, Undo2, X } from 'lucide-react';
 import type { PaneNode, ReaderTarget, ResourceAnchor, ResourceRef, Session, WorkspaceScope, WorkspaceTab, WorkspaceViewRef } from '../domain/types';
 import { paneGroups } from '../services/panes';
-import { PaneContext, RESOURCE_DRAG_MIME } from '../services/pane-context';
+import { PaneContext, RESOURCE_DRAG_MIME, RESOURCE_ORDER_DRAG_MIME } from '../services/pane-context';
 import { resourceTitle, useWorkspace, workspace, registerReaderFlush } from '../services/workspace';
 import { PaneTabs, PANE_TAB_MIME } from './PaneTabs';
 import { paneDropAction, type PaneDragSource, type PaneDropAction, type PaneDropSide } from './pane-drag';
@@ -119,6 +119,7 @@ export function WorkspaceSplit({ renderResource }: {
   const layout = session.layout;
   const groups = layout ? paneGroups(layout.root) : [];
   const [dragSource, setDragSource] = useState<PaneDragSource>();
+  const [orderingResource, setOrderingResource] = useState(false);
   const [preview, setPreview] = useState<PaneDropAction>();
   const [menu, setMenu] = useState<{ paneId: string; tabId?: string }>();
   const [undoLabel, setUndoLabel] = useState<string>();
@@ -126,8 +127,12 @@ export function WorkspaceSplit({ renderResource }: {
   const scoped = data.scope.kind === 'research' ? data.scope.researchId : 'library';
   useEffect(() => { setMenu(undefined); setPreview(undefined); setDragSource(undefined); setUndoLabel(undefined); }, [scoped]);
   useEffect(() => {
-    const start = (event: globalThis.DragEvent) => { if (event.dataTransfer) setDragSource(readDrag(event.dataTransfer)); };
-    const end = () => { setDragSource(undefined); setPreview(undefined); };
+    const start = (event: globalThis.DragEvent) => {
+      if (!event.dataTransfer) return;
+      setDragSource(readDrag(event.dataTransfer));
+      setOrderingResource(event.dataTransfer.types.includes(RESOURCE_ORDER_DRAG_MIME));
+    };
+    const end = () => { setDragSource(undefined); setPreview(undefined); setOrderingResource(false); };
     window.addEventListener('dragstart', start); window.addEventListener('dragend', end); window.addEventListener('drop', end);
     return () => { window.removeEventListener('dragstart', start); window.removeEventListener('dragend', end); window.removeEventListener('drop', end); };
   }, []);
@@ -147,7 +152,7 @@ export function WorkspaceSplit({ renderResource }: {
     setMenu(undefined);
   }
   function accepts(event: DragEvent) { return event.dataTransfer.types.includes(PANE_TAB_MIME) || event.dataTransfer.types.includes(RESOURCE_DRAG_MIME); }
-  function finishDrag() { setDragSource(undefined); setPreview(undefined); }
+  function finishDrag() { setDragSource(undefined); setPreview(undefined); setOrderingResource(false); }
   function drop(event: DragEvent, paneId: string, side: Side, index?: number) {
     if (!accepts(event)) return;
     event.preventDefault(); event.stopPropagation();
@@ -215,8 +220,12 @@ export function WorkspaceSplit({ renderResource }: {
     const number = groups.findIndex(item => item.id === group.id) + 1;
     const active = group.tabs.find(tab => tab.id === group.activeTabId) ?? group.tabs[0];
     const dropHere = preview?.paneId === group.id && preview.index === undefined ? preview : undefined;
-    const receivingDrag = dragSource?.scope === scoped;
+    const orderingCards = orderingResource && active?.ref.kind === 'researchView' && active.ref.id === 'cards';
+    const receivingDrag = dragSource?.scope === scoped && !orderingCards;
     return <section key={group.id} className={`workspace-pane-group ${current.focusedPaneId === group.id ? 'is-focused' : ''}`} role="region" aria-label={`工作区窗格 ${number}`} data-pane-id={group.id} data-focused={current.focusedPaneId === group.id ? 'true' : 'false'}
+      onDragOverCapture={event => {
+        if (orderingCards && (event.target as HTMLElement).closest('[data-order-id]')) setPreview(undefined);
+      }}
       onPointerDownCapture={() => { if (current.focusedPaneId !== group.id) actions.activatePane(group.id); }}
       onFocusCapture={() => { if (current.focusedPaneId !== group.id) actions.activatePane(group.id); }}>
       <PaneTabs group={group} number={number} title={ref => resourceTitle(data, ref)} pinnedIds={session.pinnedIds} menuOpen={menu?.paneId === group.id}

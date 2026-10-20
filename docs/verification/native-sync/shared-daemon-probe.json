@@ -1,0 +1,31 @@
+{
+  "version": "codex-cli 0.162.1",
+  "generatedAt": "2026-10-19T17:15:40.475Z",
+  "simulatedProvider": "localhost Responses fixture",
+  "localhostProviderRequests": 1,
+  "realModelCalls": 0,
+  "phases": [
+    {
+      "phase": "same-daemon-second-client-rejoins-active-thread",
+      "pass": true,
+      "realModelCalls": 0
+    },
+    {
+      "phase": "separate-daemon-can-read-persisted-thread",
+      "nativeState": "notLoaded"
+    },
+    {
+      "phase": "separate-daemon-cannot-acquire-active-writer",
+      "pass": true
+    },
+    {
+      "phase": "observer-disconnect-and-rejoin-receive-same-turn-deltas-and-completion",
+      "pass": true,
+      "localhostProviderRequests": 1,
+      "realModelCalls": 0
+    },
+    {
+      "phase": "temporary-state-and-owned-processes-cleaned"
+    }
+  ]
+}

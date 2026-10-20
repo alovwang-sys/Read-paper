@@ -1,6 +1,7 @@
 node_modules/
 dist/
 test-results/
+test-results-*/
 playwright-report/
 .DS_Store
 *.local
@@ -10,3 +11,7 @@ playwright-report-desktop/
 *.p12
 *.pfx
 *.mobileprovision
+
+# Local installation evidence contains private research and backup paths.
+docs/verification/*/installed-upgrade.json
+docs/verification/human-board-control/installed-0.1.10.png

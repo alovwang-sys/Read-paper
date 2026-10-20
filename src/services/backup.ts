@@ -3,6 +3,7 @@ import { migrateWorkspace } from '../data/migrations';
 import { contentHash } from '../data/storage';
 import { hasFullText } from '../domain/knowledge';
 import { paneGroups } from './panes';
+import { archivedBoardCard } from '../domain/board-history';
 import type { CardProvenance, ContextSnapshot, RegionSource, Session, WorkspaceData } from '../domain/types';
 
 export type BackupAsset = { id: string; blob: Blob };
@@ -150,6 +151,14 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
     if (card.provenance) source(card.provenance);
   }
   for (const board of Object.values(data.boards)) requireValid(has(data.researches, board.researchId), '白板所属研究缺失');
+  for (const change of Object.values(data.boardChanges ?? {})) {
+    requireValid(has(data.researches, change.researchId), '白板历史所属研究缺失');
+    for (const card of change.createdCards ?? []) { evidenceIds(card.evidenceIds); if (card.provenance) source(card.provenance); }
+    for (const snapshot of [change.before, change.after]) snapshot?.placements.forEach(placement => {
+      if (placement.resourceRef.kind === 'card' && !has(data.cards, placement.resourceRef.id)) requireValid(archivedBoardCard(data, change.researchId, placement.resourceRef.id), '历史引用的资源缺失');
+      else ref(placement.resourceRef);
+    });
+  }
   for (const placement of Object.values(data.placements)) {
     requireValid(has(data.boards, placement.boardId) && ['card', 'document'].includes(placement.resourceRef?.kind), '白板摆放来源缺失');
     ref(placement.resourceRef);
@@ -310,7 +319,10 @@ export async function readWorkspaceBackup(file: Blob): Promise<WorkspaceBackup> 
     requireValid(await contentHash(content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer) === entry.hash, '文件 SHA-256 校验失败');
     return content;
   };
-  const data = migrateWorkspace(JSON.parse(strFromU8(await verify(manifest.workspace))));
+  const workspaceBytes = await verify(manifest.workspace);
+  let data: WorkspaceData;
+  try { data = migrateWorkspace(JSON.parse(strFromU8(workspaceBytes))); }
+  catch (error) { throw new Error(`备份工作区无效：${error instanceof Error ? error.message : '内容损坏'}，未替换当前资料。`); }
   const expectedHashes = validateReferences(data);
   const assets: BackupAsset[] = [];
   const seenIds = new Set<string>();

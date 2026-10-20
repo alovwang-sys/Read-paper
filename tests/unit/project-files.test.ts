@@ -3,11 +3,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeed } from '../../src/data/seed';
 import { getAsset } from '../../src/data/storage';
 import { buildResearchFiles, researchFileData } from '../../src/services/project-files';
+import { recordBoardChanges } from '../../src/domain/board-history';
 const digest = (bytes: ArrayBuffer | Uint8Array) => createHash('sha256').update(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)).digest('hex');
 vi.mock('../../src/data/storage', () => ({ getAsset: vi.fn(), contentHash: async (bytes: ArrayBuffer) => createHash('sha256').update(new Uint8Array(bytes)).digest('hex') }));
 const pdf = new Blob(['%PDF-1.4\nsynthetic fixture\n%%EOF'], { type: 'application/pdf' });
 beforeEach(() => { vi.mocked(getAsset).mockReset().mockResolvedValue(pdf); });
 describe('研究目录的完整可读文件集', () => {
+  it('导出历史及其已移出白板的材料，不泄露其他研究历史', async () => {
+    const seed = createSeed(), next = structuredClone(seed);
+    delete next.placements['placement-b']; delete next.edges['edge-a'];
+    next.researches['research-a'].cardIds = next.researches['research-a'].cardIds.filter(id => id !== 'card-b');
+    next.boards['board-b'].title = '研究B的修改';
+    recordBoardChanges(seed, next);
+    const exported = researchFileData(next, 'research-a');
+    expect(Object.values(exported.boardChanges)).toHaveLength(1);
+    expect(exported.boardRevisions).toEqual({ 'board-a': 1 });
+    expect(exported.cards['card-b']).toBeDefined();
+    expect(exported.documents['paper-b']).toBeDefined();
+    expect(JSON.stringify(exported)).not.toContain('研究B的修改');
+    Object.values(next.documents).forEach(doc => { if (doc.assetId) doc.hash = digest(new TextEncoder().encode('%PDF-1.4\nsynthetic fixture\n%%EOF')); });
+    const { files } = await buildResearchFiles(next, 'research-a');
+    expect(JSON.parse(files.find(file => file.path === 'research.json')!.content).entities.boardChanges).toEqual(exported.boardChanges);
+  });
   it('包含实际PDF、卡片、摘录、文稿、白板、对话和稳定ID的结构化数据', async () => {
     const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
     Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
