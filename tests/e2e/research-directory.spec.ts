@@ -112,7 +112,7 @@ test('新建研究一次确认绑定目录，右侧助手继承且发送同一bi
   for (const width of [1440, 1280, 1024]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
     await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
-    await expect(panel(page).locator('.ai-context-options')).not.toHaveAttribute('open', '');
+    await expect(panel(page).locator('.ai-materials')).not.toHaveAttribute('open', '');
     for (const label of ['添加材料', '发送问题']) {
       const bounds = await panel(page).getByRole('button', { name: label, exact: true }).boundingBox();
       expect(bounds).not.toBeNull();

@@ -1,5 +1,7 @@
 # Papertrail
 
+白板新增“绘图”模式，使用开源 Excalidraw 直接画笔、形状、文字、箭头和图片，卡片与原文入口继续复用工作区实体。字体随应用本地打包。右侧 AI 的标题、材料和输入工具已压缩，腾出更多对话高度。实现范围与验证见[绘图](docs/verification/drawing/README.md)、[AI 空间](docs/verification/ai-space-expanded/README.md)及[最新 main 集成](docs/verification/main-integration/README.md)。
+
 把论文读成自己的理解，再把理解写成有出处的结论。
 
 Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个研究问题，集中阅读 PDF、留下原文摘录、整理观点卡片、在白板上组织论证，并写出可以返回原文核查的研究文稿。AI 在同一个工作台里辅助阅读，人工整理流程也可以独立使用。

@@ -4,6 +4,7 @@ import { contentHash } from '../data/storage';
 import { hasFullText } from '../domain/knowledge';
 import { paneGroups } from './panes';
 import { archivedBoardCard } from '../domain/board-history';
+import { drawingReferences, parseDrawingScene, validateDrawingRef } from '../domain/drawing';
 import type { CardProvenance, ContextSnapshot, RegionSource, Session, WorkspaceData } from '../domain/types';
 
 export type BackupAsset = { id: string; blob: Blob };
@@ -151,6 +152,10 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
     if (card.provenance) source(card.provenance);
   }
   for (const board of Object.values(data.boards)) requireValid(has(data.researches, board.researchId), '白板所属研究缺失');
+  for (const drawing of drawingReferences(data)) {
+    validateDrawingRef(drawing);
+    asset(drawing.assetId, drawing.hash);
+  }
   for (const change of Object.values(data.boardChanges ?? {})) {
     requireValid(has(data.researches, change.researchId), '白板历史所属研究缺失');
     for (const card of change.createdCards ?? []) { evidenceIds(card.evidenceIds); if (card.provenance) source(card.provenance); }
@@ -260,6 +265,7 @@ export async function createWorkspaceBackup(original: WorkspaceData, originalAss
     if (!doc.hash) doc.hash = await contentHash(await blob.arrayBuffer());
   }
   const expectedHashes = validateReferences(data);
+  const drawingIds = new Set(drawingReferences(data).map(ref => ref.assetId));
   const files: Record<string, Uint8Array> = {};
   const entries: AssetEntry[] = [];
   let total = 0;
@@ -270,12 +276,13 @@ export async function createWorkspaceBackup(original: WorkspaceData, originalAss
     sizeLimit(total, MAX_BACKUP_BYTES, '总解包大小');
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const hash = await contentHash(bytes.buffer as ArrayBuffer);
-    requireValid(!expectedHashes.has(id) || [...expectedHashes.get(id)!].every(value => value === hash), '原文件或历史区域图片 hash 不一致');
+    requireValid(!expectedHashes.has(id) || [...expectedHashes.get(id)!].every(value => value === hash), '原文件、历史区域图片或绘图 hash 不一致');
+    if (drawingIds.has(id)) parseDrawingScene(strFromU8(bytes));
     const path = `assets/${id}`;
     files[path] = bytes;
     entries.push({ id, path, size: bytes.length, hash, type: blob.type });
   }
-  requireValid([...expectedHashes.keys()].every(id => assets.has(id)), '缺少原文件或历史区域图片');
+  requireValid([...expectedHashes.keys()].every(id => assets.has(id)), '缺少原文件、历史区域图片或绘图');
   const workspaceBytes = strToU8(JSON.stringify(data));
   sizeLimit(workspaceBytes.length, MAX_JSON_BYTES, '工作区 JSON');
   files['workspace.json'] = workspaceBytes;
@@ -324,6 +331,7 @@ export async function readWorkspaceBackup(file: Blob): Promise<WorkspaceBackup> 
   try { data = migrateWorkspace(JSON.parse(strFromU8(workspaceBytes))); }
   catch (error) { throw new Error(`备份工作区无效：${error instanceof Error ? error.message : '内容损坏'}，未替换当前资料。`); }
   const expectedHashes = validateReferences(data);
+  const drawingIds = new Set(drawingReferences(data).map(ref => ref.assetId));
   const assets: BackupAsset[] = [];
   const seenIds = new Set<string>();
   for (const entry of manifest.assets) {
@@ -331,9 +339,10 @@ export async function readWorkspaceBackup(file: Blob): Promise<WorkspaceBackup> 
     seenIds.add(entry.id);
     const content = await verify(entry);
     requireValid(!expectedHashes.has(entry.id) || [...expectedHashes.get(entry.id)!].every(hash => hash === entry.hash), '来源资产 hash 与工作区不一致');
+    if (drawingIds.has(entry.id)) parseDrawingScene(strFromU8(content));
     assets.push({ id: entry.id, blob: new Blob([content as Uint8Array<ArrayBuffer>], { type: entry.type }) });
   }
-  requireValid([...expectedHashes.keys()].every(id => seenIds.has(id)), '缺少原文件或历史区域图片');
+  requireValid([...expectedHashes.keys()].every(id => seenIds.has(id)), '缺少原文件、历史区域图片或绘图');
   const assetMap = new Map(assets.map(asset => [asset.id, asset.blob]));
   for (const doc of Object.values(data.documents)) if (hasFullText(doc)) await checkPdfAsset(assetMap.get(doc.assetId)!, doc.filename);
   return { data, assets, createdAt: manifest.createdAt, summary: { researches: Object.keys(data.researches).length, documents: Object.keys(data.documents).length, cards: Object.keys(data.cards).length, assets: assets.length, bytes: total } };

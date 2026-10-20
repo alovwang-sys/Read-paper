@@ -7,6 +7,10 @@ import { layout, pane, panes, split } from './workspace-split-helpers';
 
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
+async function openBoardTools(page: Page) {
+  const tools = panel(page).locator('.ai-board-options');
+  if (await tools.getAttribute('open') === null) await tools.locator(':scope > summary').click();
+}
 const result = (page: Page) => panel(page).getByRole('region', { name: '聊天生成的白板', exact: true }).last();
 const saved = (page: Page) => expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
 async function data(page: Page): Promise<WorkspaceData> {
@@ -25,6 +29,7 @@ async function start(page: Page, view: 'pdf' | 'draft' = 'draft') {
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
   await panel(page).getByRole('button', { name: '演示模式', exact: true }).click();
+  await openBoardTools(page);
   await expect(panel(page).getByRole('button', { name: '生成白板', exact: true })).toBeEnabled();
   expect(Object.keys((await data(page)).boards)).toHaveLength(0);
 }
@@ -111,6 +116,7 @@ test('普通和否定问答不画，文稿中按钮用当前输入生成；打�
   await send(page, '不要画白板，只解释证据相关性的含义。');
   expect(Object.keys((await data(page)).boards)).toHaveLength(0);
   await panel(page).getByLabel('向 AI 提问').fill('比较检索与生成环节，再联系证据核查。');
+  await openBoardTools(page);
   await panel(page).getByRole('button', { name: '生成白板', exact: true }).click();
   await created(page);
   await expect(main(page).getByLabel('结论正文')).toBeVisible();
@@ -122,6 +128,7 @@ test('普通和否定问答不画，文稿中按钮用当前输入生成；打�
   await page.screenshot({ path: 'docs/verification/chat-board/result-heading-1440.png' });
   for (const [width, height] of [[1440, 900], [1280, 800], [1024, 800]]) {
     await page.setViewportSize({ width, height });
+    await openBoardTools(page);
     await expect(panel(page).getByRole('button', { name: '生成白板', exact: true })).toBeVisible();
     await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeVisible();
     await result(page).locator('.board-graph-preview').scrollIntoViewIfNeeded();
@@ -174,6 +181,7 @@ test('点击关系建议直接创建，迟到结果归原研究且不切走当�
 test('停止不落白板；自动保存失败可重试，创建批次保持唯一', async ({ page }) => {
   await start(page);
   await panel(page).getByLabel('向 AI 提问').fill('把讨论画成白板。' + '请保留材料的来源和边界。'.repeat(70));
+  await openBoardTools(page);
   await panel(page).getByRole('button', { name: '生成白板', exact: true }).click();
   await panel(page).getByRole('button', { name: '停止生成', exact: true }).click();
   await expect.poll(async () => Object.values((await data(page)).requests).at(-1)?.status).toBe('stopped');
@@ -188,6 +196,7 @@ test('停止不落白板；自动保存失败可重试，创建批次保持唯�
     };
   });
   await panel(page).getByLabel('向 AI 提问').fill('画一张研究步骤白板。');
+  await openBoardTools(page);
   await panel(page).getByRole('button', { name: '生成白板', exact: true }).click();
   await expect(result(page).getByRole('alert')).toContainText('保存');
   const before = await data(page), changes = Object.values(before.boardChanges ?? {}).filter(change => change.requestId);

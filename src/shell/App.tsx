@@ -181,12 +181,14 @@ export function App() {
   }, []);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (document.querySelector('dialog[open]')) return;
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
         showDialog('search');
       }
       if (event.key === 'Escape') {
+        if (event.composedPath().some(target => target instanceof Element && target.classList.contains('excalidraw'))) return;
         if (dialog) closeDialog();
         else if (navigationOpen) closeNavigation();
         else actions.setPanel(session.panel.mode, false);
@@ -474,10 +476,18 @@ export function App() {
             }}
           />
           <div className="inspector-header">
-            <strong>
-              <Layers size={15} />
-              研究参考
-            </strong>
+            <div className="panel-tabs" role="tablist" aria-label="参考面板模式">
+              {modes.map((mode) => (
+                <button
+                  key={mode.id}
+                  role="tab"
+                  aria-selected={session.panel.mode === mode.id}
+                  onClick={() => actions.setPanel(mode.id)}
+                >
+                  {mode.id === 'ai' && <Sparkles size={13} />} {mode.name}
+                </button>
+              ))}
+            </div>
             <div className="button-row">
               <button
                 className="icon-button"
@@ -507,18 +517,6 @@ export function App() {
                 <X size={16} />
               </button>
             </div>
-          </div>
-          <div className="panel-tabs" role="tablist" aria-label="参考面板模式">
-            {modes.map((mode) => (
-              <button
-                key={mode.id}
-                role="tab"
-                aria-selected={session.panel.mode === mode.id}
-                onClick={() => actions.setPanel(mode.id)}
-              >
-                {mode.id === 'ai' && <Sparkles size={13} />} {mode.name}
-              </button>
-            ))}
           </div>
           <div className={`inspector-content mode-${session.panel.mode}`}>
             <ErrorBoundary

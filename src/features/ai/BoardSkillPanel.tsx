@@ -17,7 +17,7 @@ export function BoardSkillPanel({ conversation, disabled, canCreate, onCreate }:
     actions.updateData(next => { if (next.conversations[conversation.id]) next.conversations[conversation.id].boardSkill = value; });
   }
   return <section className="board-chat-tools" aria-label="聊天白板工具">
-    <div className="board-chat-tool-row"><button className="text-button" disabled={!canCreate} onClick={onCreate}><Network size={14} />生成白板</button><span>当前对话＋本轮材料</span>
+    <div className="board-chat-tool-row"><button className="text-button" title="使用当前对话与本轮材料生成白板" disabled={!canCreate} onClick={onCreate}><Network size={14} />生成白板</button>
       {!!boards.length && !skill && <details className="board-target-picker"><summary>修改已有白板</summary><label>仅本次修改<select aria-label="选择要修改的白板" value="" disabled={disabled} onChange={event => { if (event.target.value) update({ boardId: event.target.value, scope: 'board', allowNewCards: true }); }}><option value="">选择目标白板…</option>{boards.map(board => <option value={board.id} key={board.id}>{board.title}</option>)}</select></label></details>}
     </div>
     {skill && <div className="board-skill">

@@ -4,6 +4,10 @@
 
 本文保留首版基线。2026-10-16 的真实多轮 AI、区域问答、独立卡片草稿与双来源见[最新验收记录](ai-reading/README.md)。下列同名截图会随回归更新，AI 能力以最新记录为准。
 
+2026-10-20 增量：[AI 面板纵向空间](ai-space/README.md)、[白板自由绘图](drawing/README.md)与[左侧导航层级修复](navigation/README.md)。
+
+根据用户再次反馈，[第二轮 AI 空间调整](ai-space-expanded/README.md)将常态消息区提高至视口约 75%–78%，并更新顶部助手切换与单行输入工具。
+
 从原有规划文档建立可运行应用，实际实现采用 React、TypeScript、Vite、PDF.js、IndexedDB 与 localStorage 恢复缓冲。所有功能复用同一工作台、实体数据和导航服务。原官方截图仅作为结构参考，下面截图均来自本产品。
 
 ## 批次状态

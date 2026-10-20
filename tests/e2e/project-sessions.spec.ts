@@ -124,7 +124,7 @@ test('三助手按身份合并与筛选；读取不发送；部分失败保留�
   await panel(page).getByRole('button', { name: '全部', exact: true }).click(); await panel(page).getByLabel('搜索会话').fill('引用核查'); await expect(panel(page).locator('.ai-history-item')).toHaveCount(1);
   await panel(page).getByLabel('搜索会话').fill(''); api.project.failList = true; await panel(page).getByRole('button', { name: '刷新', exact: true }).click(); await expect(panel(page).locator('.ai-history-error')).toContainText('暂时无法更新'); await expect(panel(page).locator('.ai-history-item')).toHaveCount(3);
   api.project.failList = false; await panel(page).locator('.ai-history-item').filter({ hasText: 'Claude 的引用核查' }).locator('.ai-history-open').click();
-  await expect(panel(page).locator('.ai-answer')).toContainText('模拟原生响应'); await expect(panel(page).locator('.ai-native-record')).toContainText('包含原有对话上下文'); await expect(panel(page).locator('.ai-turn-range')).toContainText('原有材料未关联');
+  await expect(panel(page).locator('.ai-answer')).toContainText('模拟原生响应'); await expect(panel(page).getByRole('button', { name: '刷新记录', exact: true })).toHaveAttribute('title', '刷新原生记录 · 包含原有对话上下文'); await expect(panel(page).locator('.ai-turn-range')).toContainText('原有材料未关联');
   await expect(panel(page).getByRole('button', { name: '重新生成', exact: true })).toHaveCount(0); await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeDisabled(); expect(api.runs).toHaveLength(0);
 });
 
@@ -139,7 +139,7 @@ test('外部忙碌不抢发或停止，切换助手恢复各自草稿，刷新�
   await page.route('**/api/ai/agents/projects/read', async route => { await reading; return route.fallback(); }, { times: 1 });
   try {
     const requested = page.waitForRequest(request => request.url().endsWith('/api/ai/agents/projects/read') && request.postDataJSON().sessionRef === busy.id);
-    await panel(page).getByRole('button', { name: '刷新记录', exact: true }).click(); await requested; await expect(panel(page).getByRole('button', { name: '读取中…', exact: true })).toBeDisabled();
+    await panel(page).getByRole('button', { name: '刷新记录', exact: true }).click(); await requested; await expect(panel(page).getByRole('button', { name: '刷新记录', exact: true })).toBeDisabled();
     await panel(page).getByLabel('向 AI 提问').fill('原生记录读取期间继续写下的问题'); await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('原生记录读取期间继续写下的问题');
     releaseRead(); await expect(panel(page).locator('.ai-answer')).toContainText('已核对第二组证据'); await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('原生记录读取期间继续写下的问题');
   } finally { releaseRead(); }

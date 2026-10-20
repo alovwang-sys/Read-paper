@@ -78,7 +78,7 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     console.info('Packaged Codex metadata', { capabilityStatus, capabilityBranch, modelCount: capability.models?.length ?? null });
     await input(page).fill(draft);
 
-    for (const name of ['添加材料', 'Codex 访问权限', '选择 Codex 模型', '语音输入', '发送问题']) {
+    for (const name of ['添加材料', 'Codex 对话设置', '选择 Codex 模型', '语音输入', '发送问题']) {
       await expect(panel(page).getByRole('button', { name, exact: true })).toBeVisible();
     }
     await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeDisabled();
@@ -87,10 +87,10 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     await expect(materials.getByLabel('搜索研究证据')).toBeVisible();
     await materials.getByRole('button', { name: '关闭添加材料', exact: true }).click();
     await expect(materials).not.toBeVisible(); await expect(input(page)).toHaveValue(draft);
-    await expect(panel(page).locator('.ai-context-options > summary')).toContainText('本轮材料 · 0');
+    await expect(panel(page).locator('.ai-materials > summary')).toContainText('本轮材料 · 0');
 
-    const permissions = panel(page).getByRole('button', { name: 'Codex 访问权限', exact: true });
-    await permissions.click(); await expect(menu(page)).toContainText('仅影响当前对话的后续请求');
+    const permissions = panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true });
+    await permissions.click(); await menu(page).getByRole('option', { name: 'Codex 访问权限', exact: true }).click(); await expect(menu(page)).toContainText('仅影响当前对话的后续请求');
     if (capabilityStatus === 200 && capability.accessModes?.includes('full-access')) {
       await menu(page).getByRole('option', { name: /^完全访问/ }).click();
       const confirmation = panel(page).getByRole('dialog', { name: '启用完全访问', exact: true });
@@ -107,9 +107,9 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
         await expect(menu(page).getByRole('option', { name: /^只读权限/ })).toHaveAttribute('aria-disabled', 'true');
         await expect(menu(page).getByRole('option', { name: /^完全访问/ })).toHaveCount(0);
       }
-      await menu(page).press('Escape');
+      await menu(page).press('Escape'); await menu(page).press('Escape');
     }
-    await expect(permissions).toContainText('只读权限'); await expect(input(page)).toHaveValue(draft);
+    await expect(permissions).toContainText('只读'); await expect(input(page)).toHaveValue(draft);
     await panel(page).getByRole('button', { name: '选择 Codex 模型', exact: true }).click();
     await expect(menu(page)).toContainText('Codex 模型');
     await expect(menu(page).getByRole('option')).toHaveCount(capability.models?.length ?? 0);
@@ -133,7 +133,7 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
     const notice = page.getByRole('button', { name: '关闭提示', exact: true });
     await expect(notice).not.toBeVisible();
     await page.setViewportSize({ width: 1024, height: 800 });
-    for (const name of ['添加材料', 'Codex 访问权限', '选择 Codex 模型', '语音输入', '发送问题']) {
+    for (const name of ['添加材料', 'Codex 对话设置', '选择 Codex 模型', '语音输入', '发送问题']) {
       const button = panel(page).getByRole('button', { name, exact: true }); await expect(button).toBeVisible();
       const bounds = await button.boundingBox(); expect(bounds).not.toBeNull();
       expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.y).toBeGreaterThanOrEqual(0);
@@ -155,7 +155,7 @@ test('打包桌面：原生输入控件可达，取消权限与材料、系统�
 
     session = await launch(userData, home); application = session.application; page = session.page; watch(page); await observeMedia(page);
     await expect(input(page)).toHaveValue(draft); await expect(panel(page).getByRole('button', { name: '切换 AI 助手', exact: true })).toContainText('Codex');
-    await expect(panel(page).getByRole('button', { name: 'Codex 访问权限', exact: true })).toContainText('只读权限');
+    await expect(panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true })).toContainText('只读');
     await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeDisabled();
     expect(modelRequests).toEqual([]); expect(pageErrors).toEqual([]);
     expect(await page.evaluate(() => Reflect.get(window, '__composerMediaRequests'))).toBe(0);

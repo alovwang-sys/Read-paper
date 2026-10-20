@@ -92,10 +92,15 @@ async function start(page: Page, api: API, pdf = false) {
   await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click(); await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();
   const notice = page.getByRole('button', { name: '关闭提示', exact: true }); if (await notice.isVisible()) await notice.click();
 }
+async function checkSelectedTikHub(page: Page) {
+  await panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true }).click();
+  await expect(panel(page).getByLabel('已选 Codex 技能')).toContainText('$tikhub');
+  await panel(page).getByRole('dialog', { name: 'Codex 操作与技能' }).press('Escape');
+}
 async function chooseTikHub(page: Page) {
   const input = panel(page).getByLabel('向 AI 提问'); await input.fill('$tikhub');
   const option = panel(page).getByRole('option', { name: /\$tikhub/ }); await expect(option).toHaveAttribute('aria-disabled', 'false'); await expect(option).toContainText(scope); await input.press('Enter');
-  await expect(panel(page).getByLabel('已选 Codex 技能')).toContainText('$tikhub');
+  await checkSelectedTikHub(page);
 }
 async function send(page: Page, prompt: string) { await panel(page).getByLabel('向 AI 提问').fill(prompt); await panel(page).getByRole('button', { name: '发送问题', exact: true }).click(); }
 
@@ -134,11 +139,11 @@ test('TikHub 数据调用逐次审批，拒绝不查询、允许绑定原研究�
 test('TikHub 缺少本机凭据时说明原因，刷新能力后原会话可选择', async ({ page, api }) => {
   api.hasCredentials = false; await start(page, api); await panel(page).getByLabel('向 AI 提问').fill('$tikhub');
   const option = panel(page).getByRole('option', { name: /\$tikhub/ }); await expect(option).toHaveAttribute('aria-disabled', 'true'); await expect(option).toContainText('本机服务未配置 TikHub 凭据');
-  await panel(page).getByLabel('向 AI 提问').press('Enter'); await expect(panel(page).getByLabel('已选 Codex 技能')).toHaveCount(0); expect(api.runs).toHaveLength(0);
+  await panel(page).getByLabel('向 AI 提问').press('Enter'); await expect(panel(page).getByRole('button', { name: 'Codex 对话设置', exact: true }).locator('.codex-skill-count')).toHaveCount(0); expect(api.runs).toHaveLength(0);
   api.hasCredentials = true;
   await panel(page).getByRole('button', { name: '刷新 Codex 能力', exact: true }).click();
   await expect(option).toHaveAttribute('aria-disabled', 'false'); await expect(option).toContainText(scope);
-  await option.click(); await expect(panel(page).getByLabel('已选 Codex 技能')).toContainText('$tikhub'); expect(api.runs).toHaveLength(0);
+  await option.click(); await checkSelectedTikHub(page); expect(api.runs).toHaveLength(0);
 });
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 800 }]) {

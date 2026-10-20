@@ -48,11 +48,12 @@
 .board-history-conflict { margin-top: 12px; padding: 10px; border: 1px solid #ead9b8; border-radius: 5px; background: #fff8eb; color: #866d40; font-size: 12px; }
 .board-history-conflict p { line-height: 1.6; margin: 0 0 8px; }
 @media (max-width: 1100px) { .board-history-content { grid-template-columns: 1fr; } .board-history-list { max-height: 160px; overflow: auto; } }
-.board-chat-tools { margin: 5px 0; }
+.board-chat-tools { margin: 0; }
 .board-chat-tool-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; font-size: 11px; color: #7e8d84; }
 .board-chat-tool-row > .text-button { color: #39715c; }
-.board-target-picker { flex-basis: 100%; margin-top: -5px; font-size: 11px; }
-.board-target-picker > summary { color: #6b8073; cursor: pointer; width: fit-content; }
+.board-target-picker { font-size: 11px; }
+.board-target-picker[open] { flex-basis: 100%; }
+.board-target-picker > summary { color: #6b8073; cursor: pointer; width: fit-content; min-height: 36px; padding-block: 8px; }
 .board-target-picker label { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 9px; margin: 6px 0; }
 .board-target-picker select { width: 100%; min-width: 0; font-size: 12px; padding: 5px 7px; }
 .board-chat-tools .board-skill { margin: 6px 0; }

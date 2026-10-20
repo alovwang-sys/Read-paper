@@ -83,6 +83,7 @@ test('安装产物：独立运行、PDF与双栏、模型设置、关闭保存�
 
     await openNav(page, '检索增强的适用条件');
     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+    await panel(page).locator('.ai-connection details > summary').click();
     await expect(panel(page).getByRole('button', { name: '配置模型连接' })).toBeVisible();
     const settingsEvent = application.waitForEvent('window');
     await panel(page).getByRole('button', { name: '配置模型连接' }).click();

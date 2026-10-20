@@ -154,7 +154,8 @@ export type CardDraft = {
   previous?: { title: string; body: string; evidenceIds: string[] };
   cardId?: string;
 };
-export type Board = { id: string; researchId: string; title: string; layout?: 'free' | 'tree' };
+export type BoardDrawingRef = { assetId: string; hash: string };
+export type Board = { id: string; researchId: string; title: string; layout?: 'free' | 'tree'; drawing?: BoardDrawingRef };
 export type BoardPlacement = {
   id: string;
   boardId: string;
@@ -262,6 +263,7 @@ export type Session = {
   /** Legacy per-paper layout, consumed on load. */
   readerSplits?: Record<string, 'horizontal' | 'vertical'>;
   viewports: Record<string, BoardViewport>;
+  boardModes?: Record<string, 'draw' | 'organize'>;
   anchor?: ResourceAnchor;
   activeConversationId?: string;
 };

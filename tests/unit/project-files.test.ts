@@ -3,12 +3,71 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeed } from '../../src/data/seed';
 import { getAsset } from '../../src/data/storage';
 import { buildResearchFiles, researchFileData } from '../../src/services/project-files';
-import { recordBoardChanges } from '../../src/domain/board-history';
+import { captureBoardContext, recordBoardChanges } from '../../src/domain/board-history';
 const digest = (bytes: ArrayBuffer | Uint8Array) => createHash('sha256').update(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)).digest('hex');
 vi.mock('../../src/data/storage', () => ({ getAsset: vi.fn(), contentHash: async (bytes: ArrayBuffer) => createHash('sha256').update(new Uint8Array(bytes)).digest('hex') }));
 const pdf = new Blob(['%PDF-1.4\nsynthetic fixture\n%%EOF'], { type: 'application/pdf' });
+async function drawingAsset(source: string, image = false) {
+  const blob = new Blob([JSON.stringify({ type: 'excalidraw', version: 2, source, elements: [],
+    appState: { viewBackgroundColor: '#fff', scrollX: 0, scrollY: 0, zoom: { value: 1 } },
+    files: image ? { 'image-a': { id: 'image-a', mimeType: 'image/png', created: 1, dataURL: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==' } } : {},
+  })], { type: 'application/vnd.excalidraw+json' });
+  const hash = digest(await blob.arrayBuffer()), id = `drawing-${hash}`;
+  return { ref: { assetId: id, hash }, blob };
+}
+
 beforeEach(() => { vi.mocked(getAsset).mockReset().mockResolvedValue(pdf); });
 describe('研究目录的完整可读文件集', () => {
+  it('导出本研究当前、历史及请求场景为独立excalidraw文件，保留图片和索引且隔离其他研究', async () => {
+    const seed = createSeed(), historical = await drawingAsset('historical', true), current = await drawingAsset('current'), requested = await drawingAsset('requested'), privateScene = await drawingAsset('研究B私有绘图');
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = digest(new TextEncoder().encode('%PDF-1.4\nsynthetic fixture\n%%EOF')); });
+    seed.boards['board-a'].drawing = historical.ref;
+    const before = structuredClone(seed);
+    seed.boards['board-a'].drawing = current.ref;
+    seed.boards['board-b'].drawing = privateScene.ref;
+    recordBoardChanges(before, seed);
+    const context = captureBoardContext(seed, 'research-a', 'board-a', 'board'); context.snapshot.board.drawing = requested.ref;
+    seed.requests['drawing-request'] = { id: 'drawing-request', researchId: 'research-a', conversationId: 'conversation-research-a', prompt: '', body: '', context: [], history: [], evidenceIds: [], createdAt: '', status: 'done', boardContext: context };
+    const scenes = [historical, current, requested, privateScene];
+    vi.mocked(getAsset).mockImplementation(async id => scenes.find(scene => scene.ref.assetId === id)?.blob ?? pdf);
+    const { files } = await buildResearchFiles(seed, 'research-a'), map = Object.fromEntries(files.map(file => [file.path, file]));
+    const saved = JSON.parse(map['research.json'].content);
+    for (const scene of [historical, current, requested]) {
+      const path = `drawings/${scene.ref.assetId}.excalidraw`;
+      expect(Buffer.from(map[path].content, 'base64').toString()).toBe(await scene.blob.text());
+      expect(saved.assets[scene.ref.assetId].path).toBe(path);
+    }
+    expect(files.filter(file => file.path.startsWith('drawings/'))).toHaveLength(3);
+    expect(JSON.stringify(files)).not.toContain(privateScene.ref.assetId);
+    expect(JSON.parse(map['boards/board-a.json'].content)).toMatchObject({ board: { drawing: current.ref }, drawingPath: `../drawings/${current.ref.assetId}.excalidraw` });
+    vi.mocked(getAsset).mockClear();
+    vi.mocked(getAsset).mockImplementation(async id => id === current.ref.assetId ? undefined : scenes.find(scene => scene.ref.assetId === id)?.blob ?? pdf);
+    await expect(buildResearchFiles(seed, 'research-a')).rejects.toThrow(/缺失/);
+  });
+
+  it('绘图缓存不能掩盖损坏资产，伪造但hash一致的非绘图JSON也会拒绝导出', async () => {
+    const seed = createSeed(), drawing = await drawingAsset('cache-check');
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = digest(new TextEncoder().encode('%PDF-1.4\nsynthetic fixture\n%%EOF')); });
+    seed.boards['board-a'].drawing = drawing.ref;
+    vi.mocked(getAsset).mockImplementation(async id => id === drawing.ref.assetId ? drawing.blob : pdf);
+    await buildResearchFiles(seed, 'research-a');
+    vi.mocked(getAsset).mockImplementation(async id => id === drawing.ref.assetId ? new Blob(['corrupt']) : pdf);
+    await expect(buildResearchFiles(seed, 'research-a')).rejects.toThrow(/hash/);
+    const invalid = new Blob(['{}']), hash = digest(await invalid.arrayBuffer());
+    seed.boards['board-a'].drawing = { assetId: `drawing-${hash}`, hash };
+    vi.mocked(getAsset).mockImplementation(async id => id === `drawing-${hash}` ? invalid : pdf);
+    await expect(buildResearchFiles(seed, 'research-a')).rejects.toThrow(/绘图/);
+  });
+
+  it('同一资产被多个引用要求不同hash时，在已有文件和缓存命中后仍拒绝导出', async () => {
+    const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
+    await buildResearchFiles(seed, 'research-a');
+    seed.documents['paper-b'].assetId = seed.documents['paper-a'].assetId;
+    seed.documents['paper-b'].hash = 'a'.repeat(64);
+    await expect(buildResearchFiles(seed, 'research-a')).rejects.toThrow(/hash 不一致/);
+  });
+
   it('导出历史及其已移出白板的材料，不泄露其他研究历史', async () => {
     const seed = createSeed(), next = structuredClone(seed);
     delete next.placements['placement-b']; delete next.edges['edge-a'];

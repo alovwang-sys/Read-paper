@@ -1,3 +1,4 @@
+import './drawing-assets';
 import { createRoot } from 'react-dom/client';
 import { App } from './shell/App';
 import './ui/styles.css';

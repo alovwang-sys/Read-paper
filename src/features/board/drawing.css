@@ -1,0 +1,51 @@
+.board-drawing {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f7f8f4;
+}
+.board-drawing-canvas { flex: 1; min-height: 0; position: relative; }
+.drawing-readonly { flex-shrink: 0; padding: 6px 12px; border-bottom: 1px solid #dfe6d8; background: #f0f4eb; color: #617255; font-size: 11px; line-height: 1.5; }
+.board-drawing .excalidraw {
+  --color-primary: #557b49;
+  --color-primary-darker: #3e6034;
+  --color-primary-darkest: #304d28;
+  --color-primary-light: #e6efdf;
+  --color-surface-primary-container: #e6efdf;
+  --color-on-primary-container: #35532b;
+}
+.board-drawing .excalidraw [data-testid="toolbar-embeddable"] { display: none; }
+/* Resource actions live in the status bar; their internal links are not user-facing URLs. */
+.board-drawing .excalidraw-hyperlinkContainer:has([href^="papertrail://placement/"], [value^="papertrail://placement/"]) { display: none; }
+.drawing-resource {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px 16px 10px;
+  border: 1px solid #d9e2d2;
+  border-radius: 6px;
+  background: #fffefa;
+  color: #405337;
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  text-align: left;
+}
+.drawing-resource.is-document { background: #fbfdfa; }
+.drawing-resource-kind { display: flex; align-items: center; gap: 5px; color: #7d9072; font-size: 11px; }
+.drawing-resource-kind > span { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
+.drawing-resource h3 { margin: 12px 0 8px; font-size: 15px; font-weight: 600; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.drawing-resource p { margin: 0 0 8px; white-space: pre-line; line-height: 1.7; font-size: 12px; color: #7a8472; overflow: hidden; flex: 1; }
+.drawing-resource footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #edf1e8; padding-top: 8px; color: #8c9c81; font-size: 10px; }
+.drawing-resource button { display: inline-flex; align-items: center; gap: 3px; border: 0; background: transparent; padding: 3px; font: inherit; color: #537346; cursor: pointer; }
+.drawing-resource button:focus-visible { outline: 2px solid #557b49; outline-offset: 2px; }
+.drawing-resource-missing { color: #a56b50; font-size: 12px; }
+.drawing-statusbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px 14px; min-height: 35px; padding: 5px 13px; border-top: 1px solid #dfe6d8; background: #f9fbf6; color: #8a9a7d; font-size: 10px; }
+.drawing-resource-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; min-width: 0; }
+.drawing-resource-actions > span { max-width: 180px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.drawing-resource-actions .button { font-size: 10px; padding: 4px 6px; }
+.drawing-save-status { margin-left: auto; white-space: nowrap; }
+.drawing-save-status.is-error { color: #a56b50; }
+@media (max-width: 1100px) { .drawing-statusbar { padding-inline: 8px; } .drawing-resource-actions > span { max-width: 115px; } }

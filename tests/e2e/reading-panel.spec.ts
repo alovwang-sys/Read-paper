@@ -26,7 +26,7 @@ for (const width of [1440, 1280, 1024]) {
     await expect.poll(() => panel(page).evaluate(element => element.getBoundingClientRect().width)).toBe(320);
     expect(await page.locator('.main-column').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(560);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
-    const options = panel(page).locator('.ai-context-options');
+    const options = panel(page).locator('.ai-materials');
     await expect(options).not.toHaveAttribute('open', '');
     await expect(options.locator(':scope > summary')).toContainText('本轮材料 · 2');
     const chat = panel(page).getByRole('log', { name: '对话消息' });

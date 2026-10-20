@@ -32,6 +32,7 @@ function BoardDiff({ before, after, data, plan }: { before: BoardSnapshot; after
     <p>父级／顺序变化 {diff.structured}{before.board.layout !== after.board.layout ? ` · 布局：${after.board.layout === 'tree' ? '层级整理' : '自由布局'}` : ''}{plan?.nodes.some(n => n.card) ? ` · 新草稿 ${plan.nodes.filter(n => n.card).length}` : ''}</p>
     {!!changed.length && <details><summary>核对父级与顺序</summary><ul>{changed.map(p => { const old = before.placements.find(item => item.id === p.id)!; return <li key={p.id}>{title(after, p.id)}：{title(before, old.parentPlacementId)} → {title(after, p.parentPlacementId)}；同级序号 {old.order === undefined ? '未设置' : old.order + 1} → {p.order === undefined ? '未设置' : p.order + 1}</li>; })}</ul></details>}
     <p>连线 {before.edges.length} → {after.edges.length} · 分组 {new Set(before.placements.map(item => item.group).filter(Boolean)).size} → {new Set(after.placements.map(item => item.group).filter(Boolean)).size}</p>
+    {before.board.drawing?.hash !== after.board.drawing?.hash && <p>自由绘图：{!before.board.drawing ? '已添加' : !after.board.drawing ? '已移除' : '版本已更新'}；恢复包含该版本的图形与图片。</p>}
   </div>;
 }
 
@@ -41,7 +42,8 @@ function SnapshotPreview({ snapshot, data, resources }: { snapshot: BoardSnapsho
   return <div className="board-snapshot" aria-label={`白板结构：${snapshot.board.title}`}>
     <strong>{snapshot.board.title}</strong>
     <div className="board-snapshot-groups">{groups.map(group => <section key={group}><h4>{group}</h4>{snapshot.placements.filter(item => (item.group || '未分组') === group).map(item => <div className="board-snapshot-node" key={item.id}><span>{title(item.id)}</span><small>{item.resourceRef.kind === 'card' ? '共享卡片' : '论文资料'} · {item.parentPlacementId ? `归属：${title(item.parentPlacementId)}` : '根层'}{item.order !== undefined ? ` · 同级序号 ${item.order + 1}` : ''} · 位置 {Math.round(item.x)}, {Math.round(item.y)}</small></div>)}</section>)}</div>
-    {!snapshot.placements.length && <p className="muted">此版本为空白板。</p>}
+    {snapshot.board.drawing && <p className="muted">此版本包含自由绘图，恢复后可在画布查看。</p>}
+    {!snapshot.placements.length && !snapshot.board.drawing && <p className="muted">此版本为空白板。</p>}
     {!!snapshot.edges.length && <ul className="board-snapshot-edges" aria-label="预览中的连线">{snapshot.edges.map(edge => <li key={edge.id}><span>{title(edge.fromPlacementId)}</span><ArrowRight size={12} /><span>{edge.label || '关联'} · {title(edge.toPlacementId)}</span></li>)}</ul>}
   </div>;
 }

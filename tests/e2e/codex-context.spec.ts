@@ -28,7 +28,6 @@ async function start(page: Page, connectionId: 'codex' | 'model') {
   await expect(page.getByRole('main').locator('canvas').first()).toBeVisible();
   await expect(page.getByRole('main').locator('.pdf-page-loading')).toHaveCount(0);
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
-  await panel(page).locator('.ai-context-options > summary').click();
   await expect(panel(page).getByText('本轮材料 · 17', { exact: true })).toBeVisible();
   return conversation.contextIds;
 }
@@ -58,7 +57,6 @@ test('Codex 完整发送超过旧容量的材料且不重发历史，保留引�
   await page.reload();
   await expect(panel(page).locator('.ai-answer').last()).toContainText('已完整接收 17 条显式材料');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('');
-  await panel(page).locator('.ai-context-options > summary').click();
   await panel(page).getByText('本轮材料 · 17', { exact: true }).click();
   await page.evaluate(() => document.fonts.ready);
   await mkdir('docs/verification/native-continuity', { recursive: true });

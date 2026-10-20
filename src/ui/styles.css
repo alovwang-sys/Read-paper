@@ -852,35 +852,28 @@ h3 {
   background: #83af9c55;
 }
 .inspector-header {
-  height: 48px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 19px;
+  padding: 0 10px;
+  gap: 8px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.inspector-header strong {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #7e8a94;
-}
+.ai-panel-open .inspector-header { height: 40px; }
 .panel-tabs {
-  height: 36px;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--border);
-  padding: 0 16px;
   gap: 6px;
   flex-shrink: 0;
 }
 .panel-tabs button {
   flex: 1;
-  height: 28px;
-  font-size: 11px;
+  height: 32px;
+  font-size: 12px;
   color: #a1a8b1;
   border-radius: 5px;
   display: flex;

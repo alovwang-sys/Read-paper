@@ -113,7 +113,6 @@ export function AIPanel() {
   const [allowNewDraft, setAllowNewDraft] = useState(false);
   const [hasNewContent, setHasNewContent] = useState(false);
   const [scopeNotice, setScopeNotice] = useState('');
-  const [contextOptionsOpen, setContextOptionsOpen] = useState(false);
   const [historyStates, setHistoryStates] = useState<Record<string, ConversationHistoryState>>({});
   const [directoryReady, setDirectoryReady] = useState(false);
   const [directoryError, setDirectoryError] = useState('');
@@ -318,7 +317,7 @@ export function AIPanel() {
     const element = input.current;
     if (view !== 'chat' || !element) return;
     element.style.height = 'auto';
-    element.style.height = `${Math.min(160, Math.max(76, element.scrollHeight))}px`;
+    element.style.height = `${Math.min(160, Math.max(44, element.scrollHeight))}px`;
   }, [prompt, conversation?.id, view]);
   useEffect(() => () => clearTimeout(scrollTimer.current), []);
   function rememberScroll() {
@@ -498,7 +497,9 @@ export function AIPanel() {
   };
   const composerInput = (<textarea
           ref={input}
+          rows={1}
           aria-label="向 AI 提问"
+          title="⌘ / Ctrl + Enter 发送"
           placeholder="基于这些材料提问，或继续追问…"
           value={prompt}
           onInputCapture={event => updateComposerInput(event.currentTarget.value)}
@@ -515,7 +516,10 @@ export function AIPanel() {
             }
           }}
         />);
-  const composerLeading = <><ComposerMaterials key={conversation.id} researchId={research.id} conversationId={conversation.id} disabled={!!generating} /><AgentPicker current={connectionId} agents={agents} loading={loadingAgents} error={agentError} model={config?.model} configured={!!config?.configured && !configError} onSelect={switchAgent} onRefresh={() => { void loadAgents(); void loadConfig(); }} /></>;
+  const connectionStatus = mode === 'demo' ? '演示模式 · 预设回答，无真实模型调用'
+    : native ? loadingAgents ? `正在检查 ${connectionLabel(connectionId)}…` : `${connectionLabel(connectionId)} · ${agent ? agentStateLabel[agent.state] : '未连接'}${agent?.version ? ` · ${agent.version}` : ''}`
+    : loadingConfig ? '正在检查模型配置…' : config?.configured ? `${config.model} · 真实模型` : '真实模型尚未连接';
+  const composerLeading = <ComposerMaterials key={conversation.id} researchId={research.id} conversationId={conversation.id} disabled={!!generating} />;
   const composerTrailing = <><VoiceInput key={conversation.id} inputRef={input} />{generating ? (<>
     {generating.nativeRun?.managed && <button type="button" className="text-button" disabled={!canSteer} onClick={() => {
       setSteeringBusy(true); void execute(() => steerNativeRun(generating.id, prompt)).finally(() => setSteeringBusy(false));
@@ -531,6 +535,11 @@ export function AIPanel() {
             {conversation.title || '新的阅读对话'}
           </h3>
         </div>
+        <div className={`ai-model-bar ${mode === 'demo' ? 'is-demo' : native ? agent?.state === 'ready' ? 'is-ready' : 'is-unavailable' : config?.configured ? 'is-ready' : 'is-unavailable'}`} title={connectionStatus}>
+          <span className="ai-connection-indicator" role="status"><span className="sr-only">{connectionStatus}</span></span>
+          <AgentPicker current={connectionId} agents={agents} loading={loadingAgents} error={agentError} model={config?.model} configured={!!config?.configured && !configError} onSelect={switchAgent} onRefresh={() => { void loadAgents(); void loadConfig(); }} />
+        </div>
+        {native && conversation.nativeSessionRef && <button className="icon-button ai-head-action" aria-label="刷新记录" title={conversation.nativeImported ? '刷新原生记录 · 包含原有对话上下文' : '刷新项目内原生会话'} disabled={refreshingNative || !!generating} onClick={() => void refreshNative()}><RefreshCw size={14} /></button>}
         <button
           className="text-button ai-head-action"
           aria-label="查看会话历史"
@@ -541,7 +550,6 @@ export function AIPanel() {
           }}
         >
           <History size={17} />
-          对话记录
         </button>
         <button
           className="text-button ai-head-action"
@@ -554,61 +562,35 @@ export function AIPanel() {
           }}
         >
           <Plus size={18} />
-          新对话
         </button>
       </div>
-      <div className={`ai-model-bar ${mode === 'demo' ? 'is-demo' : ''}`}>
-        <Sparkles size={13} />
-        <span>
-          {mode === 'demo'
-            ? '演示模式 · 预设回答，无真实模型调用'
-            : native
-              ? loadingAgents
-                ? `正在检查 ${connectionLabel(connectionId)}…`
-                : `${connectionLabel(connectionId)} · ${agent ? agentStateLabel[agent.state] : '未连接'}${agent?.version ? ` · ${agent.version}` : ''}`
-            : loadingConfig
-              ? '正在检查模型配置…'
-              : config?.configured
-                ? `${config.model} · 真实模型`
-                : '真实模型尚未连接'}
-        </span>
-        {native && agent?.state === 'ready' && <span className="ai-badge">{connectionId === 'codex' ? conversation.codex?.access === 'full-access' ? '完全访问' : '只读 · 逐次审批' : agent.capabilities.tools ? '只读工具' : '仅对话'}</span>}
-      </div>
       {!!backgroundTasks.length && <button className="ai-background-tasks" onClick={() => { rememberScroll(); updatePanel('history'); }}><span />{backgroundTasks.length} 个任务在其他对话运行 · 查看</button>}
-      {native && conversation.nativeSessionRef && <div className="ai-native-record"><span>{conversation.nativeImported ? '来自原生客户端 · 包含原有对话上下文' : '项目内原生会话'}</span><button className="text-button" disabled={refreshingNative || !!generating} onClick={() => void refreshNative()}><RefreshCw size={13} />{refreshingNative ? '读取中…' : '刷新记录'}</button></div>}
       {native && !loadingAgents && (agentError || agent?.state !== 'ready') && <div className="ai-connection" role="status">
-        <p><strong>{agent ? `${connectionLabel(connectionId)} · ${agentStateLabel[agent.state]}` : '本机助手未连接'}</strong></p>
+        <div className="ai-connection-header"><strong>{agent ? `${connectionLabel(connectionId)} · ${agentStateLabel[agent.state]}` : '本机助手未连接'}</strong><button className="text-button" onClick={() => void loadAgents()}><RefreshCw size={13} />重新连接助手</button></div>
+        <details><summary>连接说明 · 当前输入和对话已保留</summary>
         <p>{agentError || agent?.detail || '请检查该助手的安装和登录状态，然后重新连接。'}</p>
         {agent?.state === 'not-installed' && agent.installation && <div className="ai-installation">
           <p>这里需要 {connectionLabel(connectionId)} 的本机运行时连接组件；安装桌面应用与配置此连接是两件事。</p>
           <a className="button ai-install-link" href={agent.installation.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} />{agent.installation.label || '打开官方安装说明'}</a>
           {agent.installation.command && <div className="ai-install-command"><code>{agent.installation.command}</code><button className="text-button" onClick={() => void execute(async () => { await navigator.clipboard.writeText(agent.installation!.command!); actions.notice('安装命令已复制'); })}><Copy size={12} />复制安装命令</button></div>}
         </div>}
-        <p>当前输入和对话已保留。</p>
-        <button className="text-button" onClick={() => void loadAgents()}><RefreshCw size={13} />重新连接助手</button>
+        </details>
       </div>}
       {!native && mode === 'live' &&
         (configError || (!loadingConfig && !config?.configured)) && (
           <div className="ai-connection">
+            <div className="ai-connection-header"><strong>{configError ? '模型连接异常' : '真实模型尚未连接'}</strong><button className="text-button" disabled={loadingConfig} onClick={() => void loadConfig()}><RefreshCw size={13} />重新连接</button></div>
+            <details>
+              <summary>连接说明 · 当前输入和对话已保留</summary>
             <p>
               {configError ||
                 (window.papertrailDesktop ? '请配置模型连接。API 密钥经系统加密保存在此电脑。' : '请在本地服务环境配置模型连接，然后重连。API 密钥仅保留在本地服务端。')}
             </p>
-            <details>
-              <summary>连接说明</summary>
               <p>
                 {window.papertrailDesktop ? '通过“配置模型连接”填写自己的 API 地址、模型和密钥；保存后连接自动更新。' : '启动 README 中的开发服务，设置本地 AI_API_KEY、AI_BASE_URL 和 AI_MODEL；修改配置后重启服务。界面不会读取或保存密钥。'}
               </p>
-            </details>
             {window.papertrailDesktop && <button className="text-button" onClick={() => void window.papertrailDesktop?.openAISettings()}>配置模型连接</button>}
-            <button
-              className="text-button"
-              disabled={loadingConfig}
-              onClick={() => void loadConfig()}
-            >
-              <RefreshCw size={13} />
-              重新连接
-            </button>
+            </details>
           </div>
         )}
       {!!openDrafts.length && (
@@ -631,6 +613,7 @@ export function AIPanel() {
         </div>
       )}
 
+      <div className="ai-chat-messages">
       <div
         className="ai-chat-log"
         role="log"
@@ -953,6 +936,7 @@ export function AIPanel() {
           有新内容
         </button>
       )}
+      </div>
       <div className="sr-only" role="status">
         {latest?.status === 'generating'
           ? '正在回答'
@@ -971,13 +955,10 @@ export function AIPanel() {
         {nativeBlocked && <div className="ai-scope-notice" role="status"><strong>{conversation.nativeState === 'busy' ? '正在原生应用中运行' : '当前可查看记录，暂不能继续发送'}</strong><p>{conversation.nativeReason || (conversation.nativeState === 'busy' ? '任务完成后可在这里继续。当前输入已保留。' : '尚不能确认此会话可以安全续接，请刷新记录。')}</p><button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>刷新会话状态</button></div>}
         {nativeRefreshError && directoryReady && <p className="ai-error" role="status">{nativeRefreshError}<button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>重新读取记录</button></p>}
         {generating?.nativeRun?.managed && <p className="ai-footnote">“补充本轮”只发送文字，使用本轮已提交的材料与设置；未发送的文字会保留为草稿。</p>}
-        <details className="ai-context-options" open={contextOptionsOpen} onToggle={event => { if (event.target === event.currentTarget) setContextOptionsOpen(event.currentTarget.open); }}>
-          <summary>本轮材料 · {conversation.contextIds.length} · 前序 {selectedHistory.length} 轮</summary>
         <details
           className="ai-materials"
-          open={conversation.contextIds.length > 0 || undefined}
         >
-          <summary>本轮材料 · {conversation.contextIds.length}</summary>
+          <summary title="展开核对本轮材料与原文"><span>本轮材料 · {conversation.contextIds.length}</span>{conversation.contextIds.length > 0 && <span className="ai-material-preview">{data.documents[data.evidence[conversation.contextIds[0]]?.documentId]?.title ?? '来源缺失'}</span>}</summary>
           <div className="ai-material-list">
             {conversation.contextIds.map((id, index) => {
               const evidence = data.evidence[id],
@@ -1025,7 +1006,7 @@ export function AIPanel() {
           </div>
         </details>
         <details className="ai-context-settings">
-          <summary>{connectionId === 'codex' ? '连续对话' : `对话范围 · 前序 ${selectedHistory.length} 轮`}{native ? ` · Agent 已发 ${conversation.sentContext?.length ?? 0} 条材料` : ''}</summary>
+          <summary title={native ? `Agent 累计已发 ${conversation.sentContext?.length ?? 0} 条材料，展开核对完整范围` : '展开核对发送的历史与材料'}>{connectionId === 'codex' ? '连续对话' : `对话范围 · ${selectedHistory.length} 轮`}</summary>
         {connectionId === 'codex' ? <div className="ai-history-range"><p>每轮继续同一个 Codex 会话，上下文由 Codex 管理。需要排除旧历史时，请新建干净对话。</p><button className="text-button" onClick={() => { rememberScroll(); actions.createConversation(research.id); }}>开启独立对话</button></div> : <div className="ai-history-range">
           <label htmlFor={`history-${conversation.id}`}>
             前序对话 · {selectedHistory.length} 轮
@@ -1070,7 +1051,7 @@ export function AIPanel() {
             ))}
           </details>
         )}
-        </details>
+        <p className="ai-scope-description">{conversation.boardSkill ? '本次修改所选白板；发送后恢复普通对话。' : native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容及已授权的目录、工具。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}</p>
         </details>
         {scopeNotice && (
           <p className="ai-scope-notice" role="status">
@@ -1088,7 +1069,10 @@ export function AIPanel() {
           </p>
         )}
         <ReportedChanges diff={latest?.events?.find(event => event.id === 'turn-diff' && event.toolName === 'fileChange')?.output} />
-        <BoardSkillPanel key={conversation.id} conversation={conversation} disabled={!!generating} canCreate={canUseAgent} onCreate={() => void send('create')} />
+        <details key={conversation.id} className="ai-board-options" open={!!conversation.boardSkill || undefined}>
+          <summary title="生成白板或选择本次修改的白板">{conversation.boardSkill ? `修改白板 · ${data.boards[conversation.boardSkill.boardId]?.title ?? '目标已缺失'}` : '白板工具'}</summary>
+          <BoardSkillPanel conversation={conversation} disabled={!!generating} canCreate={canUseAgent} onCreate={() => void send('create')} />
+        </details>
         </div>
         <div className="ai-input-shell">
           {connectionId === 'codex' ? (
@@ -1097,7 +1081,7 @@ export function AIPanel() {
             </CodexComposerTools>
           ) : <>{composerInput}<div className="ai-composer-footer">{composerLeading}<div className="ai-composer-actions">{composerTrailing}</div></div></>}
         </div>
-        <p className="ai-sending-note">
+        <p className="ai-sending-note sr-only">
           ⌘ / Ctrl + Enter 发送 · {conversation.boardSkill ? '本次修改所选白板；发送后恢复普通对话。' : native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}
         </p>
       </div>
