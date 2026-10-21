@@ -4,6 +4,20 @@
 
 2026-10-20 接入 [Excalidraw 直接绘图](agents/drawing-canvas-options.md)：白板在“卡片布局 / 绘图”之间切换，复用同一份卡片和 PDF 摆放；原有研究导图、大纲和分支草稿继续保留。绘图资产单独保存并纳入历史、ZIP 和研究目录，边界见[绘图记录](verification/drawing/README.md)。右侧 AI 合并模式与标题栏，将助手选择移到紧凑对话顶栏，材料、范围、白板工具默认折叠，短输入最小高度改为 44px；[空间验收](verification/ai-space-expanded/README.md)保留分支阶段测量，最新 main 集成验证单独记录。
 
+2026-10-21 自绘内容问 Agent：用户确认继续后，已按[Claude Code 两轮讨论](agent-native-evolution/review/drawing-agent/README.md)接通首切片：选区局部 PNG＋结构＋所选卡片正文进入当前会话，发送前预览，默认不追加论文原文；冻结附件进入保存、重试、备份和目录归档。真实 Codex 图片输入已验证，范围与浏览器证据见[问图验收](agent-native-evolution/implementation/drawing-agent/README.md)。按图联网找论文仍是下一切片，其他助手不宣称已接图片研究工具。
+
+2026-10-21 绘图连接修复：普通箭头落在透明矩形／椭圆／菱形内部可建立原生连接；补齐原生斜向连接与卡片布局移动后的端点跟随，保留原生撤销、共享实体和自由绘图资产。实际范围、三尺寸与旧功能回归见[连接验收](verification/drawing-bindings/README.md)。这不将自由箭头自动转换为支持／反驳关系，直角折线仍沿用原生行为。
+
+2026-10-21 第一版实施：新增 [Agent 工作台](agent-native-evolution/implementation/README.md)，复用现有资料与编辑器、中间完整当前会话、底部唯一输入、右侧多会话列表、显式局部追问和可审阅文稿修订。Codex 已接本研究目录／读页／引用草稿工具；其他连接保留原能力，不宣称已接研究工具。可切回经典工作台，旧功能与数据保留；完整混合画布、Claude/OpenCode 研究工具和自动全文获取仍未交付。实际检查以实施目录记录为准。
+
+2026-10-21 会话修复：一个研究包含多段独立会话，每段保留自己的多轮记录、输入、局部目标和滚动；共享成果不改变发送会话。新建／切换、原文参考、刷新与迟到结果已完成浏览器验收，见[多会话修复](agent-native-evolution/implementation/session-fix/README.md)。
+
+2026-10-21 产品方向重审：用户反馈当前操作与分类过多、Agent 未接管研究推进，要求做减法并与 Claude Code 讨论。累计[六轮真实讨论](agent-native-evolution/review/README.md)后，[演进方案](agent-native-evolution/README.md)已收敛为具体的[界面与交互方案](agent-native-evolution/ui-spec.md)：单主工作面、唯一输入、默认关闭的参考区、成果直接可编辑，分类搬运和运行配置退为辅助操作。[可点击原型](agent-native-evolution/prototype.html)仅使用固定样例，未接真实 Agent 或修改生产数据；单主工作面与 Codex 工具闭环现有首版实施；完整画布迁移与其余连接的研究工具仍待实施。
+
+2026-10-20 增量：[白板上的局部研究](whiteboard-research/README.md)经两轮方案／原型评审和 Claude Code 讨论后，按用户确认继续实施。现已在两种白板模式接入节点／分区追问、绘图文字转问题、OpenAlex 检索、资料收录与原问题继续探索；类型化材料与 PDF 证据分开，历史可逐轮选择，局部研究每次重建原生运行以避免隐式继承。方案、原型、真实服务探针与 UI 验证分别记录在[实施验收](whiteboard-research/verification/implementation/README.md)，具体供应商与质量边界以该记录为准。
+
+2026-10-20 AI 空间补充：根据用户再次反馈，取消独立的连接状态横条，助手切换并入紧凑对话顶栏；材料、范围与白板工具收为一行，Codex 工具收为一行并按需展开权限/技能/Chat/Plan。修复输入脚本覆盖 CSS 的 76px 最小高度，短输入改为 44px、长输入自动增长。相同样例的正常聊天区在 900px/800px 高视口分别为 698px/598px，约占 78%/75%。行为、边界与截图见[第二轮 AI 纵向空间验收](verification/ai-space-expanded/README.md)。
+
 2026-10-20 新增 [MarginNote 参考与研究导图交互提案](agents/mindmap-reading-design.md)，涵盖阅读摘录、父子分支、大纲同步、人工排序与原文联动。首轮源码现已实现人工父子层级、大纲调序、折叠、紧凑展示、关联避障与已有图 AI 补充草稿；操作、验证和未实现项见[研究图验收](verification/tree-board/README.md)。本轮没有替换已安装的 0.1.10 基线。
 
 2026-10-20 已实现侧栏分层导航、白板／文稿／研究卡片的人工排序、多选整体移动、1px／10px 微调与明确编辑入口；连线改为随真实卡片边缘变化的柔和曲线。AI 改动任一已有位置或分组均需确认。本机已安装 0.1.10；边界见[人工调整与 AI 协作](agents/human-board-control.md)，实际测试见[验收](verification/human-board-control/README.md)。

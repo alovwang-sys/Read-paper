@@ -1,0 +1,35 @@
+[
+  {
+    "status": "failed",
+    "checks": 0,
+    "error": "Verification page was reloaded by Vite HMR before initial evaluation; harness now disables HMR in its isolated browser context."
+  },
+  {
+    "status": "failed",
+    "checks": 6,
+    "error": "locator.textContent: Timeout 9000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.pdf-paper')\u001b[22m\n\n    at /Users/amos/project/Read-paper/docs/agent-native-evolution/verification/ui-v2/verify.mjs:121:49",
+    "pageErrors": [
+      "The requested module '/@vite/client' does not provide an export named 'injectQuery'",
+      "top is not a function",
+      "top is not a function",
+      "top is not a function",
+      "top is not a function",
+      "top is not a function"
+    ],
+    "resolution": "Fixed remaining top() call, disabled HMR with required injectQuery export, and added explicit fixed-command revision handling."
+  },
+  {
+    "status": "failed",
+    "checks": 6,
+    "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\ntrue !== false\n\n    at file:///Users/amos/project/Read-paper/docs/agent-native-evolution/verification/ui-v2/verify.mjs:119:10\n    at runNextTicks (node:internal/process/task_queues:65:5)\n    at process.processImmediate (node:internal/timers:541:9)",
+    "pageErrors": [],
+    "resolution": "Fixed the short-answer CSS selector in multiline input collapsing; native undo uses the host modifier."
+  },
+  {
+    "status": "failed",
+    "checks": 6,
+    "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'保留文' !== ''\n\n    at file:///Users/amos/project/Read-paper/docs/agent-native-evolution/verification/ui-v2/verify.mjs:126:10",
+    "pageErrors": [],
+    "resolution": "Native macOS undo correctly removed one typing unit; the assertion now checks native undo changes the input without assuming all characters are one undo group."
+  }
+]

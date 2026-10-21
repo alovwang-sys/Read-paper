@@ -1,4 +1,5 @@
 .board-drawing {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -48,4 +49,7 @@
 .drawing-resource-actions .button { font-size: 10px; padding: 4px 6px; }
 .drawing-save-status { margin-left: auto; white-space: nowrap; }
 .drawing-save-status.is-error { color: #a56b50; }
+.drawing-agent-action { max-width: calc(100% - 24px); }
+.drawing-agent-action > small { color: #7b8e70; font-size: 10px; }
+.drawing-question-message { z-index: 6; }
 @media (max-width: 1100px) { .drawing-statusbar { padding-inline: 8px; } .drawing-resource-actions > span { max-width: 115px; } }

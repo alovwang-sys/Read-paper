@@ -2,6 +2,9 @@ import { useSyncExternalStore } from 'react';
 import { contentHash, getAsset } from '../data/storage';
 import { hasFullText } from '../domain/knowledge';
 import { drawingReferences, parseDrawingScene, validateDrawingRef } from '../domain/drawing';
+import { drawingQuestionReferences, drawingSnapshotContent, validateDrawingPng, validateDrawingQuestion } from '../domain/drawing-question';
+import type { DrawingQuestion } from '../domain/types';
+import { researchMaterialsMarkdown } from '../domain/research';
 import type { ContextSnapshot, WorkspaceData } from '../domain/types';
 import { workspace } from './workspace';
 import { DirectoryError, directoryRequest } from './research-directory';
@@ -104,9 +107,16 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
     validateDrawingRef(drawing);
     await asset(drawing.assetId, drawing.hash, `drawings/${safeId(drawing.assetId)}.excalidraw`, undefined, false, true);
   }
+  for (const question of drawingQuestionReferences(entities)) {
+    validateDrawingQuestion(question);
+    const snapshot = question.snapshot, blob = await getAsset(snapshot.image.assetId);
+    if (!blob || await contentHash(new TextEncoder().encode(drawingSnapshotContent(snapshot)).buffer) !== snapshot.hash) throw new Error('绘图问题快照或图片缺失，目录保存已暂停。');
+    validateDrawingPng(await blob.arrayBuffer(), snapshot.image);
+    await asset(snapshot.image.assetId, snapshot.image.hash, `images/${safeId(snapshot.image.assetId)}.png`, undefined, true);
+  }
   for (const doc of Object.values(entities.documents)) {
     const path = hasFullText(doc) ? await asset(doc.assetId, doc.hash, `library/${safeId(doc.id)}.pdf`, doc.sampleUrl) : undefined;
-    await text(`library/${safeId(doc.id)}.md`, `# ${doc.title}\n\n${doc.authors || '作者未记录'} · ${doc.year || '年份未记录'}\n\n${path ? `[原始 PDF](${doc.id}.pdf) · ${doc.pageCount} 页` : '尚未添加全文。'}\n\n${json(doc.identifiers ?? {})}\n`);
+    await text(`library/${safeId(doc.id)}.md`, `# ${doc.title}\n\n${doc.authors || '作者未记录'} · ${doc.year || '年份未记录'}\n\n${path ? `[原始 PDF](${doc.id}.pdf) · ${doc.pageCount} 页` : '尚未添加全文。'}\n\n${json(doc.identifiers ?? {})}\n${doc.discovery ? `\n## 发现来源\n\n${doc.discovery.provider} · ${doc.discovery.providerId} · ${doc.discovery.retrievedAt}\n\n[来源](${doc.discovery.url})\n\n${doc.discovery.abstract || '来源未提供摘要。'}\n\n${doc.discovery.pdfUrl ? `[公开 PDF 链接](${doc.discovery.pdfUrl})；文件尚未获取。` : '没有提供公开 PDF 链接。'}\n` : ''}`);
   }
   const regions = [
     ...Object.values(entities.evidence).map(e => e.region),
@@ -123,15 +133,17 @@ export async function buildResearchFiles(data: WorkspaceData, researchId: string
     return e && doc ? `### [${i + 1}] ${doc.title} · PDF 第 ${e.pageIndex + 1} 页\n\n[原文](../library/${safeId(doc.id)}.pdf#page=${e.pageIndex + 1})\n\n${e.quote.split('\n').map(line => '> ' + line).join('\n')}\n${e.note ? '\n笔记：' + e.note + '\n' : ''}${e.region ? `\n[原始区域图片](../${assets.get(e.region.assetId)?.path})\n` : ''}` : `来源缺失：${id}`;
   }).join('\n\n');
   for (const e of Object.values(entities.evidence)) await text(`excerpts/${safeId(e.id)}.md`, `# 摘录\n\n${sources([e.id])}\n`);
-  for (const card of Object.values(entities.cards)) await text(`cards/${safeId(card.id)}.md`, `# ${card.title}\n\n${card.body}\n\n## 原文依据\n\n${sources(card.evidenceIds) || '尚未关联原文依据。'}\n${card.provenance ? `\n## 形成过程\n\n${card.provenance.conversationTitle}\n\n${card.provenance.selection || card.provenance.answer}\n` : ''}`);
+  for (const card of Object.values(entities.cards)) await text(`cards/${safeId(card.id)}.md`, `# ${card.title}\n\n${card.body}\n\n## 原文依据\n\n${sources(card.evidenceIds) || '尚未关联原文依据。'}\n${card.provenance ? `\n## 形成过程\n\n${card.provenance.conversationTitle}\n\n${card.provenance.selection || card.provenance.answer}\n${researchMaterialsMarkdown(card.provenance.materials)}` : ''}${card.drawingOrigin ? `\n## 绘图文字来路\n\n白板：${card.drawingOrigin.boardId}；元素：${card.drawingOrigin.elementIds.join('、')}\n\n${card.drawingOrigin.text}\n` : ''}`);
   for (const draft of Object.values(entities.drafts)) await text(`drafts/${safeId(draft.id)}.md`, `# ${draft.title}\n\n${draft.body}\n\n## 原文依据\n\n${sources(draft.evidenceIds)}\n`);
   for (const board of Object.values(entities.boards)) await text(`boards/${safeId(board.id)}.json`, json({ board, drawingPath: board.drawing ? `../${assets.get(board.drawing.assetId)!.path}` : undefined, placements: Object.values(entities.placements).filter(p => p.boardId === board.id), edges: Object.values(entities.edges).filter(e => e.boardId === board.id) }));
   const sessionIndex: string[] = ['# 研究对话', '', 'Markdown 是可读归档，原生会话日志仍由对应助手保存。原生 ID 可用于在同一台机器继续会话；复制本目录不会复制登录或厂商会话数据库。', ''];
+  const drawingMarkdown = (question?: DrawingQuestion) => question ? `\n\n### 当轮绘图快照\n\n${question.snapshot.boardTitle} · ${question.mode === 'image' ? '图片和文字' : '仅文字和结构，未看图'} · 未追加论文原文\n\n[当时的选区图片](../${assets.get(question.snapshot.image.assetId)!.path})\n\n\`\`\`json\n${json(question.snapshot)}\n\`\`\`` : '';
   for (const c of Object.values(entities.conversations)) {
     const heading = c.title || '研究对话';
     const native = c.nativeSessionId ? `助手：${c.connectionId || '未知'}  \n原生 Session ID：\`${c.nativeSessionId}\`\n\n${c.connectionId === 'codex' && /^[a-zA-Z0-9_-]+$/.test(c.nativeSessionId) ? `在本研究目录运行：\n\n\`\`\`sh\ncodex resume ${c.nativeSessionId}\n\`\`\`\n` : ''}` : '此对话尚无原生 Session ID，或使用模型直连/演示模式。';
-    const turns = c.requestIds.map(id => entities.requests[id]).filter(Boolean).map(r => `## 用户\n\n${r.prompt}${r.supplementalInputs?.map(input => '\n\n### 本轮补充\n\n' + input.text).join('') || ''}\n\n## 助手\n\n${r.body}\n\n状态：${r.status}`).join('\n\n');
-    await text(`sessions/${safeId(c.id)}.md`, `# ${heading}\n\n${native}\n\n${turns}${c.input ? '\n\n## 未发送输入\n\n' + c.input : ''}\n`);
+    const turns = c.requestIds.map(id => entities.requests[id]).filter(Boolean).map(r => `## 用户\n\n${r.prompt}${r.supplementalInputs?.map(input => '\n\n### 本轮补充\n\n' + input.text).join('') || ''}${drawingMarkdown(r.researchRun?.drawingQuestion)}\n\n## 助手\n\n${r.body}\n\n状态：${r.status}${r.materials?.length ? `\n\n### 当轮附送材料\n\n${researchMaterialsMarkdown(r.materials)}` : ''}`).join('\n\n');
+    const searches = c.literatureSearches?.map(batch => `## 文献检索：${batch.query}\n\n原问题：${batch.rootTitle}；状态：${batch.status}；时间：${batch.createdAt}\n\n${batch.candidates.map(candidate => `- [${candidate.title}](${candidate.url}) · ${candidate.providerId}${candidate.documentId ? ` · 已收录 ${candidate.documentId}` : ''}`).join('\n')}`).join('\n\n') || '';
+    await text(`sessions/${safeId(c.id)}.md`, `# ${heading}\n\n${native}\n\n${turns}${searches ? '\n\n' + searches : ''}${c.input || c.drawingQuestion ? '\n\n## 未发送输入\n\n' + (c.input ?? '') + drawingMarkdown(c.drawingQuestion) : ''}\n`);
     sessionIndex.push(`- [${heading}](${safeId(c.id)}.md)${c.nativeSessionId ? ` · ${c.connectionId} · \`${c.nativeSessionId}\`` : ''}`);
   }
   await text('sessions/index.md', sessionIndex.join('\n'));

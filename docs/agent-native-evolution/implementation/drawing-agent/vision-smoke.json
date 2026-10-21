@@ -1,0 +1,402 @@
+{
+  "createdAt": "2026-10-21T04:48:08.344Z",
+  "elapsedMs": 118017,
+  "httpStatus": 200,
+  "passed": true,
+  "expected": {
+    "code": "5627",
+    "labels": [
+      "Collect",
+      "Filter",
+      "Synthesize"
+    ],
+    "straightArrows": "left-to-right"
+  },
+  "prompt": "只根据附图回答：三个主要方框中各写了哪个英文词，直线箭头从哪边指向哪边，黄色手绘便笺里的四位数字是什么？再给一句关于图中研究流程的局限。不要调用工具创建文稿，不要编造论文或引用。",
+  "snapshot": {
+    "id": "vision-selection",
+    "boardId": "vision-board",
+    "boardTitle": "受控视觉验收样例",
+    "createdAt": "2026-10-21T04:46:10.323Z",
+    "image": {
+      "assetId": "vision-raster",
+      "hash": "3b5ccb4b8abf2e8b5db8f9f1b113fd9888e4c35de96d0fd0c6acd9b1f3ec5eac",
+      "width": 1200,
+      "height": 660
+    },
+    "elements": [
+      {
+        "id": "raster",
+        "type": "image",
+        "x": 0,
+        "y": 0,
+        "width": 1200,
+        "height": 660,
+        "angle": 0
+      }
+    ],
+    "connections": [],
+    "hash": "b6165a57ba5d151d106a6644e08d0c7d3ec6b5c599ee74b96e916ee294c62b1b"
+  },
+  "image": "vision-input.png",
+  "sources": [],
+  "history": [],
+  "events": [
+    {
+      "type": "progress",
+      "text": "Codex 正在分析所选绘图（未追加论文原文）"
+    },
+    {
+      "type": "delta",
+      "text": "-"
+    },
+    {
+      "type": "delta",
+      "text": " 三"
+    },
+    {
+      "type": "delta",
+      "text": "个"
+    },
+    {
+      "type": "delta",
+      "text": "主要"
+    },
+    {
+      "type": "delta",
+      "text": "方"
+    },
+    {
+      "type": "delta",
+      "text": "框"
+    },
+    {
+      "type": "delta",
+      "text": "从"
+    },
+    {
+      "type": "delta",
+      "text": "左"
+    },
+    {
+      "type": "delta",
+      "text": "到"
+    },
+    {
+      "type": "delta",
+      "text": "右"
+    },
+    {
+      "type": "delta",
+      "text": "："
+    },
+    {
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "type": "delta",
+      "text": "Collect"
+    },
+    {
+      "type": "delta",
+      "text": "、"
+    },
+    {
+      "type": "delta",
+      "text": "Filter"
+    },
+    {
+      "type": "delta",
+      "text": "、"
+    },
+    {
+      "type": "delta",
+      "text": "S"
+    },
+    {
+      "type": "delta",
+      "text": "ynthesize"
+    },
+    {
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "type": "delta",
+      "text": "。\n"
+    },
+    {
+      "type": "delta",
+      "text": "-"
+    },
+    {
+      "type": "delta",
+      "text": " "
+    },
+    {
+      "type": "delta",
+      "text": "直"
+    },
+    {
+      "type": "delta",
+      "text": "线"
+    },
+    {
+      "type": "delta",
+      "text": "箭"
+    },
+    {
+      "type": "delta",
+      "text": "头"
+    },
+    {
+      "type": "delta",
+      "text": "均"
+    },
+    {
+      "type": "delta",
+      "text": "从"
+    },
+    {
+      "type": "delta",
+      "text": "左"
+    },
+    {
+      "type": "delta",
+      "text": "向"
+    },
+    {
+      "type": "delta",
+      "text": "右"
+    },
+    {
+      "type": "delta",
+      "text": "："
+    },
+    {
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "type": "delta",
+      "text": "Collect"
+    },
+    {
+      "type": "delta",
+      "text": " →"
+    },
+    {
+      "type": "delta",
+      "text": " Filter"
+    },
+    {
+      "type": "delta",
+      "text": " →"
+    },
+    {
+      "type": "delta",
+      "text": " S"
+    },
+    {
+      "type": "delta",
+      "text": "ynthesize"
+    },
+    {
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "type": "delta",
+      "text": "。\n"
+    },
+    {
+      "type": "delta",
+      "text": "-"
+    },
+    {
+      "type": "delta",
+      "text": " 黄色"
+    },
+    {
+      "type": "delta",
+      "text": "手"
+    },
+    {
+      "type": "delta",
+      "text": "绘"
+    },
+    {
+      "type": "delta",
+      "text": "便"
+    },
+    {
+      "type": "delta",
+      "text": "笺"
+    },
+    {
+      "type": "delta",
+      "text": "里的"
+    },
+    {
+      "type": "delta",
+      "text": "四"
+    },
+    {
+      "type": "delta",
+      "text": "位"
+    },
+    {
+      "type": "delta",
+      "text": "数字"
+    },
+    {
+      "type": "delta",
+      "text": "："
+    },
+    {
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "type": "delta",
+      "text": "562"
+    },
+    {
+      "type": "delta",
+      "text": "7"
+    },
+    {
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "type": "delta",
+      "text": "。\n\n"
+    },
+    {
+      "type": "delta",
+      "text": "流程"
+    },
+    {
+      "type": "delta",
+      "text": "局"
+    },
+    {
+      "type": "delta",
+      "text": "限"
+    },
+    {
+      "type": "delta",
+      "text": "："
+    },
+    {
+      "type": "delta",
+      "text": "图"
+    },
+    {
+      "type": "delta",
+      "text": "中"
+    },
+    {
+      "type": "delta",
+      "text": "未"
+    },
+    {
+      "type": "delta",
+      "text": "说明"
+    },
+    {
+      "type": "delta",
+      "text": "收"
+    },
+    {
+      "type": "delta",
+      "text": "集"
+    },
+    {
+      "type": "delta",
+      "text": "和"
+    },
+    {
+      "type": "delta",
+      "text": "筛"
+    },
+    {
+      "type": "delta",
+      "text": "选"
+    },
+    {
+      "type": "delta",
+      "text": "的"
+    },
+    {
+      "type": "delta",
+      "text": "具体"
+    },
+    {
+      "type": "delta",
+      "text": "标准"
+    },
+    {
+      "type": "delta",
+      "text": "，因此"
+    },
+    {
+      "type": "delta",
+      "text": "难"
+    },
+    {
+      "type": "delta",
+      "text": "以"
+    },
+    {
+      "type": "delta",
+      "text": "判断"
+    },
+    {
+      "type": "delta",
+      "text": "偏"
+    },
+    {
+      "type": "delta",
+      "text": "差"
+    },
+    {
+      "type": "delta",
+      "text": "如何"
+    },
+    {
+      "type": "delta",
+      "text": "被"
+    },
+    {
+      "type": "delta",
+      "text": "识"
+    },
+    {
+      "type": "delta",
+      "text": "别"
+    },
+    {
+      "type": "delta",
+      "text": "与"
+    },
+    {
+      "type": "delta",
+      "text": "控制"
+    },
+    {
+      "type": "delta",
+      "text": "。"
+    },
+    {
+      "type": "done",
+      "model": "gpt-6.1-sol",
+      "nativeSessionId": "01a15cc7-f621-7271-8406-e5145c4fe8a7",
+      "readPages": []
+    }
+  ],
+  "body": "- 三个主要方框从左到右：**Collect、Filter、Synthesize**。\n- 直线箭头均从左向右：**Collect → Filter → Synthesize**。\n- 黄色手绘便笺里的四位数字：**5627**。\n\n流程局限：图中未说明收集和筛选的具体标准，因此难以判断偏差如何被识别与控制。",
+  "note": "Controlled synthetic image. Labels and random code exist only in PNG, not prompt or metadata. Real Codex app-server native localImage."
+}

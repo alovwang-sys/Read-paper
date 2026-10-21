@@ -1,0 +1,171 @@
+{
+  "startedAt": "2026-10-21T00:20:06.254Z",
+  "finishedAt": "2026-10-21T00:22:26.733Z",
+  "status": "done",
+  "kind": "Real browser → PDF.js fixture extraction → real native Codex app-server tools → IndexedDB Draft/Evidence",
+  "input": {
+    "requestId": "request-ed87f41e-34f5-47aa-9b17-4a262bd3950b",
+    "researchId": "research-a",
+    "connectionId": "codex",
+    "prompt": "仅使用本研究中可提取文字的示例 PDF，比较检索证据相关性与无关材料的影响。请自行查目录，至少读取两份有文字 PDF 各一页，再提交一份不超过 500 字的中文草稿，保留至少两处精确原句引用，说明扫描件及无全文资料的缺口。这些是产品验收合成资料，不能当作真实论文结论。",
+    "sources": [
+      {
+        "id": "paper-a",
+        "title": "Adaptive Retrieval: Evidence & Reliability",
+        "hash": "72fb97ed0a9682608b31f59e41af262105266f140e8b28724769f5d50493fbae",
+        "totalPages": 3,
+        "pages": [
+          {
+            "pageIndex": 0,
+            "text": "READ-PAPER / RESEARCH MATERIAL  Adaptive Retrieval for Evidence-Grounded Answers  Synthetic research fixture, not a real publication.  Fixture only | PDF page 1  Abstract  This self-authored fixture describes an imaginary comparison between a fixed retrieval baseline and an adaptive evidence selection method. Its purpose is to exercise reading, text selection, citation navigation, and research notes in the Read-paper workbench. All methods, data, and results are synthetic. They must not be used as claims about a real system or publication. The document includes ordinary selectable text and stable page boundaries for reproducible product tests.  1. Research question  When does adding a retrieval stage improve the factual quality of an answer? We compare answers grounded in a relevant evidence collection with answers grounded in a collection containing unrelated material. A useful comparison records the question, the available sources, the selected evidence, and the resulting answer. The answer can then be checked against the same source excerpts that were available at generation time.  2. Evidence collection  The imaginary corpus contains short notes about a single research question. Each note has an identifier, a page number, and an excerpt. We retain these fields together because a quote without its source cannot support a reviewable conclusion."
+          },
+          {
+            "pageIndex": 1,
+            "text": "READ-PAPER / RESEARCH MATERIAL  Adaptive Retrieval for Evidence-Grounded Answers  Synthetic research fixture, not a real publication.  Fixture only | PDF page 2  3. Synthetic procedure  The fixed baseline always selects two notes. The adaptive method first checks whether a candidate note is relevant to the question, then chooses up to two relevant notes. Both methods receive the same synthetic corpus and the same answer length limit. A reviewer marks each statement as supported, contradicted, or absent from the selected notes. Supported statements are counted only when the source excerpt can be recovered by its document identifier and PDF page index.  4. Imaginary results  In the relevant-corpus condition, the adaptive method produces more supported statements. In the unrelated-corpus condition, selecting additional notes does not create useful evidence. These are invented observations for software verification. Relevance is a condition of the example, not a universal property of retrieval. The test deliberately preserves this qualification so that cards and conclusions can represent both the claim and its limits.  5. Reproducibility notes  A reliable answer should preserve a traceable link to its supporting evidence. The fixture generator fixes metadata dates, typography, page size, and content. Re-running the generator should create the same bytes. The paper uses a single text column and three PDF pages. Text extraction and rendering are separate capabilities. This fixture has a text layer, while the accompanying scanned research note contains a raster image and no selectable page text."
+          },
+          {
+            "pageIndex": 2,
+            "text": "READ-PAPER / RESEARCH MATERIAL  Adaptive Retrieval for Evidence-Grounded Answers  Synthetic research fixture, not a real publication.  Fixture only | PDF page 3  6. Main finding  Retrieval improves factual accuracy when the evidence corpus is relevant. This exact sentence is the selection target for the end-to-end research workflow. It is intentionally located on PDF page 3, whose internal page index is 2. It should remain selectable after zooming or reopening the document.  7. Conditions and limits  The finding is conditional on source relevance and recoverable citations. A fluent answer may still contain unsupported details. Reviewers should inspect the original excerpt rather than treating the presence of a citation as proof of correctness. The fixture makes no claim about real benchmark performance. It exists to demonstrate evidence cards, shared card reuse, board organization, and a conclusion export that includes bibliography details, PDF page numbers, and quotations.  8. Conclusion  A research note is easier to verify when its claims preserve the conditions under which they were observed. Explicit source excerpts let the reader revisit the same evidence while writing a conclusion. Suggested synthetic citation: Read-paper fixture authors (2026). Adaptive Retrieval for Evidence-Grounded Answers. Self-authored software test material; not a real publication."
+          }
+        ]
+      },
+      {
+        "id": "paper-b",
+        "title": "Retrieval Baselines & Trade-offs",
+        "hash": "c1cef1ce4795a147fcd27d1298558492f162d19b25daf36e2c173773be84629d",
+        "totalPages": 2,
+        "pages": [
+          {
+            "pageIndex": 0,
+            "text": "READ-PAPER / RESEARCH MATERIAL  A Fixed Retrieval Baseline and Its Limits  Synthetic research fixture, not a real publication.  Fixture only | PDF page 1  1. Baseline design  The fixed baseline selects the same number of notes for every question. This synthetic two-column document represents a contrasting source for the workbench research example. A fixed retrieval budget does not guarantee relevant evidence. Irrelevant retrieved passages can increase uncertainty rather than reduce it. The budget determines how many notes are selected. It does not determine whether those notes address the question or whether the answer accurately represents their contents. For a fair imaginary comparison, the fixed and adaptive methods share the same question, source collection, and answer length limit. Only the evidence selection rule differs.  2. Evaluation notes  A reviewer follows each answer statement back to a selected source. Source identifiers and PDF page indexes are retained with the excerpt, allowing later research notes to show exactly what was checked. Unsupported detail must remain distinguishable from supported detail. A plausible sentence without matching evidence cannot become a reliable conclusion merely by being repeated. The column layout is intentional. It verifies that reading and selecting text works for ordinary multi-column PDF material in addition to the single-column companion fixture."
+          },
+          {
+            "pageIndex": 1,
+            "text": "READ-PAPER / RESEARCH MATERIAL  A Fixed Retrieval Baseline and Its Limits  Synthetic research fixture, not a real publication.  Fixture only | PDF page 2  3. Failure condition  Irrelevant sources can leave retrieval-based answers unsupported. The imaginary failure condition places unrelated notes in the corpus. The baseline still retrieves the fixed number of notes, but those notes cannot establish the requested claim. Increasing the evidence count alone does not resolve this failure. The research question and the source excerpt must concern the same claim before the excerpt can support a useful answer. These statements are authored examples, not measurements. They support a controlled software test of comparing two pieces of evidence and preserving qualifications in a conclusion.  4. Research use  Use this source as a limitation card alongside the adaptive retrieval card. The board can connect the two card placements with a relation such as condition or limitation. A complete export should identify this fixture, its authors and year, the PDF page containing the excerpt, and the exact quote. It should not claim to include the original PDF unless the export actually contains it. Suggested synthetic citation: Read-paper fixture authors (2026). A Fixed Retrieval Baseline and Its Limits. Self-authored software test material; not a real publication."
+          }
+        ]
+      },
+      {
+        "id": "paper-c",
+        "title": "Scanned Research Note",
+        "hash": "735a3a7c95fef444638fe24b070461470a76a1cb2621f6be2864f6b12a5015f6",
+        "totalPages": 1,
+        "pages": [],
+        "unavailable": "未提取到文字；扫描件需先进行 OCR。"
+      },
+      {
+        "id": "paper-stub",
+        "title": "Attention Is All You Need",
+        "hash": "",
+        "totalPages": 0,
+        "pages": [],
+        "unavailable": "只有题录或摘要，尚无 PDF 全文。"
+      }
+    ],
+    "history": []
+  },
+  "request": {
+    "id": "request-ed87f41e-34f5-47aa-9b17-4a262bd3950b",
+    "researchId": "research-a",
+    "conversationId": "conversation-research-a",
+    "connectionId": "codex",
+    "prompt": "仅使用本研究中可提取文字的示例 PDF，比较检索证据相关性与无关材料的影响。请自行查目录，至少读取两份有文字 PDF 各一页，再提交一份不超过 500 字的中文草稿，保留至少两处精确原句引用，说明扫描件及无全文资料的缺口。这些是产品验收合成资料，不能当作真实论文结论。",
+    "context": [
+      {
+        "evidenceId": "evidence-cbe7e87d-7b14-474c-969e-455c754227e8",
+        "documentId": "paper-b",
+        "documentHash": "c1cef1ce4795a147fcd27d1298558492f162d19b25daf36e2c173773be84629d",
+        "title": "Retrieval Baselines & Trade-offs",
+        "pageIndex": 0,
+        "quote": "A fixed retrieval budget does not guarantee relevant evidence."
+      },
+      {
+        "evidenceId": "evidence-b",
+        "documentId": "paper-b",
+        "documentHash": "c1cef1ce4795a147fcd27d1298558492f162d19b25daf36e2c173773be84629d",
+        "title": "Retrieval Baselines & Trade-offs",
+        "pageIndex": 0,
+        "quote": "Irrelevant retrieved passages can increase uncertainty rather than reduce it."
+      }
+    ],
+    "history": [],
+    "createdAt": "2026-10-21T00:20:06.799Z",
+    "status": "done",
+    "body": "已整理为可编辑成果，引用可回到原文。",
+    "evidenceIds": [
+      "evidence-cbe7e87d-7b14-474c-969e-455c754227e8",
+      "evidence-b"
+    ],
+    "purpose": "chat",
+    "mode": "live",
+    "researchRun": {
+      "sourceSummary": "本次按研究资料顺序取前 4 份，其中 2 份可读；每份最多前 24 页、每页 12,000 字符，总计最多 160,000 字符。部分资料缺全文或已截断，不能视为阅读全文。附送最近 0 轮已完成研究对话（合计不超过 12,000 字符）。",
+      "readPages": [
+        {
+          "documentId": "paper-a",
+          "pageIndex": 0
+        },
+        {
+          "documentId": "paper-b",
+          "pageIndex": 0
+        }
+      ],
+      "draftId": "draft-09536039-7359-42d2-adc4-45407034202d"
+    },
+    "events": [
+      {
+        "id": "event-d3af65c5-71c1-4971-a900-70fec4f3ab44",
+        "kind": "status",
+        "text": "已生成带出处的可编辑草稿"
+      }
+    ],
+    "model": "gpt-6.1-sol",
+    "nativeSessionId": "01a15bd4-6d3a-79a3-80cb-552192e09454",
+    "result": {
+      "title": "检索证据相关性与无关材料影响：合成资料比较",
+      "body": "本草稿仅据两份可提取文字的示例 PDF 各第1页；均为产品验收合成资料，不能作为真实论文结论。\n\n原文依据：A 提出比较相关证据集合与含无关材料集合，并要求记录问题、来源、所选证据及答案，以便逐项核验。B 明确指出：“A fixed retrieval budget does not guarantee relevant evidence.”[1] 又指出：“Irrelevant retrieved passages can increase uncertainty rather than reduce it.”[2]\n\n比较与推断：这些合成设定提示，检索数量不能替代相关性判断；相关证据便于核验回答，无关材料可能增加不确定性。公平比较应保持问题、来源集合与答案长度限制一致，仅改变证据选择规则。已读页面未提供量化结果，不能据此断言某方法更优。\n\n资料缺口：《Scanned Research Note》未提取到文字，需先 OCR；《Attention Is All You Need》仅有题录或摘要，无 PDF 全文。二者均未纳入内容比较。",
+      "evidenceIds": [
+        "evidence-cbe7e87d-7b14-474c-969e-455c754227e8",
+        "evidence-b"
+      ]
+    }
+  },
+  "draft": {
+    "id": "draft-09536039-7359-42d2-adc4-45407034202d",
+    "researchId": "research-a",
+    "title": "检索证据相关性与无关材料影响：合成资料比较",
+    "body": "本草稿仅据两份可提取文字的示例 PDF 各第1页；均为产品验收合成资料，不能作为真实论文结论。\n\n原文依据：A 提出比较相关证据集合与含无关材料集合，并要求记录问题、来源、所选证据及答案，以便逐项核验。B 明确指出：“A fixed retrieval budget does not guarantee relevant evidence.”[1] 又指出：“Irrelevant retrieved passages can increase uncertainty rather than reduce it.”[2]\n\n比较与推断：这些合成设定提示，检索数量不能替代相关性判断；相关证据便于核验回答，无关材料可能增加不确定性。公平比较应保持问题、来源集合与答案长度限制一致，仅改变证据选择规则。已读页面未提供量化结果，不能据此断言某方法更优。\n\n资料缺口：《Scanned Research Note》未提取到文字，需先 OCR；《Attention Is All You Need》仅有题录或摘要，无 PDF 全文。二者均未纳入内容比较。",
+    "evidenceIds": [
+      "evidence-cbe7e87d-7b14-474c-969e-455c754227e8",
+      "evidence-b"
+    ],
+    "updatedAt": "2026-10-21T00:22:25.823Z"
+  },
+  "evidence": [
+    {
+      "id": "evidence-cbe7e87d-7b14-474c-969e-455c754227e8",
+      "researchId": "research-a",
+      "documentId": "paper-b",
+      "pageIndex": 0,
+      "quote": "A fixed retrieval budget does not guarantee relevant evidence.",
+      "createdAt": "2026-10-21T00:22:25.822Z"
+    },
+    {
+      "id": "evidence-b",
+      "documentId": "paper-b",
+      "pageIndex": 0,
+      "quote": "Irrelevant retrieved passages can increase uncertainty rather than reduce it."
+    }
+  ],
+  "pageErrors": [],
+  "limitations": [
+    "PDFs are explicitly self-authored synthetic fixtures, not real academic evidence.",
+    "No real-user usability or broad research-quality evaluation."
+  ],
+  "browserChecks": {
+    "citationsAtLeastTwo": true,
+    "readAtLeastTwoDocuments": true,
+    "resultEditable": true,
+    "persistedAfterReload": true
+  }
+}

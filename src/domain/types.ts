@@ -86,6 +86,7 @@ export type PaperDocument = {
   updatedAt?: string;
   readingStatus: 'unread' | 'reading' | 'skimmed' | 'read';
   textStatus: 'pending' | 'ready' | 'empty' | 'error';
+  discovery?: LiteratureCandidate;
 };
 export type Evidence = {
   contextOnly?: boolean;
@@ -118,6 +119,7 @@ export type Card = {
   needsReview: boolean;
   evidenceUpdatedAt?: string;
   provenance?: CardProvenance;
+  drawingOrigin?: { boardId: string; elementIds: string[]; text: string };
 };
 export type CardProvenance = {
   origin?: 'conversation' | 'excerpts';
@@ -136,6 +138,8 @@ export type CardProvenance = {
   connectionId?: AIConnectionId;
   generationRequestIds: string[];
   incomplete?: boolean;
+  materials?: ResearchMaterial[];
+  derivedFrom?: { sourceIds: string[]; requestIds: string[] };
 };
 export type CardDraft = {
   id: string;
@@ -165,6 +169,7 @@ export type BoardPlacement = {
   group: string;
   parentPlacementId?: string;
   order?: number;
+  researchConversationId?: string;
 };
 export type BoardEdge = {
   id: string;
@@ -248,6 +253,9 @@ export type Session = {
   documentInfoId?: string;
   sourcePreview?: { candidate: SourceCandidate; discovery?: SourceDiscovery };
   active: WorkspaceViewRef;
+  agentWorkbenchStarted?: boolean;
+  resourceScroll?: Record<string, number>;
+  agentFocus?: { ref: ResourceRef; title: string; body: string };
   researchView?: ResearchViewId;
   collapsedNav?: ('boards' | 'drafts')[];
   recentItems?: ResourceRef[];
@@ -266,6 +274,7 @@ export type Session = {
   boardModes?: Record<string, 'draw' | 'organize'>;
   anchor?: ResourceAnchor;
   activeConversationId?: string;
+  boardQuestionDrafts?: Record<string, { title: string; body: string; drawingOrigin?: { elementIds: string[]; text: string } }>;
 };
 export type Selection = {
   scope: WorkspaceScope;
@@ -284,6 +293,83 @@ export type ContextSnapshot = {
   kind?: 'text' | 'region';
   region?: RegionSource;
 };
+export type ResearchMaterial = {
+  id: string;
+  kind: 'background' | 'card_note' | 'abstract';
+  title: string;
+  text: string;
+  version: string;
+  resourceRef?: ResourceRef;
+  url?: string;
+  provider?: 'openalex';
+  providerId?: string;
+  retrievedAt?: string;
+  derivedFrom?: { sourceIds: string[]; requestIds: string[] };
+};
+export type BoardResearchOrigin = {
+  boardId: string;
+  rootTitle: string;
+  rootRef?: ResourceRef;
+  rootPlacementId?: string;
+  drawingElementId?: string;
+};
+export type BoardResearchState = {
+  origin: BoardResearchOrigin;
+  focus: ResourceRef[];
+  automatic: ResearchMaterial[];
+  pinned: ResearchMaterial[];
+  excludedSourceIds: string[];
+  includeBackground: boolean;
+  view?: 'chat' | 'literature';
+  literatureQuery?: string;
+  literatureBatchId?: string;
+  literatureScrollTop?: number;
+  literatureYearFrom?: number;
+  literatureYearTo?: number;
+};
+export type LiteratureCandidate = {
+  id: string;
+  provider: 'openalex';
+  providerId: string;
+  title: string;
+  authors: string[];
+  year?: number;
+  doi?: string;
+  url: string;
+  abstract?: string;
+  pdfUrl?: string;
+  retrievedAt: string;
+  documentId?: string;
+};
+export type LiteratureSearch = {
+  id: string;
+  researchId: string;
+  conversationId: string;
+  boardId: string;
+  rootPlacementId?: string;
+  rootTitle: string;
+  query: string;
+  yearFrom?: number;
+  yearTo?: number;
+  createdAt: string;
+  status: 'searching' | 'done' | 'error' | 'stopped' | 'interrupted';
+  candidates: LiteratureCandidate[];
+  error?: string;
+  errorCode?: string;
+  warnings?: string[];
+  partial?: boolean;
+};
+export type ResearchEvidenceSearch = {
+  id: string;
+  researchId: string;
+  conversationId: string;
+  boardId: string;
+  scope: 'selected' | 'board' | 'research';
+  query: string;
+  createdAt: string;
+  scannedIds: string[];
+  candidates: Array<{ id: string; title: string; material?: ResearchMaterial; evidence?: ContextSnapshot }>;
+};
 export type AIHistoryTurn = {
   requestId: string;
   prompt: string;
@@ -291,8 +377,28 @@ export type AIHistoryTurn = {
   sentBody?: string;
   evidenceIds: string[];
   context: ContextSnapshot[];
+  materials?: ResearchMaterial[];
 };
 export type AIConnectionId = 'model' | 'demo' | 'codex' | 'claude' | 'opencode';
+/** Frozen user-authored selection; it is context, not a paper citation. */
+export type DrawingSnapshot = {
+  id: string;
+  boardId: string;
+  boardTitle: string;
+  createdAt: string;
+  hash: string;
+  image: { assetId: string; hash: string; width: number; height: number };
+  elements: {
+    id: string; type: string; x: number; y: number; width: number; height: number; angle: number;
+    text?: string;
+    resource?: { ref: ResourceRef; title: string; body: string };
+  }[];
+  connections: {
+    id: string; startId?: string; endId?: string; startOutside?: boolean; endOutside?: boolean;
+    startArrowhead?: string | null; endArrowhead?: string | null; label?: string;
+  }[];
+};
+export type DrawingQuestion = { snapshot: DrawingSnapshot; mode: 'image' | 'text' };
 export type AgentSkill = { id: string; name: string; description: string; enabled: boolean; disabledReason?: string };
 export type CodexAccess = 'read-only' | 'workspace-write' | 'full-access';
 export type CodexSettings = { model?: string; mode?: 'chat' | 'plan'; effort?: string; access?: CodexAccess };
@@ -395,6 +501,17 @@ export type AIRequest = {
   boardContext?: BoardContext;
   boardProposal?: BoardPlan;
   boardApplyError?: string;
+  materials?: ResearchMaterial[];
+  boardResearch?: BoardResearchOrigin & { focus: ResourceRef[] };
+  researchRun?: {
+    drawingQuestion?: DrawingQuestion;
+    focus?: { ref: ResourceRef; title: string; body: string };
+    sourceSummary?: string;
+    draftId?: string;
+    readPages?: { documentId: string; pageIndex: number }[];
+    suggestion?: { title: string; body: string; evidenceIds: string[]; baseTitle: string; baseBody: string; baseEvidenceIds: string[] };
+    previous?: { title: string; body: string; evidenceIds: string[]; appliedTitle: string; appliedBody: string; appliedEvidenceIds: string[] };
+  };
 };
 export type Conversation = {
   id: string;
@@ -402,11 +519,18 @@ export type Conversation = {
   contextIds: string[];
   requestIds: string[];
   input?: string;
+  researchFocus?: { ref: ResourceRef; title: string; body: string };
+  drawingQuestion?: DrawingQuestion;
+  researchScrollTop?: number;
   title?: string;
   createdAt?: string;
   updatedAt?: string;
   archived?: boolean;
-  historyRange?: 'all' | 'latest' | 'none';
+  historyRange?: 'all' | 'latest' | 'none' | 'guided' | 'selected';
+  historyRequestIds?: string[];
+  boardResearch?: BoardResearchState;
+  literatureSearches?: LiteratureSearch[];
+  evidenceSearches?: ResearchEvidenceSearch[];
   scrollTop?: number;
   connectionId?: AIConnectionId;
   nativeSessionId?: string;
@@ -427,6 +551,7 @@ export type Conversation = {
 export type WorkspaceData = {
   schemaVersion: 3;
   agentWorkspaceId?: string;
+  agentWorkbench?: boolean;
   researches: Record<string, Research>;
   documents: Record<string, PaperDocument>;
   evidence: Record<string, Evidence>;

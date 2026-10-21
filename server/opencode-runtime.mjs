@@ -78,6 +78,18 @@ export function createOpenCodeRuntime({ executable, spawnImpl = spawn, env = pro
     if (data.id !== sessionId || !await belongs(data, cwd)) throw runtimeError('此 OpenCode 会话不属于当前研究目录。', 'invalid_session');
     return data;
   }
+  async function nativeCompletion(cwd, sessionId, messageId, text, startedAt, signal) {
+    try {
+      const info = await getProjectSession(cwd, sessionId, signal);
+      if (info.outcome !== 'succeeded' || !Number.isFinite(info.time?.idle)) return false;
+      const { data } = await nativeApi('GET', `/api/session/${sessionId}/message/${messageId}`, { cwd, signal });
+      if (!record(data) || data.id !== messageId || data.type !== 'assistant' || data.finish !== 'stop'
+        || !Number.isFinite(data.time?.created) || data.time.created < startedAt
+        || !Number.isFinite(data.time?.completed) || data.time.completed < data.time.created || data.time.completed > info.time.idle
+        || !Array.isArray(data.content) || data.content.some(part => !record(part) || !['text', 'reasoning'].includes(part.type) || (part.type === 'text' && typeof part.text !== 'string'))) return false;
+      return data.content.filter(part => part.type === 'text').map(part => part.text).join('') === text;
+    } catch (error) { if (signal?.aborted) throw error; return false; }
+  }
   async function connection(signal, resumeModel, resuming = false) {
     const override = typeof model === 'string' ? model.trim() : model;
     if (override && !validModel(override)) throw runtimeError('OPENCODE_MODEL 格式无效，请使用供应商/模型，或留空沿用 OpenCode 配置。', 'model_required');
@@ -199,12 +211,16 @@ export function createOpenCodeRuntime({ executable, spawnImpl = spawn, env = pro
       let sessionId = nativeSessionId;
       let body = '';
       let completed = false;
+      let finishReceived = false;
       let failed;
       const seenParts = new Set();
+      const messageIds = new Set();
+      let unboundText = false;
       const args = materialCwd ? ['run', '--format', 'json'] : ['run', '--standalone', '--format', 'json', '--agent', AGENT];
       if (selected.model) args.push('--model', selected.model);
       if (nativeSessionId) args.push('--session', nativeSessionId);
       try {
+        const startedAt = Date.now();
         const response = await invoke(args, {
           cwd, input: prompt, signal,
           // Isolate config discovery while retaining the CLI's own credential and session store.
@@ -216,11 +232,14 @@ export function createOpenCodeRuntime({ executable, spawnImpl = spawn, env = pro
               sessionId = event.sessionID;
               if (!announcedSession) { announcedSession = true; onEvent({ type: 'session', nativeSessionId: sessionId, ...(selected.model ? { model: selected.model } : {}) }); }
             }
+            if (['text', 'step_start', 'step_finish'].includes(event.type) && /^msg_[a-zA-Z0-9]{1,100}$/.test(event.part?.messageID || '')) messageIds.add(event.part.messageID);
             if (event.type === 'text' && typeof event.part?.text === 'string' && !seenParts.has(event.part.id)) {
+              if (!/^msg_[a-zA-Z0-9]{1,100}$/.test(event.part.messageID || '')) unboundText = true;
               if (event.part.id) seenParts.add(event.part.id);
               body += event.part.text;
               onEvent({ type: 'delta', text: event.part.text });
             } else if (event.type === 'step_start') {
+              completed = false;
               onEvent({ type: 'progress', kind: 'status', text: 'OpenCode 正在阅读已发送的文字' });
             } else if (event.type === 'tool_use') {
               onEvent({ type: 'progress', kind: 'permission', text: 'OpenCode 工具请求已拒绝；当前连接仅支持文字问答。' });
@@ -230,11 +249,14 @@ export function createOpenCodeRuntime({ executable, spawnImpl = spawn, env = pro
               failed = event.error?.type === 'provider.rate-limit' || event.error?.status === 429
                 ? runtimeError('OpenCode 供应商限制了请求频率或额度，请稍后重试。', 'rate_limited')
                 : runtimeError('OpenCode 运行失败，请检查所选模型的登录、额度或网络后重试。', /auth|401|403/i.test(JSON.stringify(event.error)) ? 'needs-auth' : 'agent_failed');
-            } else if (event.type === 'step_finish' && event.part?.reason === 'stop') completed = true;
+            } else if (event.type === 'step_finish') { finishReceived = true; completed = event.part?.reason === 'stop'; }
           },
         });
         if (failed) throw failed;
         if (response.code !== 0) throw runtimeError('OpenCode 进程退出，请检查本机 CLI 配置后重试。');
+        // v2 can backfill text after session.wait without draining step_finish; verify this turn, never an older answer.
+        if (!completed && !finishReceived && materialCwd && sessionId && body.trim() && !unboundText && messageIds.size === 1)
+          completed = await nativeCompletion(cwd, sessionId, [...messageIds][0], body, startedAt, signal);
         if (!completed || !body.trim() || !sessionId) throw runtimeError('OpenCode 回答中断，已保留收到的内容。', 'stream_interrupted');
         return { body, nativeSessionId: sessionId, ...(selected.model ? { model: selected.model } : {}) };
       } catch (error) {

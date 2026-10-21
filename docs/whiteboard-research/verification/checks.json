@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:5173/docs/whiteboard-research/prototype.html",
+  "checkedAt": "2026-10-20T12:10:40.903Z",
+  "checks": [
+    "initial question + claim present",
+    "closing and reopening panel preserves draft",
+    "AI answer is editable before adding independent card; original question retained",
+    "manual question can be created without Agent",
+    "manual question can be edited by double click",
+    "editable query and research direction show exactly 3 fixed examples",
+    "literature detail includes labeled summary, source URL and missing full text",
+    "library addition is separate from placement and associates current research",
+    "placing literature creates one node anchored to initiating question",
+    "same-paper same-question placement is idempotent",
+    "new manual question → editable query → existing library paper → new anchored placement; shared paper is not duplicated",
+    "placed paper supports scoped follow-up without claiming full-text access",
+    "empty state is explicit and preserves query",
+    "failure retry returns fixed examples",
+    "1440x900: no body overflow; AI/results/placed board screenshots",
+    "1280x800: no body overflow; AI/results/placed board screenshots",
+    "1024px navigation drawer opens and closes; board + panel remain visible",
+    "1024x800: no body overflow; AI/results/placed board screenshots",
+    "no browser page errors during all checked paths",
+    "placed-paper states at all 3 sizes hide introductory guidance to avoid overlapping moved claim"
+  ],
+  "screenshots": [
+    "new-question-placed-1440.png",
+    "board-ai-1440.png",
+    "results-1440.png",
+    "placed-1440.png",
+    "board-ai-1280.png",
+    "results-1280.png",
+    "placed-1280.png",
+    "board-ai-1024.png",
+    "results-1024.png",
+    "placed-1024.png"
+  ],
+  "pageErrors": [],
+  "productionScope": "Design prototype only. No real AI/search/PDF import, persistence, per-research isolation, drawing-text conversion or provider integration verified. Each question restores only its latest simulated exchange; full multi-turn history is not prototyped."
+}

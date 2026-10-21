@@ -1,0 +1,13 @@
+
+Running 5 tests using 1 worker
+
+(node:27802) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/5] tests/e2e/drawing-bindings.spec.ts:106:1 › 卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料
+[2/5] tests/e2e/drawing-bindings.spec.ts:147:1 › 真实画箭头：卡片与手绘矩形的边框及内部均建立绑定
+[3/5] tests/e2e/drawing-bindings.spec.ts:193:1 › 在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据
+[4/5] tests/e2e/drawing-bindings.spec.ts:219:1 › 连线白板与 AI 输入、右侧原文在三个尺寸可达且无横向溢出
+[5/5] tests/e2e/drawing-bindings.spec.ts:243:1 › Agent 工作台中绘图绑定与右侧原文共存，三个尺寸保留唯一研究输入和发送入口
+  5 passed (37.6s)

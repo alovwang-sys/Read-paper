@@ -1,0 +1,6 @@
+{
+  "startedAt": "2026-10-20T23:40:10.725Z",
+  "finishedAt": "2026-10-20T23:40:16.755Z",
+  "code": "protocol_error",
+  "message": "Agent 返回了无效事件。"
+}

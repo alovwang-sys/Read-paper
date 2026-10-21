@@ -1,0 +1,134 @@
+
+Running 4 tests using 1 worker
+
+(node:25039) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/4] tests/e2e/drawing-bindings.spec.ts:97:1 › 卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料
+  1) tests/e2e/drawing-bindings.spec.ts:97:1 › 卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料 ─────────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error Context: ../../../../tmp/read-paper-binding-browser/drawing-bindings-卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-browser/drawing-bindings-卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-browser/drawing-bindings-卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:25081) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/4] tests/e2e/drawing-bindings.spec.ts:135:1 › 真实画箭头：卡片与手绘矩形的边框及内部均建立绑定
+  2) tests/e2e/drawing-bindings.spec.ts:135:1 › 真实画箭头：卡片与手绘矩形的边框及内部均建立绑定 ───────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "4qlkF-Mqbix-gdPX9nr-7"
+    Received: undefined
+
+      158 |     if (arrow.id === reverse.id) { expect(arrow.startBinding?.elementId).toBe(shape.id); expect(arrow.endBinding?.elementId).toBe(card.id); continue; }
+      159 |     expect(arrow.startBinding?.elementId).toBe(card.id);
+    > 160 |     expect(arrow.endBinding?.elementId).toBe(shape.id);
+          |                                         ^
+      161 |   }
+      162 | });
+      163 |
+        at /Users/amos/project/Read-paper/tests/e2e/drawing-bindings.spec.ts:160:41
+
+    Error Context: ../../../../tmp/read-paper-binding-browser/drawing-bindings-真实画箭头：卡片与手绘矩形的边框及内部均建立绑定/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-browser/drawing-bindings-真实画箭头：卡片与手绘矩形的边框及内部均建立绑定/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-browser/drawing-bindings-真实画箭头：卡片与手绘矩形的边框及内部均建立绑定/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:25116) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[3/4] tests/e2e/drawing-bindings.spec.ts:164:1 › 在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据
+  3) tests/e2e/drawing-bindings.spec.ts:164:1 › 在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据 ─────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 310
+    Received: 250
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      175 |   await main(page).getByRole('button', { name: '绘图', exact: true }).click();
+      176 |   await expect(canvas(page)).toBeVisible();
+    > 177 |   await expect.poll(async () => (await resources(page)).card.x).toBe((await data(page)).placements['placement-a'].x);
+          |                                                                 ^
+      178 |   const moved = (await arrows(page))[0];
+      179 |   await writeFile(`${shots}/cross-mode-observation.json`, JSON.stringify({ before: arrow, after: moved, placement: (await data(page)).placements['placement-a'] }, null, 2));
+      180 |   await page.screenshot({ path: `${shots}/cross-mode-1440.png` });
+        at /Users/amos/project/Read-paper/tests/e2e/drawing-bindings.spec.ts:177:65
+
+    Error Context: ../../../../tmp/read-paper-binding-browser/drawing-bindings-在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-browser/drawing-bindings-在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-browser/drawing-bindings-在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:25128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[4/4] tests/e2e/drawing-bindings.spec.ts:185:1 › 连线白板与 AI 输入、右侧原文在三个尺寸可达且无横向溢出
+  4) tests/e2e/drawing-bindings.spec.ts:185:1 › 连线白板与 AI 输入、右侧原文在三个尺寸可达且无横向溢出 ──────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('complementary', { name: '参考面板' }).getByLabel('PDF 阅读器 参考面板', { exact: true }).locator('canvas').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('complementary', { name: '参考面板' }).getByLabel('PDF 阅读器 参考面板', { exact: true }).locator('canvas').first() with timeout 5000ms
+      - waiting for getByRole('complementary', { name: '参考面板' }).getByLabel('PDF 阅读器 参考面板', { exact: true }).locator('canvas').first()
+
+
+      198 |     await tool(page, 'selection');
+      199 |     await article(page, 'document').getByRole('button', { name: /^在右侧打开/ }).click({ force: true });
+    > 200 |     await expect(panel(page).getByLabel('PDF 阅读器 参考面板', { exact: true }).locator('canvas').first()).toBeVisible();
+          |                                                                                                     ^
+      201 |     await expect(canvas(page)).toBeInViewport();
+      202 |     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      203 |     await page.screenshot({ path: `${shots}/bound-board-source-${width}.png` });
+        at /Users/amos/project/Read-paper/tests/e2e/drawing-bindings.spec.ts:200:101
+
+    Error Context: ../../../../tmp/read-paper-binding-browser/drawing-bindings-连线白板与-AI-输入、右侧原文在三个尺寸可达且无横向溢出/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-browser/drawing-bindings-连线白板与-AI-输入、右侧原文在三个尺寸可达且无横向溢出/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-browser/drawing-bindings-连线白板与-AI-输入、右侧原文在三个尺寸可达且无横向溢出/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  4 failed
+    tests/e2e/drawing-bindings.spec.ts:97:1 › 卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料 ──────────────────
+    tests/e2e/drawing-bindings.spec.ts:135:1 › 真实画箭头：卡片与手绘矩形的边框及内部均建立绑定 ────────────────────────────
+    tests/e2e/drawing-bindings.spec.ts:164:1 › 在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据 ──────────────────────────
+    tests/e2e/drawing-bindings.spec.ts:185:1 › 连线白板与 AI 输入、右侧原文在三个尺寸可达且无横向溢出 ───────────────────────

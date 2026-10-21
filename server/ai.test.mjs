@@ -74,6 +74,24 @@ test('config exposes capabilities, never key or endpoint; missing config cannot 
   assert.equal(calls, 0);
 });
 
+test('literature uses the existing caller and desktop-token boundary without requiring a model key', async () => {
+  let calls = 0;
+  await withServer({ env: {}, localToken: 'test-desktop-token', fetchImpl: async url => {
+    calls++;
+    assert.equal(new URL(url).hostname, 'api.openalex.org');
+    return Response.json({ results: [], meta: { count: 0 } });
+  } }, async port => {
+    const input = { path: '/api/ai/literature/search', body: { query: 'retrieval evidence', yearFrom: 2020, yearTo: 2024 } };
+    assert.equal((await call(port, input)).status, 403);
+    assert.equal((await call(port, { ...input, headers: { 'x-papertrail-token': 'test-desktop-token', Origin: 'https://untrusted.example' } })).status, 403);
+    assert.equal(calls, 0);
+    const valid = await call(port, { ...input, headers: { 'x-papertrail-token': 'test-desktop-token' } });
+    assert.equal(valid.status, 200);
+    assert.deepEqual(JSON.parse(valid.body).candidates, []);
+    assert.equal(calls, 1);
+  });
+});
+
 test('invalid server configuration fails without exposing its value', () => {
   for (const config of [
     { AI_BASE_URL: `invalid-${secret}` },

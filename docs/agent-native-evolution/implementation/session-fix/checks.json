@@ -1,0 +1,194 @@
+{
+  "verifiedAt": "2026-10-21T03:27:46.371893+00:00",
+  "scope": "Multi-conversation navigation, full active conversation, per-conversation input/focus/scroll, shared artifacts and late-response isolation",
+  "modelMode": "Controlled browser event streams plus real local PDF extraction; no live model calls in this fix",
+  "commands": [
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "log": "logs/build.log",
+      "note": "Includes TypeScript; existing large-chunk warning remains"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "passed": 440,
+      "files": 29,
+      "log": "logs/unit.log"
+    },
+    {
+      "command": "npm run test:server",
+      "exitCode": 0,
+      "passed": 211,
+      "log": "logs/server.log"
+    },
+    {
+      "command": "npm run test:desktop",
+      "exitCode": 0,
+      "passed": 16,
+      "log": "logs/desktop.log"
+    },
+    {
+      "command": "npx playwright test tests/e2e/agent-workbench.spec.ts tests/e2e/workbench-sessions.spec.ts --reporter=line --output=test-results-session-fix",
+      "exitCode": 0,
+      "passed": 7,
+      "seconds": 16.8,
+      "log": "logs/browser.log"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "priorAttempts": [
+    {
+      "command": "npm run test:server",
+      "failed": 2,
+      "passed": 209,
+      "log": "logs/server-attempt1-failure.log",
+      "note": "Concurrent with build, unit and browser runs. Two short timing tests failed; an unchanged standalone full retry passed."
+    }
+  ],
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "width": 1024,
+      "height": 800
+    }
+  ],
+  "review": "Independent read-only integration review identified the inspector AI-tab fallback; fixed and covered by the browser regression.",
+  "migration": "Legacy research-level focus migrates only to its original valid active conversation; persisted with a migration backup. Optional conversation fields remain in schema 3.",
+  "notRun": [
+    "Live Codex or Claude Code model call",
+    "Desktop packaging and installation",
+    "Complete existing E2E suite"
+  ],
+  "unchangedLimits": [
+    "Other runtimes do not yet have these research tools",
+    "Research turns still use isolated ephemeral native threads with explicit same-conversation history",
+    "Complete mixed-canvas migration remains pending"
+  ],
+  "screenshots": [
+    {
+      "path": "screenshots/late-result-owner-1440.png",
+      "sha256": "23976cf0639ee19e10ced629a11e141e2d57ba79452cacef50a49126ca3b92c1"
+    },
+    {
+      "path": "screenshots/late-result-stays-b-1440.png",
+      "sha256": "d8d16f3234186436d48ee1351312fc600602b7fe5f6a1540dd518ac7c02bbf39"
+    },
+    {
+      "path": "screenshots/multiple-sessions-1440.png",
+      "sha256": "565513fc627e45043a3a1da84a087c3e56c13ec40bfdeef24cb951eaee4417c0"
+    },
+    {
+      "path": "screenshots/regression/legacy-board-1440.png",
+      "sha256": "f792be615134ab9b42d8666bbd32862ad859e303f94e0889ca0085c4350ded25"
+    },
+    {
+      "path": "screenshots/regression/result-1024.png",
+      "sha256": "a7c002d2b26d47a2b896674ee590034c6d69e5914a8bc6f0ebb0b86627a658aa"
+    },
+    {
+      "path": "screenshots/regression/result-1280.png",
+      "sha256": "c6b5614a54b4148607643aff1570b6ee9b503e7d5da5cf2c1aec87edd9b4bef2"
+    },
+    {
+      "path": "screenshots/regression/result-1440.png",
+      "sha256": "6799016ad606f48e7209ae9b9bd2d1f95cc307dc0f4520741c8ccc4934a1da6a"
+    },
+    {
+      "path": "screenshots/regression/revision-review-1440.png",
+      "sha256": "b6618460cfecd1d39a0c6d64d5e8b170b259233e738eccbd1f80f48811908677"
+    },
+    {
+      "path": "screenshots/regression/source-reference-1024.png",
+      "sha256": "deebf3ed6cf0ab4a5e742aad1cf55a816d6f541214be25d7eab2e8cc0e9e237c"
+    },
+    {
+      "path": "screenshots/regression/source-reference-1440.png",
+      "sha256": "ebb1c8c798044edba47ecc22cdc856170057456d63feada93136aa6bff16e432"
+    },
+    {
+      "path": "screenshots/regression/welcome-1440.png",
+      "sha256": "269142a92012e8407adbf50223e52000ce393fd88be78cc6d3c93106e34dea27"
+    },
+    {
+      "path": "screenshots/restored-session-1440.png",
+      "sha256": "24a97f472da9ed2cf0616a5a14fed87cb4833b0a5dfae08ee37e21fef9750605"
+    },
+    {
+      "path": "screenshots/shared-source-1024.png",
+      "sha256": "d629a77c8609768db97b59e279af74da881edd846416ed58cfe810eb86f734cf"
+    },
+    {
+      "path": "screenshots/shared-source-1280.png",
+      "sha256": "340e678fd02ba8d268b16dc1d9b9ad1f6d015c51501402fdb72df46de95ab019"
+    },
+    {
+      "path": "screenshots/shared-source-1440.png",
+      "sha256": "d2717702a111a860e57f79b390ace0501c9afc1d528604698c138b14ac68c5cc"
+    }
+  ],
+  "verifiedSources": [
+    {
+      "path": "src/domain/types.ts",
+      "sha256": "7c10d7bc8c0e2988621b5376723439037e2f6ba68ed39cd3c2ea5a096ee8b023"
+    },
+    {
+      "path": "src/data/migrations.ts",
+      "sha256": "f00fbfc0279336812da433c978aa6e5230776962baf8c81a0bd159e8847944fb"
+    },
+    {
+      "path": "src/services/workspace.ts",
+      "sha256": "29b62df230a34a278d2347f633d5c90faa0bfe5999853012732c4bdd3a49450c"
+    },
+    {
+      "path": "src/services/backup.ts",
+      "sha256": "2e1c5e7777a92a788878404861ee2611e63043f20f9592b31284040d49a0ece6"
+    },
+    {
+      "path": "src/services/research-agent.ts",
+      "sha256": "0ed2d5d645b995b6b8dfa24f0395a378ac7974455eec3ce6d09b93e218954fb0"
+    },
+    {
+      "path": "src/shell/App.tsx",
+      "sha256": "40edb209c77760e3662c59aeaf543cfea03fce0a8a7b3472e83aa2cbddf8eef9"
+    },
+    {
+      "path": "src/features/workbench/ResearchAgentWorkbench.tsx",
+      "sha256": "9ddc760344a57c02e563fda88a759f2668f35a368c9ef1195a166d22c3b5ed7b"
+    },
+    {
+      "path": "src/features/workbench/workbench.css",
+      "sha256": "90a5758184340864456461bebab6f163609a6503f98b32cc4acae984736fb84e"
+    },
+    {
+      "path": "tests/e2e/agent-workbench.spec.ts",
+      "sha256": "95d7b0e472a1f27e7d28f1aa4c72c624deaa095898e531ace4cf9e5cec8d5c0d"
+    },
+    {
+      "path": "tests/e2e/workbench-sessions.spec.ts",
+      "sha256": "c41fb70a60102be3a4bad91b2f1143c6e57319d26b19bd509d0e955e3f10ae17"
+    },
+    {
+      "path": "tests/unit/research-agent.test.ts",
+      "sha256": "d6213cf43e8423d42da5d826b3e210a8f477804f1cd26e43d265976956954d9f"
+    },
+    {
+      "path": "tests/unit/migrations.test.ts",
+      "sha256": "3f757231bc6c68e7c477e1afffc55078b0d18485268d37a6e5ba7408306982c1"
+    },
+    {
+      "path": "tests/unit/backup.test.ts",
+      "sha256": "748a556519c9af7c64298762f0a300fc10d7f3a4e2fe650b43fc896aca964354"
+    }
+  ]
+}

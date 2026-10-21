@@ -93,6 +93,22 @@ test('project region image files stay immutable across follow-up requests and ar
   assert.deepEqual(await readFile(firstPath), bytes);
 });
 
+test('local research material files include typed abstracts while native reset retains the research directory', async t => {
+  const f = await fixture(t), project = await f.bind('a');
+  const material = { id: 'openalex:W1', kind: 'abstract', title: 'Candidate', text: 'Only the abstract was read.', version: '1', url: 'https://openalex.org/W1' };
+  const boardResearch = { boardId: 'board-a', rootTitle: 'Original question', focus: [] };
+  const first = await finish(await f.post('run', body('a', project.id, { context: [], materials: [material], boardResearch })));
+  const ref = first.at(-1).nativeSessionRef;
+  await finish(await f.post('run', body('a', project.id, { requestId: 'second-local', context: [], materials: [material], boardResearch, sessionRef: ref, history: [{ requestId: 'request-1', prompt: 'Earlier', body: 'Answer', evidenceIds: [], context: [] }] })));
+  assert.equal(f.calls.length, 2);
+  assert.equal(f.calls[1].nativeSessionId, undefined);
+  assert.equal(f.calls[1].cwd, f.paths.a);
+  const text = await readFile(join(f.calls[0].materialCwd, 'materials.md'), 'utf8');
+  assert.match(text, /abstract：Candidate/); assert.match(text, /Only the abstract was read/); assert.doesNotMatch(text, /PDF 第/);
+  const manifest = JSON.parse(await readFile(join(f.calls[0].materialCwd, 'manifest.json'), 'utf8'));
+  assert.deepEqual(manifest.materials, [material]); assert.deepEqual(manifest.boardResearch, boardResearch);
+});
+
 test('opaque project session refs resume their native identity and cannot be used from another research', async t => {
   const calls = [];
   const f = await fixture(t, { codex: {

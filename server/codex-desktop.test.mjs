@@ -43,7 +43,7 @@ async function fixture(t, options = {}) {
       let result;
       switch (message.method) {
         case 'initialize': result = { userAgent: 'codex/0.162.1' }; break;
-        case 'config/read': result = { config: { mcp_servers: { external: {} }, plugins: { installed: {} } } }; break;
+        case 'config/read': result = { config: { ...(options.configuredModel ? { model: options.configuredModel } : {}), mcp_servers: { external: {} }, plugins: { installed: {} } } }; break;
         case 'command/exec': result = { exitCode: message.params.command[0].includes('touch') || message.params.command[1].endsWith('outside.txt') ? 1 : 0, stdout: '', stderr: '' }; break;
         case 'skills/list': result = { data: [{ skills: options.skills?.({ skillPath, enabled }) || [
           { name: 'local', description: 'Local guidance', path: skillPath, enabled, scope: 'user' },
@@ -88,6 +88,41 @@ test('capabilities discover native skills/models/plan without exposing skill pat
   assert.doesNotMatch(JSON.stringify(first), /SKILL\.md|nativeModel|sourcePath|\/skills\//);
   assert.ok(f.children.every((child) => child.killed));
   assert.ok(!f.captured.some((entry) => entry.method === 'turn/start'));
+});
+
+test('research vision sends native localImage input and pins the configured model instead of a different catalog default', async t => {
+  const f = await fixture(t, { configuredModel: 'configured-vision', models: [
+    { id: 'default-text', model: 'default-text', displayName: 'Default text', isDefault: true, inputModalities: ['text'] },
+    { id: 'vision-picker', model: 'configured-vision', displayName: 'Configured vision', inputModalities: ['text', 'image'], defaultReasoningEffort: 'low' },
+  ] });
+  assert.equal((await f.runtime.probe({ images: true })).images, true);
+  assert.equal((await f.runtime.probe()).images, undefined, 'classic probe does not claim an image adapter');
+  const path = join(f.cwd, 'drawing.png'); await writeFile(path, Buffer.from('selected image'));
+  const tools = { definitions: [{ name: 'submit_result' }], instructions: 'Selected diagram only', async call() { return { success: true, contentItems: [] }; } };
+  await f.runtime.run({ cwd: f.cwd, prompt: 'Read the selected diagram', researchTools: tools, localImages: [path] });
+  const thread = f.captured.find(item => item.method === 'thread/start').params;
+  const turn = f.captured.find(item => item.method === 'turn/start').params;
+  assert.equal(thread.model, 'configured-vision'); assert.equal(thread.allowProviderModelFallback, false); assert.equal(turn.model, 'configured-vision');
+  assert.deepEqual(turn.input, [{ type: 'text', text: 'Read the selected diagram', text_elements: [] }, { type: 'localImage', path }]);
+  assert.equal(thread.config['features.shell_tool'], false); assert.equal(thread.ephemeral, true);
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Not owned', researchTools: tools, localImages: [f.skillPath] }), { code: 'invalid_input' });
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Classic unsupported', localImages: [path] }), { code: 'invalid_input' });
+});
+
+test('research vision fails closed when the configured model cannot be confirmed to support images', async t => {
+  for (const options of [
+    { models: [{ id: 'text', model: 'text', displayName: 'Text only', isDefault: true, inputModalities: ['text'] }] },
+    { models: [{ id: 'legacy', model: 'legacy', displayName: 'Missing capability', isDefault: true }] },
+    { configuredModel: 'not-in-catalog', models: [{ id: 'vision', model: 'vision', displayName: 'Other image model', isDefault: true, inputModalities: ['text', 'image'] }] },
+  ]) {
+    const f = await fixture(t, options);
+    assert.equal((await f.runtime.probe({ images: true })).images, false);
+    const path = join(f.cwd, 'drawing.png'); await writeFile(path, 'owned selection');
+    const tools = { definitions: [{ name: 'submit_result' }], instructions: 'Selected diagram only', async call() {} };
+    await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Q', researchTools: tools, localImages: [path] }), { code: 'images_unsupported' });
+    assert.ok(!f.captured.some(item => item.method === 'turn/start'));
+    assert.ok(f.children.every(child => child.killed));
+  }
 });
 
 test('native skill input, selected readonly roots, catalog model mapping and real Plan collaboration mode', async (t) => {

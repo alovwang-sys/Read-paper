@@ -1,0 +1,39 @@
+.agent-workbench { --sidebar-width: 208px; }
+.agent-workbench .sidebar { padding: 22px 12px 12px; background: #f5f7f8; }
+.agent-workbench .brand { margin: 0 6px 26px; }
+.agent-workbench .brand strong > span { display: none; }
+.agent-workbench .research-nav { padding-top: 12px; }
+.agent-workbench .nav-item > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-workbench .sidebar-section-label { margin-top: 24px; }
+.agent-workbench .workspace-header { height: 54px; padding: 0 22px; }
+.agent-workbench .agent-research-name { border: 0; padding: 6px 0; background: transparent; font-weight: 600; font-size: 13px; width: min(280px, 25vw); min-width: 100px; }
+.agent-workbench .header-actions { gap: 14px; }
+.agent-workbench .header-actions .text-button { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.agent-workbench .main-workspace { scroll-behavior: auto; }
+.agent-workbench .save-indicator { font-size: 11px; }
+.agent-browse { margin: 24px 8px 14px; color: #65747b; font-size: 12px; }
+.agent-browse summary { cursor: pointer; padding: 8px 0; }
+.agent-browse-links { padding-top: 6px; }
+.agent-workbench .workbench-switch { font-size: 12px; color: #637479; }
+.agent-workbench .sidebar-footer { margin-top: 10px; }
+.agent-workbench .project-file-compact { font-size: 11px; }
+.agent-workbench .inspector { width: min(var(--panel-width), 38vw); min-width: 320px; }
+.agent-workbench .inspector-content.mode-ai { overflow: auto; }
+.workbench-settings { padding: 14px 0; border-block: 1px solid var(--border); }
+.workbench-settings p { margin: 8px 0; }
+.agent-workbench .writing-eyebrow, .agent-workbench .writing-question, .agent-workbench .writing-export-note { display: none; }
+.agent-workbench .writing-page { max-width: 880px; padding-top: 26px; }
+.agent-workbench .writing-title { font-size: 28px; }
+.agent-workbench .writing-toolbar { min-height: 42px; flex-wrap: wrap; }
+@media (max-width: 1280px) {
+  .agent-workbench .workspace-header { padding-inline: 14px; }
+  .agent-workbench .header-actions { gap: 8px; }
+  .agent-workbench .header-actions .save-indicator { display: none; }
+  .agent-workbench .agent-local-ask { max-width: 120px; }
+}
+@media (max-width: 1024px) {
+  .agent-workbench .inspector { position: relative; top: auto; right: auto; bottom: auto; width: 360px; min-width: 320px; max-width: 40vw; z-index: 22; }
+  .agent-workbench .main-column { margin-right: 0; }
+  .agent-workbench .agent-research-name { max-width: 23vw; }
+}
+.agent-workbench .agent-return { display: flex; align-items: center; gap: 5px; flex-shrink: 0; color: #657e72; font-size: 12px; }

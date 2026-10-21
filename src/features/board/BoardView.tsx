@@ -25,6 +25,8 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import type { BoardEdge, BoardPlacement } from '../../domain/types';
+import { hasFullText } from '../../domain/knowledge';
+import { findPaneTab } from '../../services/panes';
 import {
   resourceExists,
   resourceTitle,
@@ -39,6 +41,8 @@ import { BoardLayoutPreview, BoardOutline } from './BoardOutline';
 import { boardDescendants } from '../../domain/board-structure';
 import { layoutBoardTree } from '../../domain/board-layout';
 import { addBoardCard, moveBoardBranch, removeBoardPlacements, reorderBoardPlacement, setBoardLayout } from '../../services/board-structure';
+import { BoardQuestionDialog } from './BoardQuestionDialog';
+import { BoardResearchActions } from './BoardResearchActions';
 import './board.css';
 
 const BoardDrawing = lazy(() => import('./BoardDrawing'));
@@ -59,7 +63,7 @@ function movedPositions(items: PlacementPosition[], dx: number, dy: number) {
 }
 
 export function BoardView({ boardId }: { boardId: string }) {
-  const { data, actions, session, pane } = useWorkspace();
+  const { data, actions, session, pane, view } = useWorkspace();
   const domId = useId();
   const board = data.boards[boardId];
   const tree = board?.layout === 'tree';
@@ -85,6 +89,9 @@ export function BoardView({ boardId }: { boardId: string }) {
   const [selectedEdge, setSelectedEdge] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [questionOpen, setQuestionOpen] = useState(false);
+  const [questionPosition, setQuestionPosition] = useState<{ x: number; y: number }>();
+  const drawingPosition = useRef<{ x: number; y: number } | undefined>(undefined);
   const [pickerKind, setPickerKind] = useState<'card' | 'document'>('card');
   const [query, setQuery] = usePaneViewState<string>(`board:${boardId}:query`, '');
   const [pickerQuery, setPickerQuery] = useState('');
@@ -173,6 +180,7 @@ export function BoardView({ boardId }: { boardId: string }) {
     setLayoutPreview(undefined);
     setSourcePicker(undefined);
     setRemoveBranch(undefined);
+    setQuestionOpen(false);
     setUndo(recentRemovals.get(boardId));
     const saved = actions.getBoardViewport(boardId);
     if (viewport.current) {
@@ -190,6 +198,22 @@ export function BoardView({ boardId }: { boardId: string }) {
       setUndo(undefined);
     }
   }, [boardId, boardRevision]);
+  const anchorPlacementId = (view?.anchor ?? session.anchor)?.placementId;
+  useEffect(() => {
+    const id = anchorPlacementId;
+    const item = id ? data.placements[id] : undefined;
+    if (drawingMode || !item || item.boardId !== boardId) return;
+    const frame = requestAnimationFrame(() => {
+      locate(item);
+      actions.updateData(next => {
+        const owner = next.sessions[board.researchId];
+        const tab = pane && owner.layout ? findPaneTab(owner.layout, pane.tabId)?.tab : undefined;
+        if (tab?.anchor?.placementId === item.id) tab.anchor = undefined;
+        if (owner.anchor?.placementId === item.id) owner.anchor = undefined;
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [boardId, anchorPlacementId, drawingMode, actions, pane?.tabId]);
 
   if (!board)
     return (
@@ -531,6 +555,14 @@ export function BoardView({ boardId }: { boardId: string }) {
           <Plus size={15} />
           添加资料
         </button>
+        <button className="button" onClick={() => {
+          const view = viewport.current;
+          setQuestionPosition(drawingMode ? drawingPosition.current : {
+            x: Math.max(30, (view?.scrollLeft ?? 0) / scale + Math.max(40, ((view?.clientWidth ?? 500) / scale - 260) / 2)),
+            y: Math.max(55, (view?.scrollTop ?? 0) / scale + 100),
+          });
+          setQuestionOpen(true);
+        }}><Pencil size={14} />写问题</button>
         {!drawingMode && <label className="board-search">
           <Search size={14} />
           <input
@@ -729,7 +761,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           </div>
         </div>
       )}
-      {drawingMode ? <Suspense fallback={<div className="empty-state" role="status">正在加载绘图工具…</div>}><BoardDrawing key={boardId} boardId={boardId} /></Suspense> : <div className="board-workarea">
+      {drawingMode ? <Suspense fallback={<div className="empty-state" role="status">正在加载绘图工具…</div>}><BoardDrawing key={boardId} boardId={boardId} onViewport={position => { drawingPosition.current = position; }} /></Suspense> : <div className="board-workarea">
       {tree && outlineOpen && <BoardOutline placements={placements} selected={selected} collapsed={collapsed} title={item => resourceTitle(data, item.resourceRef)} onLocate={locate} onToggle={toggleBranch}
         onReorder={(id, direction) => structureAction(() => reorderBoardPlacement(boardId, id, direction))}
         onMove={(id, parent) => structureAction(() => { moveBoardBranch(boardId, id, parent); if (parent) setCollapsedJSON(JSON.stringify(collapsed.filter(item => item !== parent))); })}
@@ -791,7 +823,10 @@ export function BoardView({ boardId }: { boardId: string }) {
                   height: group.height,
                 }}
               >
-                <span>{group.name}</span>
+                <button type="button" aria-label={`选择分区：${group.name}`} onPointerDown={event => event.stopPropagation()} onClick={event => {
+                  event.stopPropagation();
+                  selectPlacements(placements.filter(item => item.group === group.name).map(item => item.id));
+                }}>{group.name}</button>
               </div>
             ))}
             <BoardConnections
@@ -908,12 +943,12 @@ export function BoardView({ boardId }: { boardId: string }) {
                       ) : (
                         <StickyNote size={14} />
                       )}
-                      {ref.kind === 'document' ? 'PDF 论文' : '观点卡片'}
+                      {ref.kind === 'document' ? hasFullText(document) ? 'PDF 论文' : '文献条目' : '观点卡片'}
                     </span>
                     <span className="board-drag-hint"><Grip size={14} />拖动</span>
                   </div>
                   {item.group && !safeGroups.some(group => group.name === item.group) && <span className="board-node-group">{item.group}</span>}
-                  <h3>{resourceTitle(data, ref)}</h3>
+                  <h3 title={resourceTitle(data, ref)}>{resourceTitle(data, ref)}</h3>
                   {card && (
                     <p className="board-card-body">
                       {card.body || '还没有正文，点击在右侧编辑。'}
@@ -922,11 +957,11 @@ export function BoardView({ boardId }: { boardId: string }) {
                   {document && (
                     <div className="board-document-preview">
                       <FileText size={35} strokeWidth={1.2} />
-                      <span>{document.authors}</span>
+                      <span title={document.authors}>{document.authors}</span>
                       <small>
-                        {document.year} · {document.pageCount} 页
+                        {document.year || '年份未记录'} · {hasFullText(document) ? `${document.pageCount} 页` : '全文未导入'}
                       </small>
-                      <em>双击进入阅读器</em>
+                      <em>{hasFullText(document) ? '双击进入阅读器' : '双击查看资料'}</em>
                     </div>
                   )}
                   {!exists && (
@@ -940,7 +975,7 @@ export function BoardView({ boardId }: { boardId: string }) {
                     >
                       {card
                         ? `${card.evidenceIds.length} 条来源${card.needsReview ? ' · 待核查' : ''}`
-                        : '原始文献'}
+                        : hasFullText(document) ? '原始文献' : '全文未导入'}
                     </span>
                     {card && (
                       <div className="board-node-actions">
@@ -992,6 +1027,10 @@ export function BoardView({ boardId }: { boardId: string }) {
                 </article>
               );
             })}
+            {mode === 'select' && activePlacements.length > 0 && <div className="board-local-research" style={{
+              left: Math.min(...activePlacements.map(item => item.x)),
+              top: Math.max(8, Math.min(...activePlacements.map(item => item.y)) - 45),
+            }}><BoardResearchActions boardId={boardId} placementIds={activePlacements.map(item => item.id)} /></div>}
             {!placements.length && (
               <div className="board-empty">
                 <StickyNote size={30} strokeWidth={1.2} />
@@ -1079,10 +1118,20 @@ export function BoardView({ boardId }: { boardId: string }) {
       )}
       <div className="board-bottom-hint">
         <span>
-          {placements.length} 项资料 · {edges.length} 个关系
+          {placements.length} 项资料{!drawingMode && ` · ${edges.length} 个关系`}
         </span>
-        <span>{drawingMode ? '画笔、形状与文字 · 选中资料可查看来源' : tree ? '层级模式不拖动改归属 · 在大纲调整顺序与分支 · 点编辑看全文' : '拖动移动 · Shift / Ctrl / ⌘ 多选 · 方向键 1px · Shift + 方向键 10px'}</span>
+        <span>{drawingMode ? '箭头可连接资料与图形 · 框选内容问 Agent' : tree ? '层级模式不拖动改归属 · 在大纲调整顺序与分支 · 点编辑看全文' : '拖动移动 · Shift / Ctrl / ⌘ 多选 · 方向键 1px · Shift + 方向键 10px'}</span>
       </div>
+      <BoardQuestionDialog boardId={boardId} open={questionOpen} onClose={() => setQuestionOpen(false)} position={questionPosition} onCreated={id => {
+        setSelected([id]);
+        requestAnimationFrame(() => {
+          const item = actions.getState().data.placements[id];
+          if (item && viewport.current) {
+            viewport.current.scrollLeft = Math.max(0, item.x * scale - 80);
+            viewport.current.scrollTop = Math.max(0, item.y * scale - 80);
+          }
+        });
+      }} />
     </div>
   );
 }

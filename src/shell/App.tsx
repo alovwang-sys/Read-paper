@@ -8,6 +8,7 @@ import {
   FileText,
   Layers,
   Menu,
+  MessageSquare,
   Network,
   PanelLeftClose,
   PanelRightClose,
@@ -22,6 +23,7 @@ import {
 import type { PanelMode, ReaderTarget, ResearchViewId, ResourceRef } from '../domain/types';
 import {
   resourceExists,
+  getActiveConversation,
   resourceTitle,
   scopeKey,
   useWorkspace,
@@ -55,8 +57,11 @@ import { getAIConfig } from '../services/ai';
 import { WorkspaceSplit } from './WorkspaceSplit';
 import { paneGroups } from '../services/panes';
 import { DesktopWindowControls } from './DesktopWindowControls';
-import { ResearchNavigation } from './ResearchNavigation';
+import { ResearchNavigation, researchViews } from './ResearchNavigation';
 import { BackupControls } from '../features/settings/BackupControls';
+import { ResearchAgentHome, ResearchAgentDock, ResearchAgentHistory } from '../features/workbench/ResearchAgentWorkbench';
+import { focusResearchResource } from '../services/research-agent';
+import './workbench-shell.css';
 
 const modes: { id: PanelMode; name: string }[] = [
   { id: 'excerpts', name: '摘录' }, { id: 'cards', name: '卡片' }, { id: 'ai', name: 'AI' },
@@ -133,6 +138,29 @@ export function App() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const active = session.active;
   const sidebarWidth = typeof data.sidebarWidth === 'number' && Number.isFinite(data.sidebarWidth) ? Math.max(200, data.sidebarWidth) : 240;
+  const agentEnabled = data.agentWorkbench !== false;
+  const agentWorkbench = agentEnabled && !!research;
+  const currentConversation = research && getActiveConversation(data, research.id);
+  const atConversation = active.kind === 'researchView' && active.id === 'home';
+  const panelOpen = session.panel.open && (!agentWorkbench || session.agentWorkbenchStarted === true);
+  useEffect(() => {
+    if (loaded && agentWorkbench && research && !session.agentWorkbenchStarted) actions.updateData(next => {
+      next.sessions[research.id].panel.open = false;
+      next.sessions[research.id].agentWorkbenchStarted = true;
+    });
+  }, [loaded, agentWorkbench, research?.id, session.agentWorkbenchStarted]);
+  useEffect(() => {
+    if (!agentWorkbench || !session.agentWorkbenchStarted || !session.panel.open || session.panel.mode !== 'ai' || session.panel.aiView === 'history') return;
+    actions.updateData(next => { next.agentWorkbench = false; });
+    actions.notice('此操作在经典工作台继续，原有对话、局部材料和输入均已保留。');
+  }, [agentWorkbench, session.agentWorkbenchStarted, session.panel.open, session.panel.mode, session.panel.aiView]);
+  function toggleWorkbench() {
+    actions.updateData(next => {
+      next.agentWorkbench = !agentEnabled;
+      if (!agentEnabled && research) next.sessions[research.id].panel.open = false;
+    });
+  }
+  const activeTitle = active.kind === 'sourcePreview' ? '资料预览' : active.kind === 'researchView' ? researchViews.find(item => item.id === active.id)?.name ?? '研究主页' : active.kind === 'collection' ? '资料库' : resourceTitle(data, active);
   const navigationTrigger = useRef<HTMLElement | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const inspectorRef = useRef<HTMLElement>(null);
@@ -223,7 +251,7 @@ export function App() {
   function viewContent(ref: import('../domain/types').WorkspaceViewRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean, tab?: import('../domain/types').WorkspaceTab) {
     if (ref.kind === 'sourcePreview') return tab?.preview ? <SourcePreview key={tab.id} {...tab.preview} scope={data.scope} /> : <div className="empty-state">此预览已关闭。</div>;
     if (ref.kind === 'collection') return <LibraryView collection={ref.id} />;
-    if (ref.kind === 'researchView') return research ? ref.id === 'home' ? <ResearchView researchId={research.id} /> : ref.id === 'sources' ? <SourcesView researchId={research.id} /> : ref.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : ref.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={ref.id === 'boards' ? 'board' : 'draft'} /> : <div className="empty-state">请先选择研究。</div>;
+    if (ref.kind === 'researchView') return research ? ref.id === 'home' ? (agentWorkbench ? <ResearchAgentHome researchId={research.id} /> : <ResearchView researchId={research.id} />) : ref.id === 'sources' ? <SourcesView researchId={research.id} /> : ref.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : ref.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={ref.id === 'boards' ? 'board' : 'draft'} /> : <div className="empty-state">请先选择研究。</div>;
     if (!resourceExists(data, ref))
       return (
         <div className="empty-state">
@@ -264,6 +292,7 @@ export function App() {
     })),
     ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
     ...Object.keys(data.drafts).map((id) => ({ kind: 'draft' as const, id })),
+    ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
   ];
   if (!loaded)
     return (
@@ -285,7 +314,7 @@ export function App() {
     );
   return (
     <div
-      className={`app-shell ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${session.panel.open ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''} ${session.panel.open && session.panel.mode === 'ai' ? 'ai-panel-open' : ''}`}
+      className={`app-shell ${agentWorkbench ? 'agent-workbench' : ''} ${data.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${panelOpen ? 'panel-open' : ''} ${navigationOpen ? 'navigation-open' : ''} ${panelOpen && session.panel.mode === 'ai' && !agentWorkbench ? 'ai-panel-open' : ''}`}
       style={{ '--panel-width': `${data.panelWidth}px`, '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <PendingResearchRecovery key={workspace.getGeneration()} />
@@ -328,9 +357,16 @@ export function App() {
           <label className="research-switcher" title={research?.title ?? '切换研究'}><span className="research-dot" /><select aria-label="切换研究" value={research?.id ?? ''} onChange={event => { actions.switchResearch(event.target.value); if (narrow) closeNavigation(); }}><option value="" disabled>全局资料浏览</option>{Object.values(data.researches).map(r => <option key={r.id} value={r.id}>{r.title}</option>)}</select><ChevronDown size={13} /></label>
           {research && <ResearchDirectory researchId={research.id} settings />}
         </div>
-        <div className="sidebar-actions"><button className="new-research" onClick={() => showDialog('new')}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
-        {research && <ResearchNavigation researchId={research.id} active={active} onNavigate={navigate} onOpen={ref => { open(ref); if (narrow) closeNavigation(); }} />}
-        <div className="sidebar-bottom-nav"><button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
+        <div className="sidebar-actions"><button className="new-research" onClick={() => { if (agentEnabled) { actions.createResearch('新研究', ''); if (narrow) closeNavigation(); } else showDialog('new'); }}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
+        <nav className="research-nav" aria-label="研究内导航">
+          {agentWorkbench ? <>
+            <button className={`nav-item ${active.kind === 'researchView' && active.id === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Sparkles size={17} />研究工作台</button>
+            <div className="sidebar-section-label">最近打开</div>
+            {(session.recentItems ?? session.openItems).filter(ref => resourceExists(data, ref)).slice(0, 6).map(ref => <button className={`nav-item ${active.kind === ref.kind && active.id === ref.id ? 'active' : ''}`} key={`${ref.kind}:${ref.id}`} title={resourceTitle(data, ref)} onClick={() => { open(ref); if (narrow) closeNavigation(); }}><ResourceIcon kind={ref.kind} /><span>{resourceTitle(data, ref)}</span></button>)}
+            <details className="agent-browse"><summary>浏览研究内容</summary><div className="agent-browse-links">{researchViews.filter(item => item.id !== 'home').map(({ id, name, icon: Icon }) => <button className={`nav-item ${active.kind === 'researchView' && active.id === id ? 'active' : ''}`} key={id} onClick={() => navigate(id)}><Icon size={15} />{name}</button>)}</div></details>
+          </> : research && <ResearchNavigation researchId={research.id} active={active} onNavigate={navigate} onOpen={ref => { open(ref); if (narrow) closeNavigation(); }} /> }
+        </nav>
+        <div className="sidebar-bottom-nav">{research && <button className="nav-item workbench-switch" onClick={toggleWorkbench}><Layers size={17} />{agentWorkbench ? '经典工作台' : 'Agent 工作台'}</button>}<button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
         <div className="sidebar-footer">
           <span
             className={`status-dot ${saveStatus === 'error' ? 'error' : ''}`}
@@ -384,16 +420,16 @@ export function App() {
               </button>
             )}
             <button
-              className="icon-button"
+              className={agentWorkbench && session.history.length ? 'text-button agent-return' : 'icon-button'}
               aria-label="主区返回"
               disabled={!session.layout || !paneGroups(session.layout.root).find(p => p.id === session.layout!.focusedPaneId)?.history?.length}
               onClick={() => actions.back('main')}
             >
-              <ArrowLeft size={17} />
+              <ArrowLeft size={17} />{agentWorkbench && !!session.history.length && <span>返回上一处</span>}
             </button>
             {!research && session.libraryResearchId && data.researches[session.libraryResearchId] && <button className="text-button" onClick={() => actions.switchResearch(session.libraryResearchId!)}>返回研究</button>}
-            <span>{research ? research.title : '全局资料库'}</span>
-
+            {agentWorkbench && !atConversation && <button className="text-button agent-return" aria-label="返回会话" title={`返回会话：${currentConversation?.title ?? '当前话题'}`} onClick={() => actions.openResearchView(research!.id, 'home')}><MessageSquare size={15} /><span>返回会话</span></button>}
+            {agentWorkbench && research ? <input className="agent-research-name" aria-label="研究名称" value={research.title} onChange={event => actions.updateData(next => { next.researches[research.id].title = event.target.value; })} /> : <><span>{research ? research.title : '全局资料库'}</span><ChevronRight size={13} /><strong>{activeTitle}</strong></>}
           </div>
           <div className="header-actions">
             <DesktopWindowControls />
@@ -416,15 +452,20 @@ export function App() {
                 '未保存'
               )}
             </span>
+            {agentWorkbench && active.kind !== 'sourcePreview' && active.kind !== 'collection' && active.kind !== 'researchView' && <button className="text-button agent-local-ask" onClick={() => focusResearchResource(research!.id, active)}><Sparkles size={14} />围绕这里追问</button>}
+            {agentWorkbench && <button className="text-button" onClick={() => navigate('sources')}><BookOpen size={15} />本研究资料</button>}
             {research && <ImportPDFButton compact />}
             <button
               className="icon-button"
-              aria-label={session.panel.open ? '收起右侧面板' : '展开右侧面板'}
+              aria-label={panelOpen ? '收起右侧面板' : '展开右侧面板'}
               onClick={() =>
-                actions.setPanel(session.panel.mode, !session.panel.open)
+                {
+                  if (agentWorkbench && session.panel.mode === 'ai') actions.updateData(next => { next.sessions[research!.id].panel.aiView = 'history'; });
+                  actions.setPanel(session.panel.mode, !panelOpen);
+                }
               }
             >
-              {session.panel.open ? (
+              {panelOpen ? (
                 <PanelRightClose size={18} />
               ) : (
                 <PanelRightOpen size={18} />
@@ -445,9 +486,10 @@ export function App() {
             <WorkspaceSplit renderResource={resourceView} />
           </ErrorBoundary>
         </main>
+        {agentWorkbench && <ResearchAgentDock key={research!.id} researchId={research!.id} />}
 
       </div>
-      {session.panel.open && (
+      {panelOpen && (
         <aside className="inspector" aria-label="参考面板" ref={inspectorRef}>
           <div
             className="resize-handle"
@@ -482,9 +524,12 @@ export function App() {
                   key={mode.id}
                   role="tab"
                   aria-selected={session.panel.mode === mode.id}
-                  onClick={() => actions.setPanel(mode.id)}
+                  onClick={() => {
+                    if (agentWorkbench && research && mode.id === 'ai') actions.updateData(next => { next.sessions[research.id].panel.aiView = 'history'; });
+                    actions.setPanel(mode.id);
+                  }}
                 >
-                  {mode.id === 'ai' && <Sparkles size={13} />} {mode.name}
+                  {mode.id === 'ai' && <Sparkles size={13} />} {agentWorkbench && mode.id === 'ai' ? '会话' : mode.name}
                 </button>
               ))}
             </div>
@@ -523,7 +568,7 @@ export function App() {
               key={`${scopeKey(data.scope)}:${session.panel.mode}:${session.panel.ref?.id}:${session.panel.findEvidenceFor}:${session.panel.citation?.evidenceId}`}
             >
               {session.panel.mode === 'ai' ? (
-                <AIPanel />
+                agentWorkbench ? <ResearchAgentHistory researchId={research!.id} /> : <AIPanel />
               ) : session.panel.mode === 'excerpts' ? (
                 <EvidenceList
                   documentId={documentId}
@@ -705,6 +750,7 @@ export function App() {
                   与研究数据保存在{window.papertrailDesktop ? '此应用的本地数据目录中。' : '此浏览器的本地存储中。'}
                 </p>
                 <p>{window.papertrailDesktop ? '资料保存在此电脑。换电脑前请导出完整备份。' : '换浏览器或清除站点数据将移除本地资料。'}</p>
+                <div className="workbench-settings"><strong>工作台界面</strong><p>Agent 工作台与经典工作台共享全部资料；切换不会删除内容。</p><button className="button" onClick={toggleWorkbench}>{agentEnabled ? '切换到经典工作台' : '切换到 Agent 工作台'}</button></div>
                 <ModelConnection />
                 <BackupControls />
                 <p>

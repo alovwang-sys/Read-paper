@@ -1,0 +1,736 @@
+{
+  "beforeShapeScene": {
+    "type": "excalidraw",
+    "version": 2,
+    "source": "Papertrail",
+    "elements": [
+      {
+        "id": "resource-placement-a",
+        "type": "embeddable",
+        "x": 306.00000000000006,
+        "y": 180.66666666666666,
+        "width": 260,
+        "height": 220,
+        "angle": 0,
+        "strokeColor": "#ccd9c4",
+        "backgroundColor": "#fffefa",
+        "fillStyle": "solid",
+        "strokeWidth": 1,
+        "strokeStyle": "solid",
+        "roughness": 0,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a0",
+        "roundness": null,
+        "seed": 309091028,
+        "version": 22,
+        "versionNonce": 1264261844,
+        "isDeleted": false,
+        "boundElements": [
+          {
+            "id": "KoY8J5Kfn8Nh7I3vqC3eD",
+            "type": "arrow"
+          },
+          {
+            "id": "Af-o6XJl71gxksVwMi8OB",
+            "type": "arrow"
+          }
+        ],
+        "updated": 1792558147234,
+        "link": "papertrail://placement/placement-a",
+        "locked": false,
+        "customData": {
+          "placementId": "placement-a",
+          "resourceRef": {
+            "kind": "card",
+            "id": "card-a"
+          }
+        }
+      },
+      {
+        "id": "resource-drawing-pdf",
+        "type": "embeddable",
+        "x": 540,
+        "y": 130,
+        "width": 260,
+        "height": 220,
+        "angle": 0,
+        "strokeColor": "#ccd9c4",
+        "backgroundColor": "#fffefa",
+        "fillStyle": "solid",
+        "strokeWidth": 1,
+        "strokeStyle": "solid",
+        "roughness": 0,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a1",
+        "roundness": null,
+        "seed": 2067914836,
+        "version": 5,
+        "versionNonce": 1403037524,
+        "isDeleted": false,
+        "boundElements": [
+          {
+            "id": "CPRcF_cpz1qn2FwxM1iuB",
+            "type": "arrow"
+          },
+          {
+            "id": "ydgmzrj60EFl36KpD4Qtp",
+            "type": "arrow"
+          }
+        ],
+        "updated": 1792558145926,
+        "link": "papertrail://placement/drawing-pdf",
+        "locked": false,
+        "customData": {
+          "placementId": "drawing-pdf",
+          "resourceRef": {
+            "kind": "document",
+            "id": "paper-a"
+          }
+        }
+      },
+      {
+        "id": "C_keVFhi9U5XoIXgW1KOk",
+        "type": "rectangle",
+        "x": 572,
+        "y": 541.9706217447916,
+        "width": 173.33333333333337,
+        "height": 106.66666666666674,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a2",
+        "roundness": {
+          "type": 3
+        },
+        "seed": 212874220,
+        "version": 24,
+        "versionNonce": 1955114068,
+        "isDeleted": false,
+        "boundElements": [
+          {
+            "id": "KoY8J5Kfn8Nh7I3vqC3eD",
+            "type": "arrow"
+          },
+          {
+            "id": "Af-o6XJl71gxksVwMi8OB",
+            "type": "arrow"
+          },
+          {
+            "id": "CPRcF_cpz1qn2FwxM1iuB",
+            "type": "arrow"
+          },
+          {
+            "id": "ydgmzrj60EFl36KpD4Qtp",
+            "type": "arrow"
+          }
+        ],
+        "updated": 1792558145926,
+        "link": null,
+        "locked": false
+      },
+      {
+        "id": "KoY8J5Kfn8Nh7I3vqC3eD",
+        "type": "arrow",
+        "x": 562.4439799336567,
+        "y": 402.66666666666663,
+        "width": 11.952364645838884,
+        "height": 148.11002514562074,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a3",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 1981677420,
+        "version": 41,
+        "versionNonce": 676896852,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558147234,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            11.952364645838884,
+            148.11002514562074
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "resource-placement-a",
+          "focus": -0.8508759520942861,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": -0.8767054251670626,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      },
+      {
+        "id": "Af-o6XJl71gxksVwMi8OB",
+        "type": "arrow",
+        "x": 618.6733745864581,
+        "y": 540.9117708252786,
+        "width": 100.99675732569949,
+        "height": 138.24510415861198,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a4",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 1238036436,
+        "version": 41,
+        "versionNonce": 1720284628,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558147234,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            -100.99675732569949,
+            -138.24510415861198
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": 0,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "resource-placement-a",
+          "focus": 0,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      },
+      {
+        "id": "CPRcF_cpz1qn2FwxM1iuB",
+        "type": "arrow",
+        "x": 798,
+        "y": 240,
+        "width": 224,
+        "height": 355.303955078125,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a5",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 653905132,
+        "version": 23,
+        "versionNonce": 1920929132,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558144524,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            -224,
+            355.303955078125
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "resource-drawing-pdf",
+          "focus": -2.110437660543074,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": -1.5961930593954172,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      },
+      {
+        "id": "ydgmzrj60EFl36KpD4Qtp",
+        "type": "arrow",
+        "x": 743.3333333333334,
+        "y": 595.303955078125,
+        "width": 201.33333333333337,
+        "height": 355.303955078125,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a6",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 1841236564,
+        "version": 23,
+        "versionNonce": 1222115796,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558145926,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            -201.33333333333337,
+            -355.303955078125
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": 1.4999777632315996,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "resource-drawing-pdf",
+          "focus": 1.8915773708715218,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      }
+    ],
+    "appState": {
+      "viewBackgroundColor": "#f7f8f4",
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": {
+        "value": 0.75
+      }
+    },
+    "files": {}
+  },
+  "afterShapeScene": {
+    "type": "excalidraw",
+    "version": 2,
+    "source": "Papertrail",
+    "elements": [
+      {
+        "id": "resource-placement-a",
+        "type": "embeddable",
+        "x": 306.00000000000006,
+        "y": 180.66666666666666,
+        "width": 260,
+        "height": 220,
+        "angle": 0,
+        "strokeColor": "#ccd9c4",
+        "backgroundColor": "#fffefa",
+        "fillStyle": "solid",
+        "strokeWidth": 1,
+        "strokeStyle": "solid",
+        "roughness": 0,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a0",
+        "roundness": null,
+        "seed": 309091028,
+        "version": 22,
+        "versionNonce": 1264261844,
+        "isDeleted": false,
+        "boundElements": [
+          {
+            "id": "KoY8J5Kfn8Nh7I3vqC3eD",
+            "type": "arrow"
+          },
+          {
+            "id": "Af-o6XJl71gxksVwMi8OB",
+            "type": "arrow"
+          }
+        ],
+        "updated": 1792558147234,
+        "link": "papertrail://placement/placement-a",
+        "locked": false,
+        "customData": {
+          "placementId": "placement-a",
+          "resourceRef": {
+            "kind": "card",
+            "id": "card-a"
+          }
+        }
+      },
+      {
+        "id": "resource-drawing-pdf",
+        "type": "embeddable",
+        "x": 540,
+        "y": 130,
+        "width": 260,
+        "height": 220,
+        "angle": 0,
+        "strokeColor": "#ccd9c4",
+        "backgroundColor": "#fffefa",
+        "fillStyle": "solid",
+        "strokeWidth": 1,
+        "strokeStyle": "solid",
+        "roughness": 0,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a1",
+        "roundness": null,
+        "seed": 2067914836,
+        "version": 5,
+        "versionNonce": 1403037524,
+        "isDeleted": false,
+        "boundElements": [
+          {
+            "id": "CPRcF_cpz1qn2FwxM1iuB",
+            "type": "arrow"
+          },
+          {
+            "id": "ydgmzrj60EFl36KpD4Qtp",
+            "type": "arrow"
+          }
+        ],
+        "updated": 1792558145926,
+        "link": "papertrail://placement/drawing-pdf",
+        "locked": false,
+        "customData": {
+          "placementId": "drawing-pdf",
+          "resourceRef": {
+            "kind": "document",
+            "id": "paper-a"
+          }
+        }
+      },
+      {
+        "id": "C_keVFhi9U5XoIXgW1KOk",
+        "type": "rectangle",
+        "x": 618.6666666666667,
+        "y": 587.3039550781249,
+        "width": 173.33333333333337,
+        "height": 106.66666666666674,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a2",
+        "roundness": {
+          "type": 3
+        },
+        "seed": 212874220,
+        "version": 42,
+        "versionNonce": 810697812,
+        "isDeleted": false,
+        "boundElements": [
+          {
+            "id": "KoY8J5Kfn8Nh7I3vqC3eD",
+            "type": "arrow"
+          },
+          {
+            "id": "Af-o6XJl71gxksVwMi8OB",
+            "type": "arrow"
+          },
+          {
+            "id": "CPRcF_cpz1qn2FwxM1iuB",
+            "type": "arrow"
+          },
+          {
+            "id": "ydgmzrj60EFl36KpD4Qtp",
+            "type": "arrow"
+          }
+        ],
+        "updated": 1792558148634,
+        "link": null,
+        "locked": false
+      },
+      {
+        "id": "KoY8J5Kfn8Nh7I3vqC3eD",
+        "type": "arrow",
+        "x": 568,
+        "y": 327.7909637288798,
+        "width": 48.96995374744722,
+        "height": 287.78537653143485,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a3",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 1981677420,
+        "version": 59,
+        "versionNonce": 128883156,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558148634,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            48.96995374744722,
+            287.78537653143485
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "resource-placement-a",
+          "focus": -0.8508759520942861,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": -0.8767054251670626,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      },
+      {
+        "id": "Af-o6XJl71gxksVwMi8OB",
+        "type": "arrow",
+        "x": 663.3666390404152,
+        "y": 586.245104158612,
+        "width": 141.4257279624279,
+        "height": 183.57843749194535,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a4",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 1238036436,
+        "version": 59,
+        "versionNonce": 736378708,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558148634,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            -141.4257279624279,
+            -183.57843749194535
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": 0,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "resource-placement-a",
+          "focus": 0,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      },
+      {
+        "id": "CPRcF_cpz1qn2FwxM1iuB",
+        "type": "arrow",
+        "x": 798,
+        "y": 240,
+        "width": 177.33333333333326,
+        "height": 400.63728841145826,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a5",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 653905132,
+        "version": 42,
+        "versionNonce": 746555244,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558148651,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            -177.33333333333326,
+            400.63728841145826
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "resource-drawing-pdf",
+          "focus": -2.110437660543074,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": -1.5961930593954172,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      },
+      {
+        "id": "ydgmzrj60EFl36KpD4Qtp",
+        "type": "arrow",
+        "x": 790.0000000000001,
+        "y": 640.6372884114583,
+        "width": 248.0000000000001,
+        "height": 400.63728841145826,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a6",
+        "roundness": {
+          "type": 2
+        },
+        "seed": 1841236564,
+        "version": 42,
+        "versionNonce": 45086036,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1792558148651,
+        "link": null,
+        "locked": false,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            -248.0000000000001,
+            -400.63728841145826
+          ]
+        ],
+        "lastCommittedPoint": null,
+        "startBinding": {
+          "elementId": "C_keVFhi9U5XoIXgW1KOk",
+          "focus": 1.4999777632315996,
+          "gap": 2
+        },
+        "endBinding": {
+          "elementId": "resource-drawing-pdf",
+          "focus": 1.8915773708715218,
+          "gap": 2
+        },
+        "startArrowhead": null,
+        "endArrowhead": "arrow",
+        "elbowed": false
+      }
+    ],
+    "appState": {
+      "viewBackgroundColor": "#f7f8f4",
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": {
+        "value": 0.75
+      }
+    },
+    "files": {}
+  }
+}

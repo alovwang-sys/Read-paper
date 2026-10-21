@@ -3,6 +3,7 @@ import { useWorkspace, validateEvidence } from '../../services/workspace';
 import { EvidenceList } from '../evidence/EvidenceList';
 import { conversationAnswerSources } from '../export/exportMarkdown';
 import { useEditorViewState } from '../editor/useEditorViewState';
+import { ResearchMaterialDetails } from '../ai/BoardResearchContext';
 import './cards.css';
 
 export function CardEditor({ cardId }: { cardId: string }) {
@@ -93,6 +94,7 @@ export function CardEditor({ cardId }: { cardId: string }) {
       {source && source.origin !== 'excerpts' && !hasPaperSource && <p className="card-unsourced">仅对话来源{card.needsReview ? ' · 待核查' : ''}</p>}
       {!hasPaperSource && research?.cardIds.includes(cardId) && <button className="primary" onClick={() => actions.findEvidence(cardId)}>找依据</button>}
       <EvidenceList evidenceIds={card.evidenceIds} target="inspector" heading="论文依据" snapshots={source?.context} />
+      {card.drawingOrigin && <section className="conversation-source" aria-label="绘图文字来源"><h3>绘图文字来源</h3><p className="muted">这是创建问题时保留的文字快照，原绘图仍独立保存。</p><blockquote>{card.drawingOrigin.text}</blockquote>{data.boards[card.drawingOrigin.boardId] ? <button className="text-button" onClick={() => actions.openResource({ kind: 'board', id: card.drawingOrigin!.boardId }, { scope: { kind: 'research', researchId: data.boards[card.drawingOrigin!.boardId].researchId }, target: 'main' })}>打开来源白板</button> : <p className="muted">来源白板已缺失，以上文字快照仍保留。</p>}</section>}
       {!!card.evidenceIds.length && <details className="card-manage-sources"><summary>管理依据</summary>{card.evidenceIds.map(id => <div className="button-row" key={id}><small>{data.evidence[id]?.quote.slice(0, 70) || '区域或失效摘录'}</small><button className="text-button" aria-label={`移除依据 ${id}`} onClick={() => actions.updateData(next => { next.cards[cardId].evidenceIds = next.cards[cardId].evidenceIds.filter(e => e !== id); next.cards[cardId].needsReview = true; })}>移除依据</button></div>)}</details>}
       {!card.evidenceIds.length && !source && (
         <p className="card-unsourced">
@@ -106,6 +108,8 @@ export function CardEditor({ cardId }: { cardId: string }) {
           <p className="muted">{source.createdAt}{source.model ? ` · ${source.model}` : ''}</p>
           {source.incomplete && <p className="card-unsourced">来源记录不完整，以下保留创建时的快照。</p>}
           <p>原始问题：{source.prompt}</p>
+          {source.derivedFrom && <p className="card-unsourced">AI 草稿 · 用户确认 · 待核查</p>}
+          <ResearchMaterialDetails items={source.materials ?? []} />
           <blockquote>{source.selection || source.answer}</blockquote>
           {!!answerSources.length && <div aria-label="原回答引用对照">
             <p className="muted">原回答引用对照：以下为原答的独立编号，不是卡片或结论的引用编号。</p>

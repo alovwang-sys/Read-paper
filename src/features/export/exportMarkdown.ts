@@ -1,6 +1,7 @@
 import type { CardProvenance, Draft, Evidence, WorkspaceData } from '../../domain/types';
 import { remapCitationNumbers } from '../../domain/citations';
 import { hasFullText } from '../../domain/knowledge';
+import { researchMaterialsMarkdown } from '../../domain/research';
 import { linkCard, validateEvidence } from '../../services/workspace';
 export { remapCitationNumbers } from '../../domain/citations';
 
@@ -142,6 +143,7 @@ export function exportMarkdown(data: WorkspaceData, draftId: string): string {
         ...(source.incomplete ? ['来源记录不完整，仅保留以上创建时快照。', ''] : []),
       );
       const answerSources = conversationAnswerSources(source);
+      if (source.materials?.length) lines.push('形成时的背景、卡片与来源摘要（与 PDF 原文依据分开）：', '', researchMaterialsMarkdown(source.materials), '');
       if (answerSources.length) {
         lines.push('原回答引用对照（独立编号，不是结论的引用编号）：', '');
         answerSources.forEach(({ number, evidenceId, snapshot }) => {

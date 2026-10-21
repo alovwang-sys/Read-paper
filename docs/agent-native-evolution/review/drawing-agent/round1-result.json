@@ -1,0 +1,99 @@
+{
+  "duration_api_ms": 21061,
+  "stop_reason": "end_turn",
+  "session_id": "7f53bf7c-803b-443a-aa20-3c512aa32ae9",
+  "total_cost_usd": 0.044064,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 1407,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 1640,
+    "output_tokens_details": {
+      "thinking_tokens": 1001
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1407,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1640,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 1407,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1407
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "modelUsage": {
+    "claude-opus-5-5": {
+      "inputTokens": 2,
+      "outputTokens": 1640,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 1407,
+      "webSearchRequests": 0,
+      "costUSD": 0.044064,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 1001,
+      "canonicalModel": "claude-opus-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "safety_stops": 0,
+  "is_error": false,
+  "num_turns": 1,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "## 建议\n\n**交互**\n选中任意部分后，浮动条只放一个\"问 Agent\"。点击后，选区作为引用块贴进底部唯一输入框，归属当前会话；用户补一句话再发送。不强制转卡片，也不跳到经典面板。\"继续研究\"只是同一句输入里的意图，不另设按钮或表单。\n\n**分阶段接入**\n1. **现在就能做**：把选区序列化成结构文本。\n   - 文字和图形标签直接带上。\n   - 已绑定的箭头写成\"用户标注：A →(标签) B\"。\n   - 关联的卡片或 PDF 只带 ID 和标题。\n   - 图片和笔迹只提示\"含 N 项未解析\"，不假装看懂。\n2. **之后再做**：研究运行接口新增选区快照字段，按适配器能力开启。Claude Code 目前 images=false，界面应如实标注\"当前模型未接图\"。\n\n**上下文**\n- 带：选区结构、关联卡片引用、本会话的局部目标。\n- 不自动带：整张画布、未选中的邻近元素、其他会话历史、图片和笔迹像素。\n- 箭头和图中文字一律标为\"用户的想法或假设\"，不当作论证或原文依据。\n\n**结果与权限**\n- 回答留在中间的当前会话里。引用必须经过真实读页验证。\n- 改图只给预览，用户确认后才写入画布。\n- 收录资料走旧局部研究里的 OpenAlex 候选确认。原生新研究工具还没联网，应明说\"暂不能检索\"。\n\n**最重要的反对意见**\n选区默认进入\"当前会话\"，但用户画图时，当前会话可能在讨论别的话题，会污染局部目标和历史。缓解办法：引用块上显示目标会话名，并支持一键改投到其他会话，不另开侧栏。",
+  "ttft_ms": 15084,
+  "type": "result",
+  "duration_ms": 21115,
+  "uuid": "fccab45c-b90e-4490-8c01-9d474ba904e5",
+  "ttft_stream_ms": 1483,
+  "time_to_request_ms": 50,
+  "first_content_frame_ms": 1483,
+  "queued_turn_count": 0,
+  "result_index": 0
+}

@@ -1,0 +1,41 @@
+{
+  "url": "http://127.0.0.1:5173/docs/whiteboard-research/prototype.html",
+  "checkedAt": "2026-10-20T13:18:19.012Z",
+  "checks": [
+    "Initial attached materials contain study question, board name and root card full text, without invented PDF evidence",
+    "First research action collapses hero/guidance; default guided history deduplicates previous plus recent root-focused turn (initial strategy, not optimized)",
+    "Real multi-turn message array: second request includes first completed exchange and deeply frozen material snapshot",
+    "Editing shared card does not rewrite old request material; old text remains visible in per-turn inspector",
+    "Closing and reopening panel restores draft and full message history",
+    "Clean branch resets only application payload/history, preserves root/draft/current materials and explicit runtime boundary; original discussion and branch both remain reachable",
+    "Find-existing-evidence is independent: frozen query/scope/read candidates, no attachment change before explicit join, and no native-permission pool in question payload",
+    "Search recommendation reads three fixed summaries; explicit candidate join works without library import and attaches only chosen summary in same root exploration",
+    "Library import does not attach summary; placed-paper Ask returns to placement root rather than creating a paper-root conversation",
+    "AI card retains root and explicit AI draft / user confirmed / unverified source label; paper attachment includes metadata/summary without relevance-model suggestions",
+    "Paper summary → confirmed AI card retains derivedFrom source/turn IDs; removing original summary visibly warns that derived content remains",
+    "A slow search remains frozen to A after switching to B; separate query/results/draft restore, and same literature reuses library entity across distinct root placements",
+    "History modes all / last / none / per-turn selection change actual request IDs and character count without deleting UI messages or old snapshots",
+    "1440x900: compact materials/history/find-existing-evidence controls, stable original question plus paper focus, single right panel, no body overflow",
+    "1280x800: compact materials/history/find-existing-evidence controls, stable original question plus paper focus, single right panel, no body overflow",
+    "1024x800: compact materials/history/find-existing-evidence controls, stable original question plus paper focus, single right panel, no body overflow",
+    "Empty/error/retry and sourced summary detail remain functional with per-discussion query preserved",
+    "Guided history selects previous completed plus most recent root-focused request, at most two; cancelling both background and root card removes description from direct payload while history warning remains",
+    "Automatic focus attachment replaces previous auto material; returning to root removes automatic summaries, explicit pin persists, uncheck prevents silent reattachment",
+    "No browser JavaScript errors in all checked paths"
+  ],
+  "screenshots": [
+    "immutable-snapshot-1440.png",
+    "basis-candidates-1440.png",
+    "derived-source-warning-1440.png",
+    "history-selection-1440.png",
+    "paper-focus-1440.png",
+    "paper-focus-1280.png",
+    "paper-focus-1024.png",
+    "materials-1440.png",
+    "turn-snapshot-1440.png",
+    "overview-1440.png"
+  ],
+  "pageErrors": [],
+  "limitations": "Design prototype: fixed examples, simulated responses and read lists, no real model/search/tools, no PDF/evidence, no file sandbox, no persistence; character count is not tokens.",
+  "status": "passed"
+}

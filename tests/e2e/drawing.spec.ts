@@ -12,14 +12,15 @@ const panel = (page: Page) => page.getByRole('complementary', { name: '参考面
 const drawing = (page: Page) => main(page).getByLabel('白板自由绘图', { exact: true });
 const canvas = (page: Page) => drawing(page).locator('canvas.interactive');
 const note = '核对相关性与适用边界';
+const shots = 'docs/verification/drawing-bindings/screenshots/regression';
 
 async function data(page: Page): Promise<WorkspaceData> {
-  return page.evaluate(async () => { const path = '/src/services/workspace.ts'; return (await import(path)).workspace.getState().data; });
+  return page.evaluate(async () => { const path = performance.getEntriesByType('resource').map(entry => entry.name).find(name => new URL(name).pathname === '/src/services/workspace.ts') ?? '/src/services/workspace.ts'; return (await import(path)).workspace.getState().data; });
 }
 
 async function readDrawing(page: Page) {
   return page.evaluate(async () => {
-    const workspacePath = '/src/services/workspace.ts', storagePath = '/src/data/storage.ts', drawingPath = '/src/domain/drawing.ts';
+    const workspacePath = performance.getEntriesByType('resource').map(entry => entry.name).find(name => new URL(name).pathname === '/src/services/workspace.ts') ?? '/src/services/workspace.ts', storagePath = '/src/data/storage.ts', drawingPath = '/src/domain/drawing.ts';
     const ref = (await import(workspacePath)).workspace.getState().data.boards['board-a'].drawing;
     if (!ref) return undefined;
     const storage = await import(storagePath), blob = await storage.getAsset(ref.assetId);
@@ -29,7 +30,9 @@ async function readDrawing(page: Page) {
 }
 
 async function start(page: Page, tree = false) {
+  await page.routeWebSocket('**', () => {});
   const seed = createSeed();
+  seed.agentWorkbench = false;
   seed.sessions['research-a'].active = { kind: 'board', id: 'board-a' };
   seed.sessions['research-a'].openItems = [{ kind: 'board', id: 'board-a' }];
   seed.sessions['research-a'].viewports['drawing:board-a'] = { x: 0, y: 0, scale: .75 };
@@ -233,12 +236,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
     await expect(page.locator('.project-file-compact')).toContainText('目录文件已更新');
-    await mkdir('docs/verification/drawing', { recursive: true });
-    await page.screenshot({ path: `docs/verification/drawing/board-${viewport.width}.png` });
+    await mkdir(shots, { recursive: true });
+    await page.screenshot({ path: `${shots}/board-${viewport.width}.png` });
     await openResource(page, 'document');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     expect((await readDrawing(page))!.ref).toEqual(saved.ref);
-    if (viewport.width === 1440) await page.screenshot({ path: 'docs/verification/drawing/board-source-1440.png' });
+    if (viewport.width === 1440) await page.screenshot({ path: `${shots}/board-source-1440.png` });
     expect(fixture.unexpected).toEqual([]);
   });
 }

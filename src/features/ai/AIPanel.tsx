@@ -30,6 +30,7 @@ import {
   getAIConfig,
   historyForConversation,
   originalRequestPrompt,
+  provenance,
   regenerateAI,
   resumeNativeRuns,
   retryAI,
@@ -56,6 +57,8 @@ import { ReportedChanges } from './ReportedChanges';
 import { SourceRecommendations } from './SourceRecommendations';
 import { BoardSkillPanel } from './BoardSkillPanel';
 import { BoardProposal } from './BoardProposal';
+import { BoardLiterature } from './BoardLiterature';
+import { BoardResearchControls, BoardResearchHeading, ResearchMaterialDetails, ResearchRequestDetails } from './BoardResearchContext';
 import { boardSuggestion } from '../../services/board-intent';
 import { reparseBoardProposal } from '../../services/board-skill';
 import {
@@ -67,23 +70,7 @@ import {
 import './ai.css';
 
 function toSource(request: AIRequest, title: string): CardProvenance {
-  return {
-    researchId: request.researchId,
-    conversationId: request.conversationId,
-    conversationTitle: title,
-    requestId: request.id,
-    prompt: originalRequestPrompt(request),
-    answer: request.body,
-    answerEvidenceIds: [...request.evidenceIds],
-    selection: '',
-    context: request.context,
-    createdAt: request.createdAt,
-    model: request.model,
-    ...(request.codex?.model ? { codexModel: request.codex.model } : {}),
-    connectionId: request.connectionId,
-    generationRequestIds: [],
-    incomplete: request.status !== 'done' || !!request.legacy || !!request.nativeImported,
-  };
+  return { ...provenance(request, ''), prompt: originalRequestPrompt(request), ...(request.codex?.model ? { codexModel: request.codex.model } : {}), conversationTitle: title, createdAt: request.createdAt, incomplete: request.status !== 'done' || !!request.legacy || !!request.nativeImported };
 }
 
 type SelectionIntent = {
@@ -140,9 +127,9 @@ export function AIPanel() {
   const connectionId = conversation ? conversationConnection(conversation) : 'model';
   const mode = connectionId === 'demo' ? 'demo' : 'live';
   const native = connectionId !== 'demo' && connectionId !== 'model';
-  const legacyNative = native && !!conversation?.nativeSessionId && !conversation.nativeSessionRef;
+  const legacyNative = native && !conversation?.boardResearch && !!conversation?.nativeSessionId && !conversation.nativeSessionRef;
   const managedActive = conversation?.requestIds.some(id => data.requests[id]?.nativeRun?.managed && data.requests[id].status === 'generating');
-  const nativeBlocked = native && !managedActive && (!!conversation?.nativeSessionRef && (conversation.nativeState === 'busy' || conversation.nativeCanResume !== true));
+  const nativeBlocked = native && !conversation?.boardResearch && !managedActive && (!!conversation?.nativeSessionRef && (conversation.nativeState === 'busy' || conversation.nativeCanResume !== true));
   const agent = agents.find(item => item.id === connectionId);
   const backgroundTasks = Object.values(data.requests).filter(request =>
     request.researchId === research?.id && request.conversationId !== conversation?.id && request.status === 'generating',
@@ -177,7 +164,7 @@ export function AIPanel() {
     !(connectionId === 'codex' ? codexSupportsImages(codexCatalog, conversation?.codex?.model) : native ? agent?.capabilities.images : config?.images);
   const canUseAgent =
     !generating &&
-    (!native || (directoryReady && !legacyNative && !nativeBlocked && !nativeRefreshError)) &&
+    (!native || (directoryReady && !legacyNative && !nativeBlocked && (!nativeRefreshError || !!conversation?.boardResearch))) &&
     (mode === 'demo' || (native ? agent?.state === 'ready' && !loadingAgents && !agentError : !!config?.configured && !configError)) &&
     !missingImages;
   const canSteer = !!prompt.trim() && !!generating?.nativeRun?.managed && !steeringBusy
@@ -258,7 +245,7 @@ export function AIPanel() {
       if (version !== nativeRefreshVersion.current) return;
       setDirectoryReady(!!directory);
       setDirectoryError('');
-      if (directory && conversation?.nativeSessionRef && !generating) await refreshProjectConversation(research.id, conversation.id);
+      if (directory && conversation?.nativeSessionRef && !conversation.boardResearch && !generating) await refreshProjectConversation(research.id, conversation.id);
       if (version === nativeRefreshVersion.current) setNativeRefreshError('');
     } catch (caught) {
       if (version !== nativeRefreshVersion.current) return;
@@ -464,6 +451,7 @@ export function AIPanel() {
         />
       </div>
     );
+  if (conversation.boardResearch?.view === 'literature') return <div className="reading-ai"><BoardLiterature key={conversation.id} conversationId={conversation.id} /></div>;
   const pendingRequest = intent && data.requests[intent.requestId];
   const paragraphs =
     pendingRequest?.body
@@ -539,7 +527,7 @@ export function AIPanel() {
           <span className="ai-connection-indicator" role="status"><span className="sr-only">{connectionStatus}</span></span>
           <AgentPicker current={connectionId} agents={agents} loading={loadingAgents} error={agentError} model={config?.model} configured={!!config?.configured && !configError} onSelect={switchAgent} onRefresh={() => { void loadAgents(); void loadConfig(); }} />
         </div>
-        {native && conversation.nativeSessionRef && <button className="icon-button ai-head-action" aria-label="刷新记录" title={conversation.nativeImported ? '刷新原生记录 · 包含原有对话上下文' : '刷新项目内原生会话'} disabled={refreshingNative || !!generating} onClick={() => void refreshNative()}><RefreshCw size={14} /></button>}
+        {native && conversation.nativeSessionRef && !conversation.boardResearch && <button className="icon-button ai-head-action" aria-label="刷新记录" title={conversation.nativeImported ? '刷新原生记录 · 包含原有对话上下文' : '刷新项目内原生会话'} disabled={refreshingNative || !!generating} onClick={() => void refreshNative()}><RefreshCw size={14} /></button>}
         <button
           className="text-button ai-head-action"
           aria-label="查看会话历史"
@@ -564,6 +552,7 @@ export function AIPanel() {
           <Plus size={18} />
         </button>
       </div>
+      {conversation.boardResearch && <BoardResearchHeading conversation={conversation} />}
       {!!backgroundTasks.length && <button className="ai-background-tasks" onClick={() => { rememberScroll(); updatePanel('history'); }}><span />{backgroundTasks.length} 个任务在其他对话运行 · 查看</button>}
       {native && !loadingAgents && (agentError || agent?.state !== 'ready') && <div className="ai-connection" role="status">
         <div className="ai-connection-header"><strong>{agent ? `${connectionLabel(connectionId)} · ${agentStateLabel[agent.state]}` : '本机助手未连接'}</strong><button className="text-button" onClick={() => void loadAgents()}><RefreshCw size={13} />重新连接助手</button></div>
@@ -672,17 +661,19 @@ export function AIPanel() {
               {request.legacy && <p className="ai-scope-notice">旧版保存记录：回答可能曾被编辑，无法保证是原始模型输出；不纳入前序对话。</p>}
               <details className="ai-turn-range">
                 <summary>
-                  {request.nativeImported ? '来自原生记录 · 原有材料未关联' : <>{request.connectionId && request.connectionId !== 'model' && request.connectionId !== 'demo' ? `${connectionLabel(request.connectionId)} · ` : ''}发送时：{request.context.length} 条材料 ·{' '}{request.history?.length ?? 0} 轮前序对话</>}
+                  {request.nativeImported ? '来自原生记录 · 原有材料未关联' : <>{request.connectionId && request.connectionId !== 'model' && request.connectionId !== 'demo' ? `${connectionLabel(request.connectionId)} · ` : ''}发送时：{request.context.length + (request.materials?.length ?? 0)} 条材料 ·{' '}{request.history?.length ?? 0} 轮前序对话</>}
                 </summary>
                 {request.nativeImported && <p>保留原始对话文本；附件、引用及压缩前的历史不一定包含在此记录中。原生会话可能仍使用此前上下文。</p>}
                 {request.connectionId === 'codex' && <div className="codex-request-settings"><span>{request.codex?.mode === 'plan' ? 'Plan' : 'Chat'} · {request.codex?.model || request.model || '连接默认模型'}{request.codex?.effort ? ` · ${request.codex.effort}` : ''}</span><span>权限：{request.codex?.access === 'full-access' ? '完全访问' : request.codex?.access === 'workspace-write' ? '项目内写入' : '只读'}</span>{!!request.skills?.length && <span>技能：{request.skills.map(skill => skill.name).join('、')}</span>}</div>}
                 <ContextDetails items={request.context} />
+                <ResearchRequestDetails request={request} />
                 {request.history?.map((turn, index) => (
                   <details className="ai-details" key={turn.requestId}>
                     <summary>
                       前序问答 {index + 1}：{turn.prompt}
                     </summary>
                     <MarkdownContent text={turn.sentBody ?? turn.body} />
+                    <ResearchMaterialDetails items={turn.materials ?? []} />
                     <ContextDetails
                       items={
                         turn.sentBody === undefined
@@ -955,7 +946,7 @@ export function AIPanel() {
         {nativeBlocked && <div className="ai-scope-notice" role="status"><strong>{conversation.nativeState === 'busy' ? '正在原生应用中运行' : '当前可查看记录，暂不能继续发送'}</strong><p>{conversation.nativeReason || (conversation.nativeState === 'busy' ? '任务完成后可在这里继续。当前输入已保留。' : '尚不能确认此会话可以安全续接，请刷新记录。')}</p><button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>刷新会话状态</button></div>}
         {nativeRefreshError && directoryReady && <p className="ai-error" role="status">{nativeRefreshError}<button className="text-button" disabled={refreshingNative} onClick={() => void refreshNative()}>重新读取记录</button></p>}
         {generating?.nativeRun?.managed && <p className="ai-footnote">“补充本轮”只发送文字，使用本轮已提交的材料与设置；未发送的文字会保留为草稿。</p>}
-        <details
+        {conversation.boardResearch ? <BoardResearchControls key={`research-controls-${conversation.id}`} conversation={conversation} disabled={!!generating} /> : <><details
           className="ai-materials"
         >
           <summary title="展开核对本轮材料与原文"><span>本轮材料 · {conversation.contextIds.length}</span>{conversation.contextIds.length > 0 && <span className="ai-material-preview">{data.documents[data.evidence[conversation.contextIds[0]]?.documentId]?.title ?? '来源缺失'}</span>}</summary>
@@ -1052,7 +1043,7 @@ export function AIPanel() {
           </details>
         )}
         <p className="ai-scope-description">{conversation.boardSkill ? '本次修改所选白板；发送后恢复普通对话。' : native ? '本次提交所选材料和历史；Agent 还可能使用累计会话内容及已授权的目录、工具。' : '只发送显式材料及所选历史，不自动发送整篇论文。'}</p>
-        </details>
+        </details></>}
         {scopeNotice && (
           <p className="ai-scope-notice" role="status">
             {scopeNotice}

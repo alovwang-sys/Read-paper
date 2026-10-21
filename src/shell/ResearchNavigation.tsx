@@ -6,7 +6,7 @@ import { useWorkspace } from '../services/workspace';
 import { ResourceOrderControls, useResearchResourceOrder } from '../ui/ResourceOrderControls';
 import './research-navigation.css';
 
-const views = [
+export const researchViews = [
   { id: 'home', name: '研究主页', icon: Home },
   { id: 'sources', name: '资料', icon: BookOpen, group: '阅读' },
   { id: 'excerpts', name: '摘录', icon: FileText },
@@ -57,7 +57,7 @@ function ResourceSection({ researchId, active, onNavigate, onOpen, id }: Props &
 
 export function ResearchNavigation(props: Props) {
   return <nav className="research-nav research-hierarchy" aria-label="研究内导航">
-    {views.map(view => view.id === 'boards' || view.id === 'drafts' ? <ResourceSection key={view.id} {...props} id={view.id}/> : <div key={view.id}>
+    {researchViews.map(view => view.id === 'boards' || view.id === 'drafts' ? <ResourceSection key={view.id} {...props} id={view.id}/> : <div key={view.id}>
       {'group' in view && <div className="sidebar-section-label">{view.group}</div>}
       <button className={`nav-item ${props.active.kind === 'researchView' && props.active.id === view.id ? 'active' : ''}`} onClick={() => props.onNavigate(view.id)}><view.icon size={16}/>{view.name}</button>
     </div>)}

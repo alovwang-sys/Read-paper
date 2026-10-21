@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-21",
+  "purpose": "Baseline for expanded UI discussion; source code must remain unchanged in this design-only turn",
+  "files": [
+    {
+      "path": "docs/agent-native-evolution/README.md",
+      "sha256": "dcd92c1580d946f4b0afb79b4cf7bf83394f38c0660198e30d435b0d16d42454",
+      "characters": 4829
+    },
+    {
+      "path": "docs/agent-native-evolution/review/claude-round2-response.md",
+      "sha256": "1852ecbd0c619916d0055215f3ca4d8fe76d12df9b8570a9d6f27240f051236d",
+      "characters": 2601
+    },
+    {
+      "path": "src/shell/App.tsx",
+      "sha256": "2c7d4b8862919581ef5ca3e04e8db052788c5f2b836337c6047a2e27d97af93d",
+      "characters": 29843
+    },
+    {
+      "path": "src/features/board/BoardView.tsx",
+      "sha256": "b242cc72868ca9895521e505d69e8a9db63ab5bfd10bb4309a40dea51df49c38",
+      "characters": 38955
+    },
+    {
+      "path": "src/features/board/BoardDrawing.tsx",
+      "sha256": "fb1eb1b9b3df273bc433afc210e10812a92638967ec47ea042917d48322df819",
+      "characters": 26730
+    },
+    {
+      "path": "src/features/ai/AIPanel.tsx",
+      "sha256": "2332c344c2a3599582f442159b126297e4d80e87920ea119fe655247eaaf5324",
+      "characters": 54742
+    }
+  ],
+  "actualScreenshotsViewed": [
+    "docs/verification/ai-space-expanded/chat-1440.png",
+    "docs/references/heptabase/03-board-and-ai.png"
+  ],
+  "reviewerImageAccess": false
+}

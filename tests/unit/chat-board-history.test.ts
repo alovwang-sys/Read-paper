@@ -9,6 +9,7 @@ import { createWorkspaceBackup, readWorkspaceBackup, type BackupAsset } from '..
 import { researchFileData } from '../../src/services/project-files';
 import { workspace } from '../../src/services/workspace';
 import { paneGroups } from '../../src/services/panes';
+import { openBoardResearch } from '../../src/services/board-research';
 
 vi.mock('../../src/data/storage', async importOriginal => ({ ...await importOriginal<object>(), loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn() }));
 const data = () => workspace.getState().data;
@@ -85,6 +86,29 @@ describe('对话创建白板的事务与撤销', () => {
     expect(boardChanges(data(), context.boardId)).toHaveLength(1); expect(data().requests.create.boardApplyError).toBeUndefined();
   });
 
+  it('对话生成白板卡片也保留当前及所选历史的摘要快照和派生出处', async () => {
+    request();
+    workspace.updateData(next => {
+      const material = { id: 'abstract:current', kind: 'abstract' as const, title: '当前题录', text: '当前来源摘要', version: 'v1', url: 'https://example.org/current', derivedFrom: { sourceIds: ['abstract:ancestor'], requestIds: ['ancestor-request'] } };
+      const historical = { ...material, id: 'abstract:history', title: '历史题录', text: '提交时历史摘要', derivedFrom: undefined };
+      next.requests.create.materials = [material];
+      next.requests.create.history = [{ requestId: 'history-request', prompt: '此前问题', body: '此前回答', evidenceIds: [], context: [], materials: [historical] }];
+    });
+    const changeId = await applyBoardProposal('create');
+    const created = data().boardChanges![changeId].createdCards!;
+    for (const card of created) {
+      expect(card.provenance?.materials?.map(item => item.id)).toEqual(['abstract:history', 'abstract:current']);
+      expect(card.provenance?.context).toEqual(data().requests.create.context);
+      expect(card.provenance?.derivedFrom?.sourceIds).toEqual(expect.arrayContaining(['evidence:evidence-a', 'abstract:history', 'abstract:current', 'abstract:ancestor']));
+      expect(card.provenance?.derivedFrom?.requestIds).toEqual(expect.arrayContaining(['create', 'history-request', 'ancestor-request']));
+    }
+    workspace.updateData(next => { next.requests.create.materials![0].text = '后来修改的摘要'; });
+    expect(data().cards[created[0].id].provenance?.materials?.[1].text).toBe('当前来源摘要');
+    const backup = await readWorkspaceBackup(await createWorkspaceBackup(data(), assets));
+    expect(backup.data.cards[created[0].id].provenance).toEqual(created[0].provenance);
+    expect(backup.data.boardChanges![changeId].createdCards).toEqual(created);
+  });
+
   it('撤销清理各会话入口及未复用卡片，档案可备份、导出、刷新和恢复', async () => {
     const { context } = request(); const creationId = await applyBoardProposal('create');
     const cards = data().boardChanges![creationId].createdCards!, cardId = cards[0].id;
@@ -121,7 +145,7 @@ describe('对话创建白板的事务与撤销', () => {
     await readWorkspaceBackup(await createWorkspaceBackup(data(), assets));
   });
 
-  it.each(['edit', 'other-research', 'other-board', 'draft', 'historical-board'])('撤销保留已%s的卡片', async kind => {
+  it.each(['edit', 'other-research', 'other-board', 'draft', 'historical-board', 'local-discussion'])('撤销保留已%s的卡片', async kind => {
     request(); const creationId = await applyBoardProposal('create'), card = data().boardChanges![creationId].createdCards![0];
     workspace.updateData(next => {
       if (kind === 'edit') next.cards[card.id].body += '人工编辑';
@@ -130,6 +154,10 @@ describe('对话创建白板的事务与撤销', () => {
       if (kind === 'draft') next.drafts['draft-a'].cardRefs = [{ cardId: card.id, insertedAt: new Date().toISOString() }];
     });
     if (kind === 'historical-board') workspace.updateData(next => { delete next.placements.reuse; });
+    if (kind === 'local-discussion') {
+      const placement = Object.values(data().placements).find(item => item.resourceRef.kind === 'card' && item.resourceRef.id === card.id)!;
+      openBoardResearch({ boardId: placement.boardId, placementIds: [placement.id], mode: 'ask' });
+    }
     const preserved = structuredClone(data().cards[card.id]); await undoBoardCreation('create'); expect(data().cards[card.id]).toEqual(preserved);
     await readWorkspaceBackup(await createWorkspaceBackup(data(), assets));
   });

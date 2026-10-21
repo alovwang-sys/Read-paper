@@ -22,6 +22,8 @@ import { useWorkspace } from '../../services/workspace';
 import { connectionLabel } from '../../services/agents';
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { hasOriginalDocument } from '../ai/SourceDetails';
+import { placeResearchCard } from '../../services/board-research';
+import { ResearchMaterialDetails } from '../ai/BoardResearchContext';
 
 export function CardDraftEditor({
   draftId,
@@ -278,6 +280,7 @@ export function CardDraftEditor({
             <em>{draft.source.origin === 'excerpts' ? '查看起草时的摘录快照' : `查看原始问答${draft.source.selection ? '与整理片段' : ''}`} →</em>
           </button>
         </div>
+        {!!draft.source.materials?.length && <section aria-label="形成卡片的材料"><h4>形成时材料 · 非 PDF 原文</h4><ResearchMaterialDetails items={draft.source.materials} /></section>}
         {!saved && (
           <section className="ai-revision" aria-label="AI 修订卡片">
             <h4>
@@ -404,6 +407,10 @@ export function CardDraftEditor({
             <button className="primary" onClick={onBack}>
               继续对话
             </button>
+            {data.conversations[draft.conversationId]?.boardResearch && draft.cardId && <button className="button" disabled={Object.values(data.placements).some(p => p.researchConversationId === draft.conversationId && p.resourceRef.kind === 'card' && p.resourceRef.id === draft.cardId)} onClick={() => execute(() => {
+              placeResearchCard(draft.conversationId, draft.cardId!);
+              actions.notice('已放回原问题旁，资料库中的卡片保持同一份。');
+            })}>放回问题旁</button>}
           </>
         ) : (
           <>

@@ -4,6 +4,8 @@ import { createSeed } from '../../src/data/seed';
 import { getAsset } from '../../src/data/storage';
 import { buildResearchFiles, researchFileData } from '../../src/services/project-files';
 import { captureBoardContext, recordBoardChanges } from '../../src/domain/board-history';
+import type { CardProvenance, LiteratureCandidate, ResearchMaterial } from '../../src/domain/types';
+import { drawingPng, drawingQuestionFixture } from '../fixtures/drawing-question';
 const digest = (bytes: ArrayBuffer | Uint8Array) => createHash('sha256').update(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)).digest('hex');
 vi.mock('../../src/data/storage', () => ({ getAsset: vi.fn(), contentHash: async (bytes: ArrayBuffer) => createHash('sha256').update(new Uint8Array(bytes)).digest('hex') }));
 const pdf = new Blob(['%PDF-1.4\nsynthetic fixture\n%%EOF'], { type: 'application/pdf' });
@@ -18,6 +20,58 @@ async function drawingAsset(source: string, image = false) {
 
 beforeEach(() => { vi.mocked(getAsset).mockReset().mockResolvedValue(pdf); });
 describe('研究目录的完整可读文件集', () => {
+  it('归档本研究待发送与已发送绘图图片和结构，隔离其他研究', async () => {
+    const seed = createSeed(), question = await drawingQuestionFixture();
+    const pdfHash = digest(await pdf.arrayBuffer());
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = pdfHash; });
+    seed.conversations['conversation-research-a'].drawingQuestion = question;
+    vi.mocked(getAsset).mockImplementation(async id => id === question.snapshot.image.assetId ? drawingPng : pdf);
+    const { files } = await buildResearchFiles(seed, 'research-a');
+    const map = Object.fromEntries(files.map(file => [file.path, file]));
+    const path = `images/${question.snapshot.image.assetId}.png`;
+    expect(Buffer.from(map[path].content, 'base64')).toEqual(Buffer.from(await drawingPng.arrayBuffer()));
+    expect(map['sessions/conversation-research-a.md'].content).toContain(`(../${path})`);
+    expect(map['sessions/conversation-research-a.md'].content).toContain(question.snapshot.elements[0].text);
+    const other = await buildResearchFiles(seed, 'research-b');
+    expect(other.files.some(file => file.path === path)).toBe(false);
+  });
+  it('发现题录、非 PDF 材料及 AI 形成来源进入可读目录和 JSON，保持研究隔离且不伪造页码', async () => {
+    const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
+    const candidate: LiteratureCandidate = { id: 'openalex-W9002', provider: 'openalex', providerId: 'W9002', title: '题录归档测试', authors: ['Fixture Author'], url: 'https://example.org/archive', abstract: '只看过来源摘要。', pdfUrl: 'https://example.org/archive.pdf', retrievedAt: '2026-10-20T10:00:00.000Z', documentId: 'paper-stub' };
+    seed.documents['paper-stub'].discovery = structuredClone(candidate);
+    const material: ResearchMaterial = { id: candidate.id, kind: 'abstract', title: candidate.title, text: candidate.abstract!, version: 'source-v1', provider: candidate.provider, providerId: candidate.providerId, url: candidate.url, retrievedAt: candidate.retrievedAt };
+    const source: CardProvenance = { researchId: 'research-a', conversationId: 'conversation-research-a', conversationTitle: '摘要形成的理解', requestId: 'source-request', prompt: '摘要说明了什么？', answer: 'AI 暂时理解', selection: 'AI 暂时理解', context: [], createdAt: candidate.retrievedAt, generationRequestIds: [], materials: [material], derivedFrom: { sourceIds: [material.id], requestIds: ['source-request'] } };
+    const conversation = seed.conversations['conversation-research-a'];
+    conversation.input = '还未发送的追问';
+    conversation.boardResearch = { origin: { boardId: 'board-a', rootPlacementId: 'placement-a', rootTitle: '局部问题' }, focus: [{ kind: 'document', id: 'paper-stub' }], automatic: [material], pinned: [], includeBackground: false, excludedSourceIds: [], literatureQuery: 'archive fixture' };
+    conversation.literatureSearches = [{ id: 'archive-batch', researchId: 'research-a', conversationId: conversation.id, boardId: 'board-a', rootPlacementId: 'placement-a', rootTitle: '局部问题', query: 'archive fixture', createdAt: candidate.retrievedAt, status: 'done', candidates: [candidate] }];
+    conversation.requestIds = ['source-request'];
+    seed.requests['source-request'] = { id: 'source-request', researchId: 'research-a', conversationId: conversation.id, prompt: source.prompt, body: source.answer, status: 'done', createdAt: source.createdAt, context: [], history: [], evidenceIds: [], materials: [structuredClone(material)] };
+    seed.cards['card-unverified'].provenance = structuredClone(source);
+    seed.cardDrafts['archive-draft'] = { id: 'archive-draft', researchId: 'research-a', conversationId: conversation.id, title: '草稿标题', body: '手改草稿', evidenceIds: [], needsReview: true, revision: 2, status: 'editing', source: structuredClone(source) };
+    seed.conversations['conversation-research-b'].input = '另一研究的私有检索想法';
+    const { files } = await buildResearchFiles(seed, 'research-a'), map = Object.fromEntries(files.map(file => [file.path, file]));
+    const saved = JSON.parse(map['research.json'].content).entities;
+    expect(saved.conversations[conversation.id].boardResearch).toEqual(conversation.boardResearch);
+    expect(saved.conversations[conversation.id].literatureSearches).toEqual(conversation.literatureSearches);
+    expect(saved.documents['paper-stub'].discovery).toEqual(candidate);
+    expect(saved.cardDrafts['archive-draft']).toEqual(seed.cardDrafts['archive-draft']);
+    expect(map['library/paper-stub.pdf']).toBeUndefined();
+    for (const path of ['library/paper-stub.md', 'cards/card-unverified.md', `sessions/${conversation.id}.md`]) {
+      expect(map[path].content).toContain(candidate.abstract);
+      expect(map[path].content).toContain(candidate.url);
+      expect(map[path].content).not.toMatch(/PDF 第 \d+ 页/);
+    }
+    expect(map['library/paper-stub.md'].content).toContain('文件尚未获取');
+    expect(map['cards/card-unverified.md'].content).toContain('形成过程');
+    expect(map['cards/card-unverified.md'].content).toContain('AI 暂时理解');
+    expect(map[`sessions/${conversation.id}.md`].content).toContain('非 PDF 原文证据');
+    expect(map[`sessions/${conversation.id}.md`].content).toContain('archive fixture');
+    expect(map[`sessions/${conversation.id}.md`].content).toContain('还未发送的追问');
+    expect(JSON.stringify(files)).not.toContain('另一研究的私有检索想法');
+  });
+
   it('导出本研究当前、历史及请求场景为独立excalidraw文件，保留图片和索引且隔离其他研究', async () => {
     const seed = createSeed(), historical = await drawingAsset('historical', true), current = await drawingAsset('current'), requested = await drawingAsset('requested'), privateScene = await drawingAsset('研究B私有绘图');
     Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = digest(new TextEncoder().encode('%PDF-1.4\nsynthetic fixture\n%%EOF')); });

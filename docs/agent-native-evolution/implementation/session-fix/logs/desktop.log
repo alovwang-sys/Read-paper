@@ -1,0 +1,28 @@
+
+> read-paper@0.1.2 test:desktop
+> node --test desktop/*.test.mjs
+
+✔ desktop server uses an isolated random loopback port and private token for config and streaming (350.167958ms)
+✔ unconfigured desktop server stays in demo mode and tokens differ for every start (2.667417ms)
+✔ stop aborts a pending upstream, destroys an unfinished client connection, and closes the listener (4.092541ms)
+✔ stop cancels an active stream and resolves after its reader is released (5.62375ms)
+✔ invalid settings are rejected before a socket can listen, without leaking configuration values (0.807459ms)
+✔ 生产协议仅服务dist与设置文件，阻止路径穿越和未知接口 (164.159875ms)
+✔ AI代理只注入主进程token，不转发Origin/任意头且保留流式与取消 (0.6725ms)
+✔ 桌面原生助手与项目接口按路径和方法逐项放行，未知接口不进入本机服务 (4.190917ms)
+✔ 安装包白名单排除.env、真实材料、测试和Git文件 (0.679167ms)
+✔ 生产服务的相对模块依赖都包含在安装包中 (9.074292ms)
+✔ 仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝 (0.3635ms)
+✔ 模型设置只返回安全字段，持久化加密密钥且空输入保留原密钥 (192.512833ms)
+✔ 无安全加密或无效连接时拒绝保存，已有设置不变 (29.6545ms)
+✔ 非法密钥不能覆盖已经保存的配置和加密文件 (17.533875ms)
+✔ 合法密钥裁剪外围空白，空输入沿用且重启可以恢复 (37.580791ms)
+✔ 历史文件中的非法密钥被拒绝且原文件保留，重新配置后恢复 (26.009ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 601.309458

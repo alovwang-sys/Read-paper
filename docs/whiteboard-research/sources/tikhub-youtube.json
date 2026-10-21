@@ -1,0 +1,222 @@
+{
+  "code": 200,
+  "request_id": "e4a5f9bd-ae61-453f-8d89-25e8d0b2eb48",
+  "time": "2026-10-20 04:55:49",
+  "time_stamp": 1792497349,
+  "time_zone": "America/Los_Angeles",
+  "router": "/api/v1/youtube/web_v2/get_general_search_v2",
+  "params": {
+    "keyword": "Heptabase AI whiteboard research"
+  },
+  "scope": {
+    "platform": "youtube",
+    "tool": "youtube_web_v2_get_general_search_v2",
+    "data_calls": 1,
+    "pages_read": 1,
+    "video_count": 18,
+    "comments_read": false,
+    "transcripts_read": false,
+    "videos_watched": false
+  },
+  "videos": [
+    {
+      "video_id": "WyWembI9vwc",
+      "title": "Heptabase – Whiteboards, Cards & AI Research",
+      "author": "QUASA",
+      "channel_id": "UCdeIe_YA-fzzp0bMf_pHwyg",
+      "url": "https://www.youtube.com/watch?v=WyWembI9vwc",
+      "published_time": "1 month ago",
+      "view_count": "472 views",
+      "duration": "7:13",
+      "description_snippet": "Heptabase is a visual knowledge base for students, researchers, and lifelong learners. Instead of burying notes in long ..."
+    },
+    {
+      "video_id": "V-pIhjjARRE",
+      "title": "Heptabase Assessment: Visual Thinking Platform for Academics (2026)",
+      "author": "YourTechGuru",
+      "channel_id": "UCSNPNe6E2EL2iDSg_DDA6iQ",
+      "url": "https://www.youtube.com/watch?v=V-pIhjjARRE",
+      "published_time": "3 months ago",
+      "view_count": "242 views",
+      "duration": "2:25",
+      "description_snippet": "In this video we take a look at Heptabase, highlighting its visual whiteboard space, nested card mechanics, and tabular PDF ..."
+    },
+    {
+      "video_id": "BsB7Hr6bFHc",
+      "title": "Organize Your Entire Knowledge Base with AI | Heptabase",
+      "author": "Heptabase",
+      "channel_id": "UCmrDDITcv3a6b37cS-tyuiw",
+      "url": "https://www.youtube.com/watch?v=BsB7Hr6bFHc",
+      "published_time": "2 months ago",
+      "view_count": "2,900 views",
+      "duration": "7:37",
+      "description_snippet": "In this video, I'm going to show you how you can set up an AI agent in Heptabase that helps you organize your sources, your ..."
+    },
+    {
+      "video_id": "HgvR2QkfwG0",
+      "title": "Heptabase Fundamentals 101: Sense-making with whiteboards",
+      "author": "Heptabase",
+      "channel_id": "UCmrDDITcv3a6b37cS-tyuiw",
+      "url": "https://www.youtube.com/watch?v=HgvR2QkfwG0",
+      "published_time": "2 years ago",
+      "view_count": "100,305 views",
+      "duration": "27:56",
+      "description_snippet": "Intro & Basic Operations 0:00 - Backstory of Heptabase 1:20 - Getting Started 2:04 - Creating a Card on the Whiteboard 2:41 ..."
+    },
+    {
+      "video_id": "bUiyX0B-QvY",
+      "title": "Organizing inside of Heptabase whiteboards",
+      "author": "DPA",
+      "channel_id": "UCAFlCmAJU5IxfEwYEaiCFHA",
+      "url": "https://www.youtube.com/watch?v=bUiyX0B-QvY",
+      "published_time": "3 years ago",
+      "view_count": "547 views",
+      "duration": "5:53",
+      "description_snippet": "Today we are back into the heptabase world and I am showing you how you could organize your research and whiteboards inside ..."
+    },
+    {
+      "video_id": "fr41g6o8qEA",
+      "title": "This NEW Heptabase Update Is INSANE!",
+      "author": "Goldie SEO",
+      "channel_id": "UC6erWloKMgYhU--VvMA5ZJQ",
+      "url": "https://www.youtube.com/watch?v=fr41g6o8qEA",
+      "published_time": "10 months ago",
+      "view_count": "540 views",
+      "duration": "5:18",
+      "description_snippet": "Want to make money and save time with AI? Join here: https://juliangoldieai.com/7ktM03."
+    },
+    {
+      "video_id": "yrQtxNWxT1Y",
+      "title": "Complete Guide to Heptabase: Features, Costs, and Actual Use",
+      "author": "Ed - Video Editing",
+      "channel_id": "UC049Fxq_q9v6qkocs5--2xA",
+      "url": "https://www.youtube.com/watch?v=yrQtxNWxT1Y",
+      "published_time": "1 year ago",
+      "view_count": "416 views",
+      "duration": "2:09",
+      "description_snippet": "Complete guide to mastering Heptabase: explore all its features, analyze its costs, and learn how to use it in study, work, ..."
+    },
+    {
+      "video_id": "UDHKmQhPOWw",
+      "title": "Upgrade How You Read with AI Skills | Heptabase",
+      "author": "Heptabase",
+      "channel_id": "UCmrDDITcv3a6b37cS-tyuiw",
+      "url": "https://www.youtube.com/watch?v=UDHKmQhPOWw",
+      "published_time": "2 months ago",
+      "view_count": "2,319 views",
+      "duration": "8:14",
+      "description_snippet": "In this video, I'm going to demonstrate how you can create and use skills in Heptabase. So what is a skill? A skill is a predefined ..."
+    },
+    {
+      "video_id": "WZPaK6n54rY",
+      "title": "Heptabase, Obsidian, Scrintal: I ran the same PDFs through all three.",
+      "author": "ICOR with Tom | AI Productivity",
+      "channel_id": "UC8qxhdxV0U2NQ9vinFffDJQ",
+      "url": "https://www.youtube.com/watch?v=WZPaK6n54rY",
+      "published_time": "8 months ago",
+      "view_count": "2,826 views",
+      "duration": "8:28",
+      "description_snippet": "My full note-taking setup, from capture to retrieval. ✨ Join us for free ..."
+    },
+    {
+      "video_id": "yhoIphkx70Y",
+      "title": "Honest Review of Heptabase | Heptabase Visual Note-Taking Review | Heptabase Whiteboard App Review",
+      "author": "Guide Guru",
+      "channel_id": "UCjiuhwbMhjRp6Lugdq_rk2g",
+      "url": "https://www.youtube.com/watch?v=yhoIphkx70Y",
+      "published_time": "11 months ago",
+      "view_count": "32 views",
+      "duration": "1:39",
+      "description_snippet": "An honest review of Heptabase: Is this visual note-taking and personal knowledge management (PKM) tool worth the subscription ..."
+    },
+    {
+      "video_id": "GFiM6hnlkgQ",
+      "title": "The Ultimate AI Tutor You Wish You Had | Heptabase",
+      "author": "Heptabase",
+      "channel_id": "UCmrDDITcv3a6b37cS-tyuiw",
+      "url": "https://www.youtube.com/watch?v=GFiM6hnlkgQ",
+      "published_time": "6 months ago",
+      "view_count": "8,807 views",
+      "duration": "2:02",
+      "description_snippet": ""
+    },
+    {
+      "video_id": "RX7fZnfn0Yk",
+      "title": "Heptabase killed NotebookLM and Mem (Best AI Note-Taking App 2026)",
+      "author": "ICOR with Tom | AI Productivity",
+      "channel_id": "UC8qxhdxV0U2NQ9vinFffDJQ",
+      "url": "https://www.youtube.com/watch?v=RX7fZnfn0Yk",
+      "published_time": "9 months ago",
+      "view_count": "10,925 views",
+      "duration": "15:45",
+      "description_snippet": "I tested this in my own workflow. Here's what happened. ✨ Join us for free ..."
+    },
+    {
+      "video_id": "N7T09wAE4Uo",
+      "title": "This NEW Heptabase Update Is INSANE!",
+      "author": "Julian Goldie SEO",
+      "channel_id": "UCGpsgNbzdF7BECCVbB1COHw",
+      "url": "https://www.youtube.com/watch?v=N7T09wAE4Uo",
+      "published_time": "10 months ago",
+      "view_count": "3,755 views",
+      "duration": "10:04",
+      "description_snippet": "Want to make money and save time with AI? Join here: https://www.skool.com/ai-profit-lab-7462/about Get a FREE AI Course + ..."
+    },
+    {
+      "video_id": "oH193pvWVGk",
+      "title": "Comparing Obsidian and Heptabase for Note-Taking and Whiteboarding",
+      "author": "ICOR with Tom | AI Productivity",
+      "channel_id": "UC8qxhdxV0U2NQ9vinFffDJQ",
+      "url": "https://www.youtube.com/watch?v=oH193pvWVGk",
+      "published_time": "1 year ago",
+      "view_count": "7,338 views",
+      "duration": "15:39",
+      "description_snippet": "My full note-taking setup, from capture to retrieval. I show you how I organize knowledge so nothing gets lost. For professionals ..."
+    },
+    {
+      "video_id": "zlGRxZHlDgM",
+      "title": "Heptabase Fundamentals 102: Organizing topics with nested whiteboards and tab groups",
+      "author": "Heptabase",
+      "channel_id": "UCmrDDITcv3a6b37cS-tyuiw",
+      "url": "https://www.youtube.com/watch?v=zlGRxZHlDgM",
+      "published_time": "2 years ago",
+      "view_count": "33,814 views",
+      "duration": "28:39",
+      "description_snippet": "Intro & Basic Operations 0:00 - Introduction 0:43 - Recap: Card Library 1:45 - Create a nested whiteboard 2:34 - Creating a link to ..."
+    },
+    {
+      "video_id": "Q30bxWFZmJc",
+      "title": "It Was There All This Time: Heptabase Web Viewer",
+      "author": "Antone Heyward",
+      "channel_id": "UC9w43btR2UUsfR6ZUf3AlqQ",
+      "url": "https://www.youtube.com/watch?v=Q30bxWFZmJc",
+      "published_time": "10 months ago",
+      "view_count": "385 views",
+      "duration": "2:06",
+      "description_snippet": "productivity #pkm #noteey #ai #heptabase More of my content: https://achlnks.com/QghkA ☕ Buy Me A Coffee ..."
+    },
+    {
+      "video_id": "RZIAtPztVlw",
+      "title": "Heptabase's AI has just killed NotebookLM and Mem 2.0.",
+      "author": "ICOR with Tom & Paco",
+      "channel_id": "UC0_naOKMdcD9pMETrMFxiDw",
+      "url": "https://www.youtube.com/watch?v=RZIAtPztVlw",
+      "published_time": "9 months ago",
+      "view_count": "3,590 views",
+      "duration": "30:47",
+      "description_snippet": "Watch Tom's comparison between Heptabase and NotebookLM AI https://youtu.be/RX7fZnfn0Yk Join myICOR for FREE: ..."
+    },
+    {
+      "video_id": "_7VuSJgjMM4",
+      "title": "IT'S FINALLY HERE! Heptabase AI Chat",
+      "author": "Antone Heyward",
+      "channel_id": "UC9w43btR2UUsfR6ZUf3AlqQ",
+      "url": "https://www.youtube.com/watch?v=_7VuSJgjMM4",
+      "published_time": "1 year ago",
+      "view_count": "1,120 views",
+      "duration": "15:55",
+      "description_snippet": "productivity #pkm #heptabase I'm on Substack. https://achlnks.com/yDdaF ☕ Buy Me A Coffee ..."
+    }
+  ],
+  "continuation_token": "EtUDEiBIZXB0YWJhc2UgQUkgd2hpdGVib2FyZCByZXNlYXJjaBqwA1NCU0NBUXRYZVZkbGJXSkpPWFozWTRJQkMxWXRjRWxvYW1wQlVsSkZnZ0VMUW5OQ04waHlObUpHU0dPQ0FRdElaM1pTTWxGclpuZEhNSUlCR0ZWRGJYSkVSRWxVWTNZellUWmlNemRqVXkxMGVYVnBkNElCQzJKVmFYbFlNRUl0VVhaWmdnRUxabkkwTVdjMmJ6aHhSVUdDQVF0NWNsRjBlRTVYZUZReFdZSUJDMVZFU0V0dFVXaFFUMWQzZ2dFTFYxcFFZVXMyYmpVMGNsbUNBUXQ1YUc5SmNHaHJlRGN3V1lJQkMwZEdhVTAyYUc1c2EyZFJnZ0VMVWxnM1pscHVabTR3V1d1Q0FRdE9OMVF3T1hkQlJUUlZiNElCQzI5SU1Ua3pjSFpYVmtkcmdnRUxlbXhIVW5oYVNHeEVaMDJDQVF0Uk16QmllRmRHV20xS1k0SUJHRlZEWVVFeWNHNDRaSHByYkRORGFHaFdOR2RYYkUxVGQ0SUJDMUphU1VGMFVIcDBWbXgzZ2dFTFh6ZFdkVk5LWjJwTlRUU3lBUVlLQkFnV0VBTHFBUVFJQWhBWhiB4OgYIgtzZWFyY2gtZmVlZA%3D%3D"
+}

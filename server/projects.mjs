@@ -392,7 +392,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       if (!(await lstat(parent)).isDirectory() || (await lstat(parent)).isSymbolicLink()) throw fail(400, 'invalid_project', '研究材料目录不可用，未覆盖已有文件。');
       const directory = join(parent, digest(request.requestId));
       await mkdir(directory, { mode: 0o700 });
-      const materials = request.context.map((item, index) => `## [${index + 1}] ${item.title}\nevidenceId: ${item.evidenceId}\ndocumentId: ${item.documentId}\ndocumentHash: ${item.documentHash}\nPDF 第 ${item.pageIndex + 1} 页\n\n${item.quote}`).join('\n\n');
+      const materials = [request.context.map((item, index) => `## [${index + 1}] ${item.title}\nevidenceId: ${item.evidenceId}\ndocumentId: ${item.documentId}\ndocumentHash: ${item.documentHash}\nPDF 第 ${item.pageIndex + 1} 页\n\n${item.quote}`).join('\n\n'), ...(request.materials ?? []).map(item => `## ${item.kind}：${item.title}\n来源标识：${item.id}\n内容版本：${item.version}${item.url ? `\n来源链接：${item.url}` : ''}\n\n${item.text}\n\n非 PDF 材料，不能作为原文页码引用。`)].filter(Boolean).join('\n\n');
       await writeFile(join(directory, 'materials.md'), materials || '本次未发送论文材料。', { mode: 0o400 });
       await writeFile(join(directory, 'manifest.json'), JSON.stringify(imageRequestManifest(request), null, 2), { mode: 0o400 });
       await writeRegionImages(directory, request.images);

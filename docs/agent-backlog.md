@@ -2,6 +2,20 @@
 
 2026-10-20 增量：Excalidraw 绘图模式与绘图资产持久化、历史、备份、项目文件集成；右侧 AI 顶部、材料、范围及输入工具紧凑布局。保留最新 main 的多窗格、原生连续会话、输入并发修复与研究导图。集成验收见[记录](verification/main-integration/README.md)。
 
+2026-10-21 [自绘内容问 Agent](agent-native-evolution/implementation/drawing-agent/README.md)首切片：用户确认实施后已接局部图片、所选结构与卡片正文、当前会话、发送前预览、真实 Codex localImage、显式文字模式、不可变重试及持久化／备份／目录归档。真实图像冒烟和受控浏览器分别记录；按图 OpenAlex 检索、其他助手图片研究工具和通用改图执行器仍待实施，不把首切片通过记为全体功能完成。
+
+2026-10-21 绘图连接增量：已补普通箭头与透明图形内部的绑定、斜向连接和跨布局移动的跟随，修正研究浮层遮挡及绘图关系计数误导；连接与原有绘图路径的实际检查见[验收记录](verification/drawing-bindings/README.md)。不扩展语义关系模型或自动连接旧自由线条。
+
+2026-10-21 第一版实施：新增 [Agent 工作台](agent-native-evolution/implementation/README.md)，复用现有资料与编辑器、中间完整当前会话、底部唯一输入、右侧多会话列表、显式局部追问和可审阅文稿修订。Codex 已接本研究目录／读页／引用草稿工具；其他连接保留原能力，不宣称已接研究工具。可切回经典工作台，旧功能与数据保留；完整混合画布、Claude/OpenCode 研究工具和自动全文获取仍未交付。实际检查以实施目录记录为准。
+
+2026-10-21 会话修复：一个研究包含多段独立会话，每段保留自己的多轮记录、输入、局部目标和滚动；共享成果不改变发送会话。新建／切换、原文参考、刷新与迟到结果已完成浏览器验收，见[多会话修复](agent-native-evolution/implementation/session-fix/README.md)。
+
+2026-10-21 方向重审：用户要求以 AI Agent 推进研究并做减法，累计完成[Claude Code 六轮真实讨论](agent-native-evolution/review/README.md)。[具体 UI 方案](agent-native-evolution/ui-spec.md)与[独立原型](agent-native-evolution/prototype.html)明确单主工作面、唯一输入、临时参考及原文返回；未改正式产品或删除资料。首切片必须同时实现这套可见主路径与“一句委托→范围内取证→成果直接留存→一句修订”的真实工具闭环，撤下分类搬运。原型模拟、模型设计意见与生产验收分别记录；旧任务状态继续描述当前实现，不自动启动本提案。
+
+2026-10-20 用户确认继续后，[白板局部研究](whiteboard-research/README.md)已实施 BR0–BR3：统一上下文与原问题契约、两模式局部入口、真实 OpenAlex 检索及候选收录／摆放／继续讨论。BR4 的单元、服务端、真实供应商、PDF 连续路径和三尺寸结果按证据分项记录于[实施验收](whiteboard-research/verification/implementation/README.md)，不将原型或单个供应商冒烟当作全部效果证明。任务和剩余边界见[开发计划](whiteboard-research/development-plan.md)，未推进其他提案或发布版本。
+
+2026-10-20 根据用户再次反馈完成 AI 纵向空间第二轮收敛：合并顶栏、单行输入工具、按需展开权限/材料/白板工具，保留请求与上下文行为。实际范围及三尺寸结果见[本轮验收](verification/ai-space-expanded/README.md)。
+
 2026-10-16 用户扩展交付范围至 macOS / Windows 安装应用。桌面切片沿用现有工作台，新增 Electron 宿主、自动本地 AI 服务与加密连接设置、退出保存、完整备份迁移和 GitHub CI / 草稿 Release 流程。代码与已运行验证分开记录于 [桌面验收](verification/desktop/README.md)；三目标 CI、真实安装与签名状态以该记录为准，不能仅因存在工作流而标记通过。后续功能继续采用短分支 + PR，桌面版本由 main 上的版本标签交付，不设长期 macOS / Windows 分支。
 
 本清单将 [产品规划](product-plan.md) 转成可分配、可集成、可验收的开发任务。首版实际使用 React / TypeScript / Vite / PDF.js，沿用以下模块边界。

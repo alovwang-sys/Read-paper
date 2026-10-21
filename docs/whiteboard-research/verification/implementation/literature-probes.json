@@ -1,0 +1,154 @@
+{
+  "checkedAt": "2026-10-20T13:55:10.695Z",
+  "provider": "openalex",
+  "endpoint": "GET https://api.openalex.org/works",
+  "searchQueries": [
+    {
+      "query": "retrieval augmented generation",
+      "status": "done",
+      "count": 10,
+      "withAbstract": 8,
+      "withPublicPDF": 7,
+      "warnings": [
+        "3 条文献缺少部分作者、年份、DOI 或摘要；未补写缺失信息。"
+      ],
+      "exampleIdentifiers": [
+        {
+          "providerId": "W4410705984",
+          "doi": "10.2139/ssrn.5267341",
+          "url": "https://doi.org/10.2139/ssrn.5267341"
+        },
+        {
+          "providerId": "W4389519118",
+          "doi": "10.18653/v1/2023.emnlp-main.495",
+          "url": "https://doi.org/10.18653/v1/2023.emnlp-main.495"
+        }
+      ]
+    },
+    {
+      "query": "retrieval augmented generation survey",
+      "status": "done",
+      "count": 10,
+      "withAbstract": 9,
+      "withPublicPDF": 6,
+      "warnings": [
+        "1 条文献缺少部分作者、年份、DOI 或摘要；未补写缺失信息。"
+      ],
+      "exampleIdentifiers": [
+        {
+          "providerId": "W4416379250",
+          "doi": "10.1145/3777378",
+          "url": "https://doi.org/10.1145/3777378"
+        },
+        {
+          "providerId": "W4226069413",
+          "doi": "10.48550/arxiv.2202.01110",
+          "url": "https://openalex.org/W4226069413"
+        }
+      ]
+    }
+  ],
+  "gatewayResponses": [
+    {
+      "status": 200
+    },
+    {
+      "status": 200
+    }
+  ],
+  "uiChecks": {
+    "isolatedBrowserContext": true,
+    "clickedBoardEntry": true,
+    "pinDoesNotSend": true,
+    "importDoesNotPlace": true,
+    "placeNearOriginalQuestion": true,
+    "candidateDiscussionKeepsOriginalQuestion": true,
+    "oldBatchSelection": true,
+    "refreshRestoresBatchAndScroll": true,
+    "viewportWidths": [
+      1440,
+      1280,
+      1024
+    ],
+    "pageErrors": []
+  },
+  "limitations": [
+    "AI config and agent-list endpoints were stubbed to avoid model calls; literature gateway and OpenAlex were real.",
+    "No PDF download or model answer was attempted.",
+    "A returned OpenAlex abstract field can contain bibliographic text instead of a clean author abstract."
+  ],
+  "officialDocumentation": [
+    "https://help.openalex.org/api/authentication/",
+    "https://help.openalex.org/api/searching/",
+    "https://help.openalex.org/data/works/attributes/",
+    "https://help.openalex.org/data/locations/",
+    "https://help.openalex.org/access/example-costs/",
+    "https://help.openalex.org/api/filtering/",
+    "https://help.openalex.org/how-to/api-recipes/"
+  ],
+  "screenshots": [
+    "literature-1440.png",
+    "literature-1280.png",
+    "literature-1024.png"
+  ],
+  "yearFilterProbe": {
+    "checkedAt": "2026-10-20T14:10:05.412Z",
+    "keyConfigured": false,
+    "query": "retrieval augmented generation",
+    "yearFrom": 2023,
+    "yearTo": 2023,
+    "upstreamFilter": "publication_year:2023-2023",
+    "httpStatus": 200,
+    "count": 10,
+    "returnedYears": [
+      2023
+    ],
+    "allResultsWithinInclusiveRange": true,
+    "examples": [
+      {
+        "providerId": "W4389519118",
+        "title": "Active Retrieval Augmented Generation",
+        "year": 2023,
+        "doi": "10.18653/v1/2023.emnlp-main.495",
+        "url": "https://doi.org/10.18653/v1/2023.emnlp-main.495"
+      },
+      {
+        "providerId": "W4389984066",
+        "title": "Retrieval-Augmented Generation for Large Language Models: A Survey",
+        "year": 2023,
+        "doi": "10.48550/arxiv.2312.10997",
+        "url": "https://openalex.org/W4389984066"
+      }
+    ]
+  },
+  "yearControlUI": {
+    "checkedAt": "2026-10-20T14:11:44.308Z",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "isolatedBrowserContext": true,
+    "literatureResponses": "3 controlled fixture responses; no real API calls in this UI increment",
+    "invalidYearDoesNotPersist": true,
+    "reversedDraftDoesNotSearch": true,
+    "suggestionsDoNotSend": true,
+    "currentPaperTitleOnlyReplacesEditableQuery": true,
+    "retryKeepsOriginalYearBounds": true,
+    "noHorizontalPanelOverflow": true,
+    "screenshot": "literature-controls-1440.png"
+  },
+  "yearFilterChecks": {
+    "server": {
+      "command": "node --test server/literature.test.mjs",
+      "passed": 12
+    },
+    "client": {
+      "command": "npm test -- --run tests/unit/literature.test.ts",
+      "passed": 7
+    },
+    "typescript": {
+      "command": "npm run check",
+      "passed": true
+    }
+  }
+}

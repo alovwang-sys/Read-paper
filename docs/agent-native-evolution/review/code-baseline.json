@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-21",
+  "method": "Read-only inspection by root and explorer; no implementation or runtime behavior test in this review",
+  "findings": [
+    {
+      "claim": "Six research navigation entries and three reference-panel modes are active.",
+      "locations": [
+        "src/shell/App.tsx:56",
+        "src/shell/App.tsx:64",
+        "src/shell/App.tsx:461"
+      ]
+    },
+    {
+      "claim": "Paper search is a separately submitted form; candidate discussion/import/placement actions are separate.",
+      "locations": [
+        "src/features/ai/BoardLiterature.tsx:67",
+        "src/features/ai/BoardLiterature.tsx:91"
+      ]
+    },
+    {
+      "claim": "Card and drawing modes conditionally render two work surfaces; shared cards are shown in drawing but free drawing stays hidden in card layout.",
+      "locations": [
+        "src/features/board/BoardView.tsx:452",
+        "src/features/board/BoardView.tsx:686",
+        "src/features/board/BoardDrawing.tsx:335"
+      ]
+    },
+    {
+      "claim": "There are existing chat board proposals and shared services; a general research tool execution loop is not delivered by those feature buttons.",
+      "locations": [
+        "src/services/ai.ts",
+        "src/services/board-research.ts",
+        "server/agents.mjs"
+      ]
+    },
+    {
+      "claim": "Existing workbench navigation redesign remains a proposal, not implemented behavior.",
+      "locations": [
+        "docs/knowledge-flow/workbench-redesign.md:3"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "src/shell/App.tsx",
+      "lines": 714
+    },
+    {
+      "path": "src/features/reader/PdfReader.tsx",
+      "lines": 965
+    },
+    {
+      "path": "src/features/ai/AIPanel.tsx",
+      "lines": 1214
+    },
+    {
+      "path": "src/features/ai/BoardLiterature.tsx",
+      "lines": 122
+    },
+    {
+      "path": "src/features/board/BoardView.tsx",
+      "lines": 1101
+    },
+    {
+      "path": "src/features/board/BoardDrawing.tsx",
+      "lines": 415
+    },
+    {
+      "path": "src/services/ai.ts",
+      "lines": 600
+    },
+    {
+      "path": "src/services/board-research.ts",
+      "lines": 280
+    },
+    {
+      "path": "server/agents.mjs",
+      "lines": 459
+    }
+  ]
+}

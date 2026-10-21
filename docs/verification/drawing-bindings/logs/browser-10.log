@@ -1,0 +1,18 @@
+
+Running 10 tests using 1 worker
+
+(node:27036) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/10] tests/e2e/drawing-binding-rules.spec.ts:3:1 › 内部吸附遵守实际形状、锁定和本次手势，保留已有连接与几何
+[2/10] tests/e2e/drawing-binding-rules.spec.ts:41:1 › 共享摆放平移保留端点、手调中间点与连接，双方同移时整条平移
+[3/10] tests/e2e/drawing-bindings.spec.ts:98:1 › 卡片与论文可和手绘矩形双向连线，移动跟随、刷新、删除与撤销保留共享资料
+[4/10] tests/e2e/drawing-bindings.spec.ts:139:1 › 真实画箭头：卡片与手绘矩形的边框及内部均建立绑定
+[5/10] tests/e2e/drawing-bindings.spec.ts:185:1 › 在卡片布局移动后回到绘图，绑定端点跟随同一份摆放数据
+[6/10] tests/e2e/drawing-bindings.spec.ts:211:1 › 连线白板与 AI 输入、右侧原文在三个尺寸可达且无横向溢出
+[7/10] tests/e2e/drawing.spec.ts:101:1 › 真实手绘、文字与共享资料共存，切换布局、研究和刷新后恢复并保留绘图历史
+[8/10] tests/e2e/drawing.spec.ts:150:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1440
+[9/10] tests/e2e/drawing.spec.ts:150:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1280
+[10/10] tests/e2e/drawing.spec.ts:150:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1024
+  10 passed (1.0m)

@@ -10,8 +10,8 @@ export function canWriteClipboard({ contents, mainContents, permission, details,
 }
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.pdf': 'application/pdf', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.wasm': 'application/wasm' };
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'";
-const readableAPI = new Set(['/api/ai/config', '/api/ai/agents', '/api/ai/agents/codex/capabilities']);
-const writableAPI = new Set(['/api/ai/chat', '/api/sources/resolve', '/api/sources/pdf', '/api/ai/agents/run', '/api/ai/agents/observe', '/api/ai/agents/control', '/api/ai/agents/respond', '/api/ai/agents/stop',
+const readableAPI = new Set(['/api/ai/config', '/api/ai/agents', '/api/ai/agents/codex/capabilities', '/api/ai/research/capabilities']);
+const writableAPI = new Set(['/api/ai/chat', '/api/sources/resolve', '/api/sources/pdf', '/api/ai/agents/run', '/api/ai/agents/observe', '/api/ai/agents/control', '/api/ai/agents/respond', '/api/ai/agents/stop', '/api/ai/research/run', '/api/ai/literature/search',
   ...['browse', 'preview', 'bind', 'status', 'list', 'read', 'defaults', 'sync'].map(action => `/api/ai/agents/projects/${action}`)]);
 
 export function createAppProtocol({ distDirectory, desktopDirectory, getAI, fetchImpl = fetch }) {

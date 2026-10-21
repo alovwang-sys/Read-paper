@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-20",
+  "clientTimezone": "Asia/Shanghai",
+  "cli": "Claude Code",
+  "cliVersion": "2.1.281",
+  "toolsEnabled": false,
+  "customizationsDisabled": true,
+  "sessionPersistence": false,
+  "initialAuthenticationAttempt": {
+    "date": "2026-10-20",
+    "clientTimezone": "Asia/Shanghai",
+    "cli": "Claude Code",
+    "cliVersion": "2.1.281",
+    "cliReviewAttempts": 1,
+    "toolsEnabled": false,
+    "customizationsDisabled": true,
+    "sessionPersistence": false,
+    "exitCode": 1,
+    "is_error": true,
+    "result": "Not logged in · Please run /login",
+    "modelUsage": {},
+    "reviewReceived": false
+  },
+  "review": {
+    "exitCode": 0,
+    "is_error": false,
+    "models": [
+      "claude-sonnet-5-5"
+    ],
+    "num_turns": 1,
+    "reviewReceived": true,
+    "inputSha256": "60786ab87592e27d87759482868382c6b73a96e521942930362e83c1fa7daa74",
+    "resultFile": "claude-code-review.md"
+  },
+  "followup": {
+    "status": "received",
+    "inputSha256": "a6f7c7bbdbf7d4a283d34e2e1363561c3edc753c455f74f39b6e64baa3e6f5a7",
+    "exitCode": 0,
+    "is_error": false,
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "num_turns": 1,
+    "reviewReceived": true
+  }
+}
