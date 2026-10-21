@@ -1,3 +1,4 @@
+import { useClassicWorkbench } from './helpers';
 import { expect, test, _electron, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -87,6 +88,7 @@ test('打包桌面真实绘图与中文文字离线可用，字体本地加载�
     });
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect(main(page)).toBeVisible();
+    await useClassicWorkbench(page);
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
     expect(page.url()).toBe('papertrail://app/');
     return page;
