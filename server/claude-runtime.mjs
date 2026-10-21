@@ -219,7 +219,7 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
         if (installed.code !== 0) throw runtimeError('Claude Code 版本检测失败。');
         version = installed.output.trim().slice(0, 100);
         const help = await invoke(['--help'], { signal, timeoutMs: 10_000 });
-        if (help.code !== 0 || ['--safe-mode', '--restricted', '--tools', '--strict-mcp-config', '--permission-prompts', '--include-partial-messages'].some((flag) => !help.output.includes(flag))) {
+        if (help.code !== 0 || ['--safe-mode', '--tools', '--strict-mcp-config', '--permission-prompts', '--include-partial-messages'].some((flag) => !help.output.includes(flag))) {
           return status({ state: 'error', version, detail: '此 Claude Code 版本缺少安全隔离或流式协议参数，请升级后重新检测。' });
         }
         const auth = await invoke(['auth', 'status', '--json'], { signal, timeoutMs: 10_000 });
@@ -238,7 +238,8 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
       let streamed = '';
       let model;
       let result;
-      const args = ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--safe-mode', '--restricted', '--disable-slash-commands', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--permission-mode', 'dontAsk', '--permission-prompts', 'none'];
+      // Restricted mode ignores native connection settings; safe mode and empty tools/MCP retain the text-only boundary.
+      const args = ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--safe-mode', '--disable-slash-commands', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--permission-mode', 'dontAsk', '--permission-prompts', 'none'];
       if (nativeSessionId) args.push('--resume', nativeSessionId);
       const response = await invoke(args, { cwd, input: prompt, signal, onLine(line) {
         const event = JSON.parse(line);

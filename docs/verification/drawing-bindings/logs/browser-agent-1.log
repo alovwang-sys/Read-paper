@@ -1,0 +1,9 @@
+
+Running 1 test using 1 worker
+
+(node:27701) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] tests/e2e/drawing-bindings.spec.ts:243:1 › Agent 工作台中绘图绑定与右侧原文共存，三个尺寸保留唯一研究输入和发送入口
+  1 passed (6.1s)

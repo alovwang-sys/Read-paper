@@ -6,8 +6,9 @@ import { ensurePaneLayout, paneGroups, syncPaneSession } from '../../src/service
 import { contentHash } from '../../src/data/storage';
 import { hasFullText } from '../../src/domain/knowledge';
 import { captureBoardContext, recordBoardChanges } from '../../src/domain/board-history';
-import type { CardProvenance, ContextSnapshot, RegionSource } from '../../src/domain/types';
+import type { CardProvenance, ContextSnapshot, LiteratureCandidate, RegionSource, ResearchMaterial, WorkspaceData } from '../../src/domain/types';
 import { createWorkspaceBackup, MAX_BACKUP_BYTES, MAX_BACKUP_ENTRY_BYTES, readWorkspaceBackup, type BackupAsset } from '../../src/services/backup';
+import { drawingPng, drawingQuestionFixture } from '../fixtures/drawing-question';
 
 async function fixture() {
   const data = createSeed();
@@ -49,9 +50,63 @@ async function editWorkspace(blob: Blob, edit: (data: ReturnType<typeof createSe
   return new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>]);
 }
 
+function boardResearchFixture(data: WorkspaceData) {
+  const candidate: LiteratureCandidate = { id: 'openalex-W9001', provider: 'openalex', providerId: 'W9001', title: '摘要来源测试文献', authors: ['Fixture Author'], year: 2026, doi: '10.9999/fixture', url: 'https://example.org/fixture', abstract: '仅来源摘要，不是 PDF 原文。', pdfUrl: 'https://example.org/fixture.pdf', retrievedAt: '2026-10-20T09:00:00.000Z', documentId: 'paper-stub' };
+  data.documents['paper-stub'].discovery = structuredClone(candidate);
+  const material: ResearchMaterial = { id: candidate.id, kind: 'abstract', title: candidate.title, text: candidate.abstract!, version: 'abstract-frozen-v1', provider: candidate.provider, providerId: candidate.providerId, url: candidate.url, retrievedAt: candidate.retrievedAt };
+  const note: ResearchMaterial = { id: 'card:card-a', kind: 'card_note', title: '创建时卡片', text: '创建时的卡片正文', version: 'card-frozen-v1', resourceRef: { kind: 'card', id: 'card-a' }, derivedFrom: { sourceIds: [candidate.id], requestIds: ['typed-request'] } };
+  const background: ResearchMaterial = { id: 'background:board-a', kind: 'background', title: '研究目标', text: '这轮为何研究这个问题', version: 'background-v1' };
+  const conversation = data.conversations['conversation-research-a'];
+  const origin = { boardId: 'board-a', rootPlacementId: 'placement-a', rootRef: { kind: 'card' as const, id: 'card-a' }, rootTitle: '研究起点' };
+  conversation.input = '还没发送的追问';
+  conversation.historyRange = 'selected';
+  conversation.historyRequestIds = ['typed-request'];
+  conversation.boardResearch = { origin, focus: [{ kind: 'document', id: 'paper-stub' }], automatic: [material], pinned: [note], excludedSourceIds: ['evidence:evidence-a'], includeBackground: true, view: 'literature', literatureQuery: 'retrieval fixture', literatureBatchId: 'batch-fixture', literatureScrollTop: 177 };
+  conversation.literatureSearches = [{ id: 'batch-fixture', researchId: conversation.researchId, conversationId: conversation.id, boardId: origin.boardId, rootPlacementId: origin.rootPlacementId, rootTitle: origin.rootTitle, query: 'retrieval fixture', createdAt: candidate.retrievedAt, status: 'done', candidates: [candidate], warnings: ['元数据不完整'], partial: true }];
+  const source: CardProvenance = { researchId: conversation.researchId, conversationId: conversation.id, conversationTitle: '局部研究', requestId: 'typed-request', prompt: '比较摘要和卡片', answer: 'AI 草稿解释', selection: 'AI 草稿解释', context: [], createdAt: candidate.retrievedAt, generationRequestIds: [], materials: [background, material, note], derivedFrom: { sourceIds: [material.id, note.id], requestIds: ['typed-request'] } };
+  data.requests['typed-request'] = { id: 'typed-request', researchId: conversation.researchId, conversationId: conversation.id, prompt: source.prompt, body: source.answer, context: [], evidenceIds: [], status: 'done', createdAt: source.createdAt, materials: structuredClone(source.materials), boardResearch: { ...origin, focus: structuredClone(conversation.boardResearch.focus) }, history: [{ requestId: 'older-frozen', prompt: '前一问', body: '前一轮解释', evidenceIds: [], context: [], materials: [structuredClone(material)] }] };
+  conversation.requestIds = ['typed-request'];
+  data.cards['card-unverified'].provenance = structuredClone(source);
+  data.cardDrafts['typed-draft'] = { id: 'typed-draft', researchId: conversation.researchId, conversationId: conversation.id, title: '手改标题', body: '尚未确认的草稿正文', evidenceIds: [], needsReview: true, status: 'editing', revision: 4, source: structuredClone(source) };
+  data.sessions['research-a'].boardQuestionDrafts = { 'board-a': { title: '未创建的问题', body: '未创建的问题正文' } };
+  return { candidate, material, source, conversation };
+}
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('完整工作区备份', () => {
+  it('局部问题、焦点、分类型材料、检索记录和两类草稿经 ZIP 完整保留，摘要不要求 PDF 资产', async () => {
+    const { data, assets } = await fixture();
+    const { conversation } = boardResearchFixture(data);
+    const before = structuredClone(data);
+    const restored = await readWorkspaceBackup(await createWorkspaceBackup(data, assets));
+    expect(data).toEqual(before);
+    expect(restored.data).toEqual(migrateWorkspace(before));
+    expect(restored.data.conversations[conversation.id].boardResearch).toEqual(conversation.boardResearch);
+    expect(restored.data.conversations[conversation.id].literatureSearches).toEqual(conversation.literatureSearches);
+    expect(restored.data.requests['typed-request'].materials).toEqual(data.requests['typed-request'].materials);
+    expect(restored.data.requests['typed-request'].history![0].materials).toEqual(data.requests['typed-request'].history![0].materials);
+    expect(restored.data.cardDrafts['typed-draft']).toEqual(data.cardDrafts['typed-draft']);
+    expect(restored.data.sessions['research-a'].boardQuestionDrafts).toEqual(data.sessions['research-a'].boardQuestionDrafts);
+    expect(restored.data.documents['paper-stub'].assetId).toBeUndefined();
+    expect(restored.assets).toHaveLength(assets.length);
+  });
+
+  it.each(['search-research', 'search-board', 'source-url', 'pdf-url', 'material-url'])('即使重算 ZIP 清单，也拒绝跨研究或可执行的局部研究来源：%s', async problem => {
+    const { data, assets } = await fixture();
+    boardResearchFixture(data);
+    const backup = await createWorkspaceBackup(data, assets);
+    const broken = await editWorkspace(backup, value => {
+      const conversation = value.conversations['conversation-research-a'], batch = conversation.literatureSearches![0];
+      if (problem === 'search-research') batch.researchId = 'research-b';
+      if (problem === 'search-board') batch.boardId = 'board-b';
+      if (problem === 'source-url') batch.candidates[0].url = 'javascript:alert(1)';
+      if (problem === 'pdf-url') value.documents['paper-stub'].discovery!.pdfUrl = 'javascript:alert(1)';
+      if (problem === 'material-url') conversation.boardResearch!.pinned[0].url = 'javascript:alert(1)';
+    });
+    await expect(readWorkspaceBackup(broken)).rejects.toThrow();
+  });
+
   it('绘图、内嵌图片及仅由历史和请求快照引用的场景完整往返，缺失场景拒绝备份和恢复', async () => {
     const { data, assets } = await fixture();
     const historical = await drawingAsset('historical', true), current = await drawingAsset('current'), requested = await drawingAsset('requested');
@@ -405,4 +460,53 @@ it('拒绝备份恢复中的跨范围页面和带凭据的来源预览', async (
   library.tabs.pop();
   library.tabs.push({ id: 'unsafe-preview', ref: { kind: 'sourcePreview', id: 'preview-only' }, preview: { candidate: { kind: 'paper', url: 'https://user:secret@example.org/paper', title: 'invalid' } } });
   expect(() => migrateWorkspace(data)).toThrow(/归属/);
+});
+
+describe('多会话草稿与追问目标备份', () => {
+  it('保留待发送及历史绘图和真实PNG，源白板删除后仍可恢复', async () => {
+    const { data, assets } = await fixture(), question = await drawingQuestionFixture();
+    const conversation = data.conversations['conversation-research-a'];
+    conversation.drawingQuestion = question;
+    data.requests['drawing-turn'] = { id: 'drawing-turn', researchId: conversation.researchId, conversationId: conversation.id, prompt: '问图', body: '回答', status: 'done', context: [], evidenceIds: [], createdAt: question.snapshot.createdAt, researchRun: { drawingQuestion: structuredClone(question) } };
+    conversation.requestIds.push('drawing-turn');
+    question.snapshot.boardId = 'deleted-board';
+    // A frozen historical source need not still be present; its content must match its hash.
+    const { drawingSnapshotContent } = await import('../../src/domain/drawing-question');
+    question.snapshot.hash = await contentHash(new TextEncoder().encode(drawingSnapshotContent(question.snapshot)).buffer);
+    assets.push({ id: question.snapshot.image.assetId, blob: drawingPng });
+    const restored = await readWorkspaceBackup(await createWorkspaceBackup(data, assets));
+    expect(restored.data.conversations[conversation.id].drawingQuestion).toEqual(question);
+    expect(restored.data.requests['drawing-turn'].researchRun?.drawingQuestion?.snapshot.boardId).toBe('board-a');
+    const image = restored.assets.find(asset => asset.id === question.snapshot.image.assetId)!;
+    expect(await image.blob.arrayBuffer()).toEqual(await drawingPng.arrayBuffer());
+    conversation.drawingQuestion!.snapshot.elements[0].text = '被篡改的上下文';
+    await expect(createWorkspaceBackup(data, assets)).rejects.toThrow('快照 hash');
+  });
+  it('拒绝缺失、尺寸伪造或超预算绘图，不静默丢弃附件', async () => {
+    const { data, assets } = await fixture(), question = await drawingQuestionFixture();
+    data.conversations['conversation-research-a'].drawingQuestion = question;
+    await expect(createWorkspaceBackup(data, assets)).rejects.toThrow('缺少绘图');
+    assets.push({ id: question.snapshot.image.assetId, blob: drawingPng });
+    question.snapshot.image.width = 200;
+    const { drawingSnapshotContent } = await import('../../src/domain/drawing-question');
+    question.snapshot.hash = await contentHash(new TextEncoder().encode(drawingSnapshotContent(question.snapshot)).buffer);
+    await expect(createWorkspaceBackup(data, assets)).rejects.toThrow('损坏');
+    question.snapshot.elements[0].text = 'x'.repeat(12001);
+    expect(() => migrateWorkspace(data)).toThrow('快照损坏');
+  });
+  it('保留会话自身输入、焦点和阅读位置，拒绝跨研究的待发送目标', async () => {
+    const { data, assets } = await fixture();
+    const conversation = data.conversations['conversation-research-a'];
+    conversation.input = 'A的未发送纠正';
+    conversation.researchFocus = { ref: { kind: 'card', id: 'card-a' }, title: '局部目标', body: '不串到B' };
+    conversation.researchScrollTop = 127;
+    const blob = await createWorkspaceBackup(data, assets);
+    const restored = await readWorkspaceBackup(blob);
+    expect(restored.data.conversations[conversation.id].researchFocus).toEqual(conversation.researchFocus);
+    expect(restored.data.conversations[conversation.id].researchScrollTop).toBe(127);
+    expect(restored.data.conversations[conversation.id].input).toBe('A的未发送纠正');
+    expect(restored.data.conversations['conversation-research-b'].researchFocus).toBeUndefined();
+    conversation.researchFocus = { ref: { kind: 'research', id: 'research-b' }, title: '跨研究', body: '' };
+    await expect(createWorkspaceBackup(data, assets)).rejects.toThrow('跨研究');
+  });
 });

@@ -87,6 +87,8 @@ test('保存失败后关闭资源、切换研究、切换面板和刷新恢复�
 });
 
 test('不支持的存储版本加载失败后不覆盖已有数据', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-status',
     'saved',
@@ -144,6 +146,7 @@ test('不支持的存储版本加载失败后不覆盖已有数据', async ({ pa
     schemaVersion: 999,
     originalUserData: 'must survive',
   });
+  expect(pageErrors).toEqual([]);
 });
 
 test('1024px 导航抽屉、右侧关闭、键盘搜索均可操作', async ({ page }) => {

@@ -276,7 +276,7 @@ export const workspace = {
         if (candidate && typeof candidate.schemaVersion === 'number' && candidate.schemaVersion > 3) throw new Error('存储版本不受支持，未覆盖现有数据。请使用创建这些数据的新版应用。');
       }
       const saved = journal ? JSON.parse(journal) : database?.schemaVersion === 3 ? database : oldJournal ? JSON.parse(oldJournal) : database;
-      const migrated = saved && (saved.schemaVersion < 3 || Object.values(saved.sessions ?? {}).some(session => !(session as Session).layout?.version));
+      const migrated = saved && (saved.schemaVersion < 3 || Object.values(saved.sessions ?? {}).some(session => (!(session as Session).layout?.version || (session as Session).agentFocus !== undefined)));
       const interrupted = saved && (Object.values(saved.requests ?? {}).some(request => (request as { status?: string }).status === 'generating') || Object.values(saved.cardDrafts ?? {}).some(draft => (draft as { status?: string }).status === 'generating') || Object.values(saved.documents ?? {}).some(doc => (doc as { acquisition?: { status?: string } }).acquisition?.status === 'fetching'));
       if (migrated) await saveMigrationBackup({ database, recovery: journal ?? oldJournal });
       const data = migrateWorkspace(saved ?? createSeed());
@@ -816,25 +816,26 @@ export const workspace = {
     const conversationId = workspace.createConversation(id);
     return state.data.conversations[conversationId];
   },
-  createConversation(researchId: string): string {
+  createConversation(researchId: string, options?: { surface: 'workbench' }): string {
     const id = uid('conversation');
     workspace.updateData(data => {
       if (!data.researches[researchId]) throw new Error('研究不存在。');
       const current = getActiveConversation(data, researchId);
-      const connectionId = current?.connectionId ?? (data.sessions[researchId].panel.aiMode === 'demo' ? 'demo' : 'model');
+      const connectionId = current?.connectionId ?? (options?.surface === 'workbench' ? 'codex' : data.sessions[researchId].panel.aiMode === 'demo' ? 'demo' : 'model');
       data.conversations[id] = { id, researchId, connectionId, title: '新的阅读对话', contextIds: [], requestIds: [], input: '', historyRange: 'all', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       data.sessions[researchId].activeConversationId = id;
-      data.sessions[researchId].panel.aiView = 'chat';
+      data.sessions[researchId].panel.aiView = options?.surface === 'workbench' ? 'history' : 'chat';
     });
     return id;
   },
-  selectConversation(researchId: string, conversationId: string) {
+  selectConversation(researchId: string, conversationId: string, options?: { surface: 'workbench' }) {
     workspace.updateData(data => {
       const conversation = data.conversations[conversationId];
       if (!conversation || conversation.researchId !== researchId) throw new Error('会话不属于该研究。');
-      conversation.connectionId ??= conversation.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1)?.mode === 'demo' ? 'demo' : 'model';
+      const last = conversation.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1);
+      conversation.connectionId ??= last?.connectionId ?? (last?.mode === 'demo' ? 'demo' : options?.surface === 'workbench' && !last ? 'codex' : 'model');
       data.sessions[researchId].activeConversationId = conversationId;
-      data.sessions[researchId].panel.aiView = 'chat';
+      data.sessions[researchId].panel.aiView = options?.surface === 'workbench' ? 'history' : 'chat';
       data.sessions[researchId].panel.aiMode = conversation.connectionId === 'demo' ? 'demo' : 'live';
     });
   },
@@ -1122,6 +1123,7 @@ export const workspace = {
       conversation.contextIds = [
         ...new Set([...conversation.contextIds, ...input.evidenceIds]),
       ];
+      if (conversation.boardResearch) conversation.boardResearch.excludedSourceIds = conversation.boardResearch.excludedSourceIds.filter(id => !input.evidenceIds.some(evidenceId => id === `evidence:${evidenceId}`));
     });
   },
   contextFromEvidence(evidence: Evidence) {

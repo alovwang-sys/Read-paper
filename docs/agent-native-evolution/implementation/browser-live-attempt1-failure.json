@@ -1,0 +1,6 @@
+{
+  "startedAt": "2026-10-21T00:19:56.845Z",
+  "failedAt": "2026-10-21T00:19:56.878Z",
+  "message": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:5173/\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:5173/\", waiting until \"load\"\u001b[22m\n",
+  "pageErrors": []
+}

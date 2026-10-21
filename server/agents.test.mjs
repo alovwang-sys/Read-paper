@@ -333,6 +333,62 @@ test('damaged session mappings fail visibly and native failures do not expose ra
   assert.doesNotMatch(JSON.stringify(await events(await secret.post(request()))), /secret-api-token/);
 });
 
+test('typed non-PDF sources keep their provenance without requiring a PDF document or page', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  const material = { id: 'openalex:W1', kind: 'abstract', title: 'Candidate paper', text: 'An abstract, with an internal reference [7].', version: '1', url: 'https://openalex.org/W1', provider: 'openalex', providerId: 'https://openalex.org/W1', retrievedAt: '2026-10-20T00:00:00Z' };
+  const past = { requestId: 'previous', prompt: 'Old question', body: 'Old answer', context: [], evidenceIds: [], materials: [{ ...material, id: 'historical-abstract', text: 'Historical abstract is attached [9].' }] };
+  const result = await events(await f.post(request({ context: [], materials: [material], history: [past] })));
+  assert.equal(result.at(-1).type, 'done');
+  assert.match(calls[0].prompt, /"kind":"abstract"/);
+  assert.match(calls[0].prompt, /材料内引用 7，非本轮原文编号/);
+  assert.match(calls[0].prompt, /都不是 PDF 原文依据/);
+  assert.match(calls[0].prompt, /Historical abstract is attached/);
+  assert.match(calls[0].prompt, /材料内引用 9，非本轮原文编号/);
+  const manifest = JSON.parse(await readFile(join(calls[0].cwd, 'manifest.json'), 'utf8'));
+  assert.deepEqual(manifest.materials, [material]);
+  assert.match(await readFile(join(calls[0].cwd, 'materials.md'), 'utf8'), /abstract：Candidate paper/);
+});
+
+test('typed material and local-origin validation rejects hidden body, lookup permission and spoofed PDF fields', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  const material = { id: 'card:one', kind: 'card_note', title: 'Note', text: 'A personal interpretation', version: '1' };
+  const origin = { boardId: 'board1', rootTitle: 'Root question', focus: [{ kind: 'card', id: 'card1' }] };
+  for (const invalid of [
+    { materials: [{ ...material, evidenceId: 'fake' }] },
+    { materials: [{ ...material, pageIndex: 4 }] },
+    { materials: [{ ...material, url: 'javascript:alert(1)' }] },
+    { materials: [{ ...material, kind: 'pdf_quote' }] },
+    { boardResearch: { ...origin, body: 'Unselected root body' } },
+    { boardResearch: { ...origin, lookupScope: 'research' } },
+  ]) assert.equal((await f.post(request(invalid))).status, 400);
+  assert.equal(calls.length, 0);
+});
+
+test('materials share input limits and local research never silently reuses a larger native history', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  const origin = { boardId: 'board1', rootTitle: 'Root', rootRef: { kind: 'card', id: 'card1' }, focus: [{ kind: 'card', id: 'card1' }] };
+  const material = { id: 'card:one', kind: 'card_note', title: 'Note', text: 'Explicit note', version: '1' };
+  assert.equal((await events(await f.post(request({ requestId: 'local-first', materials: [material], boardResearch: origin })))).at(-1).type, 'done');
+  assert.equal((await events(await f.post(request({ requestId: 'local-second', materials: [material], boardResearch: origin, history: [history('local-first')] })))).at(-1).type, 'done');
+  assert.equal(calls[0].nativeSessionId, undefined);
+  assert.equal(calls[1].nativeSessionId, undefined);
+  const oversized = await events(await f.post(request({ requestId: 'huge-material', materials: [{ ...material, text: 'x'.repeat(120000) }] })));
+  assert.equal(oversized.at(-1).type, 'error'); assert.equal(oversized.at(-1).code, 'context_too_large');
+  assert.equal((await f.post(request({ requestId: 'huge-evidence', boardResearch: origin, context: [evidence('long')].map(item => ({ ...item, quote: 'x'.repeat(24001) })) }))).status, 413);
+  assert.equal((await f.post(request({ requestId: 'managed-local', managed: true, boardResearch: origin }))).status, 409);
+  assert.equal(calls.length, 2);
+});
+
+test('removing or changing non-PDF sources invalidates an otherwise reusable native scope', async t => {
+  const calls = [], f = await fixture(t, simpleRuntime(calls));
+  const material = { id: 'card:one', kind: 'card_note', title: 'Note', text: 'Explicit note', version: '1' };
+  await events(await f.post(request({ materials: [material] })));
+  await events(await f.post(request({ requestId: 'same-material', history: [history()], materials: [material] })));
+  assert.equal(calls[1].nativeSessionId, 'native-1');
+  await events(await f.post(request({ requestId: 'removed-material', history: [history(), history('same-material')], materials: [] })));
+  assert.equal(calls[2].nativeSessionId, undefined);
+});
+
 function fakeCodex({ unsafe = false, interactive = false, hang = false, toolOutput = 'TOOL OUTPUT MUST NOT BECOME ANSWER', toolExitCode = 0, mismatchedEvents = false, lateOnKill = false, env } = {}) {
   const captured = []; const children = []; const sent = []; let native = 0;
   const spawnImpl = (executable, args, options) => {

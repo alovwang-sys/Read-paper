@@ -1,0 +1,31 @@
+.board-research-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.board-research-actions > .button { padding: 6px 9px; font-size: 11px; }
+.board-local-research { position: absolute; z-index: 5; padding: 4px; border: 1px solid #dce5d6; border-radius: 7px; background: #fff; box-shadow: 0 3px 12px #34502b10; max-width: 460px; }
+.board-research-inline-error { color: #a56b50; font-size: 11px; line-height: 1.7; }
+.board-research-actions > .board-research-inline-error { max-width: 280px; }
+.board-research-dialog { border: 1px solid #dce5d6; border-radius: 10px; padding: 0; width: min(550px, calc(100vw - 36px)); max-height: calc(100dvh - 60px); color: #405337; background: white; box-shadow: 0 18px 60px #233d2426; }
+.board-research-dialog::backdrop { background: #263d302c; }
+.board-research-dialog > header, .board-research-dialog form > header { display: flex; align-items: center; justify-content: space-between; padding: 17px 20px 10px; gap: 10px; }
+.board-research-dialog h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.board-research-dialog > p { padding: 0 20px; font-size: 11px; line-height: 1.8; color: #899a7e; }
+.board-research-dialog footer { display: flex; align-items: center; justify-content: flex-end; gap: 7px; border-top: 1px solid #e4eadd; padding: 12px 20px; }
+.board-research-dialog footer > span { margin-right: auto; font-size: 11px; color: #8a9a7e; }
+.board-research-members { max-height: 52dvh; overflow: auto; padding: 2px 20px 15px; }
+.board-research-members > label { display: flex; align-items: flex-start; gap: 9px; padding: 12px 0; border-bottom: 1px solid #e9ede4; }
+.board-research-members input { accent-color: #618956; margin-top: 3px; }
+.board-research-members strong { font-size: 12px; font-weight: 550; }
+.board-research-members small { display: block; font-size: 11px; line-height: 1.8; color: #8c9b81; margin-top: 6px; white-space: pre-wrap; max-height: 140px; overflow: auto; }
+.board-research-members em { display: block; font-size: 10px; font-style: normal; color: #a4ad99; margin-top: 5px; }
+.board-question-fields { max-height: 62dvh; overflow: auto; padding: 5px 20px 16px; }
+.board-question-fields > label { display: block; font-size: 11px; color: #829674; margin: 12px 0; }
+.board-question-fields .field { margin-top: 7px; width: 100%; }
+.board-question-fields textarea { min-height: 120px; resize: vertical; line-height: 1.8; }
+.board-question-fields > p { font-size: 11px; line-height: 1.8; }
+.board-question-source { border: 1px solid #e2e9da; border-radius: 6px; padding: 10px 12px; background: #f7faf3; font-size: 11px; line-height: 1.8; }
+.board-question-source summary { color: #78916b; cursor: pointer; }
+.board-question-source pre { font: inherit; white-space: pre-wrap; max-height: 150px; overflow: auto; }
+.board-question-source p { color: #92a187; font-size: 10px; }
+.drawing-local-research { position: absolute; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 5px; border: 1px solid #dce5d6; border-radius: 7px; background: #fff; box-shadow: 0 3px 12px #34502b10; max-width: min(460px, calc(100% - 24px)); }
+.drawing-local-research > .button { padding: 6px 9px; font-size: 11px; }
+.drawing-local-research > small { display: block; color: #93a187; font-size: 9px; padding: 2px 5px; }
+@media (max-width: 1100px) { .board-research-dialog footer { flex-wrap: wrap; padding: 10px 14px; } .board-local-research { max-width: 340px; } }

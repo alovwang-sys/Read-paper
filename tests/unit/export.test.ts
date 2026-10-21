@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSeed } from '../../src/data/seed';
-import type { CardProvenance } from '../../src/domain/types';
+import type { CardProvenance, ResearchMaterial } from '../../src/domain/types';
 import {
   draftConversationSources,
   exportMarkdown,
@@ -26,6 +26,38 @@ function conversationSource(selection = '相关的证据才能支持可靠结论
 }
 
 describe('Markdown 研究笔记导出', () => {
+  it('摘要形成的 AI 卡片保留冻结来源、版本和派生链，不伪造 PDF 编号或页码', () => {
+    const data = createSeed();
+    const material: ResearchMaterial = { id: 'openalex-W9003', kind: 'abstract', title: '形成时的摘要来源', text: '摘要只描述了适用条件。', version: 'abstract-before-edit', provider: 'openalex', providerId: 'W9003', url: 'https://example.org/abstract-source', retrievedAt: '2026-10-20T10:00:00.000Z' };
+    const source = conversationSource('基于摘要的 AI 理解，仍需阅读全文核查。');
+    source.context = [];
+    source.answerEvidenceIds = [];
+    source.materials = [material, { id: 'card:prior', kind: 'card_note', title: '前一张卡片', text: '用户明确保留的早期理解。', version: 'note-v1', derivedFrom: { sourceIds: [material.id], requestIds: ['prior-request'] } }];
+    source.derivedFrom = { sourceIds: [material.id], requestIds: [source.requestId] };
+    data.cards['card-a'].provenance = source;
+    data.cards['card-a'].evidenceIds = [];
+    data.cards['card-a'].body = '基于摘要的待核查理解。';
+    insertCardReference(data, 'draft-b', 'card-a');
+    material.text = '后来被改掉的摘要';
+    source.materials[0].url = 'https://example.org/later';
+    source.selection = '后来改掉的回答';
+    const markdown = exportMarkdown(data, 'draft-b');
+    expect(markdown).toContain('基于摘要的 AI 理解，仍需阅读全文核查');
+    expect(markdown).toContain('题录与来源摘要');
+    expect(markdown).toContain('https://example.org/abstract-source');
+    expect(markdown).toContain('摘要只描述了适用条件');
+    expect(markdown).toContain('abstract-before-edit');
+    expect(markdown).toContain('2026-10-20T10:00:00.000Z');
+    expect(markdown).toContain('派生来源：openalex-W9003；问答轮次：prior-request');
+    expect(markdown).toContain('非 PDF 原文证据');
+    expect(markdown).toContain('本稿尚未附加原文证据');
+    expect(markdown).not.toMatch(/PDF 第 \d+ 页/);
+    expect(markdown).not.toContain('原答 [1]');
+    expect(markdown).not.toContain('后来被改掉');
+    expect(markdown).not.toContain('https://example.org/later');
+    expect(data.drafts['draft-b'].evidenceIds).toEqual([]);
+  });
+
   it('包含核心问题、结论、文献、从 1 开始的 PDF 页码与摘录，并去重引用', () => {
     const data = createSeed();
     data.drafts['draft-a'].evidenceIds.push('evidence-a');

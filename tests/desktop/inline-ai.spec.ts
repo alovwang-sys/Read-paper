@@ -1,3 +1,4 @@
+import { useClassicWorkbench } from './helpers';
 import { test, expect, _electron, type ElectronApplication, type Page } from '@playwright/test';
 import { listPackage } from '@electron/asar';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
@@ -41,7 +42,7 @@ test('打包桌面：内置 Pi 真实启动、就地解释、右侧输入隔离�
     page.on('pageerror', error => pageErrors.push(error.message));
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect(page.getByRole('main', { name: '主工作区' })).toBeVisible();
-    await saved(page);
+    await useClassicWorkbench(page); await saved(page);
     expect(page.url()).toBe('papertrail://app/');
     expect(await app.evaluate(({ app }) => app.getPath('userData'))).toBe(userData);
     return page;

@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-21",
+  "scope": "Historical six-round design and fixed-prototype verification, before current production implementation",
+  "status": "passed",
+  "previousVerification": {
+    "scope": "Strategy documents and two completed real Claude Code discussion rounds; not production verification",
+    "frozenFirstRoundExcerpts": 4
+  },
+  "discussion": {
+    "completedRounds": 6,
+    "newRoundsThisTurn": 4,
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "actualImageResults": 5,
+    "preservedFailedAttempts": 1,
+    "evidence": "review/status.json"
+  },
+  "prototype": {
+    "status": "passed",
+    "checks": 14,
+    "screenshots": 11,
+    "viewports": [
+      "1440x900",
+      "1280x800",
+      "1024x800"
+    ],
+    "pageErrors": 0,
+    "externalRequests": 0,
+    "persistentStorageCalls": 0,
+    "evidence": "verification/ui-v2/checks.json",
+    "finalVisualInspection": [
+      "result-1440.png",
+      "mixed-canvas-1440.png"
+    ],
+    "independentReviewIssuesFixed": [
+      "Reference close/deep-read return runtime failure",
+      "Ordinary explanation incorrectly triggering a draft edit"
+    ],
+    "finalReadabilityFixes": [
+      "Readable conversation-history entry",
+      "Complete canvas title on initial open"
+    ]
+  },
+  "productionImplementationChanged": false,
+  "productionTestsRun": false,
+  "remaining": [
+    "Static fixed examples do not prove model/tool execution, source extraction, durable persistence or real-user usability."
+  ],
+  "documentValidation": {
+    "authoredMarkdownFiles": 4,
+    "localLinksChecked": 51,
+    "screenshotHashesChecked": 5,
+    "productionSourceHashesUnchanged": [
+      "src/shell/App.tsx",
+      "src/features/board/BoardView.tsx",
+      "src/features/board/BoardDrawing.tsx",
+      "src/features/ai/AIPanel.tsx"
+    ],
+    "json": "all parse successfully"
+  },
+  "currentImplementation": "implementation/checks.json"
+}

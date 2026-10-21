@@ -13,7 +13,7 @@ const uuid = 'b70f0269-c566-4cd2-a423-04c7a2f0229f';
 const sid = 'ses_testSession123';
 const model = 'zhipuai-coding-plan/glm-5.3-flash';
 const jsonl = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
-const claudeHelp = '--safe-mode --restricted --tools --strict-mcp-config --permission-prompts --include-partial-messages';
+const claudeHelp = '--safe-mode --tools --strict-mcp-config --permission-prompts --include-partial-messages';
 const opencodeHelp = '--standalone --format --session --agent --model';
 const openCodeConfig = (...infos) => ({ output: JSON.stringify(infos.map((info) => ({ type: 'document', info }))) });
 const openCodeAnswer = (text = 'answer') => ({ output: jsonl(
@@ -46,7 +46,7 @@ function fakeProcesses(scripts) {
     queueMicrotask(() => {
       if (typeof script === 'function') { script(call); return; }
       if (script.error) { child.emit('error', Object.assign(new Error('secret diagnostic'), { code: script.error })); child.emit('close', null); return; }
-      const bytes = Buffer.from(script.output || '');
+      const bytes = Buffer.from((typeof script.output === 'function' ? script.output() : script.output) || '');
       // Exercise StringDecoder with UTF-8 split inside multibyte characters.
       for (let offset = 0; offset < bytes.length; offset += 2) child.stdout.write(bytes.subarray(offset, offset + 2));
       child.stderr.write(script.stderr || '');
@@ -89,9 +89,14 @@ test('Claude parses only visible text and resumes real session using fixed safe 
   assert.equal(call.input, prompt);
   assert.equal(call.args.includes(prompt), false);
   assert.equal(call.options.env.PWD, '/tmp/supplied-materials');
-  assert.ok(call.args.includes('--safe-mode') && call.args.includes('--restricted'));
+  assert.ok(call.args.includes('--safe-mode'));
+  assert.equal(call.args.includes('--restricted'), false, 'native connection/model settings must remain available');
+  assert.ok(call.args.includes('--disable-slash-commands'));
+  assert.ok(call.args.includes('--strict-mcp-config'));
+  assert.equal(call.args[call.args.indexOf('--mcp-config') + 1], '{"mcpServers":{}}');
   assert.equal(call.args[call.args.indexOf('--tools') + 1], '');
   assert.equal(call.args[call.args.indexOf('--permission-mode') + 1], 'dontAsk');
+  assert.equal(call.args[call.args.indexOf('--permission-prompts') + 1], 'none');
   assert.equal(call.args[call.args.indexOf('--resume') + 1], uuid);
   assert.equal(call.args.includes('--dangerously-skip-permissions'), false);
 });
@@ -260,6 +265,79 @@ test('OpenCode resume uses native --session and does not pretend that incomplete
   const call = fake.calls[1];
   assert.equal(call.args[call.args.indexOf('--session') + 1], sid);
   assert.equal(call.args.includes('--model'), false, 'legacy sessions preserve the model in the native session');
+});
+
+test('OpenCode v2 reconciles a missing step_finish only against the exact completed native message', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'read-paper-opencode-completion-test-'));
+  const messageId = 'msg_159b276dc001JG8iGJtPGnCR63';
+  const answer = '研究起点标题：输入数量与材料质量。\n摘要代码：青榆R86392。摘要没有原文页码。';
+  const info = { id: sid, location: { directory: cwd }, permissions: [{ action: '*', resource: '*', effect: 'deny' }] };
+  let started;
+  const fake = fakeProcesses([
+    openCodeConfig({}), { output: JSON.stringify({ data: info }) }, { output: '{"data":{}}' },
+    { output: () => {
+      started = Date.now();
+      return jsonl(
+        { type: 'step_start', sessionID: sid, part: { messageID: messageId } },
+        { type: 'text', sessionID: sid, part: { id: 'answer', messageID: messageId, text: answer } },
+      );
+    } },
+    { output: () => JSON.stringify({ data: { ...info, outcome: 'succeeded', time: { idle: Date.now() } } }) },
+    { output: () => JSON.stringify({ data: { id: messageId, type: 'assistant', finish: 'stop', rawFinish: 'stop',
+      time: { created: started, completed: started }, content: [{ type: 'reasoning', text: 'private reasoning' }, { type: 'text', text: answer }] } }) },
+  ]);
+  const events = [];
+  try {
+    const result = await createOpenCodeRuntime({ spawnImpl: fake.spawnImpl, env: {} }).run({ prompt: 'question', cwd, materialCwd: '/snapshot', nativeSessionId: sid, onEvent: event => events.push(event) });
+    assert.equal(result.body, answer);
+    assert.deepEqual(fake.calls.at(-1).args, ['api', 'GET', `/api/session/${sid}/message/${messageId}`]);
+    assert.equal(fake.calls.filter(call => call.args[0] === 'run').length, 1, 'completion lookup never reruns the model');
+    assert.deepEqual(events.filter(event => event.type === 'delta'), [{ type: 'delta', text: answer }]);
+    assert.equal(JSON.stringify(events).includes('private reasoning'), false);
+  } finally { await rm(cwd, { recursive: true, force: true }); }
+});
+
+test('OpenCode completion reconciliation rejects stale, mismatched, partial and unsuccessful native records', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'read-paper-opencode-incomplete-test-'));
+  const messageId = 'msg_current123';
+  const info = { id: sid, location: { directory: cwd }, permissions: [{ action: '*', resource: '*', effect: 'deny' }] };
+  try {
+    for (const scenario of [
+      { name: 'another message', patch: data => ({ ...data, id: 'msg_older123' }) },
+      { name: 'previous turn', patch: data => ({ ...data, time: { created: 1, completed: 2 } }) },
+      { name: 'no completion time', patch: data => ({ ...data, time: { created: data.time.created } }) },
+      { name: 'length limit', patch: data => ({ ...data, finish: 'length' }) },
+      { name: 'unknown finish', patch: data => ({ ...data, finish: 'unknown' }) },
+      { name: 'truncated text', patch: data => ({ ...data, content: [{ type: 'text', text: 'answer plus missing suffix' }] }) },
+      { name: 'unstreamed tool', patch: data => ({ ...data, content: [...data.content, { type: 'tool', state: { status: 'completed' } }] }) },
+      { name: 'interrupted session', outcome: 'interrupted', expectedCalls: 5 },
+      { name: 'unbound output', noMessageId: true, expectedCalls: 4 },
+      { name: 'explicit incomplete finish', finish: 'length', expectedCalls: 4 },
+      { name: 'unreadable completion', malformed: true },
+    ]) {
+      let started;
+      const fake = fakeProcesses([
+        openCodeConfig({}), { output: JSON.stringify({ data: info }) }, { output: '{"data":{}}' },
+        { output: () => {
+          started = Date.now();
+          return jsonl(
+            { type: 'text', sessionID: sid, part: { id: 'answer', ...(scenario.noMessageId ? {} : { messageID: messageId }), text: 'answer' } },
+            ...(scenario.finish ? [{ type: 'step_finish', sessionID: sid, part: { messageID: messageId, reason: scenario.finish } }] : []),
+          );
+        } },
+        { output: () => JSON.stringify({ data: { ...info, outcome: scenario.outcome || 'succeeded', time: { idle: Date.now() } } }) },
+        { output: () => {
+          if (scenario.malformed) return 'private-native-diagnostic-secret';
+          const data = { id: messageId, type: 'assistant', finish: 'stop', time: { created: started, completed: started }, content: [{ type: 'text', text: 'answer' }] };
+          return JSON.stringify({ data: scenario.patch ? scenario.patch(data) : data });
+        } },
+      ]);
+      await assert.rejects(createOpenCodeRuntime({ spawnImpl: fake.spawnImpl, env: {} }).run({ prompt: 'question', cwd, materialCwd: '/snapshot', nativeSessionId: sid }),
+        error => error.code === 'stream_interrupted' && !error.message.includes('private-native-diagnostic-secret'), scenario.name);
+      assert.equal(fake.calls.length, scenario.expectedCalls || 6, scenario.name);
+      assert.equal(fake.calls.filter(call => call.args[0] === 'run').length, 1, scenario.name);
+    }
+  } finally { await rm(cwd, { recursive: true, force: true }); }
 });
 
 test('OpenCode resumed sessions keep their frozen native model after global selection changes', async () => {

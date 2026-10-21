@@ -7,6 +7,7 @@ import {
   originalAnswerContext,
 } from './SourceDetails';
 import { MarkdownContent } from './MarkdownContent';
+import { ResearchMaterialDetails } from './BoardResearchContext';
 
 const requestStatus = {
   generating: '生成中',
@@ -90,6 +91,7 @@ export function ConversationSource({
           </p>
         )}
         <h4>原始问题</h4>
+        <ResearchMaterialDetails items={source.materials ?? []} />
         <div className="ai-user-message">{source.prompt}</div>
         <h4>
           {request?.legacy ? '旧版保存的回答' : '原始回答'}{' '}

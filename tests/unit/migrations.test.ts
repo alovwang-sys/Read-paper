@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createSeed } from '../../src/data/seed';
 import { migrateWorkspace } from '../../src/data/migrations';
 import { paneGroups } from '../../src/services/panes';
+import type { LiteratureCandidate, ResearchMaterial } from '../../src/domain/types';
 
 function legacyWorkspace() {
   const { cardDrafts: _cardDrafts, ...seed } = createSeed();
@@ -29,6 +30,52 @@ function legacyWorkspace() {
 }
 
 describe('工作区 schema 迁移', () => {
+  it('已有 schema 3 保留旧卡片、无全文条目、输入和资产，不补造局部研究或检索', () => {
+    const data = createSeed();
+    data.cards['card-a'].body = '旧版用户正文';
+    data.documents['paper-a'].hash = 'unchanged-existing-hash';
+    data.conversations['conversation-research-a'].input = '旧版未发送问题';
+    data.sessions['research-a'].viewports['board-a'] = { x: 31, y: 47, scale: 0.8 };
+    const before = structuredClone(data), migrated = migrateWorkspace(data);
+    expect(data).toEqual(before);
+    for (const key of ['documents', 'cards', 'evidence', 'placements', 'boards', 'drafts'] as const) expect(migrated[key]).toEqual(before[key]);
+    expect(migrated.documents['paper-stub'].assetId).toBeUndefined();
+    expect(migrated.conversations['conversation-research-a'].input).toBe('旧版未发送问题');
+    expect(migrated.conversations['conversation-research-a'].boardResearch).toBeUndefined();
+    expect(migrated.conversations['conversation-research-a'].literatureSearches).toBeUndefined();
+    expect(migrated.sessions['research-a'].viewports).toEqual(before.sessions['research-a'].viewports);
+    expect(migrateWorkspace(migrated)).toEqual(migrated);
+  });
+
+  it('重载将活动文献检索标为 interrupted，保留已完成批次、起点、焦点、查询和未发送内容', () => {
+    const data = createSeed(), conversation = data.conversations['conversation-research-a'];
+    const candidate: LiteratureCandidate = { id: 'openalex-W9004', provider: 'openalex', providerId: 'W9004', title: '中断恢复测试来源', authors: [], url: 'https://example.org/resume', abstract: '已经持久化的摘要', retrievedAt: '2026-10-20T10:00:00.000Z' };
+    const material: ResearchMaterial = { id: candidate.id, kind: 'abstract', title: candidate.title, text: candidate.abstract!, version: 'frozen-source', provider: candidate.provider, providerId: candidate.providerId, url: candidate.url };
+    conversation.boardResearch = { origin: { boardId: 'board-a', rootPlacementId: 'placement-a', rootRef: { kind: 'card', id: 'card-a' }, rootTitle: '原问题' }, focus: [{ kind: 'card', id: 'card-b' }], automatic: [material], pinned: [], includeBackground: false, excludedSourceIds: ['card:card-a'], view: 'literature', literatureQuery: '未提交的新检索词', literatureBatchId: 'running', literatureScrollTop: 86 };
+    conversation.input = '未发送的追问';
+    const batch = { id: 'done', researchId: 'research-a', conversationId: conversation.id, boardId: 'board-a', rootPlacementId: 'placement-a', rootTitle: '原问题', query: '提交时的查询', createdAt: candidate.retrievedAt, status: 'done' as const, candidates: [candidate], partial: true, warnings: ['来源缺 DOI'] };
+    conversation.literatureSearches = [batch, { ...structuredClone(batch), id: 'running', status: 'searching', candidates: [] }];
+    const before = structuredClone(data), migrated = migrateWorkspace(data), restored = migrated.conversations[conversation.id];
+    expect(data).toEqual(before);
+    expect(restored.boardResearch).toEqual(conversation.boardResearch);
+    expect(restored.input).toBe(conversation.input);
+    expect(restored.literatureSearches![0]).toEqual(batch);
+    expect(restored.literatureSearches![1]).toMatchObject({ id: 'running', status: 'interrupted', query: '提交时的查询', rootPlacementId: 'placement-a', candidates: [] });
+    expect(restored.literatureSearches![1].error).toMatch(/中断|重新加载/);
+    expect(migrateWorkspace(migrated)).toEqual(migrated);
+  });
+
+  it.each(['research', 'board', 'source-url'])('迁移拒绝跨研究或可执行的检索来源并保留原输入：%s', problem => {
+    const data = createSeed(), conversation = data.conversations['conversation-research-a'];
+    conversation.literatureSearches = [{ id: 'unsafe', researchId: 'research-a', conversationId: conversation.id, boardId: 'board-a', rootTitle: '原问题', query: 'query', createdAt: '', status: 'done', candidates: [{ id: 'openalex-W9005', provider: 'openalex', providerId: 'W9005', title: '安全验证来源', authors: [], url: 'https://example.org/source', retrievedAt: '' }] }];
+    if (problem === 'research') conversation.literatureSearches[0].researchId = 'research-b';
+    if (problem === 'board') conversation.literatureSearches[0].boardId = 'board-b';
+    if (problem === 'source-url') conversation.literatureSearches[0].candidates[0].url = 'javascript:alert(1)';
+    const before = structuredClone(data);
+    expect(() => migrateWorkspace(data)).toThrow();
+    expect(data).toEqual(before);
+  });
+
   it('v1 迁移不改变输入，保留资产、卡片、输入和视口，并明确旧回答的来源限制', () => {
     const original = legacyWorkspace();
     const before = structuredClone(original);
@@ -269,5 +316,64 @@ describe('独立资源分屏迁移', () => {
     seed.sessions['research-b'].mainSplit = undefined;
     seed.sessions['research-a'].mainSplit!.ref.id = 'missing';
     expect(() => migrateWorkspace(seed)).toThrow('分屏资源损坏');
+  });
+});
+
+describe('Agent 工作台兼容数据', () => {
+  it('保留经典界面选择与局部焦点，恢复未完成研究时不重放运行', () => {
+    const data = createSeed();
+    data.agentWorkbench = false;
+    data.sessions['research-a'].activeConversationId = 'conversation-research-a';
+    data.sessions['research-a'].agentFocus = { ref: { kind: 'card', id: 'card-a' }, title: '局部观点', body: '尚未发送的问题起点' };
+    data.requests['research-run'] = { id: 'research-run', researchId: 'research-a', conversationId: 'conversation-research-a', prompt: '比较', body: '', context: [], evidenceIds: [], createdAt: '2026-10-21', status: 'generating', researchRun: { sourceSummary: '只取本研究三篇', focus: data.sessions['research-a'].agentFocus } };
+    const restored = migrateWorkspace(data);
+    expect(restored.agentWorkbench).toBe(false);
+    expect(restored.conversations['conversation-research-a'].researchFocus).toEqual(data.sessions['research-a'].agentFocus);
+    expect(restored.sessions['research-a'].agentFocus).toBeUndefined();
+    expect(restored.requests['research-run'].status).toBe('interrupted');
+    expect(restored.cards).toEqual(data.cards);
+    expect(restored.drafts).toEqual(data.drafts);
+  });
+  it('拒绝损坏的焦点和修订记录，不覆盖原数据', () => {
+    const data = createSeed();
+    Object.assign(data.sessions['research-a'], { agentFocus: { ref: { kind: 'file', id: '/tmp/private' }, title: '无效', body: '' } });
+    expect(() => migrateWorkspace(data)).toThrow('焦点');
+    delete data.sessions['research-a'].agentFocus;
+    data.requests['bad-run'] = { id: 'bad-run', researchId: 'research-a', conversationId: 'conversation-research-a', prompt: '修改', body: '', context: [], evidenceIds: [], createdAt: '', status: 'done', researchRun: {} };
+    Object.assign(data.requests['bad-run'].researchRun!, { suggestion: { title: '', body: '', evidenceIds: [], baseTitle: '', baseBody: '', baseEvidenceIds: 'broken' } });
+    expect(() => migrateWorkspace(data)).toThrow('运行记录');
+  });
+});
+
+describe('旧研究焦点迁移到会话', () => {
+  it('只迁给原活动会话，已有会话焦点优先，第二次恢复不重复迁移', () => {
+    const data = createSeed(), id = 'conversation-research-a';
+    data.sessions['research-a'].activeConversationId = id;
+    data.sessions['research-a'].agentFocus = { ref: { kind: 'card', id: 'card-a' }, title: '旧焦点', body: '旧材料' };
+    const first = migrateWorkspace(data);
+    expect(first.conversations[id].researchFocus?.title).toBe('旧焦点');
+    expect(first.conversations['conversation-research-b'].researchFocus).toBeUndefined();
+    expect(first.sessions['research-a'].agentFocus).toBeUndefined();
+    expect(migrateWorkspace(first)).toEqual(first);
+    first.sessions['research-a'].agentFocus = { ref: { kind: 'card', id: 'card-a' }, title: '过期副本', body: '' };
+    expect(migrateWorkspace(first).conversations[id].researchFocus?.title).toBe('旧焦点');
+  });
+  it('不能把无法确定原主人的旧目标迁给修复后的其他会话', () => {
+    const data = createSeed();
+    data.sessions['research-a'].activeConversationId = 'missing';
+    data.sessions['research-a'].agentFocus = { ref: { kind: 'card', id: 'card-a' }, title: '无归属', body: '仍保留实体和原文' };
+    const result = migrateWorkspace(data);
+    expect(result.sessions['research-a'].activeConversationId).toBe('conversation-research-a');
+    expect(result.conversations['conversation-research-a'].researchFocus).toBeUndefined();
+    expect(result.sessions['research-a'].agentFocus).toBeUndefined();
+    expect(result.cards).toEqual(data.cards);
+  });
+  it('拒绝损坏的会话焦点与非有限滚动位置', () => {
+    const data = createSeed();
+    Object.assign(data.conversations['conversation-research-a'], { researchFocus: { ref: { kind: 'file', id: '/private' }, title: '', body: '' } });
+    expect(() => migrateWorkspace(data)).toThrow('会话');
+    delete data.conversations['conversation-research-a'].researchFocus;
+    data.conversations['conversation-research-a'].researchScrollTop = Infinity;
+    expect(() => migrateWorkspace(data)).toThrow('会话');
   });
 });

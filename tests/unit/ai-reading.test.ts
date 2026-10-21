@@ -4,7 +4,7 @@ import { getAsset, loadWorkspace, saveMigrationBackup, saveWorkspace } from '../
 import type { AIRequest, ContextSnapshot, WorkspaceData } from '../../src/domain/types';
 import {
   applyCardRevision, commitCardDraft, createManualCardDraft, discardCardDraft, generateCardDraft, generateCardDraftFromExcerpts,
-  historyForConversation, retryAI, reviseCardDraft, stopAI, submitAI, undoCardRevision,
+  buildRequestScope, historyForConversation, retryAI, reviseCardDraft, stopAI, submitAI, undoCardRevision,
   type AIResponder,
 } from '../../src/services/ai';
 import { workspace } from '../../src/services/workspace';
@@ -299,6 +299,131 @@ describe('多轮聊天、停止和原始问答', () => {
     expect(saveWorkspace).not.toHaveBeenCalled();
     expect(memory.get('papertrail-recovery-v2')).toBe(recovery);
     expect(future.schemaVersion).toBe(4);
+  });
+});
+
+describe('白板局部研究的统一发送范围', () => {
+  function enableResearch() {
+    workspace.updateData(next => {
+      next.conversations[conversationId].historyRange = 'guided';
+      next.conversations[conversationId].contextIds = [];
+      next.conversations[conversationId].boardResearch = {
+        origin: { boardId: 'board-a', rootTitle: '研究问题', rootRef: { kind: 'card', id: 'card-a' }, rootPlacementId: 'placement-a' },
+        focus: [{ kind: 'card', id: 'card-a' }], automatic: [{ id: 'card:card-a', kind: 'card_note', title: '卡片', text: '待刷新', version: '1', resourceRef: { kind: 'card', id: 'card-a' } }],
+        pinned: [], excludedSourceIds: [], includeBackground: true,
+      };
+    });
+  }
+  it('默认只选上一完成轮和最近原问题轮，逐轮选择不改变原记录', () => {
+    enableResearch();
+    const board = data().conversations[conversationId].boardResearch!;
+    const root = oldRequest('root', { boardResearch: { ...board.origin, focus: [{ kind: 'card', id: 'card-a' }] } });
+    const paper = oldRequest('paper', { boardResearch: { ...board.origin, focus: [{ kind: 'document', id: 'paper-a' }] } });
+    const last = oldRequest('last', { boardResearch: { ...board.origin, focus: [{ kind: 'document', id: 'paper-a' }] } });
+    workspace.updateData(next => { for (const request of [root, paper, last]) next.requests[request.id] = request; next.conversations[conversationId].requestIds = ['root', 'paper', 'last']; });
+    expect(buildRequestScope(data(), 'research-a', conversationId).history.map(turn => turn.requestId)).toEqual(['root', 'last']);
+    expect(buildRequestScope(data(), 'research-a', conversationId, 'last').history.map(turn => turn.requestId)).toEqual(['root', 'paper']);
+    workspace.updateData(next => { next.conversations[conversationId].historyRange = 'selected'; next.conversations[conversationId].historyRequestIds = ['paper']; });
+    expect(buildRequestScope(data(), 'research-a', conversationId).history.map(turn => turn.requestId)).toEqual(['paper']);
+    expect(data().requests.root.body).toBe(root.body);
+  });
+  it('移除来源过滤历史原文副本，旧编号降级，原始回答与其他证据仍保留', async () => {
+    enableResearch();
+    const old = oldRequest('old-source', { body: 'A [1]，B [2]', evidenceIds: ['evidence-a', 'evidence-b'], context: [snapshot('evidence-a'), snapshot('evidence-b')] });
+    workspace.updateData(next => {
+      next.requests[old.id] = old; next.conversations[conversationId].requestIds = [old.id];
+      next.conversations[conversationId].contextIds = ['evidence-a', 'evidence-b'];
+      next.conversations[conversationId].boardResearch!.excludedSourceIds = ['evidence:evidence-a'];
+    });
+    let submitted!: AIRequest;
+    await submitAI('research-a', conversationId, '继续问', async request => { submitted = request; return { body: '继续回答', evidenceIds: [] }; });
+    expect(submitted.context.map(item => item.evidenceId)).toEqual(['evidence-b']);
+    expect(submitted.history?.[0]).toMatchObject({ body: 'A （历史引用，原文未附送），B [1]', sentBody: 'A （历史引用，原文未附送），B [1]', evidenceIds: ['evidence-b'] });
+    expect(submitted.history?.[0].context.map(item => item.evidenceId)).toEqual(['evidence-b']);
+    expect(data().requests[old.id].body).toBe('A [1]，B [2]');
+  });
+  it('材料正文冻结，摘要经整理请求与确认卡片保留来路，不生成 PDF 依据', async () => {
+    enableResearch();
+    workspace.updateData(next => { next.conversations[conversationId].boardResearch!.pinned.push({ id: 'openalex:W1', kind: 'abstract', title: '候选论文', text: '仅摘要', version: '1', url: 'https://openalex.org/W1', provider: 'openalex', providerId: 'https://openalex.org/W1' }); });
+    const id = await submitAI('research-a', conversationId, '解释摘要', async () => ({ body: '根据摘要提出待核查理解', evidenceIds: [] }));
+    const original = data().requests[id].materials?.find(item => item.id === 'card:card-a')?.text;
+    workspace.updateData(next => { next.cards['card-a'].body = '发送后的修改'; });
+    expect(data().requests[id].materials?.find(item => item.id === 'card:card-a')?.text).toBe(original);
+    const draftId = await generateCardDraft(id, undefined, async request => {
+      expect(request.materials?.find(item => item.id === 'openalex:W1')?.text).toBe('仅摘要');
+      const result = { title: '待核查理解', body: '需要阅读原文。', evidenceIds: [] };
+      return { body: JSON.stringify(result), evidenceIds: [], result };
+    });
+    const cardId = commitCardDraft(draftId);
+    const saved = data().cards[cardId];
+    expect(saved.evidenceIds).toEqual([]);
+    expect(saved.provenance?.materials?.find(item => item.id === 'openalex:W1')?.url).toBe('https://openalex.org/W1');
+    expect(saved.provenance?.derivedFrom).toMatchObject({ sourceIds: expect.arrayContaining(['card:card-a', 'openalex:W1']), requestIds: expect.arrayContaining([id]) });
+  });
+  it('卡片与摘要计入统一保护阈值，在发送前拒绝超量', async () => {
+    enableResearch();
+    workspace.updateData(next => { next.conversations[conversationId].boardResearch!.pinned.push({ id: 'large', kind: 'abstract', title: '长摘要', text: '文'.repeat(120000), version: '1' }); });
+    const responder = vi.fn(async () => ({ body: '不能调用', evidenceIds: [] }));
+    await expect(submitAI('research-a', conversationId, '解释', responder)).rejects.toThrow(/120,000/);
+    expect(responder).not.toHaveBeenCalled();
+  });
+  it('当前与历史材料一起计数，避免收为卡片后超过可持久化数量', () => {
+    enableResearch();
+    workspace.updateData(next => {
+      const state = next.conversations[conversationId].boardResearch!;
+      state.includeBackground = false; state.automatic = [];
+      state.pinned = Array.from({ length: 100 }, (_, index) => ({ id: `abstract:${index}`, kind: 'abstract', title: `题录${index}`, text: '摘要', version: '1' }));
+      next.requests.counted = oldRequest('counted', { context: [], evidenceIds: [], materials: structuredClone(state.pinned) });
+      next.conversations[conversationId].requestIds = ['counted'];
+    });
+    expect(buildRequestScope(data(), 'research-a', conversationId).materials).toHaveLength(100);
+    workspace.updateData(next => { next.requests.counted.materials![0].id = 'abstract:another'; });
+    expect(() => buildRequestScope(data(), 'research-a', conversationId)).toThrow(/合计超过 100 项/);
+  });
+  it('历史派生来路仍可提示已排除来源，但不会重新赋予 PDF 引用资格', async () => {
+    enableResearch();
+    const old = oldRequest('old-derived', { materials: [{ id: 'historical-abstract', kind: 'abstract', title: '历史摘要', text: '原摘要快照', version: 'old', url: 'https://example.org/source' }] });
+    workspace.updateData(next => {
+      next.requests[old.id] = old; next.conversations[conversationId].requestIds = [old.id];
+      next.conversations[conversationId].boardResearch!.excludedSourceIds = ['evidence:evidence-a'];
+    });
+    const id = await submitAI('research-a', conversationId, '继续解释旧回答', async () => ({ body: '对旧回答的进一步理解，仍待原文核查。', evidenceIds: [] }));
+    const draftId = createManualCardDraft(id);
+    const source = data().cardDrafts[draftId].source;
+    expect(source.context).toEqual([]);
+    expect(source.answerEvidenceIds).toEqual([]);
+    expect(source.derivedFrom?.sourceIds).toContain('evidence:evidence-a');
+    expect(source.materials?.find(material => material.id === 'historical-abstract')?.url).toBe('https://example.org/source');
+    expect(source.derivedFrom?.requestIds).toContain(old.id);
+  });
+  it('模型直连实际发送背景和卡片正文，卡片内编号不能冒充本轮 PDF 原文', async () => {
+    enableResearch();
+    const old = oldRequest('history-materials', { context: [], evidenceIds: [], body: '旧解释', materials: [
+      { id: 'allowed-history', kind: 'abstract', title: '允许的摘要', text: '历史摘要保留内容 [8]', version: '1' },
+      { id: 'excluded-history', kind: 'abstract', title: '排除的摘要', text: '已排除摘要完整正文不得回流', version: '1' },
+    ] });
+    workspace.updateData(next => {
+      next.cards['card-a'].body = '需要核查的观点 [7]';
+      next.requests[old.id] = old; next.conversations[conversationId].requestIds = [old.id];
+      next.conversations[conversationId].boardResearch!.excludedSourceIds = ['excluded-history'];
+    });
+    let messages!: { role: string; content: string }[];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/ai/config') return Response.json({ configured: true, model: 'test-model', images: false });
+      messages = JSON.parse(String(init?.body)).messages;
+      return new Response(`${JSON.stringify({ type: 'delta', text: '这里只能提出待核查解释。' })}\n${JSON.stringify({ type: 'done' })}\n`);
+    }));
+    const id = await submitAI('research-a', conversationId, '解释这个观点');
+    expect(data().requests[id].status).toBe('done');
+    expect(data().requests[id].context).toEqual([]);
+    expect(messages[0].content).toContain('card_note');
+    expect(messages[0].content).toContain('需要核查的观点');
+    expect(messages[0].content).toContain('材料内引用 7，非本轮原文编号');
+    expect(messages[0].content).toContain('不自行查找未附送材料');
+    expect(messages[1].content).toContain('历史摘要保留内容');
+    expect(messages[1].content).toContain('材料内引用 8，非本轮原文编号');
+    expect(JSON.stringify(messages)).not.toContain('已排除摘要完整正文不得回流');
+    expect(data().requests[old.id].materials).toHaveLength(2);
   });
 });
 

@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-21T02:59:54.874Z",
+  "scope": "Fresh isolated seed browser context; creates no real user data and invokes no model",
+  "firstConversation": "conversation-research-a",
+  "newConversation": "conversation-8b2a54f2-4a04-46bd-a404-97462132ccc8",
+  "firstFocus": {
+    "ref": {
+      "kind": "draft",
+      "id": "draft-a"
+    },
+    "title": "检索增强的适用条件",
+    "body": "检索增强的收益依赖证据相关性。无关语料可能增加不确定性，因此评估需要同时报告语料条件与来源可追踪性。"
+  },
+  "newConversationFocus": {
+    "ref": {
+      "kind": "draft",
+      "id": "draft-a"
+    },
+    "title": "检索增强的适用条件",
+    "body": "检索增强的收益依赖证据相关性。无关语料可能增加不确定性，因此评估需要同时报告语料条件与来源可追踪性。"
+  },
+  "focusInherited": true
+}

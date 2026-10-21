@@ -1,0 +1,226 @@
+{
+  "verifiedAt": "2026-10-21T04:05:50.372165+00:00",
+  "scope": "Native visual arrow bindings between shared resources and drawing shapes; no semantic BoardEdge migration",
+  "commands": [
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "log": "logs/build.log",
+      "note": "Includes TypeScript; existing large chunk warning remains"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "files": 29,
+      "passed": 440,
+      "log": "logs/unit.log"
+    },
+    {
+      "command": "npx playwright test tests/e2e/drawing.spec.ts tests/e2e/drawing-bindings.spec.ts tests/e2e/drawing-binding-rules.spec.ts --reporter=line --output=/tmp/read-paper-drawing-bindings-final",
+      "exitCode": 0,
+      "passed": 10,
+      "log": "logs/browser-10.log"
+    },
+    {
+      "command": "npx playwright test tests/e2e/drawing-binding-rules.spec.ts --reporter=line --output=/tmp/read-paper-binding-rules",
+      "exitCode": 0,
+      "passed": 2,
+      "note": "Final rules include rotated-arrow endpoint preservation and native-already-moved protection; these are not additional unique tests.",
+      "log": "logs/rules-final.log"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    },
+    {
+      "command": "npx playwright test tests/e2e/drawing-bindings.spec.ts --reporter=line --output=/tmp/read-paper-binding-current-final",
+      "exitCode": 0,
+      "passed": 5,
+      "seconds": 37.6,
+      "log": "logs/browser-current-5.log",
+      "note": "Final fixture includes both classic and Agent modes."
+    },
+    {
+      "command": "npx playwright test tests/e2e/drawing-bindings.spec.ts -g Agent --reporter=line",
+      "exitCode": 0,
+      "passed": 1,
+      "seconds": 6.1,
+      "log": "logs/browser-agent-1.log",
+      "note": "Individual Agent-mode screenshot verification; included again in the final five, not an extra unique test."
+    }
+  ],
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "width": 1024,
+      "height": 800
+    }
+  ],
+  "context": "Isolated browser contexts with local synthetic PDFs and controlled connections; real mouse drawing and native binding/undo metadata, no injected bindings in user paths.",
+  "dataModel": "Reuses DrawingScene startBinding/endBinding/boundElements and placementId. No new schema, entity store or dependency.",
+  "priorAttempts": [
+    {
+      "log": "logs/binding-baseline.log",
+      "note": "Pre-fix exploration includes toolbar overlap, transparent center endpoint without binding, stale persisted-scene reads and an incorrect source click. Baseline evidence remains separately named."
+    },
+    {
+      "log": "logs/drawing-regression-attempt1.log",
+      "note": "Old drawing regression entered the new default Agent mode; fixture now explicitly selects classic mode. Final regression passed."
+    }
+  ],
+  "notRun": [
+    "Live model calls",
+    "Desktop packaging and installation",
+    "Full existing browser suite",
+    "Server/desktop protocol suites (unchanged by this fix)"
+  ],
+  "remainingLimits": [
+    "Elbow arrows retain native outline snapping and routing; internal endpoint completion and cross-layout correction apply to ordinary arrows",
+    "Visual arrows are not automatically promoted into semantic BoardEdge relations",
+    "Existing free arrows are not automatically rebound; edit an endpoint to connect",
+    "External deletion of a placement from card-layout mode has not received a separate binding-cleanup implementation in this change"
+  ],
+  "directoryFlow": "Unchanged: Agent workbench can create a research immediately; project settings can associate its directory later. Classic create dialog still supports new/existing directory and later setup.",
+  "screenshots": [
+    {
+      "path": "screenshots/agent-board-source-1024.png",
+      "sha256": "72cfa4339eeff67c0182e14b5c12e20701c6d681f65e08ad8e6990dfe12cacd4"
+    },
+    {
+      "path": "screenshots/agent-board-source-1280.png",
+      "sha256": "72cea1ba84eb64ec05cd0a0e38df7c9ae1f303b6a58a6ee3024d7d018263fa6e"
+    },
+    {
+      "path": "screenshots/agent-board-source-1440.png",
+      "sha256": "6577803e8578dd4f3bba572d0ea858018bf7985d3d4af430cf38851c11e28557"
+    },
+    {
+      "path": "screenshots/binding-history-restored-1440.png",
+      "sha256": "69afd012090ea4efc03c36a3512210a90ab9992ab4012c1ef1da8eb8f1676325"
+    },
+    {
+      "path": "screenshots/binding-observation-1440-center.png",
+      "sha256": "d21ef367292a04baa6ea915b78df346b22873a921b8d163623405cc2f1bb0ccf"
+    },
+    {
+      "path": "screenshots/binding-observation-1440-right.png",
+      "sha256": "2f1e155e0b06c1ae3ac67db57454a6cc7f3656b37900f97552ec4d3e15f0baeb"
+    },
+    {
+      "path": "screenshots/binding-observation-1440.png",
+      "sha256": "50e501ff0e865bd646943362a3c3a17fbf2475eb306e1c28273349fca254a1f3"
+    },
+    {
+      "path": "screenshots/bound-arrows-restored-1440.png",
+      "sha256": "cc18352e7bd863ee93a5c5a98b575ad22aa98e6fea232d34d7e962c722ed3f36"
+    },
+    {
+      "path": "screenshots/bound-board-ai-1024.png",
+      "sha256": "dcd5f2d26746f80b7106fad65fcd73f3e012ec8729b0a5773cd7f59a0b589795"
+    },
+    {
+      "path": "screenshots/bound-board-ai-1280.png",
+      "sha256": "993949d02d2a20a177e7eadea9a4491f474db3eae02e04dd9101d751f947bfcf"
+    },
+    {
+      "path": "screenshots/bound-board-ai-1440.png",
+      "sha256": "42c9229eab9fc1e8a2ec13cf4344fc814a91c808bb1262453663874d7707226f"
+    },
+    {
+      "path": "screenshots/bound-board-source-1024.png",
+      "sha256": "c1b33758913964e6dbcaef91b6a106d0fd9920e6d863ffa0cbedede11973c27d"
+    },
+    {
+      "path": "screenshots/bound-board-source-1280.png",
+      "sha256": "1a4c1118a780ff3a600c38480b74a3245648c8d5457bb1a32965475ffa79976c"
+    },
+    {
+      "path": "screenshots/bound-board-source-1440.png",
+      "sha256": "7d2bdcd43935342c1db15d41271ddf1ebcdf71167367b4f54d569ca50f76f588"
+    },
+    {
+      "path": "screenshots/cross-mode-1440.png",
+      "sha256": "ac0398b54f54fd0edad4856ddef7e1bfd9cc2d334a13844b1cd639771e679412"
+    },
+    {
+      "path": "screenshots/regression/board-1024.png",
+      "sha256": "df53e3d6371f493de688a16b83909450044cb427556090690d3f87c903a40924"
+    },
+    {
+      "path": "screenshots/regression/board-1280.png",
+      "sha256": "fa3e29a3eae3372af145ead8a05a68ad43eca1435dc1423353d506d5008f4aa1"
+    },
+    {
+      "path": "screenshots/regression/board-1440.png",
+      "sha256": "7ed33a075c4d062ac58e821d5869942f195d28d3ad9ac77f5062af36f5eef993"
+    },
+    {
+      "path": "screenshots/regression/board-source-1440.png",
+      "sha256": "589f478ddceefb7f186b6429b68dd1b957c29340c5ac3507416d509c8b44e2c7"
+    }
+  ],
+  "baselineEvidence": [
+    {
+      "path": "screenshots/baseline-binding-observation-1440-center.png",
+      "sha256": "f6b31b774f0e7187955b5a2306c3bb480152c0a885ba2692e6c260725f927ccb"
+    },
+    {
+      "path": "screenshots/baseline-binding-observation-1440-right.png",
+      "sha256": "dacfab7af98843d5ae347d35a25e7b8aeeb331e6381008e4ba0c1a6e464c8682"
+    },
+    {
+      "path": "screenshots/baseline-binding-observation-1440.png",
+      "sha256": "f6b31b774f0e7187955b5a2306c3bb480152c0a885ba2692e6c260725f927ccb"
+    },
+    {
+      "path": "screenshots/baseline-binding-observation.json",
+      "sha256": "aa5154139e64a8af91d28483fe531a33c9cb0da086c30f97c9d334210a267ca2"
+    },
+    {
+      "path": "screenshots/baseline-toolbar-obstruction.jpeg",
+      "sha256": "9cd00dbe4f154c650324d277e4024bcccef3f5ebe0c4a16b28e385316f0af1ec"
+    },
+    {
+      "path": "screenshots/native-cross-side-movement-observation.json",
+      "sha256": "538eb4e5cfe1e9d6d7beab58e502483a118800749c6cc482143940a078778842"
+    }
+  ],
+  "verifiedSources": [
+    {
+      "path": "src/features/board/BoardDrawing.tsx",
+      "sha256": "e85aba16d6d11cc5ce393851e034355fddf472dbe25d7a12e6ff8ebf1d7dc4cb"
+    },
+    {
+      "path": "src/features/board/BoardView.tsx",
+      "sha256": "38979d751d14c72880bfeae7f632e4afbb0e4ab0eee0c9866dad56cd9710f9e0"
+    },
+    {
+      "path": "src/features/board/drawing.css",
+      "sha256": "214a13d4ce15e67b0a9a5adfa07f131fe690a0fe43ba1a15b501158487f9f7ad"
+    },
+    {
+      "path": "src/features/board/drawing-bindings.ts",
+      "sha256": "9d7c104d4866b597f129113eaaec23a43e2d153cd729f165d4b92674c8c4d06a"
+    },
+    {
+      "path": "tests/e2e/drawing.spec.ts",
+      "sha256": "4193cc64c30974c6091ff80c63babd4c5c660287aeb5a76f97f66201c8c6cdb6"
+    },
+    {
+      "path": "tests/e2e/drawing-binding-rules.spec.ts",
+      "sha256": "7e48de350b9d25efffc856e1a456d32ea605f17a513eda00e08fb15cdc9c3de6"
+    },
+    {
+      "path": "tests/e2e/drawing-bindings.spec.ts",
+      "sha256": "80086b2d4d5b41643850b85abb9ea6c43c7dbf824f8e1b6c7ec0d2e4188bc5aa"
+    }
+  ],
+  "uniqueBrowserTests": 11
+}

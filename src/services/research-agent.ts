@@ -1,0 +1,323 @@
+import type { AIConnectionId, AIRequest, Conversation, Draft, ResourceRef, WorkspaceData } from '../domain/types';
+import type { ResearchAgentArtifact, ResearchAgentCapability, ResearchAgentEvent, ResearchAgentInput, ResearchAgentSource } from '../domain/research-agent';
+import { mapCitationNumbers } from '../domain/citations';
+import { hasFullText } from '../domain/knowledge';
+import { drawingTextLength, validateDrawingQuestion } from '../domain/drawing-question';
+import { loadDrawingImage } from './drawing-question';
+import { contentHash, getAsset } from '../data/storage';
+import { loadPdfDocument } from './pdf';
+import { getActiveConversation, resourceExists, resourceTitle, uid, workspace } from './workspace';
+
+const running = new Map<string, AbortController>();
+const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+const aborted = (signal: AbortSignal) => { if (signal.aborted) throw new DOMException('已停止', 'AbortError'); };
+
+export async function getResearchAgentCapabilities(): Promise<ResearchAgentCapability[]> {
+  const response = await fetch('/api/ai/research/capabilities');
+  if (!response.ok) throw new Error('无法连接研究服务，请启动本机 AI 服务后重新检测。');
+  const result = await response.json();
+  if (!Array.isArray(result.connections)) throw new Error('研究服务能力信息无效，请重启服务。');
+  return result.connections;
+}
+
+/** Extraction happens only after submission; importing this service never reads PDFs. */
+export async function collectResearchSources(data: WorkspaceData, researchId: string, signal: AbortSignal, report: (text: string) => void = () => {}, focusDocumentId?: string) {
+  const research = data.researches[researchId];
+  if (!research) throw new Error('研究已不存在。');
+  const sources: ResearchAgentSource[] = [];
+  let budget = 160000;
+  const orderedIds = focusDocumentId && research.documentIds.includes(focusDocumentId) ? [focusDocumentId, ...research.documentIds.filter(id => id !== focusDocumentId)] : research.documentIds;
+  for (const id of orderedIds.slice(0, 8)) {
+    aborted(signal);
+    const doc = data.documents[id];
+    if (!doc) continue;
+    const source: ResearchAgentSource = { id, title: doc.title.slice(0, 2000), hash: doc.hash ?? '', totalPages: doc.hash ? doc.pageCount ?? 0 : 0, pages: [] };
+    sources.push(source);
+    if (!hasFullText(doc)) { source.unavailable = '只有题录或摘要，尚无 PDF 全文。'; continue; }
+    if (!budget) { source.unavailable = '本次文本预算已用完，未读取此文献。'; continue; }
+    report(`准备资料：${doc.title}`);
+    try {
+      const { pdf, hash } = await loadPdfDocument(doc);
+      aborted(signal);
+      if (doc.hash && hash !== doc.hash) throw new Error('文件 hash 与保存的来源不一致');
+      source.hash = hash; source.totalPages = pdf.numPages;
+      for (let pageIndex = 0; pageIndex < Math.min(pdf.numPages, 24) && budget > 0; pageIndex++) {
+        aborted(signal);
+        const page = await pdf.getPage(pageIndex + 1);
+        const content = await page.getTextContent();
+        aborted(signal);
+        const text = content.items.map(item => 'str' in item ? item.str : '').join(' ').slice(0, Math.min(12000, budget));
+        if (text.trim()) { source.pages.push({ pageIndex, text }); budget -= text.length; }
+      }
+      if (!source.pages.length) source.unavailable = '未提取到文字；扫描件需先进行 OCR。';
+      else if (source.pages.length < pdf.numPages) source.unavailable = `仅提供前 ${Math.min(pdf.numPages, 24)} 页中的可提取文字，未覆盖全文。`;
+    } catch (error) {
+      aborted(signal);
+      source.unavailable = error instanceof Error ? error.message : 'PDF 读取失败';
+      source.pages = [];
+    }
+  }
+  const readable = sources.filter(source => source.pages.length).length;
+  const summary = `本次按${focusDocumentId ? '明确追问的文献优先、再按' : ''}研究资料顺序取前 ${Math.min(research.documentIds.length, 8)} 份，其中 ${readable} 份可读；每份最多前 24 页、每页 12,000 字符，总计最多 160,000 字符。${research.documentIds.length > 8 ? `另有 ${research.documentIds.length - 8} 份未发送。` : ''}${sources.some(source => source.unavailable) ? '部分资料缺全文或已截断，不能视为阅读全文。' : ''}`;
+  return { sources, summary };
+}
+
+export function validateResearchArtifact(data: WorkspaceData, researchId: string, sources: ResearchAgentSource[], artifact: ResearchAgentArtifact) {
+  const research = data.researches[researchId];
+  if (!research || !artifact || typeof artifact.title !== 'string' || !artifact.title.trim() || artifact.title.length > 200 || typeof artifact.body !== 'string' || !artifact.body.trim() || artifact.body.length > 80000 || !Array.isArray(artifact.citations) || artifact.citations.length > 16 || artifact.citations.reduce((sum, item) => sum + (typeof item?.quote === 'string' ? item.quote.length : 24001), 0) > 24000) throw new Error('研究结果格式无效，未写入成果。');
+  for (const citation of artifact.citations) {
+    const source = sources.find(source => source.id === citation.documentId), doc = data.documents[citation.documentId];
+    const page = source?.pages.find(page => page.pageIndex === citation.pageIndex);
+    if (!research.documentIds.includes(citation.documentId) || !hasFullText(doc) || doc.hash !== citation.documentHash || source?.hash !== citation.documentHash || !Number.isInteger(citation.pageIndex) || !page || citation.pageIndex >= doc.pageCount || typeof citation.quote !== 'string' || !normalize(citation.quote) || citation.quote.length > 4000 || !normalize(page.text).includes(normalize(citation.quote))) throw new Error('研究结果引用不在本次原文范围内，未写入成果。');
+  }
+  mapCitationNumbers(artifact.body, number => {
+    if (!Number.isInteger(number) || number < 1 || number > artifact.citations.length) throw new Error(`引用 [${number}] 没有对应原文，未写入成果。`);
+    return '';
+  });
+}
+
+function ownsResource(data: WorkspaceData, researchId: string, ref: ResourceRef) {
+  const research = data.researches[researchId];
+  return !!research && resourceExists(data, ref) && (ref.kind === 'research' ? ref.id === researchId : ref.kind === 'document' ? research.documentIds.includes(ref.id) : ref.kind === 'card' ? research.cardIds.includes(ref.id) : ref.kind === 'draft' ? data.drafts[ref.id]?.researchId === researchId : data.boards[ref.id]?.researchId === researchId);
+}
+export function isResearchConversation(data: WorkspaceData, conversation: Conversation) {
+  return !conversation.nativeImported && !conversation.nativeSessionId && !conversation.nativeSessionRef
+    && !conversation.boardResearch && !conversation.boardSkill
+    && !conversation.contextIds.length
+    && !conversation.requestIds.some(id => data.requests[id] && !data.requests[id].researchRun);
+}
+
+export function openResearchConversation(researchId: string, conversationId: string) {
+  workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });
+  workspace.openResearchView(researchId, 'home');
+}
+
+export function createResearchConversation(researchId: string, connectionId?: AIConnectionId) {
+  const current = getActiveConversation(workspace.getState().data, researchId);
+  const id = workspace.createConversation(researchId, { surface: 'workbench' });
+  workspace.updateData(data => {
+    Object.assign(data.conversations[id], { connectionId: connectionId ?? current?.connectionId ?? 'codex', title: '新会话' });
+  });
+  openResearchConversation(researchId, id);
+  return id;
+}
+
+export function changeResearchAgent(researchId: string, connectionId: AIConnectionId) {
+  const data = workspace.getState().data, current = getActiveConversation(data, researchId);
+  if (current && (current.connectionId ?? 'codex') === connectionId) return current.id;
+  if (current && !current.requestIds.length && !current.input?.trim() && !current.researchFocus && !current.drawingQuestion && isResearchConversation(data, current)) {
+    workspace.updateData(next => { next.conversations[current.id].connectionId = connectionId; });
+    return current.id;
+  }
+  const id = createResearchConversation(researchId, connectionId);
+  workspace.notice('已为所选助手新开会话，原话题、未发送文字和修改目标均已保留。');
+  return id;
+}
+
+export function focusResearchResource(researchId: string, ref: ResourceRef) {
+  const conversation = workspace.getActiveConversation(researchId);
+  workspace.updateData(data => {
+    if (!ownsResource(data, researchId, ref)) throw new Error('这个内容不属于当前研究。');
+    const entity = ref.kind === 'draft' ? data.drafts[ref.id] : ref.kind === 'card' ? data.cards[ref.id] : undefined;
+    const body = entity?.body ?? (ref.kind === 'research' ? data.researches[ref.id].question : ref.kind === 'document' ? `文献：${data.documents[ref.id]?.title}` : `白板：${data.boards[ref.id]?.title}`);
+    data.conversations[conversation.id].researchFocus = { ref: { ...ref }, title: resourceTitle(data, ref).slice(0, 2000), body: body.slice(0, 12000) };
+    delete data.conversations[conversation.id].drawingQuestion;
+  });
+}
+export function clearResearchFocus(researchId: string) {
+  const conversation = getActiveConversation(workspace.getState().data, researchId);
+  if (conversation) workspace.updateData(data => { delete data.conversations[conversation.id].researchFocus; });
+}
+
+function draftMatches(draft: Draft, title: string, body: string, evidenceIds: string[]) {
+  return draft.title === title && draft.body === body && JSON.stringify(draft.evidenceIds) === JSON.stringify(evidenceIds);
+}
+export function applyResearchSuggestion(requestId: string) {
+  workspace.updateData(data => {
+    const run = data.requests[requestId]?.researchRun, suggestion = run?.suggestion;
+    const draft = run?.draftId ? data.drafts[run.draftId] : undefined;
+    if (!draft || !suggestion || !draftMatches(draft, suggestion.baseTitle, suggestion.baseBody, suggestion.baseEvidenceIds)) throw new Error('你已继续编辑正文，这份建议基于旧版本，请重新提出修改要求。');
+    run!.previous = { title: draft.title, body: draft.body, evidenceIds: [...draft.evidenceIds], appliedTitle: suggestion.title, appliedBody: suggestion.body, appliedEvidenceIds: [...suggestion.evidenceIds] };
+    Object.assign(draft, { title: suggestion.title, body: suggestion.body, evidenceIds: [...suggestion.evidenceIds], updatedAt: new Date().toISOString() });
+    delete run!.suggestion;
+  });
+}
+export function keepResearchDraft(requestId: string) { workspace.updateData(data => { if (data.requests[requestId]?.researchRun) delete data.requests[requestId].researchRun!.suggestion; }); }
+export function undoResearchSuggestion(requestId: string) {
+  workspace.updateData(data => {
+    const run = data.requests[requestId]?.researchRun, previous = run?.previous;
+    const draft = run?.draftId ? data.drafts[run.draftId] : undefined;
+    if (!draft || !previous || !draftMatches(draft, previous.appliedTitle, previous.appliedBody, previous.appliedEvidenceIds)) throw new Error('正文在采用后已继续编辑，不能撤销覆盖你的修改。');
+    Object.assign(draft, { title: previous.title, body: previous.body, evidenceIds: [...previous.evidenceIds], updatedAt: new Date().toISOString() });
+    delete run!.previous;
+  });
+}
+
+async function verifyAssets(data: WorkspaceData, sources: ResearchAgentSource[], signal: AbortSignal) {
+  for (const source of sources.filter(source => source.pages.length)) {
+    aborted(signal);
+    const doc = data.documents[source.id];
+    if (!doc?.assetId || doc.hash !== source.hash) throw new Error('来源文件在运行中发生变化，请重新提交。');
+    const asset = await getAsset(doc.assetId);
+    if (!asset || await contentHash(await asset.arrayBuffer()) !== source.hash) throw new Error('原文件已缺失或改变，未写入结果。');
+  }
+}
+
+export async function streamResearchRun(input: ResearchAgentInput, signal: AbortSignal, onEvent: (event: ResearchAgentEvent) => void) {
+  const response = await fetch('/api/ai/research/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal });
+  if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error || '研究运行未启动，请检查连接。'); }
+  if (!response.body) throw new Error('研究服务没有返回事件流。');
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let buffer = '';
+  const consume = () => { let end: number; while ((end = buffer.indexOf('\n')) >= 0) { const line = buffer.slice(0, end).trim(); buffer = buffer.slice(end + 1); if (line) onEvent(JSON.parse(line)); } };
+  try { while (true) { const chunk = await reader.read(); if (chunk.done) break; aborted(signal); buffer += decoder.decode(chunk.value, { stream: true }); if (buffer.length > 500000) throw new Error('研究事件过大，已停止接收。'); consume(); } buffer += decoder.decode(); if (buffer.trim()) onEvent(JSON.parse(buffer)); }
+  finally { reader.releaseLock(); }
+}
+
+export function stopResearchRun(requestId: string) {
+  const controller = running.get(requestId);
+  if (!controller) return;
+  controller.abort();
+  workspace.updateData(data => { const request = data.requests[requestId]; if (request?.status === 'generating') { request.status = 'stopped'; request.error = '已停止，输入和已完成成果已保留。'; } });
+}
+export async function stopAllResearchRuns() {
+  for (const id of running.keys()) stopResearchRun(id);
+  while (running.size) await new Promise(resolve => setTimeout(resolve, 20));
+}
+
+export async function submitResearchRun(researchId: string, prompt: string, retryId?: string) {
+  if (!prompt.trim() || prompt.length > 4000) throw new Error('请输入 4,000 字以内的研究目标。');
+  const conversation = workspace.getActiveConversation(researchId);
+  if (!isResearchConversation(workspace.getState().data, conversation)) throw new Error('这段原有会话使用经典上下文，请到经典工作台继续，或新建研究会话。');
+  const pending = Object.values(workspace.getState().data.requests).find(request => request.researchId === researchId && request.status === 'generating');
+  if (pending) throw new Error(`会话「${workspace.getState().data.conversations[pending.conversationId]?.title ?? '当前话题'}」仍在执行，请等待完成或切回停止。`);
+  const snapshot = structuredClone(workspace.getState().data), generation = workspace.getGeneration();
+  const connectionId: AIConnectionId = conversation.connectionId ?? 'codex';
+  const controller = new AbortController(), signal = controller.signal, id = uid('request');
+  const previous = retryId ? snapshot.requests[retryId] : undefined;
+  if (retryId && (!previous || previous.researchId !== researchId || previous.conversationId !== conversation.id || !previous.researchRun)) throw new Error('只能在原会话中重试这一轮。');
+  const drawingQuestion = retryId ? previous?.researchRun?.drawingQuestion : snapshot.conversations[conversation.id].drawingQuestion;
+  if (drawingQuestion) validateDrawingQuestion(drawingQuestion);
+  const selectedFocus = drawingQuestion ? undefined : retryId ? previous?.researchRun?.focus : snapshot.conversations[conversation.id].researchFocus;
+  if (selectedFocus && !ownsResource(snapshot, researchId, selectedFocus.ref)) throw new Error('追问对象已缺失或不属于此研究，请清除后重新选择。');
+  const focusedEntity = selectedFocus?.ref.kind === 'draft' ? snapshot.drafts[selectedFocus.ref.id] : selectedFocus?.ref.kind === 'card' ? snapshot.cards[selectedFocus.ref.id] : undefined;
+  const focus = selectedFocus && { ...selectedFocus, title: (focusedEntity?.title ?? selectedFocus.title).slice(0, 2000), body: (focusedEntity?.body ?? selectedFocus.body).slice(0, 12000) };
+  const target = focus?.ref.kind === 'draft' ? structuredClone(snapshot.drafts[focus.ref.id]) : undefined;
+  const historyTurns = previous ? structuredClone(previous.history ?? []) : conversation.requestIds.map(key => snapshot.requests[key]).filter(item => item?.status === 'done' && item.researchRun && !item.validationError).slice(-6).map(item => ({ requestId: item.id, prompt: item.prompt, body: item.result?.body ?? item.body, evidenceIds: [], context: [] }));
+  while (historyTurns.reduce((n, item) => n + item.prompt.length + item.body.length, 0) > 12000) historyTurns.shift();
+  const history = historyTurns.map(item => ({ prompt: item.prompt, body: item.body }));
+  const request: AIRequest = { id, researchId, conversationId: conversation.id, connectionId, prompt: prompt.trim(), context: [], history: historyTurns, createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [], purpose: 'chat', mode: 'live', ...(retryId ? { retryOf: retryId } : {}), researchRun: { ...(focus ? { focus: structuredClone(focus) } : {}), ...(drawingQuestion ? { drawingQuestion: structuredClone(drawingQuestion) } : {}) } };
+  running.set(id, controller);
+  workspace.updateData(data => {
+    data.requests[id] = request; data.conversations[conversation.id].requestIds.push(id); data.conversations[conversation.id].connectionId = connectionId;
+    data.sessions[researchId].agentWorkbenchStarted = true;
+    if (!previous) delete data.conversations[conversation.id].researchFocus;
+    const owner = data.conversations[conversation.id];
+    owner.updatedAt = request.createdAt;
+    if (!owner.title || ['新会话', '新的阅读对话', '阅读对话'].includes(owner.title)) owner.title = request.prompt.slice(0, 36);
+  });
+  const current = () => workspace.getGeneration() === generation && workspace.getState().data.requests[id]?.status === 'generating';
+  const progress = (text: string) => { if (current()) workspace.updateData(data => { data.requests[id].events = [{ id: uid('event'), kind: 'status', text }]; }); };
+  try {
+    const capabilities = await getResearchAgentCapabilities(); aborted(signal);
+    const capability = capabilities.find(item => item.id === connectionId);
+    if (!capability?.research) throw new Error(capability?.detail || '这个连接尚不支持研究工具。请切换 Codex，或回到经典工作台继续使用原连接。');
+    if (drawingQuestion?.mode === 'image' && capability.images !== true) throw new Error('这个连接未确认支持图片，附件和输入已保留。请选择支持图片的助手，或明确选择仅发送文字和结构。');
+    let drawing: ResearchAgentInput['drawing'];
+    if (drawingQuestion) {
+      const image = await loadDrawingImage(drawingQuestion.snapshot);
+      aborted(signal);
+      let imageDataUrl: string | undefined;
+      if (drawingQuestion.mode === 'image') {
+        const bytes = new Uint8Array(await image.arrayBuffer());
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+        imageDataUrl = `data:image/png;base64,${btoa(binary)}`;
+      }
+      drawing = { ...structuredClone(drawingQuestion), ...(imageDataUrl ? { imageDataUrl } : {}) };
+    }
+    const { sources, summary } = drawingQuestion
+      ? { sources: [] as ResearchAgentSource[], summary: `本次附送 ${drawingQuestion.snapshot.elements.length} 个选中元素、${drawingTextLength(drawingQuestion.snapshot)} 字符的文字和结构${drawingQuestion.mode === 'image' ? '及一张局部图片' : '（仅文字模式，Agent 未看图）'}；未追加论文原文。` }
+      : await collectResearchSources(snapshot, researchId, signal, progress, focus?.ref.kind === 'document' ? focus.ref.id : undefined);
+    aborted(signal); if (!current()) return id;
+    workspace.updateData(data => {
+      data.requests[id].researchRun!.sourceSummary = `${summary}附送最近 ${history.length} 轮已完成研究对话（合计不超过 12,000 字符）。${focus ? '局部对象正文最多发送前 12,000 字符。' : ''}`;
+      for (const source of sources.filter(source => source.pages.length)) {
+        const doc = data.documents[source.id], original = snapshot.documents[source.id];
+        if (!data.researches[researchId].documentIds.includes(source.id) || !doc || doc.assetId !== original.assetId || doc.hash !== original.hash) throw new Error('研究资料在准备中发生变化，请重新提交。');
+        if (!doc.hash) { doc.hash = source.hash; doc.pageCount = source.totalPages; doc.textStatus = 'ready'; }
+      }
+    });
+    let artifact: ResearchAgentArtifact | undefined, completed: Extract<ResearchAgentEvent, { type: 'done' }> | undefined;
+    await streamResearchRun({ requestId: id, researchId, connectionId, prompt: request.prompt, sources, history, ...(focus ? { focus } : {}), ...(drawing ? { drawing } : {}) }, signal, event => {
+      if (!current() || signal.aborted) return;
+      if (event.type === 'error') throw new Error(event.error);
+      if (event.type === 'progress') progress(event.text);
+      else if (event.type === 'delta') workspace.updateData(data => { data.requests[id].body += event.text; });
+      else if (event.type === 'artifact') { validateResearchArtifact(workspace.getState().data, researchId, sources, event.artifact); artifact = event.artifact; }
+      else if (event.type === 'done') completed = event;
+    });
+    aborted(signal); if (!current()) return id;
+    if (!completed) throw new Error('研究连接意外中断，未收到完成确认。');
+    await verifyAssets(workspace.getState().data, sources, signal); aborted(signal); if (!current()) return id;
+    if (drawingQuestion) { await loadDrawingImage(drawingQuestion.snapshot); aborted(signal); if (!current()) return id; }
+    const done = completed as Extract<ResearchAgentEvent, { type: 'done' }>;
+    if (artifact) {
+      validateResearchArtifact(workspace.getState().data, researchId, sources, artifact);
+      if (artifact.citations.some(citation => !done.readPages.some(page => page.documentId === citation.documentId && page.pageIndex === citation.pageIndex))) throw new Error('结果引用了 Agent 未实际读取的页，未写入成果。');
+    }
+    let openDraftId: string | undefined;
+    workspace.updateData(data => {
+      const saved = data.requests[id];
+      saved.model = done.model; saved.nativeSessionId = done.nativeSessionId; saved.researchRun!.readPages = done.readPages;
+      if (artifact) {
+        const used = new Set<string>();
+        const evidenceIds = artifact.citations.map(citation => {
+          const existing = Object.values(data.evidence).find(item => !used.has(item.id) && item.documentId === citation.documentId && item.pageIndex === citation.pageIndex && item.quote === citation.quote);
+          if (existing) { used.add(existing.id); return existing.id; }
+          const evidenceId = uid('evidence'); data.evidence[evidenceId] = { id: evidenceId, researchId, documentId: citation.documentId, pageIndex: citation.pageIndex, quote: citation.quote, createdAt: new Date().toISOString() }; used.add(evidenceId); return evidenceId;
+        });
+        saved.context = artifact.citations.map((citation, index) => ({ evidenceId: evidenceIds[index], documentId: citation.documentId, documentHash: citation.documentHash, title: data.documents[citation.documentId].title, pageIndex: citation.pageIndex, quote: citation.quote }));
+        saved.evidenceIds = evidenceIds;
+        saved.result = { title: artifact.title, body: artifact.body, evidenceIds };
+        if (target) {
+          if (!data.drafts[target.id] || data.drafts[target.id].researchId !== researchId) throw new Error('原成果已不存在，未覆盖其他内容。');
+          saved.researchRun!.draftId = target.id;
+          saved.researchRun!.suggestion = { ...saved.result, baseTitle: target.title, baseBody: target.body, baseEvidenceIds: [...target.evidenceIds] };
+          saved.body = '已提出修改建议，原成果保持可编辑。';
+        } else {
+          openDraftId = uid('draft');
+          data.drafts[openDraftId] = { id: openDraftId, researchId, ...saved.result, updatedAt: new Date().toISOString() };
+          saved.researchRun!.draftId = openDraftId; saved.body = '已整理为可编辑成果，引用可回到原文。';
+        }
+      } else {
+        if (!saved.body.trim()) throw new Error('Agent 未返回回答或成果，请重试。');
+        mapCitationNumbers(saved.body, () => { throw new Error('回答提供了未建立原文映射的引用，请重试生成带引用的成果。'); });
+      }
+      saved.status = 'done';
+      data.conversations[conversation.id].updatedAt = new Date().toISOString();
+      const owner = data.conversations[conversation.id];
+      if (owner.input === prompt) {
+        owner.input = '';
+        if (drawingQuestion && owner.drawingQuestion?.snapshot.id === drawingQuestion.snapshot.id && owner.drawingQuestion.snapshot.hash === drawingQuestion.snapshot.hash && owner.drawingQuestion.mode === drawingQuestion.mode) delete owner.drawingQuestion;
+      }
+      if (data.researches[researchId].title === '新研究') data.researches[researchId].title = prompt.trim().slice(0, 30);
+    });
+    if (openDraftId) workspace.notice(`会话「${workspace.getState().data.conversations[conversation.id].title}」的成果已保存，可打开编辑和核查引用。`);
+  } catch (error) {
+    const stopped = signal.aborted; controller.abort();
+    if (current()) workspace.updateData(data => { data.requests[id].status = stopped ? 'stopped' : 'error'; data.requests[id].error = error instanceof Error ? error.message : '研究执行失败，输入已保留。'; });
+  } finally {
+    if (workspace.getGeneration() === generation) {
+      workspace.retrySave();
+      try { await workspace.flushSave(); } catch { /* The shared save indicator retains the failure and retry action. */ }
+    }
+    running.delete(id);
+  }
+  return id;
+}
+
+export function researchAgentConversation(researchId: string) {
+  const data = workspace.getState().data;
+  return getActiveConversation(data, researchId);
+}

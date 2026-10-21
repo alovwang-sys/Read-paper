@@ -1,3 +1,4 @@
+import { useClassicWorkbench } from './helpers';
 import { test, expect, _electron, type ElectronApplication, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
@@ -49,7 +50,7 @@ async function launch(userData: string, home: string, modelRequests: string[]) {
   const page = await application.firstWindow();
   page.on('request', request => { if (/\/api\/ai\/(?:chat|agents\/run)$/.test(new URL(request.url()).pathname)) modelRequests.push(request.url()); });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(main(page)).toBeVisible(); await saved(page);
+  await expect(main(page)).toBeVisible(); await useClassicWorkbench(page); await saved(page);
   expect(page.url()).toBe('papertrail://app/');
   expect(await page.evaluate(() => window.papertrailDesktop!.getProjectLocation!())).toBe(join(home, 'Documents'));
   // Return to the workbench if a real save error blocks quit; never force-close it.

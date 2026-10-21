@@ -8,6 +8,7 @@ export const fixtureSessionRef = (nativeSessionId: string) => `fixture-${nativeS
 // Deterministic project service; it never reads or writes the user's filesystem or native histories.
 export async function mockProjectService(page: Page, options: { bound?: boolean; sessions?: NativeSessionSnapshot[]; seed?: ReturnType<typeof createSeed>; names?: Record<string, string>; initializeWorkspace?: boolean } = {}) {
   const seed = options.seed ?? createSeed();
+  seed.agentWorkbench ??= false;
   if (options.bound !== false) for (const research of Object.values(seed.researches)) research.directory = { id: `binding-${research.id}`, projectId: `project-${research.id}`, path: `/fixture/${research.id}` };
   if (options.initializeWorkspace !== false) {
     await page.addInitScript(value => { if (!sessionStorage.getItem('papertrail-project-fixture-ready')) { localStorage.setItem('papertrail-recovery-v3', JSON.stringify(value)); sessionStorage.setItem('papertrail-project-fixture-ready', 'true'); } }, seed);

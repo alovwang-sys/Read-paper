@@ -91,7 +91,7 @@
   background: #e9f0e28f;
   pointer-events: none;
 }
-.board-group > span {
+.board-group > span, .board-group > button {
   display: inline-flex;
   font-size: 11px;
   letter-spacing: 0.3px;
@@ -101,11 +101,12 @@
   padding: 7px 11px;
   border-radius: 7px 0 7px 0;
 }
+.board-group > button { border: 0; font-family: inherit; cursor: pointer; pointer-events: auto; }
 .board-group.group-color-1 {
   background: #f2eadb96;
   border-color: #e0cfaf;
 }
-.board-group.group-color-1 > span {
+.board-group.group-color-1 > span, .board-group.group-color-1 > button {
   background: #ebdabc;
   color: #90794e;
 }
@@ -113,7 +114,7 @@
   background: #e3ebee96;
   border-color: #c3d4db;
 }
-.board-group.group-color-2 > span {
+.board-group.group-color-2 > span, .board-group.group-color-2 > button {
   background: #cedde3;
   color: #607f8c;
 }
@@ -121,7 +122,7 @@
   background: #eee6ec96;
   border-color: #dccbd6;
 }
-.board-group.group-color-3 > span {
+.board-group.group-color-3 > span, .board-group.group-color-3 > button {
   background: #e3d3de;
   color: #896d80;
 }
@@ -266,6 +267,7 @@
 }
 .board-document-preview span {
   font-size: 10px;
+  max-width: 100%;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

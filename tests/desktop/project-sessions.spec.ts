@@ -1,3 +1,4 @@
+import { useClassicWorkbench } from './helpers';
 import { test, expect, _electron, type ElectronApplication, type Page } from '@playwright/test';
 import { access, mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -20,7 +21,7 @@ async function launch(userData: string, home: string) {
   }, timeout: 60_000 });
   try {
     const page = await application.firstWindow(); await page.setViewportSize({ width: 1440, height: 900 });
-    await expect(main(page)).toBeVisible(); await saved(page);
+    await expect(main(page)).toBeVisible(); await useClassicWorkbench(page); await saved(page);
     return { application, page };
   } catch (error) { const exited = application.waitForEvent('close'); application.process().kill(); await exited; throw error; }
 }

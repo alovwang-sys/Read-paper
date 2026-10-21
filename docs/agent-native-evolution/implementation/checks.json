@@ -1,0 +1,158 @@
+{
+  "date": "2026-10-21",
+  "status": "passed",
+  "scope": "First integrated Agent workbench; existing data and classic functions retained",
+  "commands": [
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "note": "Existing large-chunk warnings remain; no dependency added."
+    },
+    {
+      "command": "npm test",
+      "status": "passed",
+      "files": 29,
+      "tests": 429
+    },
+    {
+      "command": "node --test server/*.test.mjs",
+      "status": "passed",
+      "tests": 211
+    },
+    {
+      "command": "npm run test:desktop",
+      "status": "passed",
+      "tests": 16
+    },
+    {
+      "command": "npx playwright test tests/e2e/agent-workbench.spec.ts --reporter=line",
+      "status": "passed",
+      "tests": 3
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    }
+  ],
+  "viewports": [
+    "1440x900",
+    "1280x800",
+    "1024x800"
+  ],
+  "browserCoverage": [
+    "Actual PDF.js fixture extraction and persistent Draft/Evidence with controlled model events",
+    "Review/apply/keep revisions and protect later human edits from undo",
+    "Source reference, full reading and exact return scroll; composition/focus kept",
+    "Reference does not obscure input or send control at 1024px",
+    "Classic mode and old board remain available on the same entities",
+    "Old AI actions explicitly return to their classic context; new history retains one composer",
+    "Late result belongs to submitted research without stealing another research view",
+    "Stop preserves input and does not resubmit from the same click",
+    "Refresh restores draft and unsent input",
+    "Zero pageErrors in all three controlled tests"
+  ],
+  "realCodex": {
+    "toolSmoke": "codex-smoke.json",
+    "browserChain": "browser-live.json",
+    "model": "gpt-6.1-sol",
+    "browserReadDocuments": 2,
+    "browserReadPages": 2,
+    "browserCitations": 2,
+    "persistedAfterReload": true,
+    "pageErrors": 0,
+    "seconds": 140.5,
+    "note": "Both real probes use clearly synthetic material. No real-academic-quality claim."
+  },
+  "claudeReview": {
+    "status": "completed",
+    "source": "claude-integration-review-result.json",
+    "response": "claude-integration-review-response.md"
+  },
+  "independentReview": {
+    "status": "completed",
+    "fixed": [
+      "Old whiteboard/PDF AI action context was not consumed by new Dock; explicit classic handoff preserves it."
+    ],
+    "withdrawn": [
+      "Desktop close suspected missing research stop; verified existing stopAllAI now awaits it."
+    ]
+  },
+  "priorFailures": [
+    {
+      "stage": "Controlled browser startup",
+      "reason": "Stubbed Vite client removed required exports; replaced with test-context-only WebSocket routing."
+    },
+    {
+      "stage": "Fixture expectation",
+      "reason": "Expected three readable PDFs; actual seed contains two text PDFs and one scanned fixture. Test now asserts OCR gap."
+    },
+    {
+      "stage": "Stop",
+      "reason": "React reused stop DOM button as submit, allowing the same click to resubmit; preventDefault fixed and regression passes."
+    },
+    {
+      "stage": "Desktop protocol/package",
+      "reason": "New research endpoints and server modules plus prior literature module needed explicit whitelist entries; fixed and tests pass."
+    },
+    {
+      "stage": "Real browser attempt 1",
+      "reason": "Vite was not running; preserved browser-live-attempt1-failure.json. Started it and reran once successfully."
+    }
+  ],
+  "limitations": [
+    "Claude Code/OpenCode/model-direct research tools not implemented; prior connections retained in classic workbench.",
+    "Card and drawing canvas not fully merged.",
+    "PDF scope limited to eight documents, first 24 pages, 160000 chars; no OCR, external search or automatic full-text retrieval in new loop.",
+    "Research turns use isolated ephemeral native threads and explicit app history, not arbitrary native session continuation.",
+    "Exact quote matching is not semantic validation; no real-user usability study or broad research-quality evaluation.",
+    "Desktop protocol/unit checks passed; no packaged installer was produced or installed."
+  ],
+  "evidenceScreenshots": [
+    {
+      "path": "screenshots/legacy-board-1440.png",
+      "sha256": "f792be615134ab9b42d8666bbd32862ad859e303f94e0889ca0085c4350ded25"
+    },
+    {
+      "path": "screenshots/live-result-1440.png",
+      "sha256": "7a6ebf55eeb23e5292699890b563eaaaf533e5b901e235db4c9815de1be12fe4"
+    },
+    {
+      "path": "screenshots/result-1024.png",
+      "sha256": "7d004ecc581d1e767db70642948e729824a6f7e5998f79247641450159879f89"
+    },
+    {
+      "path": "screenshots/result-1280.png",
+      "sha256": "9a96a5efdc7a2a393f9b4c7299d612b563000ed62078cd06c2b99307189366eb"
+    },
+    {
+      "path": "screenshots/result-1440.png",
+      "sha256": "02a5f072143f3b92bbff96a50dae95c23f43a92211bb77ba750099e488942529"
+    },
+    {
+      "path": "screenshots/revision-review-1440.png",
+      "sha256": "75807acf719aae1feb79bd757e65a0c94d5884e6de307f16c91ee4e4c10e4009"
+    },
+    {
+      "path": "screenshots/source-reference-1024.png",
+      "sha256": "d78ba7fbaee4090294fc471982b87c05aae75ee3041fbfdca7a89a394760b30a"
+    },
+    {
+      "path": "screenshots/source-reference-1440.png",
+      "sha256": "bcd90a93e9c7f6ff683027ce63efa20202d55f944002e69d878580f70863f2f1"
+    },
+    {
+      "path": "screenshots/welcome-1440.png",
+      "sha256": "f98f562ea7b6a0330d160c202fbb43340d32d01ba07891bd00ae90a956f4a41d"
+    }
+  ],
+  "subsequentSessionReview": {
+    "evidence": "../review/session-model/README.md",
+    "status": "fixed-and-verified",
+    "issues": [
+      "Conversation selection triggers classic-workbench compatibility fallback",
+      "New conversation inherits research-level local focus"
+    ],
+    "scopeNote": "Earlier checks describe the initial implementation; multi-conversation verification is recorded separately.",
+    "resolvedBy": "session-fix/checks.json"
+  }
+}

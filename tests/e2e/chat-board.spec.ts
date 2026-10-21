@@ -18,6 +18,7 @@ async function data(page: Page): Promise<WorkspaceData> {
 }
 async function start(page: Page, view: 'pdf' | 'draft' = 'draft') {
   const seed = createSeed();
+  seed.agentWorkbench = false;
   seed.boards = {}; seed.placements = {}; seed.edges = {};
   await page.addInitScript(value => { if (!sessionStorage.getItem('chat-board-seeded')) { localStorage.setItem('papertrail-recovery-v3', JSON.stringify(value)); sessionStorage.setItem('chat-board-seeded', '1'); } }, seed);
   await page.route('**/api/ai/config', route => route.fulfill({ json: { configured: false, model: 'chat-board-test', images: false } }));

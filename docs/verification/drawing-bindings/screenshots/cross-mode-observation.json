@@ -1,0 +1,121 @@
+{
+  "before": {
+    "id": "m80pFhdy_mb6uykDS048z",
+    "type": "arrow",
+    "x": 508,
+    "y": 240,
+    "width": 66,
+    "height": 355.303955078125,
+    "angle": 0,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "transparent",
+    "fillStyle": "solid",
+    "strokeWidth": 2,
+    "strokeStyle": "solid",
+    "roughness": 1,
+    "opacity": 100,
+    "groupIds": [],
+    "frameId": null,
+    "index": "a3",
+    "roundness": {
+      "type": 2
+    },
+    "seed": 54882945,
+    "version": 23,
+    "versionNonce": 273682657,
+    "isDeleted": false,
+    "boundElements": null,
+    "updated": 1792558162943,
+    "link": null,
+    "locked": false,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        66,
+        355.303955078125
+      ]
+    ],
+    "lastCommittedPoint": null,
+    "startBinding": {
+      "elementId": "resource-placement-a",
+      "focus": -0.8508759520942861,
+      "gap": 2
+    },
+    "endBinding": {
+      "elementId": "DFf6_Iev0WQmyCvb1fzti",
+      "focus": -0.8767054251670626,
+      "gap": 2
+    },
+    "startArrowhead": null,
+    "endArrowhead": "arrow",
+    "elbowed": false
+  },
+  "after": {
+    "id": "m80pFhdy_mb6uykDS048z",
+    "type": "arrow",
+    "x": 568,
+    "y": 290,
+    "width": 6,
+    "height": 305.303955078125,
+    "angle": 0,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "transparent",
+    "fillStyle": "solid",
+    "strokeWidth": 2,
+    "strokeStyle": "solid",
+    "roughness": 1,
+    "opacity": 100,
+    "groupIds": [],
+    "frameId": null,
+    "index": "a3",
+    "roundness": {
+      "type": 2
+    },
+    "seed": 54882945,
+    "version": 24,
+    "versionNonce": 1028640897,
+    "isDeleted": false,
+    "boundElements": [],
+    "updated": 1792558164321,
+    "link": null,
+    "locked": false,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        6,
+        305.303955078125
+      ]
+    ],
+    "lastCommittedPoint": null,
+    "startBinding": {
+      "elementId": "resource-placement-a",
+      "focus": -0.8508759520942861,
+      "gap": 2
+    },
+    "endBinding": {
+      "elementId": "DFf6_Iev0WQmyCvb1fzti",
+      "focus": -0.8767054251670626,
+      "gap": 2
+    },
+    "startArrowhead": null,
+    "endArrowhead": "arrow",
+    "elbowed": false
+  },
+  "placement": {
+    "id": "placement-a",
+    "boardId": "board-a",
+    "resourceRef": {
+      "kind": "card",
+      "id": "card-a"
+    },
+    "x": 310,
+    "y": 180,
+    "group": "支持"
+  }
+}

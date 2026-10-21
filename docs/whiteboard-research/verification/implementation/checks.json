@@ -1,0 +1,158 @@
+{
+  "date": "2026-10-20",
+  "scope": "Production whiteboard local research BR0–BR3 implementation and evidence-based BR4 verification",
+  "deliveryStatus": "implemented-with-recorded-provider-limits",
+  "dependenciesAdded": [],
+  "releasePublished": false,
+  "checks": [
+    {
+      "command": "npm run check",
+      "status": "passed",
+      "note": "Final npm run build also runs tsc --noEmit."
+    },
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "log": "/tmp/read-paper-whiteboard-build.log",
+      "limits": [
+        "Existing large Excalidraw/application chunk warning remains."
+      ]
+    },
+    {
+      "command": "npm test",
+      "status": "passed",
+      "files": 28,
+      "tests": 412,
+      "log": "/tmp/read-paper-whiteboard-unit-tests-final.log",
+      "note": "Includes final shared card-provenance caller, board undo reuse and combined current/history material-count regression tests."
+    },
+    {
+      "command": "node --test --test-concurrency=1 server/*.test.mjs",
+      "status": "passed",
+      "tests": 203,
+      "log": "/tmp/read-paper-whiteboard-server-tests.log"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/board-research.spec.ts",
+      "status": "passed-in-incremental-runs",
+      "uniqueTests": 4,
+      "evidence": "board-research-checks.json",
+      "note": "Initial three-path run, then new PDF path and changed screenshot/layout paths separately reverified; not represented as a single final four-test execution."
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/board-agent.spec.ts tests/e2e/drawing.spec.ts",
+      "status": "passed",
+      "tests": 8,
+      "evidence": "board-research-checks.json"
+    },
+    {
+      "command": "playwright test --config .whiteboard-verification.config.mjs tests/e2e/ai-reading.spec.ts tests/e2e/ai-source-layout.spec.ts tests/e2e/backup.spec.ts tests/e2e/persistence.spec.ts tests/e2e/composer-controls.spec.ts tests/e2e/agents.spec.ts",
+      "status": "passed",
+      "tests": 29,
+      "log": "/tmp/read-paper-whiteboard-e2e-regression.log",
+      "note": "Ephemeral config used fresh Vite 5174 and isolated browser storage; removed after the run."
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "Local documentation link, JSON parse and PNG dimension audit",
+      "status": "passed",
+      "pngFiles": 12,
+      "sizes": [
+        [
+          1440,
+          900
+        ],
+        [
+          1280,
+          800
+        ],
+        [
+          1024,
+          800
+        ]
+      ]
+    }
+  ],
+  "e2eUniqueTotal": 41,
+  "initialFailuresPreserved": [
+    "Two existing very-short-timeout server tests failed while server/Vitest/TypeScript competed for scheduling; final serial complete server run passed 203/203.",
+    "Claude --restricted ignored normal local settings and real first request returned needs-auth. Minimal safe-mode-preserving fix and exact differential test retained in native-probes.json.",
+    "An initial three-way real probe hit the existing two-request concurrency cap; bounded rerun completed. Original record remains.",
+    "OpenCode first real run returned stream_interrupted despite completed native stop. Strict exact-message completion reconciliation was unit-tested and one real replay then passed.",
+    "Codex first and only real request timed out at 120 seconds. Read-only diagnosis found interrupted native turn with no task_complete; no runtime code change or retry."
+  ],
+  "realProviders": {
+    "openalex": {
+      "status": "passed",
+      "queries": 3,
+      "resultsPerQuery": 10,
+      "yearFilter": "2023–2023 returned only 2023 works",
+      "evidence": "literature-probes.json",
+      "limits": [
+        "Anonymous availability and rate limits depend on provider responses.",
+        "Search results and public PDF links do not prove relevance or successful file acquisition."
+      ]
+    },
+    "claude": {
+      "status": "passed",
+      "model": "claude-opus-5-5",
+      "cli": "2.1.304",
+      "turns": 18,
+      "strategies": [
+        "latest",
+        "guided",
+        "all"
+      ],
+      "turnsPerStrategy": 6,
+      "uniqueNativeSessions": 18,
+      "evidence": "native-probes.json",
+      "limits": [
+        "Synthetic inputs, not general research-quality evaluation.",
+        "History selection constructed by probe; client builder independently unit-tested."
+      ]
+    },
+    "opencode": {
+      "status": "passed-single-turn-after-fix",
+      "model": "zhipuai-coding-plan/glm-5.3-flash#high",
+      "cli": "2.0.18",
+      "targetedRechecks": 1,
+      "durationMs": 5803,
+      "evidence": "native-probes.json",
+      "limits": [
+        "Only one current-materials question; not six-turn history or all models."
+      ]
+    },
+    "codex": {
+      "status": "timeout-not-passed",
+      "model": "gpt-6.1-sol",
+      "cli": "0.162.1",
+      "requests": 1,
+      "retries": 0,
+      "timeoutMs": 120000,
+      "evidence": "native-probes.json",
+      "limits": [
+        "Partial correct body is not successful completion.",
+        "Native turn interrupted with no task_complete; upstream cause unknown."
+      ]
+    }
+  },
+  "visualVerification": {
+    "mainAgent": [
+      "Actual production board selected-card Ask/Find entry",
+      "Final production 1440 board and PDF-card evidence screenshots",
+      "Three-size overview and material-detail screenshots"
+    ],
+    "worker": "All eight production board/PDF screenshots opened; actual DOM node bounds tested nonoverlapping.",
+    "controlledFixtures": "New UI paths use explicit AI demo, deterministic literature responses and the self-authored bundled PDF. Actual provider probes are recorded separately."
+  },
+  "remainingLimits": [
+    "Public PDF links are shown; PDFs enter reading through existing explicit local supplement flow, without auto-download.",
+    "No OCR, semantic library retrieval, relevance scoring, citation-network exploration or infinite result pagination.",
+    "Per-turn native reset enforces selected app history; research directory file permissions are separate and not a per-card filesystem sandbox.",
+    "Token window/cost are unknown; UI reports characters, never a fabricated exact token percentage.",
+    "No installer/release/cross-system installation verification."
+  ]
+}

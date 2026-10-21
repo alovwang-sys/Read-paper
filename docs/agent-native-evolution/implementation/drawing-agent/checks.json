@@ -1,0 +1,175 @@
+{
+  "date": "2026-10-21",
+  "completedAt": "2026-10-21T04:54:35.265387+00:00",
+  "status": "first-slice-implemented-and-verified",
+  "scope": "Drawing selection to current-conversation question. No literature-tool integration or general canvas editing.",
+  "checks": [
+    {
+      "command": "npm run check",
+      "status": "passed"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "warnings": [
+        "Existing bundle-size warning above 500kB",
+        "Excalidraw export helper uses dynamic import while drawing host also imports package statically; no additional chunk boundary is produced."
+      ]
+    },
+    {
+      "command": "npm test",
+      "status": "passed",
+      "files": 30,
+      "tests": 459
+    },
+    {
+      "command": "node --test --test-concurrency=1 server/*.test.mjs",
+      "status": "passed",
+      "tests": 216
+    },
+    {
+      "command": "npm run test:desktop",
+      "status": "passed",
+      "tests": 16
+    },
+    {
+      "command": "npx playwright test tests/e2e/drawing-question.spec.ts --output=/tmp/read-paper-drawing-question-final --reporter=line",
+      "status": "passed",
+      "tests": 5,
+      "elapsedSeconds": 14.9,
+      "modelEvents": "simulated",
+      "realNativeDrawingExport": true,
+      "realImportedPng": true,
+      "selectedGreenPixels": ">100",
+      "unselectedMagentaPixels": 0,
+      "viewports": [
+        [
+          1440,
+          900
+        ],
+        [
+          1280,
+          800
+        ],
+        [
+          1024,
+          800
+        ]
+      ]
+    },
+    {
+      "command": "npx playwright test tests/e2e/agent-workbench.spec.ts tests/e2e/workbench-sessions.spec.ts tests/e2e/drawing-bindings.spec.ts tests/e2e/drawing-binding-rules.spec.ts --output=/tmp/read-paper-drawing-agent-regression",
+      "status": "passed",
+      "tests": 14,
+      "elapsedSeconds": 55.3
+    },
+    {
+      "command": "node /tmp/read-paper-vision-smoke.mjs",
+      "status": "passed",
+      "evidence": "vision-smoke.json",
+      "modelEvents": "real Codex app-server, ephemeral isolated thread",
+      "pngAnswerAvailableOnlyInPixels": true,
+      "elapsedSeconds": 118.017
+    },
+    {
+      "command": "GET http://127.0.0.1:8787/api/ai/research/capabilities after owned AI service restart",
+      "status": "passed",
+      "codex": {
+        "research": true,
+        "images": true
+      },
+      "otherResearchConnections": false
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    }
+  ],
+  "failuresAndRepairs": [
+    "Early unit check detected pending attachment clearing by id without hash; fixed and verified newer pending snapshot survives retry completion.",
+    "Independent review caught history saved only after capability detection; moved history freeze to request creation and added failure/retry regression.",
+    "Initial browser fixture corrected native embeddable URI, selection start coordinate and return-to-conversation assertion; no product fallback added.",
+    "Parallel full server suite had one existing 20ms timeout fixture expire before fake runtime startup under load (0 cancellation callbacks vs expected1). Targeted check passed; complete serialized suite216/216 passed. Existing timeout test was not changed."
+  ],
+  "screenshots": [
+    "screenshots/current-conversation-reply-1024.png",
+    "screenshots/explicit-text-fallback-1440.png",
+    "screenshots/handwriting-image-unavailable-1440.png",
+    "screenshots/retry-frozen-snapshot-1440.png",
+    "screenshots/selection-composer-1024.png",
+    "screenshots/selection-composer-1280.png",
+    "screenshots/selection-composer-1440.png",
+    "screenshots/selection-expanded-1440.png",
+    "screenshots/stopped-attachment-restored-1440.png"
+  ],
+  "sourceHashes": [
+    {
+      "path": "src/domain/types.ts",
+      "sha256": "97cc99bc9a465b01927a0e5b16755ab634852709a129385dfa86376803c260aa"
+    },
+    {
+      "path": "src/domain/research-agent.ts",
+      "sha256": "cc00ad664de0408a974c8e8c3985f77bd2edf19dbcc19c9095c4f7b0133a18d2"
+    },
+    {
+      "path": "src/domain/drawing-question.ts",
+      "sha256": "4a0bde8ca68ead73888405a34a4e006f64a59548f83d3a37d5405cf748f08256"
+    },
+    {
+      "path": "src/services/drawing-question.ts",
+      "sha256": "343dd8e28149e337f05f36ec8b2c55b6e1cbe90942a2f6e0b990e54e45110c68"
+    },
+    {
+      "path": "src/services/research-agent.ts",
+      "sha256": "e2c81548d26045d69bdb635d95bdb4418007cc2f393b1cd210340c2e60d64b08"
+    },
+    {
+      "path": "src/features/board/BoardDrawing.tsx",
+      "sha256": "5b4547f15ee28cbf013e16f7fc5e49004655ed7ada3a2adcb9cfdead209f7b0d"
+    },
+    {
+      "path": "src/features/board/drawing-question-capture.ts",
+      "sha256": "c09f66858849cd84fb08b96692a947a17be5b3d680e4828924002d47cb8950ad"
+    },
+    {
+      "path": "src/features/workbench/ResearchAgentWorkbench.tsx",
+      "sha256": "a48d0d8cafaa59c13ef0f90cc928585223184238c98cf7d125e5c1d4588b97ff"
+    },
+    {
+      "path": "src/features/workbench/DrawingQuestionPreview.tsx",
+      "sha256": "440029ed9d795109f070a28448be96845aeede332d03c695bfdc0065f7f4c3d0"
+    },
+    {
+      "path": "src/services/backup.ts",
+      "sha256": "051bb75d7d9b8b267b7ec2012e7d4d30f0396b4055363a1b64aa95b3a1b95076"
+    },
+    {
+      "path": "src/services/project-files.ts",
+      "sha256": "21c6d5f1e3d34e593c645d0b6e7f0b0b3bc5d75db7f0ffd48506195221dfb721"
+    },
+    {
+      "path": "src/data/migrations.ts",
+      "sha256": "2f494f874b9c27b3e93c6017c704f46a980db77c8d052563a5f51998ffd295cf"
+    },
+    {
+      "path": "server/research.mjs",
+      "sha256": "27e58881187e42b1f936c24b028a132056424703df3da59da72280b143254d18"
+    },
+    {
+      "path": "server/codex-runtime.mjs",
+      "sha256": "3b92a1234aed8c6424fcf429fb52c65c78335add1b04a4bde06a5111057f4dc9"
+    },
+    {
+      "path": "tests/e2e/drawing-question.spec.ts",
+      "sha256": "f67698ee5283151bea7d819b7eaf8dc4218fe719e10ea0cf1a2c25c7af9fdc21"
+    }
+  ],
+  "notVerified": [
+    "Real handwriting/OCR accuracy or complex formulas",
+    "Real user-study research quality",
+    "New packaged desktop installation/signing/release",
+    "Claude/OpenCode/other research image adapters",
+    "Drawing-driven OpenAlex tools"
+  ],
+  "userData": "Browser fixtures use isolated test contexts and mocked project service; real model test sends only controlled synthetic PNG with empty sources/history. No user PDF or real drawing used."
+}

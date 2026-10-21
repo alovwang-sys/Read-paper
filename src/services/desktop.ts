@@ -1,6 +1,7 @@
 import { stopAllAI } from './ai';
 import { workspace } from './workspace';
 import { flushProjectFiles } from './project-files';
+import { stopAllLiteratureSearches } from './board-research';
 
 declare global {
   interface Window {
@@ -28,7 +29,7 @@ export function installDesktopLifecycle() {
     current = id;
     document.body.inert = true;
     try {
-      await stopAllAI();
+      await Promise.all([stopAllAI(), stopAllLiteratureSearches()]);
       await workspace.flushSave();
       await flushProjectFiles();
       if (current === id) window.papertrailDesktop?.closePrepared(id);

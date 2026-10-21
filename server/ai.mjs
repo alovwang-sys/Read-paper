@@ -6,6 +6,8 @@ import { createAgentHandler } from './agents.mjs';
 import { createSourceHandler } from './sources.mjs';
 import { IMAGE_LIMITS, decodeImageDataURL } from './images.mjs';
 import { runPiCompletion } from './pi-runtime.mjs';
+import { createLiteratureHandler } from './literature.mjs';
+import { createResearchHandler } from './research.mjs';
 
 const LIMITS = Object.freeze({ maxInputChars: 120_000, ...IMAGE_LIMITS });
 const MAX_BODY_BYTES = LIMITS.maxInputChars * 6 + Math.ceil(LIMITS.maxImageBytes / 3) * 4 * LIMITS.maxImages + 4096;
@@ -229,6 +231,8 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
   const config = settings(env);
   const agents = createAgentHandler({ env, runtimes: agentRuntimes, ports: [...config.ports] });
   const sources = createSourceHandler(sourceOptions);
+  const literature = createLiteratureHandler({ env, fetchImpl });
+  const research = createResearchHandler({ env, runtimes: agentRuntimes, ports: [...config.ports] });
   const active = new Set();
   const controllers = new Set();
   const pending = new Set();
@@ -259,6 +263,8 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
       checkCaller(req, config);
       checkToken(req, localToken);
       if (await sources(req, res, controller.signal)) return;
+      if (await research(req, res)) return;
+      if (await literature(req, res)) return;
       if (await agents(req, res)) return;
       if (req.url === '/api/ai/config' && req.method === 'GET') {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -321,8 +327,10 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
   };
   handler.stop = async () => {
     const agentsClosed = agents.close();
+    research.close();
+    const literatureClosed = literature.stop();
     for (const controller of controllers) controller.abort();
-    await Promise.allSettled([...pending, agentsClosed]);
+    await Promise.allSettled([...pending, agentsClosed, literatureClosed]);
   };
   return handler;
 }

@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-21T02:54:21.074Z",
+  "scope": "Isolated fresh browser context using two named empty conversations; no user data or model call",
+  "before": {
+    "agentWorkbench": true,
+    "aiView": "history",
+    "currentConversation": "conversation-cdad61e0-de60-4fee-905b-61ad3ab7f69b"
+  },
+  "after": {
+    "agentWorkbench": false,
+    "aiView": "chat",
+    "currentConversation": "conversation-research-a"
+  },
+  "issueReproduced": true
+}

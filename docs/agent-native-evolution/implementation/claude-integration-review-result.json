@@ -1,0 +1,104 @@
+{
+  "startedAt": "2026-10-21T00:08:49.245Z",
+  "finishedAt": "2026-10-21T00:09:25.153Z",
+  "exitCode": 0,
+  "result": {
+    "duration_api_ms": 33551,
+    "stop_reason": "end_turn",
+    "session_id": "7d9928ec-a7f6-45aa-b72c-292b3252c142",
+    "total_cost_usd": 0.0713056,
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 2508,
+      "cache_read_input_tokens": 1568,
+      "output_tokens": 2546,
+      "output_tokens_details": {
+        "thinking_tokens": 1296
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 2508,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2546,
+          "cache_read_input_tokens": 1568,
+          "cache_creation_input_tokens": 2508,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 2508
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "modelUsage": {
+      "claude-opus-5-5": {
+        "inputTokens": 2,
+        "outputTokens": 2546,
+        "cacheReadInputTokens": 1568,
+        "cacheCreationInputTokens": 2508,
+        "webSearchRequests": 0,
+        "costUSD": 0.0713056,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 1296,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "safety_stops": 0,
+    "is_error": false,
+    "num_turns": 1,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "## 结论：边界基本诚实，可以上线试用，但有 4 处需要收紧\n\n**1. 边界是否诚实、有用**\n\n方向是对的：能力分级，只有 Codex 走工具核验，其他运行时不冒充。需要反驳两点：\n- **快照覆盖范围只告诉了模型，用户看不到。** 最小修改：每次 run 的结果头部固定显示\"已覆盖：N 篇/页码范围；未覆盖：…\"。Evidence 标注\"已核验\"或\"未核验\"。\n- **\"最多 8 篇\"的选取规则没写明。** 应该规定：焦点论文优先，其次是用户显式选中的，最后才按最近使用补足。规则写进 UI 提示。\n\n**2. 旧功能怎么不干扰新体验**\n\n- 经典工作台做成**独立模式（路由级切换）**，不要把旧面板嵌进新工作面。\n- 同一屏只允许**一个 Agent 输入框**。新工作面隐藏 AIPanel，两边共用同一个 run 存储，历史互相可见。\n- 白板本轮不合并。新面只渲染一种视图，另一种用\"在经典工作台打开此项\"深链跳转。\n\n**3. 原生 harness、原生客户端 UI、会话连续性要说清**\n\n- **原生 harness**：我们调用的是 Codex app-server 的运行时、模型和审批机制。\n- **原生客户端 UI**：我们**不是** Codex 客户端，不提供终端、diff、桌面 UI。\n- **会话连续性**：研究 run 每次是新的隔离线程，连续性来自**我们的历史快照，而不是 Codex 记忆**。由于禁用了 shell，依赖 shell 的技能会失效。旧的原生会话路径保留了真正的连续性。\n- 最小修改：两种入口分别标注\"研究运行（独立线程，资料工具）\"和\"Codex 会话（原生延续，技能/Plan）\"。另外要明确这些线程是否会出现在用户自己的 Codex 历史里。\n\n**4. 暂停 Claude 工具桥是否合理**\n\n合理。print 模式下工具权限难以收紧，等以后用 `--mcp-config` 接只读 MCP 再做。但需要做**能力门控**：\n- 研究 run 里选 Claude 时，要么禁用，要么明确降级为\"仅文字，不读应用资料，无核验\"。\n- 不要偷偷把快照塞进提示词，否则产出的引用看起来像经过核验，实际没有。\n\n**5. 上线前必须实测的 3 个风险**\n\n1. **隔离是否真的生效。** 用户 `~/.codex/config.toml` 里的 MCP 服务器、AGENTS.md、技能可能仍被加载。要实测诱导模型执行 shell、写文件、调用其他 MCP，确认都被拒绝。dynamic tools 属于实验接口，要锁定 Codex 版本并在启动时探测能力，不支持时直接报错，不要静默退化成纯文字。\n2. **取消与迟到结果。** 分别在工具调用中途终止、切换研究、关闭应用，验证：没有残留 app-server 进程，不会生成重复的 Draft，迟到结果归回原研究，也不会覆盖用户在此期间的手改（差异提示必须真的出现）。\n3. **真实 PDF 下的原句核验。** 用扫描件/OCR、双栏排版、连字、断行连字符的 PDF 分别测：既不能误拒真引用，也不能因归一化过宽而放过伪造引用。建议准备 5 篇真实论文作为回归集。",
+    "ttft_ms": 19373,
+    "type": "result",
+    "duration_ms": 33691,
+    "uuid": "c8913338-eaf2-43fd-a9d5-d24a0a72d5af",
+    "ttft_stream_ms": 3167,
+    "time_to_request_ms": 142,
+    "first_content_frame_ms": 3167,
+    "queued_turn_count": 0,
+    "result_index": 0
+  }
+}

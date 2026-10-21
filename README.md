@@ -2,6 +2,10 @@
 
 白板新增“绘图”模式，使用开源 Excalidraw 直接画笔、形状、文字、箭头和图片，卡片与原文入口继续复用工作区实体。字体随应用本地打包。右侧 AI 的标题、材料和输入工具已压缩，腾出更多对话高度。实现范围与验证见[绘图](docs/verification/drawing/README.md)、[AI 空间](docs/verification/ai-space-expanded/README.md)及[最新 main 集成](docs/verification/main-integration/README.md)。
 
+**自绘图也可以继续问 Agent：** 在 Agent 工作台的白板“绘图”中框选内容，点击“问 Agent”，底部原输入会附上选区预览。核对后输入问题并发送，回答留在当前会话；不强制建卡片，不追加研究 PDF。当前图片链已实测本机 Codex，其他连接按实际能力提示。历史保存当轮图片与所选卡片正文，修改画布后仍可重试。[实际能力与验收](docs/agent-native-evolution/implementation/drawing-agent/README.md)
+
+默认提供首版 **Agent 工作台**：中间保留当前会话的完整问答，右侧可新建和切换多段会话；在底部描述研究目标，已连接的本机 Codex 可自行查阅本研究 PDF 并形成带引用的可编辑草稿。左下可切回经典工作台，已有资料和功能保留。Claude Code、OpenCode 与模型直连继续使用原连接能力，当前新增研究工具仅接 Codex。[界面、连接能力与验证边界](docs/agent-native-evolution/implementation/README.md)。
+
 把论文读成自己的理解，再把理解写成有出处的结论。
 
 Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个研究问题，集中阅读 PDF、留下原文摘录、整理观点卡片、在白板上组织论证，并写出可以返回原文核查的研究文稿。AI 在同一个工作台里辅助阅读，人工整理流程也可以独立使用。
@@ -31,6 +35,13 @@ Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个
 附件中的 `SHA256SUMS` 可用于核对下载完整性。平台要求、校验方式和分发流程见[桌面分发说明](docs/desktop-distribution.md)。
 
 ## 能做什么
+
+
+卡片、论文入口与自绘图形可用普通箭头直接连接，落在透明矩形／椭圆／菱形内部也能吸附；移动、刷新和原生撤销重做保留连接。实现边界与实际截图见[连接验收](docs/verification/drawing-bindings/README.md)。
+
+白板内点击“绘图”可直接使用画笔、形状、箭头、文字与图片，并与共享卡片、PDF 入口放在同一画布；“卡片布局”返回原有分组与关系编辑。绘图自动保存，支持撤销/重做、历史恢复、ZIP 备份及研究目录 `.excalidraw` 导出。原生图片导出不烘焙实时卡片正文，完整迁移请用工作区 ZIP。实现和三尺寸证据见[绘图验收](docs/verification/drawing/README.md)。
+
+白板选中卡片、文献或分区后，可直接“问 Agent / 找文献”；也可写问题，或将绘图文字核对后变为问题卡。讨论保留原问题，材料与历史分别核对；OpenAlex 检索支持关键词、起止年份、停止和重试。候选可分别加入讨论、收录资料库、放回问题旁，阅读后再把理解收成有来源的卡片。[功能说明与实际验收](docs/whiteboard-research/verification/implementation/README.md)。
 
 | 研究环节 | 当前能力 |
 | --- | --- |
@@ -111,6 +122,8 @@ codex resume <Session-ID>
 本轮材料由你明确选择，改变 PDF 选区不会自动发送。本机助手还可能通过工具读取已授权的研究目录与原生历史，发送前请查看范围和权限。Codex 默认只读；选择完全访问时需明确确认。AI 生成草稿不自动覆盖原正文，引用可返回来源，但软件校验不能保证模型结论正确。
 
 内置 Pi 当前只处理所选材料的解释、追问与卡片草稿，不提供联网搜索、任意文件操作或自定义技能。模型配置就绪不等于模型回答已验证：2026-10-19 的 `glm-5.3-flash` 实际请求返回 429 额度或并发受限，未完成回答；本轮实现、模拟验证和真实模型结果分别记录于[就地 AI 验收](docs/verification/inline-ai/README.md)。
+
+文献检索与模型配置分开：网页开发时同样启动 `npm run ai`，本机服务仅向 OpenAlex 发送确认后的关键词与年份。当前匿名查询已实测可用；有需要时在本机服务环境配置可选 `OPENALEX_API_KEY`，不写进前端或资料备份。检索额度／限流、来源缺字段与全文未获取均会明确显示，不自动改用模型编造论文。
 
 ## 保存、备份与边界
 
@@ -195,6 +208,8 @@ macOS 生成 DMG 与 ZIP，Windows 生成安装器及配套 Squirrel 文件。CI
 | [产品规划](docs/product-plan.md) · [开发任务](docs/agent-backlog.md) | 产品方向、实现范围与依赖 |
 | [知识链路](docs/knowledge-flow/README.md) | 资料、摘录、卡片、出处链与文稿的需求与设计 |
 | [AI 阅读](docs/ai-reading/README.md) · [就地 AI 实现与验收](docs/verification/inline-ai/README.md) · [本机助手设计](docs/agents/design.md) | 原文旁问答、内置 Pi、材料范围、草稿、原生助手与权限 |
+
+| [白板局部研究](docs/whiteboard-research/README.md) · [实施验收](docs/whiteboard-research/verification/implementation/README.md) · [交互原型](docs/whiteboard-research/prototype.html) | 节点追问、真实文献发现、收录与原位继续；原型与正式证据分别记录 |
 | [研究目录设计](docs/agents/research-directory-design.md) | 一次关联、实际文件与失败恢复 |
 | [项目会话需求](docs/agents/project-sessions-requirements.md) · [Codex 连续对话](docs/agents/native-continuity.md) | 原生会话发现、读取、持续运行与恢复边界 |
 | [验收总览](docs/verification/README.md) | 实际测试、真实模型结果、截图与已知限制 |

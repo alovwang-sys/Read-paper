@@ -91,6 +91,24 @@ describe('研究与助手会话', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('局部研究发送类型化材料与无正文的起点，主动重建原生会话而保留应用探索身份', async () => {
+    const conversation = selectAgent('research-a', 'codex');
+    workspace.updateData(next => {
+      next.conversations[conversation].contextIds = [];
+      next.conversations[conversation].historyRange = 'guided';
+      next.conversations[conversation].boardResearch = { origin: { boardId: 'board-a', rootTitle: '原问题', rootRef: { kind: 'card', id: 'card-a' }, rootPlacementId: 'placement-a' }, focus: [{ kind: 'card', id: 'card-a' }], automatic: [{ id: 'card:card-a', kind: 'card_note', title: '卡片', text: '快照', version: '1', resourceRef: { kind: 'card', id: 'card-a' } }], pinned: [], excludedSourceIds: [], includeBackground: true };
+    });
+    const payloads: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => { payloads.push(JSON.parse(String(init?.body))); return done('这是待核查解释，没有原文依据。'); }));
+    const first = await submitAI('research-a', conversation, '解释这张卡');
+    await submitAI('research-a', conversation, '继续追问');
+    expect(payloads).toHaveLength(2);
+    expect(payloads.every(payload => payload.reset === true && payload.conversationId === conversation)).toBe(true);
+    expect(payloads[0].boardResearch).toEqual({ boardId: 'board-a', rootTitle: '原问题', rootRef: { kind: 'card', id: 'card-a' }, rootPlacementId: 'placement-a', focus: [{ kind: 'card', id: 'card-a' }] });
+    expect(payloads[0].materials).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'card:card-a', kind: 'card_note', text: data().cards['card-a'].body })]));
+    expect((payloads[1].history as { requestId: string }[]).map(turn => turn.requestId)).toEqual([first]);
+    expect(data().conversations[conversation].requestIds).toHaveLength(2);
+  });
   it('目录只在绑定确认时保存，状态与原生列表使用同一研究身份', async () => {
     const binding = { id: 'binding-confirmed', projectId: 'project-confirmed', path: '/fixture/confirmed' };
     const fetchMock = vi.fn(async (url: string) => Response.json(url.endsWith('/list') ? { sessions: [], errors: [] } : binding));

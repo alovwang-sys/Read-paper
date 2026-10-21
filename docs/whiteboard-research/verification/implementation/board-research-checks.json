@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-20",
+  "scope": "Production board UI, explicit local research entry points and isolated browser verification",
+  "status": "passed",
+  "checks": [
+    {
+      "command": "npm run check",
+      "result": "passed"
+    },
+    {
+      "command": "npm test -- tests/unit/board-research-selection.test.ts tests/unit/board-history.test.ts tests/unit/drawing-storage.test.ts",
+      "result": "passed",
+      "files": 3,
+      "tests": 22
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/board-agent.spec.ts tests/e2e/drawing.spec.ts",
+      "result": "passed",
+      "tests": 8,
+      "environment": "Fresh Vite on 127.0.0.1:5176, isolated Playwright contexts, existing project-service fixtures"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/board-research.spec.ts",
+      "stage": "Initial three-path run before BV08 was appended",
+      "result": "passed",
+      "tests": 3,
+      "environment": "Fresh Vite on 127.0.0.1:5176, isolated Playwright contexts, existing project-service fixtures, controlled public-search responses and AI demo mode"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/board-research.spec.ts --grep '写问题草稿恢复|BV08'",
+      "stage": "Incremental PDF combination and bounded board preview verification",
+      "result": "passed",
+      "tests": 2,
+      "environment": "Fresh Vite on 127.0.0.1:5176; same isolated fixtures. BV08 attaches the exact self-authored public/samples/adaptive-retrieval.pdf to a new metadata-only document in a project without preexisting PDF identities."
+    },
+    {
+      "command": "npm test -- tests/unit/board-research-selection.test.ts",
+      "stage": "Conservative node-height collision limits",
+      "result": "passed",
+      "tests": 6
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/board-research.spec.ts --grep '写问题草稿恢复'",
+      "stage": "Final screenshots with the existing zoom and scroll controls",
+      "result": "passed",
+      "tests": 1
+    },
+    {
+      "command": "git diff --check -- src/features/board tests/e2e/board-research.spec.ts tests/unit/board-research-selection.test.ts",
+      "result": "passed"
+    }
+  ],
+  "verifiedPaths": [
+    "Handwritten question draft closes, reloads and restores; title/body constraints are enforced before persistence",
+    "Organize and drawing modes expose the same local ask and literature actions",
+    "Explicit multi-selection and group selection list placement instances without automatically attaching original evidence",
+    "Drawing text is previewed and explicitly converted to a shared question while the original drawing remains",
+    "Adopted drawing source element IDs and exact text persist with the question draft across close and reload; restoring through the handwritten-question entry keeps the source when saving",
+    "Drawing question source limits accept exactly 20000 characters and 1000 elements; oversized input is rejected without source truncation",
+    "Materials and history are explicitly inspectable; a request with no history is submitted with an empty history array",
+    "Adding a candidate to discussion does not import it; importing it does not place it; placing it is idempotent",
+    "A paper placed beside a problem reopens the same conversation and keeps the original problem root",
+    "AI demo answer becomes an editable card, saves with provenance, and is placed beside the original problem",
+    "Actual DOM rectangles of the original question, placed paper and AI card do not overlap; title previews are bounded to four lines and author previews to two lines while title attributes retain the full strings",
+    "BV08 continuous UI path: import a metadata-only search candidate, place it, open details, attach the unmodified self-authored PDF, retain the document ID/research association/placement, render its real reader and compute a 64-character hash",
+    "BV08 selects a real text-layer span through the reader selection actions, adds the resulting excerpt to the same local discussion, returns to the original problem, and saves a demo-derived card whose sole evidence retains the current PDF hash/page index and original conversation",
+    "Returning to the original problem consumes its anchor and brings the placement into view",
+    "A slow search completed after switching research remains in its original research and conversation",
+    "Empty and failed searches preserve the query and allow retry",
+    "1440x900, 1280x800 and 1024x800 show one right panel without document-level horizontal overflow; the left navigation collapses at 1024"
+  ],
+  "screenshots": [
+    "board-research-1440.png",
+    "board-research-1280.png",
+    "board-research-1024.png",
+    "board-research-materials.png",
+    "board-research-literature.png",
+    "board-research-paper-focus.png",
+    "board-research-drawing.png",
+    "board-research-pdf.png"
+  ],
+  "visualInspection": "All eight screenshots were opened and inspected. Final board overview screenshots use existing zoom controls at 80%, 70% and 60% respectively, plus a 115px vertical scroll, to show the linked local context without changing stored node positions.",
+  "review": "A separate read-only board review identified the drawing-draft provenance reload gap. It was fixed in BoardQuestionDialog and the three production UI tests were rerun successfully; other reviewed selection and anchor paths had no blocking finding.",
+  "limits": [
+    "These UI tests use deterministic literature fixtures and AI demo responses; they are not evidence of live academic search or a real model response.",
+    "Real scholarly-provider and native-assistant probes are recorded separately by the integration agents.",
+    "BV08 uses a self-authored bundled sample and an explicitly labeled controlled candidate; it is not a live research result or a real research claim.",
+    "Drawing images, handwriting and arbitrary shapes are not OCR inputs. Only explicit text elements can become a question.",
+    "An oversized drawing source can be summarized manually or selected more narrowly; it is never silently truncated into saved provenance."
+  ]
+}

@@ -8,6 +8,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:5173',
     viewport: { width: 1440, height: 900 },
+    // Existing navigation suites exercise the classic surface; Agent suites opt into a fresh context.
+    storageState: 'tests/fixtures/classic-storage-state.json',
     trace: 'retain-on-failure',
   },
   webServer: {

@@ -1,0 +1,38 @@
+{
+  "checkedOn": "2026-10-21",
+  "scope": "Primary references for product delegation and controllable execution; not evidence this project has the capabilities",
+  "items": [
+    {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/research/building-effective-agents",
+      "published": "2024-12-19",
+      "facts": [
+        "Distinguishes model-directed agent decisions and tool use from predefined workflows.",
+        "Agents use observed tool results, stopping conditions and human checkpoints.",
+        "Recommends adding complexity only when outcomes justify it."
+      ],
+      "application": "Give the app a small bounded tool loop that does research work, rather than just making the chat larger.",
+      "limit": "The article flags its tooling landscape as dated; not used for current SDK/API implementation claims."
+    },
+    {
+      "title": "Linear for Agents",
+      "url": "https://linear.app/agents",
+      "facts": [
+        "Users can delegate an entire issue while human ownership remains.",
+        "Agent changes should remain inspectable."
+      ],
+      "application": "Let the user delegate an outcome and inspect its changes without supervising each UI action.",
+      "limit": "A design reference, not a paper research workflow or proof of this app."
+    },
+    {
+      "title": "Elicit’s Research Agent",
+      "url": "https://support.elicit.com/en/articles/14756886-elicit-s-research-agent",
+      "facts": [
+        "Natural language research with source scope controls and follow-up.",
+        "Research process and sources remain inspectable."
+      ],
+      "application": "Research scope and evidence remain visible while the agent selects the next retrieval/read step.",
+      "limit": "Do not claim exhaustive search or borrow its current proprietary capabilities as this project’s implemented features."
+    }
+  ]
+}

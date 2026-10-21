@@ -1,0 +1,84 @@
+{
+  "checkedAt": "2026-10-20T23:57:01.073Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/prototype.html",
+  "checks": [
+    {
+      "label": "Empty state has one composer, one discoverable history entry, no default focus/scope chip or permanent chat panel, and an editable untitled research name",
+      "status": "passed"
+    },
+    {
+      "label": "Ordinary explanation stays in a collapsible short answer; viewing history does not erase it or create an artifact",
+      "status": "passed"
+    },
+    {
+      "label": "A new empty research adds the three explicitly synthetic sources with one adoption action",
+      "status": "passed"
+    },
+    {
+      "label": "Start creates editable results directly, stopping preserves completed parts, continuing finishes without duplicate rows or a second input",
+      "status": "passed"
+    },
+    {
+      "label": "1440×900, 1280×800 and 1024×800 have no document overflow; the single input stays visible and the narrow navigation is an accessible drawer",
+      "status": "passed"
+    },
+    {
+      "label": "Only an explicit local ask sets a visible target; browsing does not change it, sending consumes it, and explanation questions containing revision words do not mutate results",
+      "status": "passed"
+    },
+    {
+      "label": "A long input collapses the bounded short answer, preserves a usable work area at 1024px, and native text undo is not hijacked",
+      "status": "passed"
+    },
+    {
+      "label": "Citation opens the one reference region; deep reading has an explicit return target and restores the exact comparison scroll position and selected item",
+      "status": "passed"
+    },
+    {
+      "label": "Manual edits retain source labels; revisions show inline differences, stale proposals cannot overwrite new edits, and apply/undo/keep preserve user text",
+      "status": "passed"
+    },
+    {
+      "label": "One library adoption associates the source without repeated steps; metadata-only sources cannot pretend to have full text; search retrieves old cards, whiteboards and drafts",
+      "status": "passed"
+    },
+    {
+      "label": "The canvas combines content cards, a source and a shape without a card/drawing mode switch; local ask uses the same composer",
+      "status": "passed"
+    },
+    {
+      "label": "History stays a read-only temporary reference, and the current draft exports through one object action",
+      "status": "passed"
+    },
+    {
+      "label": "No JavaScript errors, external requests, persistent-storage reads or writes occurred",
+      "status": "passed"
+    },
+    {
+      "label": "Completing a run while reading preserves the central source page and offers a one-line result link instead of stealing focus",
+      "status": "passed"
+    }
+  ],
+  "screenshots": [
+    "welcome-1440.png",
+    "running-1440.png",
+    "result-1440.png",
+    "result-1280.png",
+    "result-1024.png",
+    "long-input-1024.png",
+    "reference-1024.png",
+    "deep-read-1024.png",
+    "edit-conflict-1440.png",
+    "mixed-canvas-1440.png",
+    "history-1440.png"
+  ],
+  "pageErrors": [],
+  "externalRequests": [],
+  "storageCalls": [],
+  "limitations": [
+    "Fixed synthetic examples; no real model, tool loop, external search, PDF, or research quality verification.",
+    "Page memory only; reload resets this isolated prototype.",
+    "Canvas offers a fixed mixed example and simple additions, not a production drawing engine."
+  ],
+  "status": "passed"
+}

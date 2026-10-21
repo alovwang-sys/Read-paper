@@ -1,0 +1,15 @@
+
+Running 7 tests using 1 worker
+
+(node:22671) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/7] tests/e2e/agent-workbench.spec.ts:42:1 › 一句委托形成真实持久草稿，局部修订保护人工修改，来源深读可以返回
+[2/7] tests/e2e/agent-workbench.spec.ts:120:1 › 全部旧功能可达，经典模式和Agent模式共享数据，连接能力不冒充
+[3/7] tests/e2e/agent-workbench.spec.ts:154:1 › 迟到结果归原研究，不打断另一个研究；停止保留输入
+[4/7] tests/e2e/workbench-sessions.spec.ts:84:1 › 多轮完整呈现，新会话不继承旧输入和焦点，切回原会话不落入经典模式
+[5/7] tests/e2e/workbench-sessions.spec.ts:111:1 › 刷新恢复当前会话、未发送输入、局部焦点和该会话滚动位置
+[6/7] tests/e2e/workbench-sessions.spec.ts:133:1 › 查看共享成果和引用保持发送目标，三个窗口尺寸均无横向溢出且输入可用
+[7/7] tests/e2e/workbench-sessions.spec.ts:176:1 › 同研究内 A 的迟到成果仍归 A，不抢 B 的当前视图、输入和历史
+  7 passed (16.8s)

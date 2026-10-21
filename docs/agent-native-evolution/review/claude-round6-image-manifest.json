@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-21",
+  "stage": "Prototype before final review fixes",
+  "files": [
+    {
+      "path": "docs/agent-native-evolution/verification/ui-v2/welcome-1440-before-review.png",
+      "copiedTo": "/tmp/read-paper-agent-ui-review-media/prototype-welcome.png",
+      "sha256": "3ad55b6807a4283018e10d08b20c009fe96e6ad154b5d49833b6202a1e9c6669",
+      "bytes": 67491,
+      "originalPath": "docs/agent-native-evolution/verification/ui-v2/welcome-1440.png"
+    },
+    {
+      "path": "docs/agent-native-evolution/verification/ui-v2/result-1440-before-review.png",
+      "copiedTo": "/tmp/read-paper-agent-ui-review-media/prototype-result.png",
+      "sha256": "3d16ac34971c4d14b5a8a22c4be7179cf0f6d9ddd2303fe60c8be6b17eae815b",
+      "bytes": 147739,
+      "originalPath": "docs/agent-native-evolution/verification/ui-v2/result-1440.png"
+    },
+    {
+      "path": "docs/agent-native-evolution/verification/ui-v2/reference-1024-before-review.png",
+      "copiedTo": "/tmp/read-paper-agent-ui-review-media/prototype-reference-1024.png",
+      "sha256": "21313090b68765e303ec613f09bd26a8687b4958a1ee42d42ec6d2b274979614",
+      "bytes": 167728,
+      "originalPath": "docs/agent-native-evolution/verification/ui-v2/reference-1024.png"
+    }
+  ]
+}

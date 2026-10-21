@@ -1,6 +1,9 @@
 import { hasFullText } from '../domain/knowledge';
 import { ensurePaneLayout, validatePaneLayout, syncPaneSession } from '../services/panes';
 import { boardSnapshot, parseBoardPlan, validateBoardContext, validateBoardHistory, validateBoardSnapshot } from '../domain/board-history';
+import { validateDrawingRef } from '../domain/drawing';
+import { validateDrawingQuestion } from '../domain/drawing-question';
+import { validateResearchData } from '../domain/research';
 import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -15,11 +18,17 @@ function webLink(value: unknown) {
 function validAbstract(value: unknown) {
   return record(value) && typeof value.text === 'string' && webLink(value.url) && typeof value.retrievedAt === 'string' && Number.isFinite(Date.parse(value.retrievedAt));
 }
+const validAgentFocus = (value: unknown) => record(value) && record(value.ref)
+  && ['research', 'document', 'card', 'board', 'draft'].includes(String(value.ref.kind))
+  && typeof value.ref.id === 'string' && typeof value.title === 'string' && typeof value.body === 'string';
+const validAgentDraft = (value: unknown) => record(value) && typeof value.title === 'string'
+  && typeof value.body === 'string' && strings(value.evidenceIds);
 
 export function migrateWorkspace(value: unknown): WorkspaceData {
   if (!record(value) || ![1, 2, 3].includes(value.schemaVersion as number))
     throw new Error('存储版本不受支持，未覆盖现有数据。');
   const data = structuredClone(value) as unknown as WorkspaceData;
+  if (data.agentWorkbench !== undefined && typeof data.agentWorkbench !== 'boolean') throw new Error('工作台界面设置损坏，未覆盖现有数据。');
   validateBoardHistory(data);
   const legacy = value.schemaVersion === 1;
   for (const key of [
@@ -98,6 +107,10 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     const ref = session.mainSplit?.ref;
     if (ref && key !== 'library' && !(ref.kind === 'document' ? data.researches[key]?.documentIds : data.researches[key]?.cardIds)?.includes(ref.id)) throw new Error('对照资源不属于本研究，未覆盖现有数据。');
   }
+  for (const session of Object.values(data.sessions)) {
+    if (session.agentWorkbenchStarted !== undefined && typeof session.agentWorkbenchStarted !== 'boolean'
+      || session.agentFocus !== undefined && !validAgentFocus(session.agentFocus)) throw new Error('Agent 工作台焦点损坏，未覆盖现有数据。');
+  }
   for (const item of [...Object.values(data.conversations), ...Object.values(data.requests)]) {
     const settings = item.codex;
     if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key => !['model', 'mode', 'effort', 'access'].includes(key))
@@ -107,6 +120,10 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       || ![undefined, 'read-only', 'workspace-write', 'full-access'].includes(settings.access))) throw new Error('Codex 设置损坏，未覆盖现有数据。');
   }
   for (const conversation of Object.values(data.conversations)) {
+    if (conversation.drawingQuestion !== undefined) validateDrawingQuestion(conversation.drawingQuestion);
+    if (conversation.researchFocus !== undefined && !validAgentFocus(conversation.researchFocus)
+      || conversation.researchScrollTop !== undefined && (!Number.isFinite(conversation.researchScrollTop) || conversation.researchScrollTop < 0)) throw new Error('研究会话的焦点或阅读位置损坏。');
+    for (const search of conversation.literatureSearches ?? []) if (search.status === 'searching') { search.status = 'interrupted'; search.error = '检索因页面重新加载而中断，可按原查询重试。'; }
     if (conversation.boardSuggestionRequestId !== undefined && typeof conversation.boardSuggestionRequestId !== 'string' || conversation.boardSuggestionDismissed !== undefined && typeof conversation.boardSuggestionDismissed !== 'boolean') throw new Error('白板建议状态损坏。');
     if (conversation.boardSkill !== undefined && (!record(conversation.boardSkill) || typeof conversation.boardSkill.boardId !== 'string' || !['board', 'research'].includes(conversation.boardSkill.scope) || conversation.boardSkill.allowNewCards !== undefined && typeof conversation.boardSkill.allowNewCards !== 'boolean')) throw new Error('白板技能选择损坏，未覆盖现有数据。');
     if (!Array.isArray(conversation.contextIds) || !Array.isArray(conversation.requestIds))
@@ -128,6 +145,18 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     }
   }
   for (const request of Object.values(data.requests)) {
+    const run = request.researchRun;
+    if (run?.drawingQuestion !== undefined) {
+      validateDrawingQuestion(run.drawingQuestion);
+      if (run.focus !== undefined || run.suggestion !== undefined || run.previous !== undefined) throw new Error('绘图问题不能携带正文修改目标。');
+    }
+    if (run !== undefined && (!record(run)
+      || run.draftId !== undefined && typeof run.draftId !== 'string'
+      || run.focus !== undefined && !validAgentFocus(run.focus)
+      || run.sourceSummary !== undefined && typeof run.sourceSummary !== 'string'
+      || run.readPages !== undefined && (!Array.isArray(run.readPages) || run.readPages.some(page => !record(page) || typeof page.documentId !== 'string' || !Number.isInteger(page.pageIndex) || page.pageIndex < 0))
+      || run.suggestion !== undefined && (!validAgentDraft(run.suggestion) || typeof run.suggestion.baseTitle !== 'string' || typeof run.suggestion.baseBody !== 'string' || !strings(run.suggestion.baseEvidenceIds))
+      || run.previous !== undefined && (!validAgentDraft(run.previous) || typeof run.previous.appliedTitle !== 'string' || typeof run.previous.appliedBody !== 'string' || !strings(run.previous.appliedEvidenceIds)))) throw new Error('Agent 研究运行记录损坏，未覆盖现有数据。');
     if (request.boardApplyError !== undefined && typeof request.boardApplyError !== 'string') throw new Error('白板保存状态损坏。');
     if (request.boardContext !== undefined) validateBoardContext(request.boardContext, request.researchId);
     if (request.boardProposal !== undefined) {
@@ -184,6 +213,8 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     const session = data.sessions[research.id];
     if (!session) throw new Error('研究工作区缺失，未覆盖现有数据。');
     const current = session.activeConversationId && data.conversations[session.activeConversationId];
+    if (session.agentFocus && current && current.researchId === research.id && !current.archived && !current.researchFocus) current.researchFocus = structuredClone(session.agentFocus);
+    delete session.agentFocus;
     if (!current || current.researchId !== research.id || current.archived) {
       const conversation = Object.values(data.conversations).find(item => item.researchId === research.id && !item.archived && (!item.inlineSource || item.inlineSource.promoted));
       session.activeConversationId = conversation?.id;
@@ -237,5 +268,6 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     syncPaneSession(session);
     delete session.mainSplit;
   }
+  validateResearchData(data);
   return data;
 }

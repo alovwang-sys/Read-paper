@@ -1,0 +1,168 @@
+
+Running 4 tests using 1 worker
+
+(node:26796) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/4] tests/e2e/drawing.spec.ts:99:1 › 真实手绘、文字与共享资料共存，切换布局、研究和刷新后恢复并保留绘图历史
+  1) tests/e2e/drawing.spec.ts:99:1 › 真实手绘、文字与共享资料共存，切换布局、研究和刷新后恢复并保留绘图历史 ──────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('complementary', { name: '参考面板' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('complementary', { name: '参考面板' }) with timeout 5000ms
+      - waiting for getByRole('complementary', { name: '参考面板' })
+
+
+      70 |   await canvas(page).click({ position: { x: 230, y: box.height * .58 + 145 } });
+      71 |   await page.keyboard.insertText(note); await page.keyboard.press('Escape');
+    > 72 |   await expect(panel(page)).toBeVisible();
+         |                             ^
+      73 |   await expect.poll(async () => (await readDrawing(page))?.scene.elements.filter(element => !element.isDeleted).map(element => element.type)).toEqual(expect.arrayContaining(['rectangle', 'freedraw', 'text']));
+      74 |   await expect(drawing(page).getByText('绘图已保存', { exact: true })).toBeVisible();
+      75 |   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+        at draw (/Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:72:29)
+        at /Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:101:15
+
+    Error Context: ../../../../tmp/read-paper-binding-regression/drawing-真实手绘、文字与共享资料共存，切换布局、研究和刷新后恢复并保留绘图历史/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-regression/drawing-真实手绘、文字与共享资料共存，切换布局、研究和刷新后恢复并保留绘图历史/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-regression/drawing-真实手绘、文字与共享资料共存，切换布局、研究和刷新后恢复并保留绘图历史/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:26807) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/4] tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1440
+  2) tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1440 ─────────────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('complementary', { name: '参考面板' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('complementary', { name: '参考面板' }) with timeout 5000ms
+      - waiting for getByRole('complementary', { name: '参考面板' })
+
+
+      70 |   await canvas(page).click({ position: { x: 230, y: box.height * .58 + 145 } });
+      71 |   await page.keyboard.insertText(note); await page.keyboard.press('Escape');
+    > 72 |   await expect(panel(page)).toBeVisible();
+         |                             ^
+      73 |   await expect.poll(async () => (await readDrawing(page))?.scene.elements.filter(element => !element.isDeleted).map(element => element.type)).toEqual(expect.arrayContaining(['rectangle', 'freedraw', 'text']));
+      74 |   await expect(drawing(page).getByText('绘图已保存', { exact: true })).toBeVisible();
+      75 |   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+        at draw (/Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:72:29)
+        at /Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:150:48
+
+    Error Context: ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1440/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1440/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1440/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:26822) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[3/4] tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1280
+  3) tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1280 ─────────────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('complementary', { name: '参考面板' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('complementary', { name: '参考面板' }) with timeout 5000ms
+      - waiting for getByRole('complementary', { name: '参考面板' })
+
+
+      70 |   await canvas(page).click({ position: { x: 230, y: box.height * .58 + 145 } });
+      71 |   await page.keyboard.insertText(note); await page.keyboard.press('Escape');
+    > 72 |   await expect(panel(page)).toBeVisible();
+         |                             ^
+      73 |   await expect.poll(async () => (await readDrawing(page))?.scene.elements.filter(element => !element.isDeleted).map(element => element.type)).toEqual(expect.arrayContaining(['rectangle', 'freedraw', 'text']));
+      74 |   await expect(drawing(page).getByText('绘图已保存', { exact: true })).toBeVisible();
+      75 |   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+        at draw (/Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:72:29)
+        at /Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:150:48
+
+    Error Context: ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1280/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1280/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1280/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:26860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[4/4] tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1024
+  4) tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1024 ─────────────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('complementary', { name: '参考面板' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('complementary', { name: '参考面板' }) with timeout 5000ms
+      - waiting for getByRole('complementary', { name: '参考面板' })
+
+
+      70 |   await canvas(page).click({ position: { x: 230, y: box.height * .58 + 145 } });
+      71 |   await page.keyboard.insertText(note); await page.keyboard.press('Escape');
+    > 72 |   await expect(panel(page)).toBeVisible();
+         |                             ^
+      73 |   await expect.poll(async () => (await readDrawing(page))?.scene.elements.filter(element => !element.isDeleted).map(element => element.type)).toEqual(expect.arrayContaining(['rectangle', 'freedraw', 'text']));
+      74 |   await expect(drawing(page).getByText('绘图已保存', { exact: true })).toBeVisible();
+      75 |   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+        at draw (/Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:72:29)
+        at /Users/amos/project/Read-paper/tests/e2e/drawing.spec.ts:150:48
+
+    Error Context: ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1024/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1024/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../tmp/read-paper-binding-regression/drawing-绘图与右侧AI、原文三尺寸可用且无页面横溢出-1024/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  4 failed
+    tests/e2e/drawing.spec.ts:99:1 › 真实手绘、文字与共享资料共存，切换布局、研究和刷新后恢复并保留绘图历史 ───────────────────────────
+    tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1440 ──────────────────────────────────
+    tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1280 ──────────────────────────────────
+    tests/e2e/drawing.spec.ts:148:3 › 绘图与右侧AI、原文三尺寸可用且无页面横溢出 1024 ──────────────────────────────────

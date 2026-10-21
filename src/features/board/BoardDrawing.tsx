@@ -6,10 +6,12 @@ import {
   convertToExcalidrawElements,
   newElementWith,
   restoreElements,
+  sceneCoordsToViewportCoords,
+  viewportCoordsToSceneCoords,
 } from '@excalidraw/excalidraw';
 import type { ExcalidrawElement, ExcalidrawEmbeddableElement } from '@excalidraw/excalidraw/element/types';
 import type { AppState, BinaryFiles, ExcalidrawImperativeAPI, ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types';
-import { ArrowUpRight, FileText, RotateCw, StickyNote } from 'lucide-react';
+import { ArrowUpRight, FileText, MessageCircle, Pencil, RotateCw, StickyNote } from 'lucide-react';
 import type { DrawingScene } from '../../domain/drawing';
 import type { BoardDrawingRef, BoardEdge, BoardPlacement, BoardViewport } from '../../domain/types';
 import { promoteRemovedPlacements } from '../../domain/board-structure';
@@ -20,7 +22,15 @@ import {
   stageBoardDrawing,
   subscribeDrawingSaves,
 } from '../../services/drawing-storage';
-import { resourceExists, resourceTitle, uid, useWorkspace } from '../../services/workspace';
+import { getActiveConversation, resourceExists, resourceTitle, uid, useWorkspace } from '../../services/workspace';
+import { attachDrawingQuestion } from '../../services/drawing-question';
+import { BoardQuestionDialog, type DrawingQuestionSource } from './BoardQuestionDialog';
+import { BoardResearchActions } from './BoardResearchActions';
+import { drawingResearchSelection } from './board-research-selection';
+import { captureDrawingQuestion } from './drawing-question-capture';
+import { bindDroppedArrowEndpoints, moveBoundArrowEndpoints } from './drawing-bindings';
+import { hasFullText } from '../../domain/knowledge';
+import { findPaneTab } from '../../services/panes';
 import '@excalidraw/excalidraw/index.css';
 import './drawing.css';
 
@@ -79,7 +89,7 @@ function syncResources(elements: readonly ExcalidrawElement[], placements: Board
     });
   });
   for (const item of placements) if (!used.has(item.id)) next.push(resourceElement(item));
-  return next;
+  return moveBoundArrowEndpoints(elements, next);
 }
 
 function syncEdges(elements: readonly ExcalidrawElement[], edges: BoardEdge[]) {
@@ -115,14 +125,21 @@ function syncEdges(elements: readonly ExcalidrawElement[], edges: BoardEdge[]) {
   ];
 }
 
-export default function BoardDrawing({ boardId }: { boardId: string }) {
+export default function BoardDrawing({ boardId, onViewport }: { boardId: string; onViewport?: (position: { x: number; y: number }) => void }) {
   const { data, actions, pane, view } = useWorkspace();
   const board = data.boards[boardId];
   const [initial, setInitial] = useState<{ key: number; scene: ExcalidrawInitialDataState }>();
   const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
+  const [drawingQuestionError, setDrawingQuestionError] = useState('');
+  const [drawingQuestionBusy, setDrawingQuestionBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
+  const [researchSelection, setResearchSelection] = useState<ReturnType<typeof drawingResearchSelection> & { left: number; top: number }>({ placementIds: [], texts: [], elementIds: [], unsupportedCount: 0, left: 12, top: 12 });
+  const [questionSource, setQuestionSource] = useState<DrawingQuestionSource>();
+  const [questionOpen, setQuestionOpen] = useState(false);
+  const questionPosition = useRef<{ x: number; y: number } | undefined>(undefined);
+  const researchSelectionKey = useRef('');
   const [save, setSave] = useState(() => getDrawingSaveState(boardId));
   const [hasEditLock, setHasEditLock] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
@@ -210,7 +227,11 @@ export default function BoardDrawing({ boardId }: { boardId: string }) {
     setInitial(undefined);
     setLoadError('');
     setError('');
+    setDrawingQuestionError('');
     setSelected([]);
+    setResearchSelection({ placementIds: [], texts: [], elementIds: [], unsupportedCount: 0, left: 12, top: 12 });
+    setQuestionOpen(false);
+    researchSelectionKey.current = '';
     selectedKey.current = '';
     acceptedRef.current = board.drawing;
     snapshots.current.clear();
@@ -249,6 +270,22 @@ export default function BoardDrawing({ boardId }: { boardId: string }) {
     if (JSON.stringify(next) !== JSON.stringify(elements)) api.current.updateScene({ elements: next, captureUpdate: CaptureUpdateAction.NEVER });
   }, [structure, initial]);
 
+  const anchorPlacementId = (view?.anchor ?? (board && data.sessions[board.researchId]?.anchor))?.placementId;
+  useEffect(() => {
+    const id = anchorPlacementId;
+    if (!board || !id || !api.current || !initialized.current) return;
+    const element = api.current.getSceneElements().find(item => placementId(item) === id);
+    if (!element) return;
+    actions.updateData(next => {
+      const owner = next.sessions[board.researchId];
+      const tab = pane && owner.layout ? findPaneTab(owner.layout, pane.tabId)?.tab : undefined;
+      if (tab?.anchor?.placementId === id) tab.anchor = undefined;
+      if (owner.anchor?.placementId === id) owner.anchor = undefined;
+    });
+    api.current.scrollToContent([element], { fitToContent: false, animate: false });
+    api.current.updateScene({ appState: { selectedElementIds: { [element.id]: true } }, captureUpdate: CaptureUpdateAction.NEVER });
+  }, [boardId, anchorPlacementId, initial, structure, actions, pane?.tabId]);
+
   function open(item: BoardPlacement, target: 'main' | 'inspector' = 'inspector', source = false) {
     try {
       const current = actions.getState().data;
@@ -271,7 +308,17 @@ export default function BoardDrawing({ boardId }: { boardId: string }) {
       api.current?.updateScene({ elements: allowed, captureUpdate: CaptureUpdateAction.NEVER });
       return;
     }
-    const ids = elements.filter(element => !element.isDeleted && state.selectedElementIds[element.id]).map(placementId).filter((id): id is string => !!id && snapshots.current.has(id));
+    const centre = viewportCoordsToSceneCoords({ clientX: state.offsetLeft + state.width / 2, clientY: state.offsetTop + state.height / 2 }, state);
+    onViewport?.({ x: Math.max(20, centre.x - 130), y: Math.max(55, centre.y - 110) });
+    const research = drawingResearchSelection(elements, state, [...snapshots.current.values()]);
+    const selectedElements = elements.filter(element => research.elementIds.includes(element.id));
+    const left = Math.min(...selectedElements.map(element => element.x));
+    const top = Math.min(...selectedElements.map(element => element.y));
+    const point = selectedElements.length ? sceneCoordsToViewportCoords({ sceneX: left, sceneY: top }, state) : { x: state.offsetLeft + 12, y: state.offsetTop + 12 };
+    const localSelection = { ...research, left: Math.max(12, Math.min(point.x - state.offsetLeft, Math.max(12, state.width - 280))), top: Math.max(76, point.y - state.offsetTop - 45) };
+    const localKey = JSON.stringify(localSelection);
+    if (localKey !== researchSelectionKey.current) { researchSelectionKey.current = localKey; setResearchSelection(localSelection); }
+    const ids = research.placementIds;
     const selection = ids.join(',');
     if (selection !== selectedKey.current) {
       selectedKey.current = selection;
@@ -370,6 +417,31 @@ export default function BoardDrawing({ boardId }: { boardId: string }) {
     }, baseline);
   }
 
+  async function askDrawing() {
+    const editor = api.current;
+    if (!editor || drawingQuestionBusy) return;
+    setDrawingQuestionError('');
+    setDrawingQuestionBusy(true);
+    try {
+      const current = actions.getState().data;
+      const currentBoard = current.boards[boardId];
+      if (!currentBoard) throw new Error('白板已不存在，请重新打开。');
+      const conversation = getActiveConversation(current, currentBoard.researchId);
+      if (!conversation) throw new Error('请先在当前研究中新建会话，再选择绘图问 Agent。');
+      const conversationId = conversation.id;
+      const workspaceGeneration = actions.getGeneration();
+      const capture = await captureDrawingQuestion(
+        editor.getSceneElements(), editor.getAppState(), editor.getFiles(),
+        Object.values(current.placements).filter(item => item.boardId === boardId), current,
+      );
+      await attachDrawingQuestion(currentBoard.researchId, boardId, {
+        ...capture, conversationId, generation: workspaceGeneration,
+      });
+    } catch (problem) {
+      setDrawingQuestionError(problem instanceof Error ? problem.message : '选区图片准备失败，请重试。');
+    } finally { setDrawingQuestionBusy(false); }
+  }
+
   // shortcut: native PNG/SVG exports omit live resource text; render previews to images if full-board image export is needed.
   function renderResource(element: ExcalidrawEmbeddableElement) {
     const id = placementId(element);
@@ -379,10 +451,10 @@ export default function BoardDrawing({ boardId }: { boardId: string }) {
     const card = item.resourceRef.kind === 'card' ? data.cards[item.resourceRef.id] : undefined;
     const document = item.resourceRef.kind === 'document' ? data.documents[item.resourceRef.id] : undefined;
     return <article className={`drawing-resource ${document ? 'is-document' : ''}`} aria-label={`白板资料：${resourceTitle(data, item.resourceRef)}`} onDoubleClick={() => open(item)}>
-      <div className="drawing-resource-kind">{document ? <FileText size={14} /> : <StickyNote size={14} />}{document ? 'PDF 论文' : '观点卡片'}{item.group && <span>{item.group}</span>}</div>
+      <div className="drawing-resource-kind">{document ? <FileText size={14} /> : <StickyNote size={14} />}{document ? hasFullText(document) ? 'PDF 论文' : '文献条目' : '观点卡片'}{item.group && <span>{item.group}</span>}</div>
       <h3>{resourceTitle(data, item.resourceRef)}</h3>
-      {exists ? <p>{card?.body || (document ? `${document.authors}${document.year ? ` · ${document.year}` : ''}\n${document.pageCount ? `${document.pageCount} 页` : '打开论文阅读原文'}` : '')}</p> : <p className="drawing-resource-missing">资料已缺失，请移出此摆放或修复来源。</p>}
-      <footer><span>{card ? `${card.evidenceIds.length} 条原文依据` : '原文与引用保留在资料库'}</span><button onClick={() => open(item)} aria-label={`在右侧打开：${resourceTitle(data, item.resourceRef)}`}>打开 <ArrowUpRight size={13} /></button></footer>
+      {exists ? <p>{card?.body || (document ? `${document.authors}${document.year ? ` · ${document.year}` : ''}\n${hasFullText(document) ? `${document.pageCount} 页` : '全文未导入'}` : '')}</p> : <p className="drawing-resource-missing">资料已缺失，请移出此摆放或修复来源。</p>}
+      <footer><span>{card ? `${card.evidenceIds.length} 条原文依据` : hasFullText(document) ? '原文与引用保留在资料库' : '题录与摘要 · 全文未导入'}</span><button onClick={() => open(item)} aria-label={`在右侧打开：${resourceTitle(data, item.resourceRef)}`}>打开 <ArrowUpRight size={13} /></button></footer>
     </article>;
   }
 
@@ -402,6 +474,17 @@ export default function BoardDrawing({ boardId }: { boardId: string }) {
       <Excalidraw key={initial.key} name={board.title} langCode="zh-CN" theme="light" aiEnabled={false} initialData={initial.scene}
         viewModeEnabled={!editable}
         excalidrawAPI={value => { api.current = value; }} onChange={change} handleKeyboardGlobally={false}
+        onPointerUp={(_tool, gesture) => {
+          const editor = api.current;
+          if (!editor || gesture.withCmdOrCtrl || !editor.getAppState().isBindingEnabled) return;
+          requestAnimationFrame(() => {
+            if (api.current !== editor) return;
+            const elements = editor.getSceneElementsIncludingDeleted();
+            const moved = moveBoundArrowEndpoints([...gesture.originalElements.values()], elements);
+            const next = bindDroppedArrowEndpoints(moved, gesture.originalElements);
+            if (next !== elements) editor.updateScene({ elements: next, captureUpdate: CaptureUpdateAction.NEVER });
+          });
+        }}
         UIOptions={{ canvasActions: { loadScene: false } }}
         onPaste={clipboard => {
           if (clipboard.elements?.some(element => element.type === 'iframe' || (element.type === 'embeddable' && !snapshots.current.has(placementId(element) ?? '')))) {
@@ -433,10 +516,30 @@ export default function BoardDrawing({ boardId }: { boardId: string }) {
         </MainMenu>
       </Excalidraw>
     </div>
+    {data.agentWorkbench !== false && researchSelection.elementIds.length > 0 ? <div className="drawing-local-research drawing-agent-action" style={{ left: researchSelection.left, top: researchSelection.top }} onPointerDown={event => event.stopPropagation()}>
+      <button className="button" disabled={drawingQuestionBusy} onClick={() => void askDrawing()}><MessageCircle size={14} />{drawingQuestionBusy ? '正在准备选区…' : '问 Agent'}</button>
+      <small>{researchSelection.elementIds.length} 个所选元素 · 发送前可预览</small>
+    </div> : data.agentWorkbench === false && (researchSelection.placementIds.length > 0 || researchSelection.texts.length > 0) && <div className="drawing-local-research" style={{ left: researchSelection.left, top: researchSelection.top }} onPointerDown={event => event.stopPropagation()}>
+      {researchSelection.placementIds.length > 0 && <BoardResearchActions boardId={boardId} placementIds={researchSelection.placementIds} />}
+      {researchSelection.texts.length > 0 && <button className="button" onClick={() => {
+        const source = { elementIds: researchSelection.texts.map(item => item.id), text: researchSelection.texts.map(item => item.text).join('\n\n') };
+        setQuestionSource(source);
+        const element = api.current?.getSceneElements().find(item => item.id === source.elementIds[0]);
+        questionPosition.current = element ? { x: Math.max(20, element.x), y: Math.max(55, element.y + element.height + 35) } : undefined;
+        setQuestionOpen(true);
+      }}><Pencil size={14} />文字作为问题{researchSelection.texts.length > 1 ? ` · ${researchSelection.texts.length} 项` : ''}</button>}
+      {researchSelection.texts.length > 0 && researchSelection.placementIds.length > 0 && <small>绘图文字先核对并转为问题，不自动并入所选资料。</small>}
+    </div>}
+    {drawingQuestionError && <div className="board-message has-error drawing-question-message" role="alert"><span>{drawingQuestionError}</span><button className="button" onClick={() => setDrawingQuestionError('')}>关闭</button></div>}
     {(error || save.status === 'error') && <div className="board-message has-error" role="alert"><span>{error || save.error}</span><button className="button" onClick={() => { setError(''); void flushBoardDrawings(boardId).then(() => releaseClosedEditor(boardId)).catch(problem => setError(problem instanceof Error ? problem.message : '保存失败，请重试。')); }}>重试保存</button></div>}
     <div className="drawing-statusbar">
-      {active ? <div className="drawing-resource-actions"><span>{resourceTitle(data, active.resourceRef)}</span><button className="button" onClick={() => open(active)}>右侧打开</button><button className="button" onClick={() => open(active, 'main')}>主区打开</button>{active.resourceRef.kind === 'card' && <button className="button" onClick={() => open(active, 'inspector', true)}>查看原文</button>}</div> : <span>画笔、形状、文字和箭头可直接绘制；选择资料后可打开原文。</span>}
+      {active ? <div className="drawing-resource-actions"><span>{resourceTitle(data, active.resourceRef)}</span><button className="button" onClick={() => open(active)}>右侧打开</button><button className="button" onClick={() => open(active, 'main')}>主区打开</button>{active.resourceRef.kind === 'card' && <button className="button" onClick={() => open(active, 'inspector', true)}>查看原文</button>}</div> : <span>{data.agentWorkbench !== false ? '框选图形、文字、笔迹、图片或资料，问 Agent 继续研究。' : researchSelection.unsupportedCount > 0 ? '图形、图片和笔迹不自动识别为问题；可用上方“写问题”补充。' : researchSelection.placementIds.length > 1 ? `已选 ${researchSelection.placementIds.length} 项资料，可核对后继续研究。` : '画笔、形状、文字和箭头可直接绘制；选择资料后可继续研究。'}</span>}
       <span className={`drawing-save-status is-${save.status}`} role="status">{({ dirty: '绘图待保存', saving: '正在保存绘图…', saved: '绘图已保存', error: '绘图保存失败' })[save.status]}</span>
     </div>
+    <BoardQuestionDialog boardId={boardId} open={questionOpen} onClose={() => setQuestionOpen(false)} drawingOrigin={questionSource} position={questionPosition.current} onCreated={id => {
+      setSelected([id]);
+      const item = actions.getState().data.placements[id];
+      if (item) requestAnimationFrame(() => { const element = api.current?.getSceneElements().find(value => placementId(value) === id); if (element) api.current?.scrollToContent([element], { fitToContent: false, animate: true }); });
+    }} />
   </div>;
 }

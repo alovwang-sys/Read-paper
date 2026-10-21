@@ -4,6 +4,7 @@ import { linkCard, uid, validateEvidence, workspace } from './workspace';
 import { remapCitationNumbers } from '../domain/citations';
 import { flushBoardDrawings, loadBoardDrawing } from './drawing-storage';
 import { collapseEmptyPanes, paneGroups, syncPaneSession } from './panes';
+import { requestProvenance } from '../domain/research';
 export { captureBoardContext, parseBoardPlan, previewBoardPlan } from '../domain/board-history';
 
 export const boardChanges = (data: WorkspaceData, boardId: string) =>
@@ -123,7 +124,7 @@ export async function applyBoardProposal(requestId: string): Promise<string> {
     plan.nodes.forEach((node, index) => {
       if (!node.card) return;
       const card: Card = { id: uid('card'), ...structuredClone(node.card), needsReview: true,
-        provenance: { researchId: request.researchId, conversationId: request.conversationId, conversationTitle: next.conversations[request.conversationId].title ?? '研究对话', requestId, prompt: request.prompt, answer: request.body, selection: node.card.body, answerEvidenceIds: [], context: structuredClone(request.context), createdAt: request.createdAt, model: request.model, connectionId: request.connectionId, generationRequestIds: [requestId] } };
+        provenance: { ...requestProvenance(next, request, node.card.body), answerEvidenceIds: [], createdAt: request.createdAt, generationRequestIds: [requestId] } };
       validateCardSources(next, card, request);
       next.cards[card.id] = card;
       linkCard(next, request.researchId, card.id);
@@ -191,7 +192,11 @@ export async function undoBoardCreation(requestId: string): Promise<void> {
         Object.values(next.placements).some(p => p.boardId !== creation.boardId && p.resourceRef.kind === 'card' && p.resourceRef.id === card.id) ||
         Object.values(next.boardChanges ?? {}).some(change => change.boardId !== creation.boardId && [change.before, change.after].some(snapshot => snapshot?.placements.some(p => p.resourceRef.kind === 'card' && p.resourceRef.id === card.id))) ||
         Object.values(next.drafts).some(d => d.cardRefs?.some(ref => ref.cardId === card.id) || d.cardSources?.some(source => source.cardId === card.id)) ||
-        Object.values(next.cardDrafts).some(d => d.cardId === card.id);
+        Object.values(next.cardDrafts).some(d => d.cardId === card.id) ||
+        Object.values(next.conversations).some(conversation => {
+          const state = conversation.boardResearch;
+          return state && [state.origin.rootRef, ...state.focus, ...state.automatic.map(item => item.resourceRef), ...state.pinned.map(item => item.resourceRef)].some(ref => ref?.kind === 'card' && ref.id === card.id);
+        });
       if (!reused && JSON.stringify(next.cards[card.id]) === JSON.stringify(card)) {
         delete next.cards[card.id]; removed.add(card.id);
         next.researches[creation.researchId].cardIds = next.researches[creation.researchId].cardIds.filter(id => id !== card.id);

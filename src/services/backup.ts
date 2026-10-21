@@ -5,6 +5,8 @@ import { hasFullText } from '../domain/knowledge';
 import { paneGroups } from './panes';
 import { archivedBoardCard } from '../domain/board-history';
 import { drawingReferences, parseDrawingScene, validateDrawingRef } from '../domain/drawing';
+import { drawingQuestionReferences, drawingSnapshotContent, validateDrawingPng, validateDrawingQuestion } from '../domain/drawing-question';
+import { validateResearchData } from '../domain/research';
 import type { CardProvenance, ContextSnapshot, RegionSource, Session, WorkspaceData } from '../domain/types';
 
 export type BackupAsset = { id: string; blob: Blob };
@@ -45,6 +47,16 @@ async function checkPdfAsset(blob: Blob, filename: string) {
   requireValid(header.includes('%PDF-'), `原文件内容不是 PDF：${filename}`);
 }
 
+async function checkDrawingQuestions(data: WorkspaceData, assets: Map<string, Blob>) {
+  for (const question of drawingQuestionReferences(data)) {
+    const snapshot = question.snapshot;
+    requireValid(await contentHash(new TextEncoder().encode(drawingSnapshotContent(snapshot)).buffer) === snapshot.hash, '绘图问题的快照 hash 不一致');
+    const image = assets.get(snapshot.image.assetId);
+    requireValid(image, '缺少绘图问题的图片');
+    validateDrawingPng(await image.arrayBuffer(), snapshot.image);
+  }
+}
+
 function checkZip32(bytes: Uint8Array) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let end = bytes.length - 22;
@@ -74,6 +86,7 @@ function checkZip32(bytes: Uint8Array) {
 
 /** Validates references, including frozen conversation and region-image snapshots. */
 function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
+  validateResearchData(data);
   const hashes = new Map<string, Set<string>>();
   const asset = (id: string, hash: string) => {
     requireValid(assetIdPattern.test(id) && hashPattern.test(hash), '来源资产标识或 SHA-256 损坏');
@@ -156,6 +169,10 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
     validateDrawingRef(drawing);
     asset(drawing.assetId, drawing.hash);
   }
+  for (const question of drawingQuestionReferences(data)) {
+    validateDrawingQuestion(question);
+    asset(question.snapshot.image.assetId, question.snapshot.image.hash);
+  }
   for (const change of Object.values(data.boardChanges ?? {})) {
     requireValid(has(data.researches, change.researchId), '白板历史所属研究缺失');
     for (const card of change.createdCards ?? []) { evidenceIds(card.evidenceIds); if (card.provenance) source(card.provenance); }
@@ -185,6 +202,11 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
   }
   for (const conversation of Object.values(data.conversations)) {
     requireValid(has(data.researches, conversation.researchId), '对话所属研究缺失');
+    if (conversation.researchFocus) {
+      const target = conversation.researchFocus.ref, research = data.researches[conversation.researchId];
+      ref(target);
+      requireValid(target.kind === 'research' ? target.id === research.id : target.kind === 'document' ? research.documentIds.includes(target.id) : target.kind === 'card' ? research.cardIds.includes(target.id) : target.kind === 'board' ? data.boards[target.id].researchId === research.id : data.drafts[target.id].researchId === research.id, '会话追问对象跨研究');
+    }
     evidenceIds(conversation.contextIds);
     ids(conversation.requestIds);
     requireValid(conversation.requestIds.every(id => has(data.requests, id) && data.requests[id].conversationId === conversation.id && data.requests[id].researchId === conversation.researchId), '对话问答记录缺失或跨研究');
@@ -265,6 +287,7 @@ export async function createWorkspaceBackup(original: WorkspaceData, originalAss
     if (!doc.hash) doc.hash = await contentHash(await blob.arrayBuffer());
   }
   const expectedHashes = validateReferences(data);
+  await checkDrawingQuestions(data, assets);
   const drawingIds = new Set(drawingReferences(data).map(ref => ref.assetId));
   const files: Record<string, Uint8Array> = {};
   const entries: AssetEntry[] = [];
@@ -344,6 +367,7 @@ export async function readWorkspaceBackup(file: Blob): Promise<WorkspaceBackup> 
   }
   requireValid([...expectedHashes.keys()].every(id => seenIds.has(id)), '缺少原文件、历史区域图片或绘图');
   const assetMap = new Map(assets.map(asset => [asset.id, asset.blob]));
+  await checkDrawingQuestions(data, assetMap);
   for (const doc of Object.values(data.documents)) if (hasFullText(doc)) await checkPdfAsset(assetMap.get(doc.assetId)!, doc.filename);
   return { data, assets, createdAt: manifest.createdAt, summary: { researches: Object.keys(data.researches).length, documents: Object.keys(data.documents).length, cards: Object.keys(data.cards).length, assets: assets.length, bytes: total } };
 }
