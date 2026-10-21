@@ -324,7 +324,7 @@ test('BV08 从检索题录补同一条目的 PDF，原文摘录沿原问题讨�
   await openSource(page, fixture.title);
   await expect(main(page).getByLabel('为资料选择 PDF')).toBeAttached();
   await main(page).getByLabel('为资料选择 PDF').setInputFiles('public/samples/adaptive-retrieval.pdf');
-  await expect(main(page).getByRole('region', { name: 'PDF 阅读器 主区' })).toBeVisible();
+  await expect(main(page).getByRole('region', { name: 'PDF 阅读器', exact: true })).toBeVisible();
   await expect(main(page).locator('canvas').first()).toBeVisible();
   const span = main(page).locator('.pdf-text-layer span').filter({ hasText: 'When does adding a retrieval stage' }).first();
   await expect(span).toBeVisible();
@@ -339,9 +339,13 @@ test('BV08 从检索题录补同一条目的 PDF，原文摘录沿原问题讨�
     node.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     return node.textContent!.replace(/\s+/g, ' ').trim();
   });
-  await expect(main(page).getByLabel('原文选区操作')).toBeVisible();
-  await main(page).getByText('问 AI', { exact: true }).click();
-  await main(page).getByRole('button', { name: '加入当前对话', exact: true }).click();
+  const selection = page.getByLabel('原文选区操作');
+  await expect(selection).toBeVisible();
+  // Reader questions now open an inline conversation. Add this explicit excerpt
+  // to the existing board discussion instead, preserving the original question.
+  await selection.getByRole('button', { name: '摘录', exact: true }).click();
+  await panel(page).getByRole('tab', { name: '摘录', exact: true }).click();
+  await panel(page).locator('.evidence-entry').filter({ hasText: quote }).getByRole('button', { name: '加入 AI', exact: true }).click();
   await expect.poll(async () => (await active(page)).contextIds.length).toBe(1);
   state = await data(page);
   const evidence = Object.values(state.evidence).find(item => item.documentId === document.id && item.quote === quote)!;

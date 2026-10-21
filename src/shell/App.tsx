@@ -144,16 +144,16 @@ export function App() {
   const atConversation = active.kind === 'researchView' && active.id === 'home';
   const panelOpen = session.panel.open && (!agentWorkbench || session.agentWorkbenchStarted === true);
   useEffect(() => {
-    if (loaded && agentWorkbench && research && !session.agentWorkbenchStarted) actions.updateData(next => {
+    if (loaded && !loadError && agentWorkbench && research && !session.agentWorkbenchStarted) actions.updateData(next => {
       next.sessions[research.id].panel.open = false;
       next.sessions[research.id].agentWorkbenchStarted = true;
     });
-  }, [loaded, agentWorkbench, research?.id, session.agentWorkbenchStarted]);
+  }, [loaded, loadError, agentWorkbench, research?.id, session.agentWorkbenchStarted]);
   useEffect(() => {
-    if (!agentWorkbench || !session.agentWorkbenchStarted || !session.panel.open || session.panel.mode !== 'ai' || session.panel.aiView === 'history') return;
+    if (!loaded || loadError || !agentWorkbench || !session.agentWorkbenchStarted || !session.panel.open || session.panel.mode !== 'ai' || session.panel.aiView === 'history') return;
     actions.updateData(next => { next.agentWorkbench = false; });
     actions.notice('此操作在经典工作台继续，原有对话、局部材料和输入均已保留。');
-  }, [agentWorkbench, session.agentWorkbenchStarted, session.panel.open, session.panel.mode, session.panel.aiView]);
+  }, [loaded, loadError, agentWorkbench, session.agentWorkbenchStarted, session.panel.open, session.panel.mode, session.panel.aiView]);
   function toggleWorkbench() {
     actions.updateData(next => {
       next.agentWorkbench = !agentEnabled;
@@ -358,14 +358,12 @@ export function App() {
           {research && <ResearchDirectory researchId={research.id} settings />}
         </div>
         <div className="sidebar-actions"><button className="new-research" onClick={() => { if (agentEnabled) { actions.createResearch('新研究', ''); if (narrow) closeNavigation(); } else showDialog('new'); }}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
-        <nav className="research-nav" aria-label="研究内导航">
-          {agentWorkbench ? <>
+        {agentWorkbench ? <nav className="research-nav" aria-label="研究内导航">
             <button className={`nav-item ${active.kind === 'researchView' && active.id === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Sparkles size={17} />研究工作台</button>
             <div className="sidebar-section-label">最近打开</div>
             {(session.recentItems ?? session.openItems).filter(ref => resourceExists(data, ref)).slice(0, 6).map(ref => <button className={`nav-item ${active.kind === ref.kind && active.id === ref.id ? 'active' : ''}`} key={`${ref.kind}:${ref.id}`} title={resourceTitle(data, ref)} onClick={() => { open(ref); if (narrow) closeNavigation(); }}><ResourceIcon kind={ref.kind} /><span>{resourceTitle(data, ref)}</span></button>)}
             <details className="agent-browse"><summary>浏览研究内容</summary><div className="agent-browse-links">{researchViews.filter(item => item.id !== 'home').map(({ id, name, icon: Icon }) => <button className={`nav-item ${active.kind === 'researchView' && active.id === id ? 'active' : ''}`} key={id} onClick={() => navigate(id)}><Icon size={15} />{name}</button>)}</div></details>
-          </> : research && <ResearchNavigation researchId={research.id} active={active} onNavigate={navigate} onOpen={ref => { open(ref); if (narrow) closeNavigation(); }} /> }
-        </nav>
+        </nav> : research && <ResearchNavigation researchId={research.id} active={active} onNavigate={navigate} onOpen={ref => { open(ref); if (narrow) closeNavigation(); }} />}
         <div className="sidebar-bottom-nav">{research && <button className="nav-item workbench-switch" onClick={toggleWorkbench}><Layers size={17} />{agentWorkbench ? '经典工作台' : 'Agent 工作台'}</button>}<button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
         <div className="sidebar-footer">
           <span
