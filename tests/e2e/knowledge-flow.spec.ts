@@ -129,7 +129,8 @@ test('多 PDF 导入保留有效文件，重复计数和失败原因可见', asy
   const first = await uniquePdf('批量甲 E2E'), second = await uniquePdf('批量乙 E2E');
   await choosePdf(page, [first, { name: 'duplicate.pdf', mimeType: first.mimeType, buffer: first.buffer }, { name: 'broken.pdf', mimeType: 'application/pdf', buffer: Buffer.from('not pdf') }, second]);
   const dialog = page.getByRole('dialog', { name: '添加资料', exact: true });
-  await expect(dialog.getByRole('alert')).toContainText('broken.pdf');
+  // The failure list appears after the whole batch has finished parsing and saving.
+  await expect(dialog.getByRole('alert')).toContainText('broken.pdf', { timeout: 30_000 });
   await expect(dialog.getByRole('alert')).toContainText('不是 PDF');
   await expect(page.getByText('导入完成：新建 2 条，复用 1 条，失败 1 个。', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'docs/verification/knowledge-flow/batch-import-error-1440.png' });
