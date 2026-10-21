@@ -15,3 +15,5 @@
 [切回经典](screenshots/classic-ready-1440.png) · [原新建研究流程](screenshots/classic-create-dialog-1440.png)
 
 此记录不宣称已发布新安装包、已签名或新接入其他助手图片研究工具。原 checkout 与累计成果提交保留；根目录 test-results-* 临时产物未推送。
+
+最终整合的 258 项浏览器回归已在本机分段全部覆盖。远端 CI 首轮无测试断言失败，但单 worker 完整回归超过原 Checks 的 20 分钟总时限（run 39555224350）；将该任务上限调至 40 分钟，测试范围、断言、重试和并行度均保持原配置。仍以最终 head 的 Required checks 为合并条件。
