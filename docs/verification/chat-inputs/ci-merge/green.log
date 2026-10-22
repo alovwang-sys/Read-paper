@@ -1,0 +1,24 @@
+
+Running 16 tests using 1 worker
+
+(node:23262) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/16] tests/e2e/agent-regressions.spec.ts:21:1 › 长问题完整发送，接受请求后立即清空；新草稿不被完成回执覆盖
+[2/16] tests/e2e/agent-regressions.spec.ts:43:1 › 流式执行开始即清空，失败保留可恢复问题
+[3/16] tests/e2e/agent-regressions.spec.ts:59:1 › 成果正文直接在会话可读，附件与执行记录不遮住答案
+[4/16] tests/e2e/agent-regressions.spec.ts:80:1 › 回答中的论文保留预览与入库操作
+[5/16] tests/e2e/agent-regressions.spec.ts:100:1 › 在当前会话检索文献、去重入库、刷新恢复并带摘要继续问
+[6/16] tests/e2e/agent-regressions.spec.ts:135:1 › 自己发送时定位新轮，上滚阅读时新回复不抢位置并可一键找到
+[7/16] tests/e2e/agent-regressions.spec.ts:162:51 › 检索无结果留在原会话并可继续问
+[8/16] tests/e2e/agent-regressions.spec.ts:162:51 › 检索失败留在原会话并可继续问
+[9/16] tests/e2e/agent-regressions.spec.ts:175:1 › 未收录的候选也按原顺序进入追问历史，摘要不冒充PDF
+[10/16] tests/e2e/agent-workbench.spec.ts:44:1 › 一句委托形成真实持久草稿，局部修订保护人工修改，来源深读可以返回
+[11/16] tests/e2e/agent-workbench.spec.ts:123:1 › 全部旧功能可达，经典模式和Agent模式共享数据，连接能力不冒充
+[12/16] tests/e2e/agent-workbench.spec.ts:157:1 › 迟到结果归原研究，不打断另一个研究；停止保留输入
+[13/16] tests/e2e/workbench-sessions.spec.ts:86:1 › 多轮完整呈现，新会话不继承旧输入和焦点，切回原会话不落入经典模式
+[14/16] tests/e2e/workbench-sessions.spec.ts:132:1 › 刷新恢复当前会话、未发送输入、局部焦点和该会话滚动位置
+[15/16] tests/e2e/workbench-sessions.spec.ts:154:1 › 查看共享成果和引用保持发送目标，三个窗口尺寸均无横向溢出且输入可用
+[16/16] tests/e2e/workbench-sessions.spec.ts:199:1 › 同研究内 A 的迟到成果仍归 A，不抢 B 的当前视图、输入和历史
+  16 passed (25.5s)
