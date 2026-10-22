@@ -1,0 +1,47 @@
+{
+  "version": "0.1.14",
+  "date": "2026-10-23",
+  "checks": {
+    "typecheck": "passed",
+    "unit": 744,
+    "server": 355,
+    "desktopUnit": 27,
+    "releaseGuard": 15,
+    "browserUnique": 93,
+    "browserNew": 9,
+    "browserExisting": 84,
+    "packagedDesktop": 7,
+    "buildAndMake": "passed"
+  },
+  "artifacts": [
+    {
+      "path": "out/make/dmg/arm64/Papertrail-0.1.14-macos-arm64.dmg",
+      "bytes": 234408341,
+      "sha256": "ac1081a7cc5fd1bb5421604a2e3ea3be7788b145b145f9e28192463cbdea3ad7"
+    },
+    {
+      "path": "out/make/zip/darwin/arm64/Papertrail-darwin-arm64-0.1.14.zip",
+      "bytes": 236780595,
+      "sha256": "82210ad672227898108f71da3555bebc10d3ba397fba3be8dba7f0bfc5f7f755"
+    },
+    {
+      "path": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar",
+      "bytes": 405037037,
+      "sha256": "db7e923d2f183ea215de732b741a7cbc5659e0c1d3fad0b7083835eb00a006a5"
+    }
+  ],
+  "package": {
+    "architecture": "arm64",
+    "bundleVersion": "0.1.14",
+    "asarVersion": "0.1.14"
+  },
+  "installation": {
+    "status": "blocked",
+    "reason": "Mac is locked; cannot gracefully quit the installed 0.1.12 app and verify replacement. User has been asked to unlock.",
+    "installedVersionUnchanged": "0.1.12"
+  },
+  "limits": [
+    "Browser model endpoints were mocked; packaged desktop tests used isolated temporary HOME and user data, with no model runs.",
+    "No public v0.1.14 release, merge or upload was performed."
+  ]
+}

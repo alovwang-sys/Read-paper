@@ -1,3 +1,4 @@
+import { switchResearch } from './knowledge-helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import type { WorkspaceData } from '../../src/domain/types';
@@ -167,14 +168,14 @@ test('迟到结果归原研究，不打断另一个研究；停止保留输入',
   await input(page).fill('比较这些论文并保留出处。');
   await page.getByRole('button', { name: '开始研究', exact: true }).click();
   await expect.poll(() => !!captured).toBe(true);
-  await page.getByRole('combobox', { name: '切换研究' }).selectOption('research-b');
+  await switchResearch(page, 'research-b');
   release();
   await expect.poll(async () => Object.values((await data(page)).requests).find(request => request.researchRun)?.status).toBe('done');
   const saved = await data(page);
   expect(saved.scope).toEqual({ kind: 'research', researchId: 'research-b' });
   expect(Object.values(saved.drafts).find(draft => draft.title === '比较研究 1')?.researchId).toBe('research-a');
   await expect(input(page)).toHaveValue('');
-  await page.getByRole('combobox', { name: '切换研究' }).selectOption('research-a');
+  await switchResearch(page, 'research-a');
   await page.unroute('**/api/ai/research/run');
   let secondReached = false;
   await page.route('**/api/ai/research/run', route => new Promise<void>(resolve => { secondReached = true; setTimeout(() => { void route.abort().catch(() => {}).finally(resolve); }, 10000); }));

@@ -383,45 +383,6 @@ h3 {
   gap: 2px;
   margin: 0 1px 9px;
 }
-.research-switcher {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  min-height: 38px;
-  gap: 8px;
-  border-radius: 6px;
-}
-.research-switcher:hover {
-  background: #e7ede6;
-}
-.research-dot {
-  width: 7px;
-  height: 7px;
-  background: #5c9985;
-  border-radius: 50%;
-  margin-left: 11px;
-  flex-shrink: 0;
-}
-.research-switcher select {
-  min-width: 0;
-  flex: 1;
-  border: 0;
-  background: none;
-  appearance: none;
-  padding: 10px 0;
-  color: #56645d;
-  font-size: 13px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-.research-switcher > svg {
-  color: #a4acb0;
-  flex-shrink: 0;
-  margin-right: 5px;
-}
 .research-nav .nav-item {
   padding-left: 15px;
   font-size: 11px;

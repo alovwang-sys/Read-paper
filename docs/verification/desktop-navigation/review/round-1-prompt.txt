@@ -1,0 +1,28 @@
+请用中文审阅一个公开开源论文研究桌面工作台的侧栏交互方案。只讨论给定的产品需求和代码，不读文件、不调用工具，不改代码。不要要求访问真实用户研究或凭据。你是独立产品与可访问性审阅者，给出可实施的最小方案，最多 900 字。
+
+用户抱怨：左上研究选择器看起来像网页表单，打开菜单后只是未经设计的原生 select；“全局资料浏览”作为 disabled 项混在研究名里；旁边独立的 … 才能管理研究；下面又有单独“新建研究”。希望像真正桌面软件一样简明、专业，避免堆功能与更多操作。
+
+约束：保持经典工作台和 Agent 工作台共用同一导航。研究切换保持实体、会话、未发送草稿和打开资源归属不变；只调用既有 switchResearch。全局资料库已有底部入口。已有研究目录管理组件，有 … 按钮。不能删除旧能力、不能引入新的数据模型/依赖、不要大改侧栏。
+
+当前公共源码（src/shell/App.tsx）：
+<div className="research-project-row">
+  <label className="research-switcher" title={research?.title ?? '切换研究'}>
+    <span className="research-dot" />
+    <select aria-label="切换研究" value={research?.id ?? ''} onChange={event => { actions.switchResearch(event.target.value); if (narrow) closeNavigation(); }}>
+      <option value="" disabled>全局资料浏览</option>
+      {Object.values(data.researches).map(r => <option key={r.id} value={r.id}>{r.title}</option>)}
+    </select>
+    <ChevronDown size={13} />
+  </label>
+  {research && <ResearchDirectory researchId={research.id} settings />}
+</div>
+<div className="sidebar-actions">
+ <button className="new-research" onClick={() => { if (agentEnabled) { actions.createResearch('新研究', ''); if (narrow) closeNavigation(); } else showDialog('new'); }}>新建研究</button>
+ <button aria-label="全局搜索" onClick={() => showDialog('search')}>搜索</button>
+</div>
+底部：经典/Agent 工作台切换、资料库、设置。最后保存状态行又有一个设置齿轮。
+窄屏 <=1024px 时左侧是带遮罩的导航抽屉，抽屉自身有 Tab 焦点循环。普通宽屏可缩放左栏；默认约240px。
+
+候选修改：将 native select 替换为紧凑的研究切换弹层；显示当前项勾选、研究搜索、同名研究辅助信息与新建研究入口；全局资料库独立分组或保留底部。请指出最小可行的信息架构与交互：是否应该移除下方重复新建入口；全局资料库是否需要在弹层里；如何区别同名研究又不暴露路径过多；键盘、Escape、点击外部、焦点返回和窄屏边界怎么处理。特别提醒语义采用 dialog+search+普通button，还是 combobox/listbox；不要建议复杂混合 ARIA。
+
+最后列最多3个紧邻此区域、确实值得一起修的高优先问题，不要扩展成全项目重设计。说明哪些是本轮必须、哪些可以不做。

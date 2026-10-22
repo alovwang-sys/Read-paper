@@ -1,3 +1,4 @@
+import { switchResearch } from './knowledge-helpers';
 import { test as base, expect, type Page } from '@playwright/test';
 import { createServer, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
@@ -80,9 +81,9 @@ test('完全访问需明确确认，权限与推理档位进入请求快照并�
   await input(page).fill('/status'); await input(page).press('Enter'); await expect(menu(page).locator('.codex-status')).toContainText('完全访问'); await expect(menu(page).locator('.codex-status')).toContainText('Ultra'); await menu(page).press('Escape');
   await input(page).fill('研究 A 未发送的问题'); await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload();
   await expect(settings(page)).toContainText('完全访问'); await expect(panel(page).getByRole('button', { name: 'Codex 推理强度', exact: true })).toHaveText('Ultra'); await expect(input(page)).toHaveValue('研究 A 未发送的问题');
-  await page.getByLabel('切换研究').selectOption('research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+  await switchResearch(page, 'research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await expect(settings(page)).toContainText('只读'); await expect(input(page)).toHaveValue('');
-  await page.getByLabel('切换研究').selectOption('research-a'); await expect(input(page)).toHaveValue('研究 A 未发送的问题'); await expect(settings(page)).toContainText('完全访问');
+  await switchResearch(page, 'research-a'); await expect(input(page)).toHaveValue('研究 A 未发送的问题'); await expect(settings(page)).toContainText('完全访问');
   expect(api.runs).toHaveLength(1);
 });
 

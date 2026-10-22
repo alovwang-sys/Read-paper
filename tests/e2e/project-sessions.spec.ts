@@ -3,7 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import type { NativeSessionSnapshot, WorkspaceData } from '../../src/domain/types';
 import { createSeed } from '../../src/data/seed';
 import { fixtureSessionRef, mockProjectService } from './project-fixture';
-import { openSource } from './knowledge-helpers';
+import { openSource, switchResearch } from './knowledge-helpers';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
 const main = (page: Page) => page.getByRole('main', { name: '主工作区' });
@@ -48,11 +48,11 @@ test('目录浏览取消不写入，唯一确认绑定后保留输入并随请�
   await expect(dialog).toContainText('项目将命名为「research-a」');
   await dialog.press('Escape'); await expect(dialog).toHaveCount(0); await expect(panel(page)).toBeVisible(); await expect(input).toHaveValue('保留绑定前写下的问题');
   expect(api.project.calls.filter(call => call.action === 'bind')).toHaveLength(0); expect((await state(page)).researches['research-a'].title).toBe(originalName);
-  await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText(originalName);
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText(originalName);
   await panel(page).getByRole('button', { name: '选择研究目录', exact: true }).click(); await dialog.getByRole('button', { name: 'research-a', exact: true }).click();
   await dialog.getByRole('button', { name: '使用这个目录', exact: true }).click(); await expect(dialog).toHaveCount(0);
   await expect(input).toHaveValue('保留绑定前写下的问题'); await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeEnabled();
-  await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('research-a');
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('research-a');
   await expect(main(page).getByRole('heading', { level: 1 })).toHaveText('research-a');
   await expect(page.locator('.breadcrumb').getByText('research-a', { exact: true }).first()).toBeVisible();
   await expect(navigation(page).locator('.research-project-row')).toHaveCount(1);
@@ -60,7 +60,7 @@ test('目录浏览取消不写入，唯一确认绑定后保留输入并随请�
   await expect(navigation(page).getByRole('button', { name: '项目设置 · research-a', exact: true })).toBeVisible();
   const bindings = api.project.calls.filter(call => call.action === 'bind'); expect(bindings).toHaveLength(1); expect(bindings[0].body).toMatchObject({ path: '/fixture/research-a', researchId: 'research-a' }); expect(bindings[0].body.workspaceId).toBeTruthy();
   await panel(page).getByRole('button', { name: '发送问题', exact: true }).click(); await expect(panel(page).locator('.ai-answer')).toContainText('同一项目会话'); expect(api.runs[0]).toMatchObject({ bindingId: 'binding-research-a', researchId: 'research-a' });
-  await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload(); await expect(main(page)).toBeVisible(); expect((await state(page)).researches['research-a'].directory?.path).toBe('/fixture/research-a'); await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('research-a');
+  await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload(); await expect(main(page)).toBeVisible(); expect((await state(page)).researches['research-a'].directory?.path).toBe('/fixture/research-a'); await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('research-a');
 });
 
 test('首次目录加载锁定路径输入，加载完成后的目标预览与取消保持一致', async ({ page }) => {
@@ -81,7 +81,7 @@ test('首次目录加载锁定路径输入，加载完成后的目标预览与�
     await path.fill('/fixture/research-a'); await dialog.getByRole('button', { name: '打开路径', exact: true }).click();
     await expect(dialog.locator('.directory-preview')).toContainText('/fixture/research-a'); await expect(path).toHaveValue('/fixture/research-a');
     await expect(dialog).toContainText('项目将命名为「research-a」'); await dialog.getByRole('button', { name: '取消', exact: true }).click();
-    await expect(dialog).toHaveCount(0); await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText(originalName);
+    await expect(dialog).toHaveCount(0); await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText(originalName);
     expect((await state(page)).researches['research-a'].title).toBe(originalName); expect(api.project.calls.filter(call => call.action === 'bind')).toHaveLength(0);
   } finally { releaseBrowse(); }
 });
@@ -91,7 +91,7 @@ test('旧绑定按文件夹名称恢复项目入口，同目录重连与研究�
   Object.assign(seed.conversations['conversation-research-a'], { connectionId: 'codex', input: '研究 A 尚未发送的问题' });
   Object.assign(seed.conversations['conversation-research-b'], { connectionId: 'codex', input: '研究 B 独立的问题' });
   const api = await setup(page, { seed, names: { 'research-a': 'research-a', 'research-b': 'research-b' } });
-  await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('research-a');
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('research-a');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('研究 A 尚未发送的问题');
   expect((await state(page)).researches['research-a'].id).toBe('research-a');
   const binding = (await state(page)).researches['research-a'].directory!;
@@ -103,15 +103,15 @@ test('旧绑定按文件夹名称恢复项目入口，同目录重连与研究�
   expect(rebound.id).toBe('research-a'); expect(rebound.title).toBe('research-a'); expect(rebound.directory).toMatchObject(binding);
   expect(api.project.calls.filter(call => call.action === 'bind')).toHaveLength(1);
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('研究 A 尚未发送的问题');
-  await page.getByLabel('切换研究').selectOption('research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
-  await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('research-b');
+  await switchResearch(page, 'research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('research-b');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('研究 B 独立的问题');
-  await page.getByLabel('切换研究').selectOption('research-a');
+  await switchResearch(page, 'research-a');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('研究 A 尚未发送的问题');
   expect(Object.keys((await state(page)).researches).sort()).toEqual(['research-a', 'research-b']);
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload();
-  await expect(page.getByLabel('切换研究')).toHaveValue('research-a');
-  await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('research-a');
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toHaveAttribute('data-research-id', 'research-a');
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('research-a');
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('研究 A 尚未发送的问题'); expect(api.runs).toHaveLength(0);
 });
 

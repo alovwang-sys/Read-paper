@@ -1,0 +1,324 @@
+请用中文做第二轮真实静态复审，只审阅下面给出的公开源码，不读文件、不调用工具、不修改代码。上轮建议的方向已经落地。请最多给出3项必须修复的问题，只接受有明确代码路径和触发步骤的 bug；区分已由源码证明与尚需运行验证，不要把偏好当 bug，不建议大改、新依赖或扩大范围。没有必须修的就明确说没有。每项说明文件/代码位置、触发步骤、影响和最小修复。最后说明静态审阅不能代替真实测试。控制在1000字内。
+
+产品取舍：保留研究切换器下方的一键“新建研究”和搜索常驻按钮（Heptabase类似结构），弹层不重复添加新建/资料库。经典与Agent工作台共用同一切换器；保留现有…研究管理；全局库保留底部。研究切换只调用旧switchResearch，当前项不重复切换；不改实体、研究会话归属、未发送草稿。重名才展示已有目录或创建秒时间，普通项只显示名称。
+本轮还修复：研究名改成本地draft，blur/Enter仅非空trim提交，Escape取消；新建默认名唯一并聚焦；删除全局搜索boards重复spread。
+实际浏览器测试已运行第一轮，root已经查看1440/1280/1024截图，原断言的hidden drawer和fixture数量问题已修，正在重跑。请独立判断生产代码；不要假设测试通过。
+特别检查弹层触发器的重复点击、onBlur与onClick顺序、焦点/键盘、窄屏抽屉和改名提交边界。已知窄屏抽屉原逻辑：Tab在aside的全部button:not(:disabled),select,input之间首尾循环；全局Esc监听只有navigationOpen才关闭抽屉并归还navigationTrigger焦点。选择研究时onSwitch先actions.switchResearch再if(narrow)closeNavigation。
+
+--- src/shell/ResearchSwitcher.tsx ---
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { Check, ChevronDown, Folder, Search } from 'lucide-react';
+import type { Research } from '../domain/types';
+import './research-switcher.css';
+
+export function ResearchSwitcher({ researches, currentId, onSwitch }: {
+  researches: Research[];
+  currentId?: string;
+  onSwitch: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const id = useId();
+  const current = researches.find(item => item.id === currentId);
+  const title = (item: Research) => item.title.trim() || '未命名研究';
+  const shown = researches.filter(item => `${title(item)} ${item.question} ${item.directory?.path ?? ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const duplicate = (item: Research) => researches.filter(other => title(other) === title(item)).length > 1;
+  const detail = (item: Research) => item.directory?.path || `${new Date(item.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} 创建 · ${item.documentIds.length} 份资料`;
+  function close(restoreFocus = false) {
+    setOpen(false);
+    if (restoreFocus) trigger.current?.focus();
+  }
+  function choose(researchId: string) {
+    close(true);
+    if (researchId !== currentId) onSwitch(researchId);
+  }
+  useEffect(() => { setOpen(false); }, [currentId]);
+  useEffect(() => {
+    if (!open) return;
+    search.current?.focus();
+    const outside = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) close();
+    };
+    document.addEventListener('pointerdown', outside);
+    return () => document.removeEventListener('pointerdown', outside);
+  }, [open]);
+  function keys(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === 'Escape') {
+      event.preventDefault(); event.stopPropagation(); close(true); return;
+    }
+    const items = [...(panel.current?.querySelectorAll<HTMLButtonElement>('[data-research-id]') ?? [])];
+    if (event.target === search.current && event.key === 'Enter' && !event.nativeEvent.isComposing) {
+      event.preventDefault(); if (shown[0]) choose(shown[0].id); return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !items.length) return;
+    if (event.target === search.current && ['Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : index < 0 ? event.key === 'ArrowUp' ? items.length - 1 : 0 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items[next]?.focus();
+  }
+  return <div ref={root} className="research-switcher-host">
+    <button ref={trigger} type="button" className="research-switcher" aria-label="切换研究" data-research-id={currentId ?? ''} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} title={current ? title(current) : '全局资料库'} onClick={() => { if (open) close(); else { setQuery(''); setOpen(true); } }} onKeyDown={event => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setQuery(''); setOpen(true); }
+    }}>
+      <span className="research-switcher-symbol"><Folder size={17}/></span>
+      <span className="research-switcher-name">{current ? title(current) : '全局资料库'}</span>
+      <ChevronDown size={14} aria-hidden="true"/>
+    </button>
+    {open && <div ref={panel} id={id} className="research-switcher-panel" role="dialog" aria-label="切换研究" onKeyDown={keys} onBlur={event => {
+      if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) close();
+    }}>
+      <label className="research-switcher-search"><Search size={16} aria-hidden="true"/><input ref={search} aria-label="查找研究" placeholder="查找研究…" value={query} onChange={event => setQuery(event.target.value)} autoComplete="off"/></label>
+      <div className="research-switcher-caption">研究</div>
+      <div className="research-switcher-list">
+        {shown.map(item => <button key={item.id} type="button" className="research-switcher-item" data-research-id={item.id} aria-current={item.id === currentId ? 'true' : undefined} tabIndex={-1} title={duplicate(item) ? `${title(item)}\n${detail(item)}` : title(item)} onClick={() => choose(item.id)}>
+          <Folder size={16} aria-hidden="true"/><span><strong>{title(item)}</strong>{duplicate(item) && <small>{detail(item)}</small>}</span>{item.id === currentId && <Check size={16} className="research-switcher-check" aria-hidden="true"/>}
+        </button>)}
+        {!shown.length && <p className="research-switcher-empty" role="status">{researches.length ? '没有找到匹配的研究' : '还没有研究，点击“新建研究”开始。'}</p>}
+      </div>
+      <div className="research-switcher-hint"><span>↑↓ 选择</span><span>Enter 切换</span><span>Esc 关闭</span></div>
+    </div>}
+  </div>;
+}
+
+--- src/shell/research-switcher.css ---
+.research-switcher-host { position: relative; min-width: 0; flex: 1; }
+.research-switcher { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 42px; min-width: 0; padding: 8px; border-radius: 8px; text-align: left; color: #35473e; }
+.research-switcher:hover, .research-switcher[aria-expanded="true"] { background: #e8eeeb; }
+.research-switcher-symbol { display: grid; place-items: center; flex-shrink: 0; width: 27px; height: 27px; border-radius: 7px; background: #e2ece7; color: #43816d; }
+.research-switcher-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.research-switcher > svg { flex-shrink: 0; color: #7d8b84; }
+.research-switcher-panel { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; width: min(320px, calc(100vw - 48px)); max-height: calc(100dvh - 170px); display: flex; flex-direction: column; padding: 6px; border: 1px solid #dfe6e1; border-radius: 10px; background: #fff; box-shadow: 0 12px 36px #203b3226, 0 2px 5px #203b3210; color: #35473e; }
+.research-switcher-search { display: flex; align-items: center; gap: 8px; margin: 2px 4px 5px; padding: 4px 5px; border-bottom: 1px solid var(--border); color: #8a9790; }
+.research-switcher-search input { min-width: 0; flex: 1; width: 100%; padding: 7px 0; border: 0; border-radius: 0; background: transparent; font-size: 13px; outline: none; }
+.research-switcher-search:focus-within { border-bottom-color: var(--accent); }
+.research-switcher-caption { padding: 7px 10px 5px; color: #8b958f; font-size: 11px; }
+.research-switcher-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; max-height: 360px; }
+.research-switcher-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 9px 10px; border-radius: 6px; text-align: left; }
+.research-switcher-item:hover, .research-switcher-item:focus-visible { background: #f0f5f2; outline-offset: -2px; }
+.research-switcher-item[aria-current="true"] { background: var(--accent-soft); color: #2e7965; }
+.research-switcher-item > svg { flex-shrink: 0; color: #83958a; }
+.research-switcher-item > span { min-width: 0; flex: 1; }
+.research-switcher-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+.research-switcher-item small { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #839087; font-size: 11px; }
+.research-switcher-item .research-switcher-check { color: var(--accent); }
+.research-switcher-empty { margin: 0; padding: 20px 12px; color: #7d8b83; font-size: 12px; line-height: 1.6; }
+.research-switcher-hint { display: flex; gap: 15px; margin: 5px 4px 0; padding: 9px 5px 4px; border-top: 1px solid var(--border); color: #98a29c; font-size: 10px; }
+@media (max-width: 1024px) { .research-switcher-panel { width: min(320px, calc(100vw - 48px)); } }
+
+--- tests/e2e/research-switcher.spec.ts ---
+import { expect, test, type Page } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { createSeed } from '../../src/data/seed';
+import { mockProjectService } from './project-fixture';
+import { openResearchNavigation, switchResearch } from './knowledge-helpers';
+import { saved, state } from './workspace-split-helpers';
+
+const evidence = 'docs/verification/desktop-navigation/screenshots';
+const trigger = (page: Page) => page.getByRole('button', { name: '切换研究', exact: true, includeHidden: true });
+const popup = (page: Page) => page.getByRole('dialog', { name: '切换研究', exact: true });
+const item = (page: Page, id: string) => popup(page).locator(`button[data-research-id="${id}"]`);
+
+async function boot(page: Page, options: { classic?: boolean; duplicate?: boolean; empty?: boolean } = {}) {
+  const seed = createSeed();
+  seed.agentWorkbench = !options.classic;
+  seed.researches['research-a'].title = options.empty ? '' : '检索增强，何时有效？';
+  seed.researches['research-b'].title = options.duplicate ? seed.researches['research-a'].title : '对照研究：长文档证据与可靠性';
+  for (const [index, board] of Object.values(seed.boards).entries()) board.title = index === 0 ? '导航回归匹配图' : `导航回归条件图 ${index}`;
+  for (const conversation of Object.values(seed.conversations)) conversation.connectionId = 'demo';
+  await mockProjectService(page, { bound: false, seed });
+  await page.route('**/api/ai/config', route => route.fulfill({ json: { configured: false, mode: 'demo', model: 'navigation-test', images: false } }));
+  await page.route('**/api/ai/agents', route => route.fulfill({ json: { agents: [] } }));
+  await page.route('**/api/ai/research/capabilities', route => route.fulfill({ json: { connections: [] } }));
+  await page.route('**/api/ai/research/run', () => { throw new Error('Navigation tests must not contact a model'); });
+  await page.goto('/');
+  await expect(page.getByRole('main', { name: '主工作区' })).toBeVisible(); await saved(page);
+  return seed;
+}
+
+for (const [width, height] of [[1440, 900], [1280, 800], [1024, 800]]) {
+  test(`研究切换弹层可筛选、键盘选择，Esc逐层关闭 ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height }); await boot(page);
+    const sidebar = await openResearchNavigation(page);
+    await trigger(page).click();
+    await expect(popup(page).getByRole('textbox', { name: '查找研究' })).toBeFocused();
+    await expect(item(page, 'research-a')).toHaveAttribute('aria-current', 'true');
+    await expect(popup(page).locator('select')).toHaveCount(0);
+    await expect(popup(page).getByRole('button', { name: '全局资料浏览' })).toHaveCount(0);
+    const bounds = (await popup(page).boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(height);
+    await mkdir(evidence, { recursive: true }); await page.screenshot({ path: `${evidence}/switcher-${width}.png` });
+    await popup(page).getByLabel('查找研究').fill('不存在的研究');
+    await expect(popup(page).getByRole('status')).toHaveText('没有找到匹配的研究');
+    await page.keyboard.press('Escape');
+    await expect(popup(page)).toHaveCount(0); await expect(trigger(page)).toBeFocused(); await expect(sidebar).toBeVisible();
+    await trigger(page).click();
+    await popup(page).getByLabel('查找研究').fill('对照研究');
+    await expect(popup(page).locator('button[data-research-id]')).toHaveCount(1);
+    await page.keyboard.press('ArrowDown'); await expect(item(page, 'research-b')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(popup(page)).toHaveCount(0); await expect(trigger(page)).toHaveAttribute('data-research-id', 'research-b');
+    if (width === 1024) await expect(sidebar).toBeHidden();
+    await switchResearch(page, 'research-a');
+    await saved(page); await page.reload(); await openResearchNavigation(page);
+    await expect(trigger(page)).toContainText('检索增强，何时有效？');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  });
+}
+
+test('当前研究不重复切换，Tab与点击外部正常退出，重名项有辅助说明', async ({ page }) => {
+  await boot(page, { duplicate: true });
+  const before = await state(page);
+  await trigger(page).click();
+  await expect(popup(page).locator('button[data-research-id] small')).toHaveCount(2);
+  await item(page, 'research-a').click();
+  await expect(popup(page)).toHaveCount(0); expect((await state(page)).scope).toEqual(before.scope);
+  await trigger(page).click(); await page.keyboard.press('Tab');
+  await expect(popup(page)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^项目设置 ·/ })).toBeFocused();
+  await trigger(page).click(); await page.getByRole('main', { name: '主工作区' }).click({ position: { x: 20, y: 50 } });
+  await expect(popup(page)).toHaveCount(0); await expect(trigger(page)).not.toBeFocused();
+});
+
+test('切换研究和资料库保留各自草稿，旧空名称仍有可见入口', async ({ page }) => {
+  await boot(page, { empty: true });
+  await expect(trigger(page)).toHaveText('未命名研究');
+  const composer = page.getByRole('textbox', { name: '研究目标', exact: true });
+  await composer.fill('研究 A 尚未发送的问题');
+  await switchResearch(page, 'research-b'); await composer.fill('研究 B 草稿');
+  await page.getByRole('button', { name: '资料库', exact: true }).click();
+  await expect(trigger(page)).toHaveText('全局资料库');
+  await switchResearch(page, 'research-a'); await expect(composer).toHaveValue('研究 A 尚未发送的问题');
+  await switchResearch(page, 'research-b'); await expect(composer).toHaveValue('研究 B 草稿');
+});
+
+test('新建保持一键开始，默认名称唯一，编辑可取消且不会保存空名', async ({ page }) => {
+  await boot(page);
+  const name = page.getByRole('textbox', { name: '研究名称', exact: true });
+  await name.fill(''); await name.press('Enter'); await expect(name).toHaveValue('检索增强，何时有效？');
+  await name.fill('尚未确认的名称'); await name.press('Escape'); await expect(name).toHaveValue('检索增强，何时有效？');
+  await name.fill('  更新后的研究名称  '); await name.press('Enter'); await expect(name).toHaveValue('更新后的研究名称');
+  await saved(page); await page.reload(); await expect(name).toHaveValue('更新后的研究名称');
+  for (const expected of ['新研究', '新研究 2']) {
+    await page.getByRole('button', { name: '新建研究', exact: true }).click();
+    await expect(name).toHaveValue(expected); await expect(name).toBeFocused();
+    await expect(page.getByRole('dialog', { name: '新建研究' })).toHaveCount(0);
+  }
+  const names = Object.values((await state(page)).researches).map(item => item.title);
+  expect(names.filter(title => title.startsWith('新研究'))).toEqual(['新研究', '新研究 2']);
+  await saved(page);
+});
+
+test('经典工作台同用研究切换器，全局搜索每份资源只出现一次', async ({ page }) => {
+  const errors: string[] = []; page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  const seed = await boot(page, { classic: true });
+  await switchResearch(page, 'research-b'); await switchResearch(page, 'research-a');
+  await page.getByRole('button', { name: '全局搜索', exact: true }).click();
+  const search = page.getByRole('dialog', { name: '全局搜索' });
+  const query = search.getByRole('textbox', { name: '搜索全部资料' });
+  await query.fill('导航回归'); await expect(search.locator('.search-result-open')).toHaveCount(Object.keys(seed.boards).length);
+  await query.fill('导航回归匹配图'); await expect(search.locator('.search-result-open')).toHaveCount(1);
+  await expect(search).not.toContainText('导航回归条件图');
+  await query.fill('导航回归'); await expect(search.locator('.search-result-open')).toHaveCount(Object.keys(seed.boards).length);
+  expect(errors.filter(message => /same key|unique.*key/i.test(message))).toEqual([]);
+});
+
+--- src/shell/App.tsx current diff ---
+diff --git a/src/shell/App.tsx b/src/shell/App.tsx
+index ffb0146..51c253c 100644
+--- a/src/shell/App.tsx
++++ b/src/shell/App.tsx
+@@ -20,7 +20,7 @@ import {
+   Sparkles,
+   X,
+ } from 'lucide-react';
+-import type { PanelMode, ReaderTarget, ResearchViewId, ResourceRef } from '../domain/types';
++import type { PanelMode, ReaderTarget, Research, ResearchViewId, ResourceRef } from '../domain/types';
+ import {
+   resourceExists,
+   getActiveConversation,
+@@ -58,6 +58,7 @@ import { WorkspaceSplit } from './WorkspaceSplit';
+ import { paneGroups } from '../services/panes';
+ import { DesktopWindowControls } from './DesktopWindowControls';
+ import { ResearchNavigation, researchViews } from './ResearchNavigation';
++import { ResearchSwitcher } from './ResearchSwitcher';
+ import { BackupControls } from '../features/settings/BackupControls';
+ import { ResearchAgentHome, ResearchAgentDock, ResearchAgentHistory } from '../features/workbench/ResearchAgentWorkbench';
+ import { focusResearchResource } from '../services/research-agent';
+@@ -89,6 +90,22 @@ function ResourceIcon({ kind, size = 16 }: { kind: string; size?: number }) {
+   return <Icon size={size} />;
+ }
+
++function ResearchName({ research, onRename }: { research: Research; onRename: (title: string) => void }) {
++  const [name, setName] = useState(research.title);
++  const cancelled = useRef(false);
++  useEffect(() => { setName(research.title); }, [research.title]);
++  return <input className="agent-research-name" aria-label="研究名称" placeholder="未命名研究" title="修改研究名称 · Enter 确认 · Esc 取消" value={name} onChange={event => setName(event.target.value)} onBlur={() => {
++    const value = name.trim();
++    if (!cancelled.current && value && value !== research.title) onRename(value);
++    setName(cancelled.current || !value ? research.title : value);
++    cancelled.current = false;
++  }} onKeyDown={event => {
++    if (event.nativeEvent.isComposing) return;
++    if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); }
++    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelled.current = true; setName(research.title); event.currentTarget.blur(); }
++  }}/>;
++}
++
+ class ErrorBoundary extends Component<
+   { children: ReactNode },
+   { error?: string }
+@@ -236,6 +253,17 @@ export function App() {
+   }, [notice]);
+   useEffect(() => { if (navigationOpen) sidebarRef.current?.querySelector<HTMLElement>('select,button')?.focus(); }, [navigationOpen]);
+   function closeNavigation() { setNavigationOpen(false); navigationTrigger.current?.focus(); }
++  function newResearch() {
++    if (!agentEnabled) { showDialog('new'); return; }
++    let title = '新研究';
++    for (let number = 2; Object.values(data.researches).some(item => item.title.trim() === title); number++) title = `新研究 ${number}`;
++    actions.createResearch(title, '');
++    if (narrow) closeNavigation();
++    requestAnimationFrame(() => {
++      const name = document.querySelector<HTMLInputElement>('.agent-research-name');
++      name?.focus(); name?.select();
++    });
++  }
+   function navigate(view: ResearchViewId) { if (research) actions.openResearchView(research.id, view); if (narrow) closeNavigation(); }
+   function showDialog(kind: typeof dialog) {
+     lastFocus.current = document.activeElement as HTMLElement;
+@@ -292,7 +320,6 @@ export function App() {
+     })),
+     ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
+     ...Object.keys(data.drafts).map((id) => ({ kind: 'draft' as const, id })),
+-    ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
+   ];
+   if (!loaded)
+     return (
+@@ -354,10 +381,10 @@ export function App() {
+           </button>
+         </div>
+         <div className="research-project-row">
+-          <label className="research-switcher" title={research?.title ?? '切换研究'}><span className="research-dot" /><select aria-label="切换研究" value={research?.id ?? ''} onChange={event => { actions.switchResearch(event.target.value); if (narrow) closeNavigation(); }}><option value="" disabled>全局资料浏览</option>{Object.values(data.researches).map(r => <option key={r.id} value={r.id}>{r.title}</option>)}</select><ChevronDown size={13} /></label>
++          <ResearchSwitcher researches={Object.values(data.researches)} currentId={research?.id} onSwitch={id => { actions.switchResearch(id); if (narrow) closeNavigation(); }}/>
+           {research && <ResearchDirectory researchId={research.id} settings />}
+         </div>
+-        <div className="sidebar-actions"><button className="new-research" onClick={() => { if (agentEnabled) { actions.createResearch('新研究', ''); if (narrow) closeNavigation(); } else showDialog('new'); }}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
++        <div className="sidebar-actions"><button className="new-research" onClick={newResearch}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
+         {agentWorkbench ? <nav className="research-nav" aria-label="研究内导航">
+             <button className={`nav-item ${active.kind === 'researchView' && active.id === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Sparkles size={17} />研究工作台</button>
+             <div className="sidebar-section-label">最近打开</div>
+@@ -427,7 +454,7 @@ export function App() {
+             </button>
+             {!research && session.libraryResearchId && data.researches[session.libraryResearchId] && <button className="text-button" onClick={() => actions.switchResearch(session.libraryResearchId!)}>返回研究</button>}
+             {agentWorkbench && !atConversation && <button className="text-button agent-return" aria-label="返回会话" title={`返回会话：${currentConversation?.title ?? '当前话题'}`} onClick={() => actions.openResearchView(research!.id, 'home')}><MessageSquare size={15} /><span>返回会话</span></button>}
+-            {agentWorkbench && research ? <input className="agent-research-name" aria-label="研究名称" value={research.title} onChange={event => actions.updateData(next => { next.researches[research.id].title = event.target.value; })} /> : <><span>{research ? research.title : '全局资料库'}</span><ChevronRight size={13} /><strong>{activeTitle}</strong></>}
++            {agentWorkbench && research ? <ResearchName key={research.id} research={research} onRename={title => actions.updateData(next => { next.researches[research.id].title = title; })}/> : <><span>{research ? research.title : '全局资料库'}</span><ChevronRight size={13} /><strong>{activeTitle}</strong></>}
+           </div>
+           <div className="header-actions">
+             <DesktopWindowControls />

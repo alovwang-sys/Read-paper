@@ -1,3 +1,4 @@
+import { switchResearch } from './knowledge-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import type { WorkspaceData } from '../../src/domain/types';
 import { mkdir } from 'node:fs/promises';
@@ -66,8 +67,8 @@ test('保存失败后关闭资源、切换研究、切换面板和刷新恢复�
     .getByRole('button', { name: '关闭标签 相关性是检索收益的前提', exact: true })
     .click();
   await page.getByRole('tab', { name: 'AI', exact: true }).click();
-  await page.getByLabel('切换研究').selectOption('research-b');
-  await page.getByLabel('切换研究').selectOption('research-a');
+  await switchResearch(page, 'research-b');
+  await switchResearch(page, 'research-a');
   await page.getByRole('tab', { name: '卡片', exact: true }).click();
   await expect(page.getByLabel('卡片正文')).toHaveValue(
     '保存失败后，这段观点仍必须恢复。',
@@ -271,13 +272,13 @@ test('未发送的 AI 输入按研究保留，切换面板和刷新后恢复', a
   await expect(page.getByLabel('向 AI 提问')).toHaveValue(
     '研究 A 尚未发送的问题',
   );
-  await page.getByLabel('切换研究').selectOption('research-b');
+  await switchResearch(page, 'research-b');
   await page.getByRole('tab', { name: 'AI', exact: true }).click();
   await expect(page.getByLabel('向 AI 提问')).not.toHaveValue(
     '研究 A 尚未发送的问题',
   );
   await page.getByLabel('向 AI 提问').fill('研究 B 的另一个问题');
-  await page.getByLabel('切换研究').selectOption('research-a');
+  await switchResearch(page, 'research-a');
   await expect(page.getByLabel('向 AI 提问')).toHaveValue(
     '研究 A 尚未发送的问题',
   );

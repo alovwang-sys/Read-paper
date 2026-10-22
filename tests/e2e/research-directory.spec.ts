@@ -1,3 +1,4 @@
+import { openResearchNavigation, switchResearch } from './knowledge-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import type { ResearchDirectory, WorkspaceData } from '../../src/domain/types';
@@ -87,7 +88,7 @@ test('新建研究一次确认绑定目录，右侧助手继承且发送同一bi
   expect(bindings).toHaveLength(1);
   expect(bindings[0].body).toMatchObject({ researchId: research.id, path: research.directory!.path, mode: 'new' });
   expect(bindings[0].body.operationId).toBeTruthy(); expect(api.pendingAtBind).toEqual([true]);
-  await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText(research.title);
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText(research.title);
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await selectAgent(page, 'Codex');
   await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
   await expect(panel(page).getByRole('button', { name: '选择研究目录', exact: true })).toHaveCount(0);
@@ -126,7 +127,8 @@ test('新建研究一次确认绑定目录，右侧助手继承且发送同一bi
     await page.screenshot({ path: `docs/verification/composer-directory/bound-${width}.png` });
   }
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved'); await page.reload();
-  await expect(page.getByLabel('切换研究')).toHaveValue(research.id);
+  await openResearchNavigation(page);
+  await expect(page.getByRole('button', { name: '切换研究', exact: true })).toHaveAttribute('data-research-id', research.id);
   expect((await data(page)).researches[research.id].directory).toMatchObject(research.directory!);
   await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
   expect(await page.evaluate(key => localStorage.getItem(key), pendingKey)).toBeNull();
@@ -203,10 +205,10 @@ test('新建目录后切换研究与助手分别恢复目录和未发送输入',
   await panel(page).getByLabel('向 AI 提问').fill('新研究 Codex 输入');
   await selectAgent(page, 'Claude Code'); await panel(page).getByLabel('向 AI 提问').fill('新研究 Claude 输入');
   await selectAgent(page, 'Codex'); await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('新研究 Codex 输入');
-  await page.getByLabel('切换研究').selectOption('research-a');
+  await switchResearch(page, 'research-a');
   await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('原研究的未发问题');
-  await page.getByLabel('切换研究').selectOption(created.id);
+  await switchResearch(page, created.id);
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('新研究 Codex 输入');
   expect((await data(page)).researches[created.id].directory?.path).toBe(created.directory!.path);
   expect((await data(page)).researches['research-a'].directory?.path).toBe('/fixture/research-a');

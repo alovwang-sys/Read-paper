@@ -20,7 +20,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import type { PanelMode, ReaderTarget, ResearchViewId, ResourceRef } from '../domain/types';
+import type { PanelMode, ReaderTarget, Research, ResearchViewId, ResourceRef } from '../domain/types';
 import {
   resourceExists,
   getActiveConversation,
@@ -58,6 +58,7 @@ import { WorkspaceSplit } from './WorkspaceSplit';
 import { paneGroups } from '../services/panes';
 import { DesktopWindowControls } from './DesktopWindowControls';
 import { ResearchNavigation, researchViews } from './ResearchNavigation';
+import { ResearchSwitcher } from './ResearchSwitcher';
 import { BackupControls } from '../features/settings/BackupControls';
 import { ResearchAgentHome, ResearchAgentDock, ResearchAgentHistory } from '../features/workbench/ResearchAgentWorkbench';
 import { focusResearchResource } from '../services/research-agent';
@@ -87,6 +88,22 @@ function ResourceIcon({ kind, size = 16 }: { kind: string; size?: number }) {
           ? Layers
           : FileText;
   return <Icon size={size} />;
+}
+
+function ResearchName({ research, onRename }: { research: Research; onRename: (title: string) => void }) {
+  const [name, setName] = useState(research.title);
+  const cancelled = useRef(false);
+  useEffect(() => { setName(research.title); }, [research.title]);
+  return <input className="agent-research-name" aria-label="研究名称" placeholder="未命名研究" title="修改研究名称 · Enter 确认 · Esc 取消" value={name} onChange={event => setName(event.target.value)} onBlur={() => {
+    const value = name.trim();
+    if (!cancelled.current && value && value !== research.title) onRename(value);
+    setName(cancelled.current || !value ? research.title : value);
+    cancelled.current = false;
+  }} onKeyDown={event => {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); }
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelled.current = true; setName(research.title); event.currentTarget.blur(); }
+  }}/>;
 }
 
 class ErrorBoundary extends Component<
@@ -236,6 +253,17 @@ export function App() {
   }, [notice]);
   useEffect(() => { if (navigationOpen) sidebarRef.current?.querySelector<HTMLElement>('select,button')?.focus(); }, [navigationOpen]);
   function closeNavigation() { setNavigationOpen(false); navigationTrigger.current?.focus(); }
+  function newResearch() {
+    if (!agentEnabled) { showDialog('new'); return; }
+    let title = '新研究';
+    for (let number = 2; Object.values(data.researches).some(item => item.title.trim() === title); number++) title = `新研究 ${number}`;
+    actions.createResearch(title, '');
+    if (narrow) closeNavigation();
+    requestAnimationFrame(() => {
+      const name = document.querySelector<HTMLInputElement>('.agent-research-name');
+      name?.focus(); name?.select();
+    });
+  }
   function navigate(view: ResearchViewId) { if (research) actions.openResearchView(research.id, view); if (narrow) closeNavigation(); }
   function showDialog(kind: typeof dialog) {
     lastFocus.current = document.activeElement as HTMLElement;
@@ -292,7 +320,6 @@ export function App() {
     })),
     ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
     ...Object.keys(data.drafts).map((id) => ({ kind: 'draft' as const, id })),
-    ...Object.keys(data.boards).map((id) => ({ kind: 'board' as const, id })),
   ];
   if (!loaded)
     return (
@@ -354,10 +381,10 @@ export function App() {
           </button>
         </div>
         <div className="research-project-row">
-          <label className="research-switcher" title={research?.title ?? '切换研究'}><span className="research-dot" /><select aria-label="切换研究" value={research?.id ?? ''} onChange={event => { actions.switchResearch(event.target.value); if (narrow) closeNavigation(); }}><option value="" disabled>全局资料浏览</option>{Object.values(data.researches).map(r => <option key={r.id} value={r.id}>{r.title}</option>)}</select><ChevronDown size={13} /></label>
+          <ResearchSwitcher researches={Object.values(data.researches)} currentId={research?.id} onSwitch={id => { actions.switchResearch(id); if (narrow) closeNavigation(); }}/>
           {research && <ResearchDirectory researchId={research.id} settings />}
         </div>
-        <div className="sidebar-actions"><button className="new-research" onClick={() => { if (agentEnabled) { actions.createResearch('新研究', ''); if (narrow) closeNavigation(); } else showDialog('new'); }}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
+        <div className="sidebar-actions"><button className="new-research" onClick={newResearch}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
         {agentWorkbench ? <nav className="research-nav" aria-label="研究内导航">
             <button className={`nav-item ${active.kind === 'researchView' && active.id === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Sparkles size={17} />研究工作台</button>
             <div className="sidebar-section-label">最近打开</div>
@@ -427,7 +454,7 @@ export function App() {
             </button>
             {!research && session.libraryResearchId && data.researches[session.libraryResearchId] && <button className="text-button" onClick={() => actions.switchResearch(session.libraryResearchId!)}>返回研究</button>}
             {agentWorkbench && !atConversation && <button className="text-button agent-return" aria-label="返回会话" title={`返回会话：${currentConversation?.title ?? '当前话题'}`} onClick={() => actions.openResearchView(research!.id, 'home')}><MessageSquare size={15} /><span>返回会话</span></button>}
-            {agentWorkbench && research ? <input className="agent-research-name" aria-label="研究名称" value={research.title} onChange={event => actions.updateData(next => { next.researches[research.id].title = event.target.value; })} /> : <><span>{research ? research.title : '全局资料库'}</span><ChevronRight size={13} /><strong>{activeTitle}</strong></>}
+            {agentWorkbench && research ? <ResearchName key={research.id} research={research} onRename={title => actions.updateData(next => { next.researches[research.id].title = title; })}/> : <><span>{research ? research.title : '全局资料库'}</span><ChevronRight size={13} /><strong>{activeTitle}</strong></>}
           </div>
           <div className="header-actions">
             <DesktopWindowControls />

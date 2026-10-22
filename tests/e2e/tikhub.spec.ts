@@ -1,3 +1,4 @@
+import { switchResearch } from './knowledge-helpers';
 import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test as base, type Page } from '@playwright/test';
 import { createServer, type ServerResponse } from 'node:http';
@@ -125,8 +126,8 @@ test('TikHub 数据调用逐次审批，拒绝不查询、允许绑定原研究�
   expect(api.replies[0].reply).toEqual({ decision: 'deny' }); expect(api.dataCalls).toHaveLength(0); await expect(panel(page).locator('.ai-tool-call')).toHaveCount(0);
   await send(page, '再次查询这条抖音视频'); await expect(approval(page).getByRole('button', { name: '允许本次', exact: true })).toBeEnabled();
   expect(api.replies).toHaveLength(1); expect(api.dataCalls).toHaveLength(0);
-  await page.getByLabel('切换研究').selectOption('research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await expect(approval(page)).toHaveCount(0);
-  await page.getByLabel('切换研究').selectOption('research-a'); await approval(page).getByRole('button', { name: '允许本次', exact: true }).click();
+  await switchResearch(page, 'research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await expect(approval(page)).toHaveCount(0);
+  await switchResearch(page, 'research-a'); await approval(page).getByRole('button', { name: '允许本次', exact: true }).click();
   await expect(panel(page).locator('.ai-answer .ai-markdown').last()).toHaveText(dataAnswer);
   expect(api.replies[1]).toMatchObject({ ...Object.fromEntries((['workspaceId', 'requestId', 'researchId', 'conversationId', 'connectionId'] as const).map(key => [key, api.runs[1][key]])), reply: { decision: 'allowOnce' } });
   expect(api.dataCalls.map(run => run.requestId)).toEqual([api.runs[1].requestId]);

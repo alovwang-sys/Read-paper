@@ -27,5 +27,11 @@ export async function choosePdf(page: Page, file: Parameters<ReturnType<Page['ge
 
 export async function switchResearch(page: Page, researchId: string) {
   await openResearchNavigation(page);
-  await page.getByLabel('切换研究', { exact: true }).selectOption(researchId);
+  const trigger = page.getByRole('button', { name: '切换研究', exact: true, includeHidden: true });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: '切换研究', exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog.locator(`button[data-research-id="${researchId}"]`).click();
+  await expect(trigger).toHaveAttribute('data-research-id', researchId);
+  await expect(dialog).toHaveCount(0);
 }

@@ -132,7 +132,7 @@ test('打包桌面：原生目录选择取消无残留，创建后左右沿用�
     await close(application); application = undefined;
 
     session = await launch(f.userData, f.home, modelRequests); application = session.application; page = session.page;
-    await expect(page.getByLabel('切换研究')).toHaveValue(research.id);
+    await expect(page.getByRole('button', { name: '切换研究', exact: true })).toHaveAttribute('data-research-id', research.id);
     await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('重启后继续，尚未发送的问题');
     await expect(panel(page).locator('.research-directory-trigger')).toHaveCount(0);
     expect((await data(page)).researches[research.id].directory).toMatchObject(research.directory!);

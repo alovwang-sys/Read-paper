@@ -64,7 +64,7 @@ test('打包桌面：目录取消、确认、项目列表与重启恢复，不�
     await expect(dialog).toContainText('项目将命名为「research-project」');
     await dialog.getByRole('button', { name: '取消', exact: true }).click();
     await expect(dialog).toHaveCount(0); await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('目录绑定前保留的阅读问题');
-    await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('检索增强，何时有效？');
+    await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('检索增强，何时有效？');
     await expect(access(join(project, '.read-paper', 'project.json'))).rejects.toHaveProperty('code', 'ENOENT');
     await expect(access(join(userData, 'agents', 'projects.json'))).rejects.toHaveProperty('code', 'ENOENT');
 
@@ -73,7 +73,7 @@ test('打包桌面：目录取消、确认、项目列表与重启恢复，不�
     await expect(dialog.locator('.directory-preview')).toContainText(await realpath(project));
     await dialog.getByRole('button', { name: '使用这个目录', exact: true }).click(); await expect(dialog).toHaveCount(0);
     await expect(navigation(page).getByRole('button', { name: '项目设置 · research-project', exact: true })).toBeVisible();
-    await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('research-project');
+    await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('research-project');
     await expect(main(page).getByRole('heading', { level: 1 })).toHaveText('research-project');
     await expect(page.locator('.breadcrumb').getByText('research-project', { exact: true }).first()).toBeVisible();
     const manifest = JSON.parse(await readFile(join(project, '.read-paper', 'project.json'), 'utf8'));
@@ -101,7 +101,7 @@ test('打包桌面：目录取消、确认、项目列表与重启恢复，不�
 
     session = await launch(userData, home); application = session.application; page = session.page; watch(page);
     await expect(navigation(page).getByRole('button', { name: '项目设置 · research-project', exact: true })).toBeVisible();
-    await expect(page.getByLabel('切换研究')).toHaveValue('research-a'); await expect(page.getByLabel('切换研究').locator('option:checked')).toHaveText('research-project');
+    await expect(page.getByRole('button', { name: '切换研究', exact: true })).toHaveAttribute('data-research-id', 'research-a'); await expect(page.getByRole('button', { name: '切换研究', exact: true })).toContainText('research-project');
     await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('原生助手尚未认证，此问题等待以后继续');
     await expect(panel(page).getByRole('button', { name: '发送问题', exact: true })).toBeDisabled();
     expect(JSON.parse(await readFile(join(project, '.read-paper', 'project.json'), 'utf8')).projectId).toBe(manifest.projectId);

@@ -1,0 +1,9 @@
+{
+  "reviewer": "Claude Code CLI",
+  "model": [
+    "claude-opus-5-5"
+  ],
+  "duration_ms": 85040,
+  "is_error": false,
+  "response": "# 第二轮静态复审\n\n## 必须修复（1 项）\n\n### 1. 弹层打开时再次点击触发器，弹层不会关闭，而是闪一下又重新打开\n\n**位置**：`src/shell/ResearchSwitcher.tsx`，面板的 `onBlur` 和触发器的 `onClick`。\n\n**触发步骤**（Chromium/Electron 或 Playwright Chromium）：\n1. 点击“切换研究”，焦点进入搜索框。\n2. 再次点击“切换研究”。\n\n**代码路径**：\n- `pointerdown` 先触发。触发器在 `root` 内，outside 监听不会关闭弹层。\n- `mousedown` 时按钮获得焦点，面板收到 `blur`，`relatedTarget` 是触发器。\n- 触发器不在 `event.currentTarget`（面板）内，所以调用 `close()`。\n- 这次更新属于离散事件，会在 `click` 之前提交。\n- `click` 执行时拿到的 `open` 已经是 `false`，于是走 `setOpen(true)`，并重新聚焦搜索框。\n\n**影响**：`aria-expanded` 的开关语义失效，用户只能用 Esc 或点击外部关闭。现有测试没有覆盖这个操作。\n\n**证据级别**：逻辑已由源码证明。它依赖“点击按钮会让按钮获得焦点”。macOS WebKit 中按钮点击不取焦点，`relatedTarget` 为 null，不会出现此问题。需要在实际桌面壳的内核上确认。\n\n**最小修复**：用 `root` 而不是面板判断焦点是否离开。\n\n```tsx\nonBlur={event => {\n  const next = event.relatedTarget;\n  if (next instanceof Node && !root.current?.contains(next)) close();\n}}\n```\n\n副作用：Shift+Tab 回到触发器时弹层保持打开，再按 Enter 即可关闭，可以接受。\n\n## 已核对、未发现 bug\n\n- **`choose` 的顺序**：先 `close(true)` 再 `onSwitch`。窄屏下 `closeNavigation` 最后把焦点交给 `navigationTrigger`。选择当前项时不调用 `switchResearch`。\n- **Esc 逐层关闭**：React 的 `stopPropagation` 会阻止原生事件冒泡到 document/window，冒泡阶段的全局 Esc 监听不会触发。\n- **`ResearchName`**：Esc 先设置 `cancelled` 再 `blur`，不会提交。Enter 只提交非空且 trim 后有变化的值。`key={research.id}` 让切换研究时重置草稿。\n- **`newResearch`**：去重按 trim 比较。离散事件提交后，rAF 能找到新挂载的输入框。\n- 全局搜索中 boards 只展开一次。\n\n## 尚需运行验证（不列为必修）\n\n1. 如果全局 Esc 监听注册在**捕获阶段**，窄屏下在弹层或改名框按 Esc，会同时关闭抽屉。\n2. 焦点陷阱的选择器 `button:not(:disabled)` 会包含 `tabIndex=-1` 的列表项。如果陷阱是逐项移动焦点，而不是只在首尾回绕，Tab 会进入列表项而不是离开弹层。\n3. 在 Chromium 中点击面板的非可聚焦区域（caption、hint、padding）会让焦点落到 body。之后弹层内的方向键和 Esc 失效；窄屏下 Esc 会改为关闭抽屉。\n\n静态审阅不能代替真实测试。以上结论需要在实际桌面内核和 1024 窄屏抽屉下实测确认，尤其是第 1 项和三个待验证点。"
+}

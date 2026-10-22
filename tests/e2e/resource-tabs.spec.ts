@@ -71,7 +71,7 @@ test('资源标签复用打开项，支持固定、排序、键盘管理、刷�
   expect((await state(page)).sessions['research-a'].pinnedIds).toContain('paper-a');
   await switchResearch(page, 'research-b');
   await expect(tabs(page).getByRole('tab')).toHaveText(['研究主页']);
-  if (!(await page.getByLabel('切换研究').isVisible())) await page.getByRole('button', { name: '展开左栏', exact: true }).click();
+  if (!(await page.getByRole('button', { name: '切换研究', exact: true }).isVisible())) await page.getByRole('button', { name: '展开左栏', exact: true }).click();
   await switchResearch(page, 'research-a');
   await expect(tabs(page).getByRole('tab')).toHaveText([paperA, writing]);
   await expect(panel(page).getByLabel('向 AI 提问')).toHaveValue('切换资源时保留的未发送问题');

@@ -1,3 +1,4 @@
+import { switchResearch } from './knowledge-helpers';
 import { mockProjectService, fixtureSessionRef } from './project-fixture';
 import { expect, test as base, type Page } from '@playwright/test';
 import { createServer, type ServerResponse } from 'node:http';
@@ -95,8 +96,8 @@ test('原生问题草稿按原研究保存，答复继续原请求，停止后�
   await start(page, api); await send(page, '原生问题：请确认输出形式');
   const question = panel(page).getByRole('region', { name: 'Codex 问题答复' }); await expect(question).toBeVisible();
   await question.getByRole('checkbox', { name: /比较/ }).check(); await question.getByLabel('补充回答：输出形式').fill('保留实验条件与限制');
-  await page.getByLabel('切换研究').selectOption('research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await expect(panel(page).getByRole('region', { name: 'Codex 问题答复' })).toHaveCount(0);
-  await page.getByLabel('切换研究').selectOption('research-a'); await expect(question.getByLabel('补充回答：输出形式')).toHaveValue('保留实验条件与限制');
+  await switchResearch(page, 'research-b'); await panel(page).getByRole('tab', { name: 'AI', exact: true }).click(); await expect(panel(page).getByRole('region', { name: 'Codex 问题答复' })).toHaveCount(0);
+  await switchResearch(page, 'research-a'); await expect(question.getByLabel('补充回答：输出形式')).toHaveValue('保留实验条件与限制');
   await question.getByRole('button', { name: '提交答复', exact: true }).click(); await expect(panel(page).locator('.ai-answer')).toContainText('继续完成原研究');
   expect(api.replies[0]).toMatchObject({ researchId: 'research-a', requestId: api.runs[0].requestId, conversationId: api.runs[0].conversationId, reply: { answers: { format: ['比较', '保留实验条件与限制'] } } });
   await send(page, '限定选项问题'); await expect(panel(page).getByRole('region', { name: 'Codex 问题答复' }).last()).toBeVisible();

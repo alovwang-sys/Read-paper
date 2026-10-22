@@ -1,4 +1,4 @@
-import { choosePdf, openResearchPage, openSource } from './knowledge-helpers';
+import { choosePdf, openResearchPage, openSource, switchResearch } from './knowledge-helpers';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -298,11 +298,11 @@ test('完整研究路径：导入、真实 PDF 选区、卡片、白板、引用
   await screenshot(page, '04-writing-ai-1024x800');
   await page.setViewportSize({ width: 1440, height: 900 });
   await saved(page);
-  await page.getByLabel('切换研究').selectOption('research-b');
+  await switchResearch(page, 'research-b');
   await expect(
     main(page).getByRole('heading', { name: '长文本阅读方法' }),
   ).toBeVisible();
-  await page.getByLabel('切换研究').selectOption(researchId);
+  await switchResearch(page, researchId);
   await expect(main(page).getByLabel('结论标题')).toHaveValue(
     'E2E 检索增强的适用条件',
   );
@@ -461,7 +461,7 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
     'evidence-b',
     'evidence-c',
   ]);
-  await page.getByLabel('切换研究').selectOption('research-b');
+  await switchResearch(page, 'research-b');
   await expect
     .poll(async () => (await data(page)).requests[request.id].status)
     .toBe('done');
@@ -472,7 +472,7 @@ test('AI 固定快照、迟到隔离、编辑另存及插入结论编号', async
   ).toHaveLength(0);
   expect(state.requests[request.id].researchId).toBe('research-a');
   expect(state.requests[request.id].context).toEqual(request.context);
-  await page.getByLabel('切换研究').selectOption('research-a');
+  await switchResearch(page, 'research-a');
   const originalAnswer = (await data(page)).requests[request.id].body;
   await expect(panel(page).locator('.ai-answer')).toContainText(
     '未调用真实模型',
@@ -755,7 +755,7 @@ test('延迟 PDF 导入绑定提交研究，切换研究后保持目标工作区
       buffer: Buffer.from(await pdf.save({ useObjectStreams: false })),
     });
   await page.getByRole('button', { name: '关闭添加资料', exact: true }).click();
-  await page.getByLabel('切换研究').selectOption('research-b');
+  await switchResearch(page, 'research-b');
   await expect
     .poll(async () =>
       Object.values((await data(page)).documents).some(
