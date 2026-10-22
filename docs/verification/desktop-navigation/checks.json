@@ -36,9 +36,20 @@
     "asarVersion": "0.1.14"
   },
   "installation": {
-    "status": "blocked",
-    "reason": "Mac is locked; cannot gracefully quit the installed 0.1.12 app and verify replacement. User has been asked to unlock.",
-    "installedVersionUnchanged": "0.1.12"
+    "status": "installed-and-verified",
+    "version": "0.1.14",
+    "oldVersionReplaced": "0.1.12",
+    "path": "/Applications/Papertrail.app",
+    "sourceCommit": "0ba7d921d903f38c2104a99341a554af94a65d90",
+    "source": "verified local DMG",
+    "oldAppAndUserDataBackedUp": true,
+    "allUserDataUnchangedBeforeFirstLaunch": true,
+    "modelSettingsHashUnchanged": true,
+    "nativeAboutVersionVerified": true,
+    "initialResearchAndOpenedItemsRestored": true,
+    "newResearchSwitcherVerified": true,
+    "localSaveReady": true,
+    "realDataEvidence": "Stored privately outside the repository; installed-upgrade.json is gitignored."
   },
   "limits": [
     "Browser model endpoints were mocked; packaged desktop tests used isolated temporary HOME and user data, with no model runs.",

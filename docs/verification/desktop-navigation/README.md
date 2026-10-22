@@ -28,7 +28,7 @@
 | 1440×900、1280×800、1024×800 | 实际打开并检查[1440](screenshots/switcher-1440.png)、[1280](screenshots/switcher-1280.png)、[1024](screenshots/switcher-1024.png)，无横向溢出；窄屏 Esc 逐层关闭验证通过 |
 | 本地桌面构建 | `npm run desktop:make -- --arch=arm64` 通过；DMG、ZIP 与真实 app 均为 0.1.14，Mach-O 架构 arm64；路径与 SHA-256 见 [checks.json](checks.json) |
 | 打包应用端到端 | 7 项通过：导航键盘与关闭、三尺寸、多研究和资料库草稿、名称空值／取消／直接退出保存、原目录服务与图片退出重启恢复；使用临时 HOME 和用户数据，实际模型请求为 0 |
-| 本机旧版替换与数据保留 | 尚未执行。已安装版本仍为 0.1.12 且进程运行中，Mac 锁屏阻止正常退出与本机界面验收，已请求用户解锁；原 app 和用户数据均未改动 |
+| 本机旧版替换与数据保留 | 用户解锁并确认后，正常退出 0.1.12，备份旧 app 与完整用户数据，从本地 DMG 安装到 `/Applications/Papertrail.app`；替换后首次启动前用户数据逐文件 hash 一致，启动后加密模型配置 hash 不变。原生“关于”确认运行 0.1.14，初始研究、原打开项与白板列表恢复、新研究切换弹层和“已保存”状态均实际确认 |
 | GitHub Release | 本记录不代表公开发布 |
 
 旧版本验证历史保留在原目录。本轮不扩展 Agent 能力、研究目录流程或全产品界面重设计。
@@ -36,3 +36,5 @@
 浏览器最终通过共 93 个不同用例（9 个新增、84 个既有）。测试仅用自制样例及模拟模型端点，未向真实模型发送研究内容。测试生成的旧目录截图已恢复，当前产品证据单独存入本目录。
 
 真实打包应用截图：[1440](screenshots/desktop-switcher-1440.png)、[1280](screenshots/desktop-switcher-1280.png)、[1024](screenshots/desktop-switcher-1024.png)、[重启后草稿](screenshots/desktop-drafts-after-restart.png)、[编辑名称直接退出后恢复](screenshots/desktop-focused-name-after-quit.png)。这组样例证据不是用户本机安装验收。
+
+本机安装已完成。包含真实研究的界面证据和备份存于仓库外私密目录；详细本机记录 `installed-upgrade.json` 已由 gitignore 排除，公开记录仅保存验证状态。用户随后继续操作时不重置其研究或会话选择。
