@@ -43,7 +43,9 @@ async function fixture(t, options = {}) {
       let result;
       switch (message.method) {
         case 'initialize': result = { userAgent: 'codex/0.162.1' }; break;
-        case 'config/read': result = { config: { ...(options.configuredModel ? { model: options.configuredModel } : {}), mcp_servers: { external: {} }, plugins: { installed: {} } } }; break;
+        case 'config/read':
+          if (options.failConfigRead) { send({ id: message.id, error: { code: -32603, message: 'Configuration unavailable' } }); callback(); return; }
+          result = { config: { ...(options.configuredModel ? { model: options.configuredModel } : {}), mcp_servers: { external: {} }, plugins: { installed: {} } } }; break;
         case 'command/exec': result = { exitCode: message.params.command[0].includes('touch') || message.params.command[1].endsWith('outside.txt') ? 1 : 0, stdout: '', stderr: '' }; break;
         case 'skills/list': result = { data: [{ skills: options.skills?.({ skillPath, enabled }) || [
           { name: 'local', description: 'Local guidance', path: skillPath, enabled, scope: 'user' },
@@ -109,6 +111,18 @@ test('research vision sends native localImage input and pins the configured mode
   await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Classic unsupported', localImages: [path] }), { code: 'invalid_input' });
 });
 
+test('research image probe reuses one model catalog and reports failed checks as errors rather than unsupported images', async t => {
+  const models = [{ id: 'vision', model: 'vision', displayName: 'Vision', isDefault: true, inputModalities: ['text', 'image'] }];
+  const f = await fixture(t, { configuredModel: 'vision', models });
+  const state = await f.runtime.probe({ images: true });
+  assert.equal(state.state, 'ready'); assert.equal(state.images, true);
+  assert.equal(f.captured.filter(message => message.method === 'model/list').length, 1);
+  const unavailable = await fixture(t, { models, failConfigRead: true });
+  const failed = await unavailable.runtime.probe({ images: true });
+  assert.equal(failed.state, 'error'); assert.equal(failed.images, undefined);
+  assert.ok(!unavailable.captured.some(message => message.method === 'turn/start'));
+});
+
 test('research vision fails closed when the configured model cannot be confirmed to support images', async t => {
   for (const options of [
     { models: [{ id: 'text', model: 'text', displayName: 'Text only', isDefault: true, inputModalities: ['text'] }] },
@@ -123,6 +137,21 @@ test('research vision fails closed when the configured model cannot be confirmed
     assert.ok(!f.captured.some(item => item.method === 'turn/start'));
     assert.ok(f.children.every(child => child.killed));
   }
+});
+
+test('research vision sends four owned images and rejects excess, duplicate, arbitrary and oversized paths', async t => {
+  const f = await fixture(t, { models: [{ id: 'vision', model: 'vision', displayName: 'Vision', isDefault: true, inputModalities: ['text', 'image'] }] });
+  const names = ['drawing.png', 'chat-image-1.png', 'chat-image-2.jpg', 'chat-image-3.webp'];
+  const paths = names.map(name => join(f.cwd, name));
+  for (const path of paths) await writeFile(path, path.endsWith('chat-image-2.jpg') ? Buffer.alloc(3 * 1024 * 1024) : 'verified image bytes');
+  const tools = { definitions: [{ name: 'submit_result' }], instructions: 'User image attachments, not PDF evidence', async call() {} };
+  await f.runtime.run({ cwd: f.cwd, prompt: 'Compare these images', researchTools: tools, localImages: paths });
+  assert.deepEqual(f.captured.find(item => item.method === 'turn/start').params.input.filter(item => item.type === 'localImage').map(item => item.path), paths);
+  for (const invalid of [[...paths, paths[0]], [paths[1], paths[1]], [join(f.cwd, 'manifest.json')], []]) await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Bad images', researchTools: tools, localImages: invalid }), { code: 'invalid_input' });
+  await writeFile(paths[0], Buffer.alloc(2 * 1024 * 1024 + 1));
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Oversized drawing', researchTools: tools, localImages: [paths[0]] }), { code: 'invalid_input' });
+  await writeFile(paths[1], Buffer.alloc(8 * 1024 * 1024 + 1));
+  await assert.rejects(f.runtime.run({ cwd: f.cwd, prompt: 'Oversized upload', researchTools: tools, localImages: [paths[1]] }), { code: 'invalid_input' });
 });
 
 test('native skill input, selected readonly roots, catalog model mapping and real Plan collaboration mode', async (t) => {

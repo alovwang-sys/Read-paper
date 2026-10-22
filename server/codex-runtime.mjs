@@ -282,12 +282,11 @@ async function modelCatalog(client, env) {
   return models;
 }
 
-async function configuredImageModel(client, cwd, env) {
-  const { config } = await client.rpc('config/read', { includeLayers: false, cwd });
-  const models = await modelCatalog(client, env);
+async function configuredImageModel(client, cwd, env, knownModels) {
+  const [{ config }, models] = await Promise.all([client.rpc('config/read', { includeLayers: false, cwd }), knownModels ?? modelCatalog(client, env)]);
   const model = typeof config?.model === 'string' && config.model ? models.find(model => model.nativeModel === config.model || model.id === config.model)
     : models.find(model => model.isDefault) || models[0];
-  if (!model?.inputModalities?.includes('image')) throw safeError('当前 Codex 模型的图片能力未确认；附件已保留，请选择支持图片的模型或明确仅发送文字与结构。', 'images_unsupported');
+  if (!model?.inputModalities?.includes('image')) throw safeError('当前 Codex 模型的图片能力未确认；附件已保留，请选择支持图片的模型，或移除图片后重试。', 'images_unsupported');
   return model;
 }
 
@@ -580,7 +579,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
     async probe({ signal, images: imageProbe = false } = {}) {
       let client;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10_000);
+      const timeout = setTimeout(() => controller.abort(), imageProbe ? 20_000 : 10_000);
       const root = await mkdtemp(join(tmpdir(), 'read-paper-codex-probe-'));
       try {
         await writeFile(join(root, 'manifest.json'), '{}');
@@ -590,11 +589,12 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         const account = await client.rpc('account/read', { refreshToken: false });
         if (account.requiresOpenaiAuth && !account.account) return { state: 'needs-auth', version, detail: '请在本机终端运行 codex login 后重新检测。' };
         await verifySandbox(client, root);
-        const images = await modelCatalog(client, env).then(models => models.some(model => model.inputModalities?.includes('image')), () => false);
+        const models = await modelCatalog(client, env).catch(error => { if (imageProbe) throw error; return []; });
+        const images = models.some(model => model.inputModalities?.includes('image'));
         let imageSupport;
         if (imageProbe) {
-          try { imageSupport = Boolean(await configuredImageModel(client, root, env)); }
-          catch { imageSupport = false; }
+          try { imageSupport = Boolean(await configuredImageModel(client, root, env, models)); }
+          catch (error) { if (error.code !== 'images_unsupported') throw error; imageSupport = false; }
         }
         return { state: 'ready', version, ...(imageProbe ? { images: imageSupport } : {}), detail: '使用本机登录；默认只读材料及所选技能，额外权限由你在当前对话中逐次答复。', capabilities: { images } };
       } catch (error) {
@@ -604,11 +604,16 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
     async run({ prompt, title, cwd, materialCwd, nativeSessionId, nativeToolsVersion, managedKey, requestId, signal, onEvent = () => {}, onActivity = () => {}, skillIds, codex, onInteraction, imagePaths = [], researchTools, localImages }) {
       if (researchTools && (nativeSessionId || managedKey || requestId || nativeToolsVersion || imagePaths.length || skillIds !== undefined || codex !== undefined || onInteraction !== undefined || !Array.isArray(researchTools.definitions) || !researchTools.definitions.length || researchTools.definitions.length > 8 || typeof researchTools.call !== 'function' || typeof researchTools.instructions !== 'string')) throw safeError('研究工具必须使用新的隔离会话。', 'invalid_input');
       if (localImages !== undefined) {
-        if (!researchTools || !Array.isArray(localImages) || localImages.length !== 1 || typeof localImages[0] !== 'string' || !isAbsolute(localImages[0])) throw safeError('绘图图片输入格式不正确。', 'invalid_input');
+        if (!researchTools || !Array.isArray(localImages) || !localImages.length || localImages.length > IMAGE_LIMITS.maxImages || localImages.some(path => typeof path !== 'string' || !isAbsolute(path))) throw safeError('图片输入格式不正确。', 'invalid_input');
         const root = await realpath(cwd);
-        const image = await realpath(localImages[0]);
-        if (dirname(image) !== root || !(await stat(image)).isFile() || (await stat(image)).size > 2 * 1024 * 1024) throw safeError('绘图图片只能来自本轮隔离目录。', 'invalid_input');
-        localImages = [image];
+        const verified = [];
+        for (const path of localImages) {
+          const image = await realpath(path), info = await stat(image), name = basename(image);
+          const limit = name === 'drawing.png' ? 2 * 1024 * 1024 : IMAGE_LIMITS.maxImageBytes;
+          if (dirname(image) !== root || !/^(?:drawing\.png|chat-image-[1-4]\.(?:png|jpg|webp))$/.test(name) || !info.isFile() || !info.size || info.size > limit || verified.includes(image)) throw safeError('图片只能来自本轮隔离目录中的已校验附件。', 'invalid_input');
+          verified.push(image);
+        }
+        localImages = verified;
       }
       if (materialCwd !== undefined) {
         cwd = await projectCwd(cwd);

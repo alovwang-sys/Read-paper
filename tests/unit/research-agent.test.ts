@@ -4,10 +4,10 @@ import { contentHash, getAsset, loadWorkspace, putAsset, saveWorkspace } from '.
 import { attachDrawingQuestion, loadDrawingImage, setDrawingQuestionMode } from '../../src/services/drawing-question';
 import { drawingDigest, drawingPng, drawingQuestionFixture } from '../fixtures/drawing-question';
 import { drawingSnapshotContent } from '../../src/domain/drawing-question';
-import type { ResearchAgentArtifact, ResearchAgentEvent, ResearchAgentSource } from '../../src/domain/research-agent';
-import type { AIRequest, Draft } from '../../src/domain/types';
+import type { ResearchAgentArtifact, ResearchAgentEvent, ResearchAgentSource, ResearchLiteratureSearch } from '../../src/domain/research-agent';
+import type { AIRequest, ChatImageAttachment, Draft } from '../../src/domain/types';
 import { loadPdfDocument } from '../../src/services/pdf';
-import { applyResearchSuggestion, changeResearchAgent, createResearchConversation, openResearchConversation, clearResearchFocus, collectResearchSources, focusResearchResource, keepResearchDraft, stopResearchRun, streamResearchRun, submitResearchRun, undoResearchSuggestion, validateResearchArtifact } from '../../src/services/research-agent';
+import { applyResearchSuggestion, changeResearchAgent, createResearchConversation, DEFAULT_IMAGE_PROMPT, openResearchConversation, clearResearchFocus, collectResearchSources, focusResearchResource, keepResearchDraft, stopResearchRun, streamResearchRun, submitResearchRun, undoResearchSuggestion, validateResearchArtifact } from '../../src/services/research-agent';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), putAsset: vi.fn(), contentHash: vi.fn() }));
@@ -42,6 +42,121 @@ beforeEach(async () => {
 });
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
+describe('通用图片聊天请求与草稿隔离', () => {
+  async function prepareImage() {
+    const bytes = await drawingPng.arrayBuffer(), imageHash = drawingDigest(bytes);
+    const image: ChatImageAttachment = { assetId: `chat-image-${imageHash}`, hash: imageHash, name: 'original.png', mimeType: 'image/png', size: bytes.byteLength };
+    vi.mocked(contentHash).mockImplementation(async content => drawingDigest(content));
+    vi.mocked(getAsset).mockResolvedValue(drawingPng);
+    workspace.updateData(data => { data.researches[researchId].documentIds = []; data.conversations[conversationId].chatImages = [image]; data.conversations[conversationId].input = ''; });
+    return image;
+  }
+  function imageRun(events: unknown[] = [{ type: 'delta', text: '画面中有一个待验证的想法。' }, { ...done, readPages: [] }], images = true) {
+    return vi.fn(async (url: string, _options?: RequestInit) => url.includes('capabilities') ? new Response(JSON.stringify({ connections: [{ id: 'codex', research: true, images }] })) : ndjson(events));
+  }
+  it('纯图使用默认问题、发送原图真实字节，只在本轮快照保留图片', async () => {
+    const image = await prepareImage(), fetcher = imageRun(); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, '');
+    expect(state().requests[id].status).toBe('done'); expect(state().requests[id].prompt).toBe(DEFAULT_IMAGE_PROMPT);
+    expect(state().requests[id].researchRun?.chatImages).toEqual([image]); expect(state().conversations[conversationId].chatImages).toBeUndefined(); expect(state().conversations[conversationId].input).toBe('');
+    const payload = JSON.parse(fetcher.mock.calls.find(call => call[0].endsWith('/run'))![1]!.body as string);
+    expect(payload.images[0]).toMatchObject(image);
+    const original = Buffer.from(await drawingPng.arrayBuffer());
+    expect(Buffer.from(payload.images[0].dataUrl.split(',')[1], 'base64')).toEqual(original);
+    expect(state().requests[id].researchRun?.sourceSummary).toContain('不作为论文原文证据');
+    workspace.updateData(data => { data.conversations[conversationId].input = '继续讨论'; });
+    const next = await submitResearchRun(researchId, '继续讨论'); expect(state().requests[next].status).toBe('done');
+    const following = JSON.parse(fetcher.mock.calls.filter(call => call[0].endsWith('/run'))[1][1]!.body as string);
+    expect(following.images).toBeUndefined(); expect(following.history[0].body).toContain('本轮未重新附送');
+  });
+  it('未确认图片能力不发原图，恢复图片而不把默认问题塞入空草稿，刷新仍保留', async () => {
+    const image = await prepareImage(), fetcher = imageRun(undefined, false); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, '');
+    expect(state().requests[id].error).toContain('未确认支持图片'); expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(state().conversations[conversationId].chatImages).toEqual([image]); expect(state().conversations[conversationId].input).toBe('');
+    vi.mocked(loadWorkspace).mockResolvedValue(structuredClone(state())); await workspace.load();
+    expect(state().conversations[conversationId].chatImages).toEqual([image]);
+  });
+  it('新会话尚无input字段时，纯图发送失败仍恢复原图并保持空输入', async () => {
+    const image = await prepareImage();
+    workspace.updateData(data => { delete data.conversations[conversationId].input; });
+    const fetcher = imageRun([{ type: 'error', error: '图片发送失败' }]); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, '');
+    expect(state().requests[id].status).toBe('error'); expect(state().requests[id].prompt).toBe(DEFAULT_IMAGE_PROMPT);
+    expect(state().conversations[conversationId].chatImages).toEqual([image]);
+    expect(state().conversations[conversationId].input ?? '').toBe('');
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it('失败重试只用当轮冻结图片，之后新附图片和输入完整保留', async () => {
+    const image = await prepareImage(); vi.stubGlobal('fetch', imageRun([{ type: 'error', error: 'temporary' }]));
+    const first = await submitResearchRun(researchId, ''); expect(state().requests[first].status).toBe('error');
+    const newImage = { ...image, assetId: 'later-image', name: 'later.png', hash: 'c'.repeat(64) };
+    workspace.updateData(data => { data.conversations[conversationId].chatImages = [newImage]; data.conversations[conversationId].input = '下一轮的问题'; });
+    const fetcher = imageRun(); vi.stubGlobal('fetch', fetcher);
+    const retry = await submitResearchRun(researchId, DEFAULT_IMAGE_PROMPT, first);
+    expect(state().requests[retry].status).toBe('done');
+    const payload = JSON.parse(fetcher.mock.calls.find(call => call[0].endsWith('/run'))![1]!.body as string);
+    expect(payload.images.map((item: ChatImageAttachment) => item.assetId)).toEqual([image.assetId]);
+    expect(state().conversations[conversationId].chatImages).toEqual([newImage]); expect(state().conversations[conversationId].input).toBe('下一轮的问题');
+  });
+  it('停止运行恢复图片与原输入，已有下一轮输入或附件时不回填旧内容', async () => {
+    const image = await prepareImage();
+    const waitRun = () => {
+      let started!: () => void; const began = new Promise<void>(resolve => { started = resolve; });
+      vi.stubGlobal('fetch', vi.fn((url: string, options?: RequestInit) => url.includes('capabilities') ? Promise.resolve(new Response(JSON.stringify({ connections: [{ id: 'codex', research: true, images: true }] }))) : new Promise<Response>((_resolve, reject) => { started(); options?.signal?.addEventListener('abort', () => reject(new DOMException('stopped', 'AbortError'))); })));
+      return began;
+    };
+    let began = waitRun(), run = submitResearchRun(researchId, ''); await began;
+    let request = Object.values(state().requests).find(item => item.status === 'generating')!;
+    stopResearchRun(request.id); await run; expect(state().conversations[conversationId].chatImages).toEqual([image]); expect(state().conversations[conversationId].input).toBe('');
+    began = waitRun(); run = submitResearchRun(researchId, ''); await began;
+    request = Object.values(state().requests).find(item => item.status === 'generating')!;
+    const later = { ...image, assetId: 'later-image', hash: 'b'.repeat(64) };
+    workspace.updateData(data => { data.conversations[conversationId].chatImages = [later]; data.conversations[conversationId].input = '新输入'; });
+    stopResearchRun(request.id); await run;
+    expect(state().conversations[conversationId].chatImages).toEqual([later]); expect(state().conversations[conversationId].input).toBe('新输入');
+  });
+  it('执行中切会话不污染新会话，完成前复查原图资产', async () => {
+    const image = await prepareImage(), fetcher = imageRun();
+    vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => { if (url.endsWith('/run')) createResearchConversation(researchId); return fetcher(url, options); }));
+    const id = await submitResearchRun(researchId, '');
+    expect(state().requests[id].conversationId).toBe(conversationId); expect(state().requests[id].status).toBe('done'); expect(workspace.getActiveConversation(researchId).chatImages).toBeUndefined();
+    workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });
+    workspace.updateData(data => { data.conversations[conversationId].chatImages = [image]; });
+    vi.mocked(getAsset).mockResolvedValueOnce(drawingPng).mockResolvedValueOnce(new Blob(['changed']));
+    vi.stubGlobal('fetch', imageRun());
+    const altered = await submitResearchRun(researchId, ''); expect(state().requests[altered].status).toBe('error'); expect(state().requests[altered].error).toContain('数据');
+  });
+  it('原图缺失在发送前失败，空会话换助手不能丢附件，追问目标保留普通图片', async () => {
+    const image = await prepareImage();
+    focusResearchResource(researchId, { kind: 'card', id: 'card-a' }); expect(state().conversations[conversationId].chatImages).toEqual([image]);
+    clearResearchFocus(researchId);
+    const newId = changeResearchAgent(researchId, 'claude'); expect(newId).not.toBe(conversationId); expect(state().conversations[conversationId].chatImages).toEqual([image]);
+    workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });
+    vi.mocked(getAsset).mockResolvedValue(undefined); const fetcher = imageRun(); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, ''); expect(state().requests[id].error).toContain('已缺失'); expect(fetcher).toHaveBeenCalledTimes(1); expect(state().conversations[conversationId].chatImages).toEqual([image]);
+  });
+  it('图片元数据计入文本预算，超限不创建请求也不消费草稿', async () => {
+    await prepareImage();
+    const text = 'x'.repeat(117900);
+    workspace.updateData(data => { data.conversations[conversationId].input = text; });
+    const before = state().conversations[conversationId].requestIds.length;
+    await expect(submitResearchRun(researchId, text)).rejects.toThrow('120,000');
+    expect(state().conversations[conversationId].requestIds).toHaveLength(before); expect(state().conversations[conversationId].input).toBe(text); expect(state().conversations[conversationId].chatImages).toHaveLength(1);
+  });
+  it('同时附送绘图与普通图片，纯图批次总数仍最多4', async () => {
+    const image = await prepareImage(), question = await drawingQuestionFixture();
+    vi.mocked(getAsset).mockResolvedValue(drawingPng);
+    workspace.updateData(data => { data.conversations[conversationId].drawingQuestion = question; });
+    const fetcher = imageRun(); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, ''); expect(state().requests[id].status).toBe('done');
+    const payload = JSON.parse(fetcher.mock.calls.find(call => call[0].endsWith('/run'))![1]!.body as string);
+    expect(payload.drawing.imageDataUrl).toMatch(/^data:image\/png/); expect(payload.images[0].assetId).toBe(image.assetId);
+    workspace.updateData(data => { data.conversations[conversationId].drawingQuestion = question; data.conversations[conversationId].chatImages = ['a', 'b', 'c', 'd'].map(letter => ({ ...image, assetId: letter, hash: letter.repeat(64) })); });
+    await expect(submitResearchRun(researchId, '')).rejects.toThrow('包含所选绘图');
+  });
+});
+
 describe('研究资料与引用边界', () => {
   it('只抽取关联研究，明确优先追问文献并裁切页、字与文献范围', async () => {
     const data = structuredClone(state());
@@ -60,6 +175,20 @@ describe('研究资料与引用边界', () => {
     const result = await collectResearchSources(state(), researchId, new AbortController().signal);
     expect(result.sources[0].pages).toEqual([]); expect(result.sources[0].unavailable).toBe('PDF 资产缺失');
     expect(result.sources[1].unavailable).toContain('尚无 PDF');
+  });
+  it('无 PDF 的题录摘要可查阅，优先来源摘要并限制为题录信息，不伪造成原文页', async () => {
+    workspace.updateData(data => {
+      data.researches[researchId].documentIds = ['paper-stub'];
+      data.documents['paper-stub'].abstract = { text: '题录摘要'.repeat(4000), url: 'https://example.org/paper', retrievedAt: '2026-10-21' };
+      data.documents['paper-stub'].discovery = { id: 'candidate', provider: 'openalex', providerId: 'W1', title: '论文', authors: [], url: 'https://openalex.org/W1', abstract: '发现的摘要', retrievedAt: '2026-10-21' };
+    });
+    let result = await collectResearchSources(state(), researchId, new AbortController().signal);
+    expect(result.sources[0].abstract).toBe('题录摘要'.repeat(4000).slice(0, 12000));
+    expect(result.sources[0].pages).toEqual([]); expect(result.sources[0].unavailable).toContain('尚无 PDF');
+    expect(loadPdfDocument).not.toHaveBeenCalled();
+    workspace.updateData(data => { delete data.documents['paper-stub'].abstract; });
+    result = await collectResearchSources(state(), researchId, new AbortController().signal);
+    expect(result.sources[0].abstract).toBe('发现的摘要'); expect(result.sources[0].pages).toEqual([]);
   });
   it('校验文献归属、hash、页码、原句与引用编号，代码和公式不误作引用', () => {
     expect(() => validateResearchArtifact(state(), researchId, [source], artifact)).not.toThrow();
@@ -334,6 +463,273 @@ describe('多会话导航与上下文隔离', () => {
     expect(payload.history).toEqual([]); expect(payload.focus).toBeUndefined();
     expect(state().conversations[b].title).toBe('B补查限制');
     expect(state().conversations[conversationId].requestIds).toHaveLength(1);
+  });
+});
+
+describe('研究消息提交回归', () => {
+  it('超过 8,000 字的问题完整进入请求及会话，不额外按输入框字数截断', async () => {
+    const prompt = '研'.repeat(9001), fetcher = mockRun([{ type: 'delta', text: '已完整收到研究条件。' }, done]);
+    workspace.updateData(data => { data.conversations[conversationId].input = prompt; });
+    vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, prompt);
+    const payload = JSON.parse((fetcher.mock.calls.find(call => String(call[0]).endsWith('/run')) as unknown as [string, RequestInit])[1].body as string);
+    expect(payload.prompt).toBe(prompt); expect(state().requests[id].prompt).toBe(prompt);
+    expect(state().requests[id].status).toBe('done'); expect(state().conversations[conversationId].input).toBe('');
+  });
+  it('超过六轮和 12,000 字的完整历史继续附送，不静默丢弃长回答', async () => {
+    const turns = Array.from({ length: 8 }, (_, index) => ({ id: `old-${index}`, prompt: `问题${index}`, body: '答'.repeat(index === 7 ? 12001 : 1000) }));
+    workspace.updateData(data => { for (const turn of turns) { data.requests[turn.id] = { ...turn, researchId, conversationId, context: [], evidenceIds: [], createdAt: '2026-10-21', status: 'done', researchRun: {} }; data.conversations[conversationId].requestIds.push(turn.id); } });
+    const fetcher = mockRun([{ type: 'delta', text: '继续回答' }, done]); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, '继续比较');
+    const payload = JSON.parse((fetcher.mock.calls.find(call => String(call[0]).endsWith('/run')) as unknown as [string, RequestInit])[1].body as string);
+    expect(payload.history).toEqual(turns.map(({ prompt, body }) => ({ prompt, body })));
+    expect(state().requests[id].history?.map(turn => turn.requestId)).toEqual(turns.map(turn => turn.id));
+    expect(state().requests[id].researchRun?.sourceSummary).toContain('全部 8 轮');
+  });
+  it('历史或单次输入超既有传输预算时明确拒绝，输入附件保留且不创建请求', async () => {
+    const question = await drawingQuestionFixture(), fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    workspace.updateData(data => {
+      data.conversations[conversationId].drawingQuestion = question;
+      data.requests.previous = { id: 'previous', researchId, conversationId, prompt: '前一轮', body: '答'.repeat(80000), context: [], evidenceIds: [], createdAt: '2026-10-21', status: 'done', researchRun: {} };
+      data.conversations[conversationId].requestIds.push('previous');
+    });
+    await expect(submitResearchRun(researchId, '整理研究资料')).rejects.toThrow('80,000');
+    expect(state().conversations[conversationId].input).toBe('整理研究资料'); expect(state().conversations[conversationId].drawingQuestion).toEqual(question);
+    const longPrompt = '问'.repeat(119000);
+    workspace.updateData(data => { data.conversations[conversationId].requestIds = []; data.conversations[conversationId].input = longPrompt; });
+    await expect(submitResearchRun(researchId, longPrompt)).rejects.toThrow('120,000');
+    expect(state().conversations[conversationId].input).toBe(longPrompt); expect(state().conversations[conversationId].drawingQuestion).toEqual(question);
+    expect(Object.keys(state().requests)).toEqual(['previous']); expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('4,097 个短轮次在发送前明确拒绝，不裁剪成服务端允许的历史', async () => {
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    workspace.updateData(data => {
+      for (let index = 0; index < 4097; index++) {
+        const id = `turn-${index}`;
+        data.requests[id] = { id, researchId, conversationId, prompt: 'q', body: 'a', context: [], evidenceIds: [], createdAt: '2026-10-21', status: 'done', researchRun: {} };
+        data.conversations[conversationId].requestIds.push(id);
+      }
+    });
+    await expect(submitResearchRun(researchId, '整理研究资料')).rejects.toThrow('4,096');
+    expect(state().conversations[conversationId].requestIds).toHaveLength(4097);
+    expect(state().conversations[conversationId].input).toBe('整理研究资料'); expect(fetcher).not.toHaveBeenCalled();
+  });
+  for (const outcome of ['done', 'error', 'stopped'] as const) {
+    for (const nextDraft of [false, true]) {
+      it(`请求入会话立即消费输入和图；${outcome} 后${nextDraft ? '保留下一条输入和新图' : '仅无回答失败时恢复原草稿'}`, async () => {
+        const question = await drawingQuestionFixture();
+        vi.mocked(contentHash).mockImplementation(async bytes => drawingDigest(bytes));
+        vi.mocked(getAsset).mockImplementation(async id => id === question.snapshot.image.assetId ? drawingPng : undefined);
+        workspace.updateData(data => { data.conversations[conversationId].drawingQuestion = structuredClone(question); });
+        let began!: () => void; const started = new Promise<void>(resolve => { began = resolve; });
+        let stream!: ReadableStreamDefaultController<Uint8Array>;
+        vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => url.includes('capabilities')
+          ? new Response(JSON.stringify({ connections: [{ id: 'codex', research: true, images: true }] }))
+          : new Response(new ReadableStream<Uint8Array>({ start(controller) { stream = controller; options?.signal?.addEventListener('abort', () => controller.error(new DOMException('已停止', 'AbortError')), { once: true }); began(); } }))));
+        const promise = submitResearchRun(researchId, '整理研究资料'); await started;
+        const request = Object.values(state().requests).find(item => item.status === 'generating')!;
+        expect(state().conversations[conversationId].input).toBe(''); expect(state().conversations[conversationId].drawingQuestion).toBeUndefined();
+        expect(request.researchRun?.drawingQuestion).toEqual(question);
+        const nextQuestion = structuredClone(question); nextQuestion.snapshot.id = 'next-question';
+        nextQuestion.snapshot.hash = drawingDigest(new TextEncoder().encode(drawingSnapshotContent(nextQuestion.snapshot)).buffer);
+        if (nextDraft) workspace.updateData(data => { data.conversations[conversationId].input = '下一条尚未发送的问题'; data.conversations[conversationId].drawingQuestion = nextQuestion; });
+        if (outcome === 'stopped') stopResearchRun(request.id);
+        else { stream.enqueue(new TextEncoder().encode((outcome === 'done' ? [{ type: 'delta', text: '已经回答' }, { ...done, readPages: [] }] : [{ type: 'error', error: '模拟执行失败' }]).map(event => JSON.stringify(event)).join('\n') + '\n')); stream.close(); }
+        await promise;
+        expect(state().requests[request.id].status).toBe(outcome);
+        expect(state().conversations[conversationId].input).toBe(nextDraft ? '下一条尚未发送的问题' : outcome === 'done' ? '' : '整理研究资料');
+        expect(state().conversations[conversationId].drawingQuestion).toEqual(nextDraft ? nextQuestion : outcome === 'done' ? undefined : question);
+      });
+    }
+  }
+  it('部分回答后失败不会回填已发送问题和图片，原请求仍可按冻结范围重试', async () => {
+    const question = await drawingQuestionFixture();
+    vi.mocked(contentHash).mockImplementation(async bytes => drawingDigest(bytes));
+    vi.mocked(getAsset).mockResolvedValue(drawingPng);
+    workspace.updateData(data => { data.conversations[conversationId].drawingQuestion = question; });
+    const fetcher = vi.fn(async (url: string) => url.includes('capabilities')
+      ? new Response(JSON.stringify({ connections: [{ id: 'codex', research: true, images: true }] }))
+      : ndjson([{ type: 'delta', text: '已经输出部分内容' }, { type: 'error', error: '连接中断' }]));
+    vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id]).toMatchObject({ status: 'error', body: '已经输出部分内容' });
+    expect(state().conversations[conversationId].input).toBe(''); expect(state().conversations[conversationId].drawingQuestion).toBeUndefined();
+    expect(state().requests[id].researchRun?.drawingQuestion).toEqual(question);
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.includes('capabilities')
+      ? new Response(JSON.stringify({ connections: [{ id: 'codex', research: true, images: true }] }))
+      : ndjson([{ type: 'delta', text: '重试成功' }, { ...done, readPages: [] }])));
+    const retry = await submitResearchRun(researchId, '整理研究资料', id);
+    expect(state().requests[retry].status).toBe('done'); expect(state().requests[retry].researchRun?.drawingQuestion).toEqual(question);
+    expect(state().conversations[conversationId].input).toBe(''); expect(state().conversations[conversationId].drawingQuestion).toBeUndefined();
+  });
+  it('停止后立即发送下一轮，旧回合恢复不能把原问题写入新回合的空输入区', async () => {
+    let starts = 0, firstStart!: () => void, secondStart!: () => void;
+    const firstStarted = new Promise<void>(resolve => { firstStart = resolve; });
+    const secondStarted = new Promise<void>(resolve => { secondStart = resolve; });
+    vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => url.includes('capabilities')
+      ? new Response(JSON.stringify({ connections: [{ id: 'codex', research: true }] }))
+      : new Response(new ReadableStream<Uint8Array>({ start(controller) { options?.signal?.addEventListener('abort', () => controller.error(new DOMException('已停止', 'AbortError')), { once: true }); if (++starts === 1) firstStart(); else secondStart(); } }))));
+    const first = submitResearchRun(researchId, '整理研究资料'); await firstStarted;
+    const oldRequest = Object.values(state().requests).find(item => item.status === 'generating')!;
+    stopResearchRun(oldRequest.id);
+    workspace.updateData(data => { data.conversations[conversationId].input = '第二轮问题'; });
+    const second = submitResearchRun(researchId, '第二轮问题'); await secondStarted;
+    try { await first; expect(state().conversations[conversationId].input).toBe(''); }
+    finally { const current = Object.values(state().requests).find(item => item.status === 'generating')!; stopResearchRun(current.id); await second; }
+  });
+  it('用户只更换图片时失败不把旧问题恢复到新图上', async () => {
+    const question = await drawingQuestionFixture(), nextQuestion = structuredClone(question); nextQuestion.snapshot.id = 'new-drawing';
+    nextQuestion.snapshot.hash = drawingDigest(new TextEncoder().encode(drawingSnapshotContent(nextQuestion.snapshot)).buffer);
+    vi.mocked(contentHash).mockImplementation(async bytes => drawingDigest(bytes)); vi.mocked(getAsset).mockResolvedValue(drawingPng);
+    workspace.updateData(data => { data.conversations[conversationId].drawingQuestion = question; });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('capabilities')) return new Response(JSON.stringify({ connections: [{ id: 'codex', research: true, images: true }] }));
+      workspace.updateData(data => { data.conversations[conversationId].drawingQuestion = nextQuestion; });
+      return ndjson([{ type: 'error', error: '执行失败' }]);
+    }));
+    const id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id].status).toBe('error'); expect(state().conversations[conversationId].input).toBe('');
+    expect(state().conversations[conversationId].drawingQuestion).toEqual(nextQuestion);
+  });
+});
+
+describe('Agent 文献检索事件回归', () => {
+  const candidate = { id: 'openalex-W1', provider: 'openalex' as const, providerId: 'W1', title: 'A related paper', authors: ['A. Author'], year: 2025, url: 'https://openalex.org/W1', abstract: 'A real candidate abstract.', retrievedAt: '2026-10-21T12:00:00.000Z' };
+  const searching: ResearchLiteratureSearch = { id: 'search-1', query: 'adaptive retrieval', yearFrom: 2020, yearTo: 2026, createdAt: '2026-10-21T12:00:00.000Z', status: 'searching', candidates: [] };
+  const searched: ResearchLiteratureSearch = { ...searching, status: 'done', candidates: [candidate], warnings: ['部分题录信息缺失'], partial: true };
+  it('未收录的第二篇候选及摘要进入后续历史，原回答与资料库不被改写', async () => {
+    const second = { ...candidate, id: 'openalex-W2', providerId: 'W2', title: 'The second paper', abstract: 'Second abstract: distinguish evidence conditions.', url: 'https://openalex.org/W2' };
+    const batch = { ...searched, candidates: [candidate, second] };
+    vi.stubGlobal('fetch', mockRun([{ type: 'literature', search: batch }, { type: 'delta', text: '见下方候选。' }, done]));
+    const beforeDocumentIds = [...state().researches[researchId].documentIds];
+    const first = await submitResearchRun(researchId, '整理研究资料');
+    const fetcher = mockRun([{ type: 'delta', text: '第二篇摘要强调证据条件。' }, done]); vi.stubGlobal('fetch', fetcher);
+    const followUp = await submitResearchRun(researchId, '第二篇摘要呢？');
+    const payload = JSON.parse((fetcher.mock.calls.find(call => String(call[0]).endsWith('/run')) as unknown as [string, RequestInit])[1].body as string);
+    expect(payload.history).toHaveLength(1);
+    expect(payload.history[0].body).toContain(second.title); expect(payload.history[0].body).toContain(second.abstract);
+    expect(payload.history[0].body.indexOf(candidate.title)).toBeLessThan(payload.history[0].body.indexOf(second.title));
+    expect(payload.history[0].body).toContain(searched.query); expect(payload.history[0].body).toContain('未读 PDF'); expect(payload.history[0].body).toContain('不构成本轮');
+    expect(state().requests[first].body).toBe('见下方候选。'); expect(state().requests[first].researchRun?.literatureSearches).toEqual([batch]);
+    expect(state().requests[followUp].history?.[0].body).toBe(payload.history[0].body);
+    expect(state().researches[researchId].documentIds).toEqual(beforeDocumentIds);
+  });
+  for (const limit of ['history', 'input'] as const) {
+    it(`候选的完整摘要计入 ${limit === 'history' ? '80,000 历史' : '120,000 单次输入'}预算，超限不截断或清空草稿`, async () => {
+      const prompt = limit === 'history' ? '第二篇摘要呢？' : '问'.repeat(50000);
+      const batch = { ...searched, candidates: [{ ...candidate, abstract: '摘'.repeat(limit === 'history' ? 80000 : 79000) }] };
+      workspace.updateData(data => {
+        data.requests.catalog = { id: 'catalog', researchId, conversationId, prompt: '寻找论文', body: '见下方候选。', status: 'done', createdAt: '2026-10-21', context: [], evidenceIds: [], researchRun: { literatureSearches: [batch] } };
+        data.conversations[conversationId].requestIds.push('catalog'); data.conversations[conversationId].input = prompt;
+      });
+      const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+      await expect(submitResearchRun(researchId, prompt)).rejects.toThrow(limit === 'history' ? '80,000' : '120,000');
+      expect(fetcher).not.toHaveBeenCalled(); expect(state().conversations[conversationId].input).toBe(prompt);
+      expect(state().conversations[conversationId].requestIds).toEqual(['catalog']);
+      expect(state().requests.catalog.body).toBe('见下方候选。'); expect(state().requests.catalog.researchRun?.literatureSearches).toEqual([batch]);
+    });
+  }
+  it('其他会话的候选不会混入新话题，失败重试仍使用提交时的候选历史快照', async () => {
+    vi.stubGlobal('fetch', mockRun([{ type: 'literature', search: searched }, { type: 'delta', text: '见下方候选。' }, done]));
+    await submitResearchRun(researchId, '整理研究资料');
+    const otherConversation = createResearchConversation(researchId);
+    const isolated = mockRun([{ type: 'delta', text: '这是独立话题。' }, done]); vi.stubGlobal('fetch', isolated);
+    await submitResearchRun(researchId, '独立提问');
+    const isolatedPayload = JSON.parse((isolated.mock.calls.find(call => String(call[0]).endsWith('/run')) as unknown as [string, RequestInit])[1].body as string);
+    expect(isolatedPayload.history).toEqual([]); expect(state().conversations[otherConversation].requestIds).toHaveLength(1);
+    openResearchConversation(researchId, conversationId);
+    workspace.updateData(data => { data.conversations[conversationId].input = '第二篇摘要呢？'; });
+    vi.stubGlobal('fetch', mockRun([{ type: 'error', error: '需要重试' }]));
+    const failed = await submitResearchRun(researchId, '第二篇摘要呢？');
+    const originalHistory = structuredClone(state().requests[failed].history);
+    expect(originalHistory?.[0].body).toContain(candidate.abstract);
+    workspace.updateData(data => {
+      data.requests.later = { id: 'later', researchId, conversationId, prompt: '后来的新查询', body: '后来候选', status: 'done', createdAt: '2026-10-21', context: [], evidenceIds: [], researchRun: { literatureSearches: [{ ...searched, id: 'later-batch', query: 'a later search', candidates: [{ ...candidate, title: 'Later different paper' }] }] } };
+      data.conversations[conversationId].requestIds.push('later'); data.conversations[conversationId].input = '另外一条尚未发送的输入';
+    });
+    const retried = mockRun([{ type: 'delta', text: '重试回答摘要。' }, done]); vi.stubGlobal('fetch', retried);
+    const retry = await submitResearchRun(researchId, '第二篇摘要呢？', failed);
+    expect(state().requests[retry].history).toEqual(originalHistory);
+    const retryPayload = JSON.parse((retried.mock.calls.find(call => String(call[0]).endsWith('/run')) as unknown as [string, RequestInit])[1].body as string);
+    expect(retryPayload.history[0].body).toBe(originalHistory?.[0].body); expect(JSON.stringify(retryPayload.history)).not.toContain('Later different paper');
+    expect(state().conversations[conversationId].input).toBe('另外一条尚未发送的输入');
+  });
+  it('历史只把已完成检索的候选作为题录数据，不将未完成或停止批次冒充结果', async () => {
+    workspace.updateData(data => {
+      data.requests.catalog = { id: 'catalog', researchId, conversationId, prompt: '寻找论文', body: '见下方候选。', status: 'done', createdAt: '2026-10-21', context: [], evidenceIds: [], researchRun: { literatureSearches: [searched, { ...searched, id: 'stopped-batch', status: 'stopped', query: 'incomplete-search', candidates: [{ ...candidate, title: 'Not a completed candidate' }] }] } };
+      data.conversations[conversationId].requestIds.push('catalog');
+    });
+    const fetcher = mockRun([{ type: 'delta', text: '继续说明。' }, done]); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, '继续比较');
+    expect(state().requests[id].history?.[0].body).toContain(candidate.title);
+    expect(state().requests[id].history?.[0].body).not.toContain('incomplete-search');
+    expect(state().requests[id].history?.[0].body).not.toContain('Not a completed candidate');
+  });
+  it('同一批次搜索进度替换为完整结果并落盘，不复制批次或丢掉摘要警告', async () => {
+    vi.stubGlobal('fetch', mockRun([{ type: 'literature', search: searching }, { type: 'literature', search: searched }, { type: 'delta', text: '已找到可收录的候选论文。' }, done]));
+    const id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id].status).toBe('done');
+    expect(state().requests[id].researchRun?.literatureSearches).toEqual([searched]);
+    expect(vi.mocked(saveWorkspace).mock.calls.at(-1)?.[0].requests[id].researchRun?.literatureSearches).toEqual([searched]);
+  });
+  it('切换会话和研究后到达的检索只归提交时请求，不污染新会话或抢画面', async () => {
+    let nextConversation = '';
+    const events = mockRun([{ type: 'literature', search: searched }, { type: 'delta', text: '原问题的候选结果。' }, done]);
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/run')) {
+        nextConversation = createResearchConversation(researchId);
+        workspace.updateData(data => { data.conversations[nextConversation].input = '新的研究话题'; });
+        workspace.switchResearch('research-b');
+      }
+      return events(url);
+    }));
+    const id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id]).toMatchObject({ researchId, conversationId, status: 'done' });
+    expect(state().requests[id].researchRun?.literatureSearches).toEqual([searched]);
+    expect(state().conversations[nextConversation]).toMatchObject({ input: '新的研究话题', requestIds: [] });
+    expect(state().scope).toEqual({ kind: 'research', researchId: 'research-b' });
+  });
+  for (const outcome of ['error', 'stopped'] as const) {
+    it(`${outcome} 结束未完成检索，保留先前完成的候选和原查询`, async () => {
+      const pending: ResearchLiteratureSearch = { ...searching, id: 'search-pending', query: 'limitations' };
+      let stream!: ReadableStreamDefaultController<Uint8Array>;
+      vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => url.includes('capabilities')
+        ? new Response(JSON.stringify({ connections: [{ id: 'codex', research: true }] }))
+        : new Response(new ReadableStream<Uint8Array>({ start(controller) { stream = controller; options?.signal?.addEventListener('abort', () => controller.error(new DOMException('已停止', 'AbortError')), { once: true }); controller.enqueue(new TextEncoder().encode([{ type: 'literature', search: searched }, { type: 'literature', search: pending }].map(event => JSON.stringify(event)).join('\n') + '\n')); } }))));
+      const promise = submitResearchRun(researchId, '整理研究资料');
+      await vi.waitFor(() => expect(Object.values(state().requests).find(request => request.researchRun?.literatureSearches?.length === 2)).toBeTruthy());
+      const request = Object.values(state().requests).find(item => item.status === 'generating')!;
+      if (outcome === 'stopped') stopResearchRun(request.id);
+      else { stream.enqueue(new TextEncoder().encode(JSON.stringify({ type: 'error', error: '模拟运行失败' }) + '\n')); stream.close(); }
+      await promise;
+      expect(state().requests[request.id].status).toBe(outcome);
+      const searches = state().requests[request.id].researchRun!.literatureSearches!;
+      expect(searches[0]).toEqual(searched); expect(searches[1]).toMatchObject({ id: pending.id, query: pending.query, status: outcome === 'stopped' ? 'stopped' : 'interrupted', candidates: [] });
+      expect(searches[1].error).toBeTruthy();
+      expect(vi.mocked(saveWorkspace).mock.calls.at(-1)?.[0].requests[request.id].researchRun?.literatureSearches).toEqual(searches);
+    });
+  }
+  it('合法长摘要及同一传输块中的多个批次不会触发旧 500k 缓冲误报', async () => {
+    const searches = Array.from({ length: 3 }, (_, index) => ({ ...searched, id: `batch-${index}`, candidates: Array.from({ length: 10 }, (_, item) => ({ ...candidate, id: `openalex-W${index}${item}`, providerId: `W${index}${item}`, abstract: '摘'.repeat(100000) })) }));
+    vi.stubGlobal('fetch', mockRun([...searches.map(search => ({ type: 'literature', search })), { type: 'delta', text: '三组候选已完成。' }, done]));
+    const id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id].status).toBe('done'); expect(state().requests[id].researchRun?.literatureSearches).toEqual(searches);
+  });
+  it('单条超限事件仍明确拒绝，不能因为支持多个合法批次取消事件保护', async () => {
+    vi.stubGlobal('fetch', mockRun([{ type: 'delta', text: 'x'.repeat(2100000) }, done]));
+    const id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id].status).toBe('error'); expect(state().requests[id].error).toContain('事件过大');
+    expect(state().requests[id].body).toBe(''); expect(state().conversations[conversationId].input).toBe('整理研究资料');
+  });
+  it('损坏候选在写入之前被拒绝，前三个有效批次也不会被第四批覆盖', async () => {
+    vi.stubGlobal('fetch', mockRun([{ type: 'literature', search: { ...searched, candidates: [{ ...candidate, url: 'javascript:alert(1)' }] } }, done]));
+    let id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id].status).toBe('error'); expect(state().requests[id].researchRun?.literatureSearches).toBeUndefined();
+    const valid = [0, 1, 2].map(index => ({ ...searched, id: `batch-${index}` }));
+    vi.stubGlobal('fetch', mockRun([...valid.map(search => ({ type: 'literature', search })), { type: 'literature', search: { ...searched, id: 'batch-4' } }, done]));
+    id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id].status).toBe('error'); expect(state().requests[id].error).toContain('次数异常');
+    expect(state().requests[id].researchRun?.literatureSearches).toEqual(valid);
   });
 });
 

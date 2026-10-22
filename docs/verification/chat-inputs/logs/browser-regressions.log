@@ -1,0 +1,41 @@
+
+Running 33 tests using 1 worker
+
+(node:89373) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/33] tests/e2e/agent-regressions.spec.ts:21:1 › 长问题完整发送，接受请求后立即清空；新草稿不被完成回执覆盖
+[2/33] tests/e2e/agent-regressions.spec.ts:43:1 › 流式执行开始即清空，失败保留可恢复问题
+[3/33] tests/e2e/agent-regressions.spec.ts:59:1 › 成果正文直接在会话可读，附件与执行记录不遮住答案
+[4/33] tests/e2e/agent-regressions.spec.ts:80:1 › 回答中的论文保留预览与入库操作
+[5/33] tests/e2e/agent-regressions.spec.ts:100:1 › 在当前会话检索文献、去重入库、刷新恢复并带摘要继续问
+[6/33] tests/e2e/agent-regressions.spec.ts:135:1 › 自己发送时定位新轮，上滚阅读时新回复不抢位置并可一键找到
+[7/33] tests/e2e/agent-regressions.spec.ts:162:51 › 检索无结果留在原会话并可继续问
+[8/33] tests/e2e/agent-regressions.spec.ts:162:51 › 检索失败留在原会话并可继续问
+[9/33] tests/e2e/agent-regressions.spec.ts:175:1 › 未收录的候选也按原顺序进入追问历史，摘要不冒充PDF
+[10/33] tests/e2e/chat-inputs.spec.ts:35:1 › 默认会话有系统听写入口，文字留草稿且不自动发送
+[11/33] tests/e2e/chat-inputs.spec.ts:52:1 › 原始PNG JPEG WebP上传、预览、冻结发送、去重及刷新恢复
+[12/33] tests/e2e/chat-inputs.spec.ts:77:1 › 纯图片可发送，失败恢复原图；重试冻结原图并保留新图片草稿
+[13/33] tests/e2e/chat-inputs.spec.ts:99:1 › 粘贴与拖入图片、拒绝不支持格式和超限，不覆盖原草稿
+[14/33] tests/e2e/chat-inputs.spec.ts:120:1 › 能力不支持时保留图片、切会话与刷新隔离，三尺寸入口可达
+[15/33] tests/e2e/composer-controls.spec.ts:69:1 › 完全访问需明确确认，权限与推理档位进入请求快照并按研究恢复
+[16/33] tests/e2e/composer-controls.spec.ts:89:1 › 切换模型清理不支持的推理档位，缺少能力时不假造模型或权限
+[17/33] tests/e2e/composer-controls.spec.ts:101:1 › 加号从当前研究加入原文证据，保留输入且不发送
+[18/33] tests/e2e/composer-controls.spec.ts:109:1 › 麦克风说明聚焦输入，Escape只关闭局部说明并保留草稿
+[19/33] tests/e2e/composer-controls.spec.ts:127:1 › 生成时锁定设置，圆形停止按钮只停止原请求
+[20/33] tests/e2e/composer-controls.spec.ts:134:1 › 只展示本轮Codex报告的文件变更节选，展开可核对加减行
+[21/33] tests/e2e/composer-controls.spec.ts:140:1 › 320px侧栏中完全访问、Plan及已选技能仍只占一行，技能可在设置中移除
+[22/33] tests/e2e/composer-controls.spec.ts:165:3 › 原生输入区与中央PDF并列 1440
+[23/33] tests/e2e/composer-controls.spec.ts:165:3 › 原生输入区与中央PDF并列 1280
+[24/33] tests/e2e/composer-controls.spec.ts:165:3 › 原生输入区与中央PDF并列 1024
+[25/33] tests/e2e/drawing-question.spec.ts:116:1 › 真实框选与 PNG 导出进入当前会话，范围隔离、卡片正文、三个尺寸和刷新完整
+[26/33] tests/e2e/drawing-question.spec.ts:170:1 › 失败与重试继续使用原图快照，即使白板后来改变
+[27/33] tests/e2e/drawing-question.spec.ts:190:1 › 未支持图片时保留附件，只在明确选择后发送文字，不冒充看图
+[28/33] tests/e2e/drawing-question.spec.ts:207:1 › 纯笔迹缺少图片能力时不提供假看图的文字降级
+[29/33] tests/e2e/drawing-question.spec.ts:232:1 › 看图迟到答复仍归原会话，停止及刷新保留图片和输入
+[30/33] tests/e2e/system-dictation.spec.ts:15:1 › 浏览器语音入口显示系统听写引导，保留草稿且不发送或请求录音
+[31/33] tests/e2e/system-dictation.spec.ts:32:61 › 桌面听写桥接requested时诚实反馈并保留输入
+[32/33] tests/e2e/system-dictation.spec.ts:32:61 › 桌面听写桥接unavailable时诚实反馈并保留输入
+[33/33] tests/e2e/system-dictation.spec.ts:32:61 › 桌面听写桥接error时诚实反馈并保留输入
+  33 passed (51.9s)

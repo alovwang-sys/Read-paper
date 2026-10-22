@@ -1,0 +1,53 @@
+
+Running 36 tests using 1 worker
+
+(node:79165) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/36] tests/e2e/agent-workbench.spec.ts:44:1 › 一句委托形成真实持久草稿，局部修订保护人工修改，来源深读可以返回
+[2/36] tests/e2e/agent-workbench.spec.ts:123:1 › 全部旧功能可达，经典模式和Agent模式共享数据，连接能力不冒充
+[3/36] tests/e2e/agent-workbench.spec.ts:157:1 › 迟到结果归原研究，不打断另一个研究；停止保留输入
+[4/36] tests/e2e/ai-space.spec.ts:120:3 › AI 对话保留纵向阅读空间，材料与输入按研究恢复 1440
+tests/e2e/ai-space.spec.ts:120:3 › AI 对话保留纵向阅读空间，材料与输入按研究恢复 1440
+1440×900: 对话区 698px，占视口 77.6%
+
+[5/36] tests/e2e/ai-space.spec.ts:120:3 › AI 对话保留纵向阅读空间，材料与输入按研究恢复 1280
+tests/e2e/ai-space.spec.ts:120:3 › AI 对话保留纵向阅读空间，材料与输入按研究恢复 1280
+1280×800: 对话区 598px，占视口 74.8%
+
+[6/36] tests/e2e/ai-space.spec.ts:120:3 › AI 对话保留纵向阅读空间，材料与输入按研究恢复 1024
+tests/e2e/ai-space.spec.ts:120:3 › AI 对话保留纵向阅读空间，材料与输入按研究恢复 1024
+1024×800: 对话区 598px，占视口 74.8%
+
+[7/36] tests/e2e/composer-input-order.spec.ts:73:1 › 右侧输入先于无关导航更新保存，继续输入、中文组合和刷新保持一致
+[8/36] tests/e2e/composer-input-order.spec.ts:99:1 › 原文小窗输入遇到导航更新仍保存，中文组合不发送且与右侧草稿隔离
+[9/36] tests/e2e/composer-submission.spec.ts:100:3 › codex：超过六千中文字的问题完整进入请求和会话记录
+[10/36] tests/e2e/composer-submission.spec.ts:113:5 › codex：生成挂起时输入即清空，done 不覆盖下一条草稿
+[11/36] tests/e2e/composer-submission.spec.ts:113:5 › codex：生成挂起时输入即清空，error 不覆盖下一条草稿
+[12/36] tests/e2e/composer-submission.spec.ts:127:3 › codex：部分回答断线后原问题只留在消息中，可按原范围重试
+[13/36] tests/e2e/composer-submission.spec.ts:100:3 › model：超过六千中文字的问题完整进入请求和会话记录
+[14/36] tests/e2e/composer-submission.spec.ts:113:5 › model：生成挂起时输入即清空，done 不覆盖下一条草稿
+[15/36] tests/e2e/composer-submission.spec.ts:113:5 › model：生成挂起时输入即清空，error 不覆盖下一条草稿
+[16/36] tests/e2e/composer-submission.spec.ts:127:3 › model：部分回答断线后原问题只留在消息中，可按原范围重试
+[17/36] tests/e2e/composer-submission.spec.ts:163:1 › 原生发送前同步失败保留输入，且不建立或发送请求
+[18/36] tests/e2e/composer-submission.spec.ts:174:1 › 模型网络中断且没有新草稿时恢复原输入，刷新后可重试
+[19/36] tests/e2e/composer-submission.spec.ts:185:3 › 研究切换后迟到的 done 只更新原研究，输入分别恢复
+[20/36] tests/e2e/composer-submission.spec.ts:185:3 › 研究切换后迟到的 error 只更新原研究，输入分别恢复
+[21/36] tests/e2e/composer-submission.spec.ts:200:1 › 回答尚未结束时刷新，已提交问题留在记录而下一条草稿恢复
+[22/36] tests/e2e/composer-submission.spec.ts:212:3 › 原文旁发送后继续写下一条草稿 1440
+[23/36] tests/e2e/composer-submission.spec.ts:212:3 › 原文旁发送后继续写下一条草稿 1280
+[24/36] tests/e2e/composer-submission.spec.ts:212:3 › 原文旁发送后继续写下一条草稿 1024
+[25/36] tests/e2e/drawing-question.spec.ts:116:1 › 真实框选与 PNG 导出进入当前会话，范围隔离、卡片正文、三个尺寸和刷新完整
+[26/36] tests/e2e/drawing-question.spec.ts:170:1 › 失败与重试继续使用原图快照，即使白板后来改变
+[27/36] tests/e2e/drawing-question.spec.ts:190:1 › 未支持图片时保留附件，只在明确选择后发送文字，不冒充看图
+[28/36] tests/e2e/drawing-question.spec.ts:207:1 › 纯笔迹缺少图片能力时不提供假看图的文字降级
+[29/36] tests/e2e/drawing-question.spec.ts:232:1 › 看图迟到答复仍归原会话，停止及刷新保留图片和输入
+[30/36] tests/e2e/source-intake.spec.ts:96:1 › 显式 AI 来源可在中央预览而不收录，三尺寸保留回答与输入
+[31/36] tests/e2e/source-intake.spec.ts:121:1 › 连续推荐列表收录局部说明，旧版整段快照刷新后也不展示成聊天记录
+[32/36] tests/e2e/source-intake.spec.ts:166:1 › 直接加入在后台取得有效 PDF，保持主区并在刷新后本地阅读
+[33/36] tests/e2e/source-intake.spec.ts:196:1 › 404 和 HTML 全文失败保留资料及原摘要，之后在原 ID 补齐 PDF
+[34/36] tests/e2e/source-intake.spec.ts:237:1 › 元数据失败也可收下链接，跨研究复用同一实体并隔离备注及发现记录
+[35/36] tests/e2e/source-intake.spec.ts:270:1 › 刷新获取中的资料显示已中断，记录仍在且可重试
+[36/36] tests/e2e/source-intake.spec.ts:298:1 › 迟到元数据保留手改字段，迟到全文不覆盖手动补充的 PDF
+  36 passed (2.0m)

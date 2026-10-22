@@ -248,3 +248,42 @@ test('two active requests cap concurrent external searches', async () => {
     assert.ok((await Promise.all(requests)).every(result => result.status === 200));
   });
 });
+
+test('HTTP and Agent searches share the same two-request concurrency boundary', async () => {
+  const releases = [];
+  let started;
+  const ready = new Promise(resolve => { started = resolve; });
+  await withServer({ fetchImpl: () => new Promise(resolve => { releases.push(() => resolve(json())); if (releases.length === 2) started(); }) }, async (port, handler) => {
+    const direct = handler.search({ query: 'Agent search', yearFrom: 2024 });
+    const browser = call(port);
+    await ready;
+    await assert.rejects(handler.search({ query: 'third request' }), error => error.status === 429 && error.code === 'concurrency_limit');
+    assert.equal(releases.length, 2);
+    releases.forEach(release => release());
+    assert.equal((await direct).candidates.length, 1);
+    assert.equal((await browser).status, 200);
+  });
+});
+
+test('shared search rejects invalid direct arguments and an already-canceled request without fetching', async () => {
+  let calls = 0;
+  const handler = createLiteratureHandler({ env: {}, fetchImpl: async () => { calls += 1; return json(); } });
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(handler.search({ query: 'q', prompt: 'private content' }), error => error.code === 'invalid_request');
+  await assert.rejects(handler.search({ query: 'q' }, { signal: controller.signal }), error => error.code === 'aborted');
+  assert.equal(calls, 0);
+  await handler.stop();
+});
+
+test('service shutdown also cancels a shared Agent search', async () => {
+  let started, fetchSignal;
+  const ready = new Promise(resolve => { started = resolve; });
+  const handler = createLiteratureHandler({ env: {}, fetchImpl: async (_url, options) => { fetchSignal = options.signal; started(); return new Promise(() => {}); } });
+  const pending = handler.search({ query: 'q' });
+  const rejected = assert.rejects(pending, error => error.code === 'aborted');
+  await ready;
+  await handler.stop();
+  await rejected;
+  assert.equal(fetchSignal.aborted, true);
+});

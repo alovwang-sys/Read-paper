@@ -1,0 +1,79 @@
+{
+  "baselineCommit": "566ce3e319da0463bdc4dd675c315648ac0b77a8",
+  "branch": "codex/fix-agent-regressions",
+  "published": false,
+  "typecheckExitCode": 0,
+  "buildExitCode": 0,
+  "unit": {
+    "passed": 704,
+    "files": 44,
+    "exitCode": 0
+  },
+  "server": {
+    "passed": 342,
+    "exitCode": 0
+  },
+  "desktopProtocol": {
+    "passed": 27,
+    "exitCode": 0
+  },
+  "browserNew": {
+    "passed": 9,
+    "exitCode": 0
+  },
+  "browserExisting": {
+    "passed": 36,
+    "exitCode": 0
+  },
+  "browserFinalAffectedRerun": {
+    "passed": 10,
+    "exitCode": 0
+  },
+  "package": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "exitCode": 0,
+    "archiveSha256": "20448f3f76e3fec8b0404fd7665f9ffcd95ea8c7076655a5a9ff9b3a4f1baa68",
+    "runtimeAndDistMatchCurrentBuild": true
+  },
+  "packagedDesktop": {
+    "distinctPassed": 18,
+    "existingPassed": 17,
+    "defaultAgentPassed": 1,
+    "singleRunAllGreen": false,
+    "attempts": [
+      {
+        "suite": "all 18",
+        "exitCode": 1,
+        "passed": 17,
+        "failed": 1,
+        "reason": "New test used arXiv identifier already present in seeded research, so expected Join button was correctly absent."
+      },
+      {
+        "suite": "default Agent",
+        "exitCode": 0,
+        "passed": 1,
+        "change": "Use unique controlled DOI to actually exercise collection; no production code or assertions weakened."
+      }
+    ]
+  },
+  "liveResearch": {
+    "realCodexCalls": 1,
+    "elapsedSeconds": 30.385,
+    "openAlexRecords": 10,
+    "artifactCreated": false,
+    "libraryWrites": false,
+    "usedUserResearch": false
+  },
+  "claude": {
+    "completedRounds": 2,
+    "toolUse": false
+  },
+  "notVerified": [
+    "Windows/Intel new build",
+    "DMG/Setup installer UI and clean machine acceptance",
+    "Cross-version installed-data upgrade",
+    "Native research thread continuation/automatic compaction",
+    "Real follow-up image pixel continuity"
+  ]
+}

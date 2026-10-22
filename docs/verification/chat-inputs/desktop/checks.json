@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-21T13:38:17.524Z",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "executablePath": "/Users/amos/project/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "isolation": "Temporary userData and HOME; no user credentials or real model requests",
+  "passed": true,
+  "realSpeechRecognitionTested": false,
+  "researchRequests": 2,
+  "files": [
+    {
+      "name": "desktop-0.png",
+      "mimeType": "image/png",
+      "bytes": 2371,
+      "sha256": "58242128be496f65dd0ee9e44686d7aff069bc5db235c5af7e132ba5822f67b4"
+    },
+    {
+      "name": "desktop-1.jpg",
+      "mimeType": "image/jpeg",
+      "bytes": 1589,
+      "sha256": "ea76c9db8de7442aa15974fe573001b52fa4aca847a3805ba9c292fc93efac59"
+    },
+    {
+      "name": "desktop-2.webp",
+      "mimeType": "image/webp",
+      "bytes": 1002,
+      "sha256": "2f4e9f1329dd72741e20edb61c341c3d1445d65b9b0757fc18675a22bf4af701"
+    }
+  ],
+  "draft": {
+    "name": "desktop-next.png",
+    "sha256": "acd9dccfe4463ad76536f36b7af7fac282cd984d38f4d4cf25373a8da856b14f"
+  },
+  "pageErrors": [],
+  "command": "npx playwright test --config playwright.desktop.config.ts tests/desktop/chat-inputs.spec.ts --output=/tmp/papertrail-chat-inputs-desktop-probe-final --reporter=list",
+  "totalPassed": 1,
+  "totalFailed": 0,
+  "duration": "8.1s",
+  "packageBuildLog": "/tmp/chat-inputs-package-probe-final.log",
+  "previousIntegrationEvidence": "checks-initial-package.json",
+  "previousBeforeCapabilityProbeFixEvidence": "checks-before-probe-fix.json",
+  "screenshots": {
+    "desktop-images-after-restart-1440.png": "2181f32f6d893c31978fdd91be913e3610adfb4255a9c6aa39eb4958dcd41679",
+    "desktop-long-message-regression-1440.png": "f51e859bac611e3084bde47a544d13aff925fb1f121b7a3665a7276253e7e181",
+    "desktop-images-before-restart-1440.png": "61cd2f7221d5fa1f452ef6eaea3aa62472b1cdf7105d4cfd0c64c49c4a0aefd9"
+  },
+  "packagedArchive": {
+    "path": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar",
+    "bytes": 405030673,
+    "sha256": "d5eb83221a359977cac49b7fb2a76bfaa04aa96dcec95ff68ae1e9a7fcd098b3"
+  }
+}

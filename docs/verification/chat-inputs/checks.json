@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-21",
+  "scope": "Unreleased default Agent voice entry and original chat images; preserves prior regression fixes",
+  "tests": {
+    "typecheck": {
+      "command": "npm run check",
+      "passed": true
+    },
+    "unit": {
+      "command": "npm test",
+      "passed": 744,
+      "failed": 0
+    },
+    "server": {
+      "command": "npm run test:server",
+      "passed": 355,
+      "failed": 0
+    },
+    "desktopProtocol": {
+      "command": "npm run test:desktop",
+      "passed": 27,
+      "failed": 0
+    },
+    "newBrowserInputs": {
+      "command": "npx playwright test tests/e2e/chat-inputs.spec.ts --reporter=line",
+      "passed": 6,
+      "failed": 0,
+      "durationSeconds": 14.8
+    },
+    "combinedBrowserRegression": {
+      "command": "npx playwright test tests/e2e/chat-inputs.spec.ts tests/e2e/agent-regressions.spec.ts tests/e2e/drawing-question.spec.ts tests/e2e/system-dictation.spec.ts tests/e2e/composer-controls.spec.ts --reporter=line",
+      "passed": 33,
+      "failed": 0,
+      "note": "New chat suite had 5 items then; final 6 items rerun after PDF-compatible image drop adjustment."
+    },
+    "package": {
+      "command": "npm run desktop:package",
+      "platform": "darwin-arm64",
+      "passed": true
+    },
+    "desktop": "desktop/checks.json",
+    "existingExcalidraw": "drawing-voice/checks.json",
+    "realCodexImages": "live-image/result.json"
+  },
+  "realSpeechRecognitionTested": false,
+  "releasedInstaller": false,
+  "installedUserAppModified": false,
+  "activeDevService": {
+    "port": 8787,
+    "pid": 91980,
+    "toolSession": 5569
+  },
+  "limits": {
+    "formats": [
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ],
+    "maxImagesIncludingDrawing": 4,
+    "maxImageBytes": 8388608,
+    "previousImagePixelsAutoReplayed": false
+  },
+  "restoredOldEvidenceFiles": 16,
+  "screenshots": {
+    "screenshots/drawing-reply-with-inputs-1024.png": "7ab143ba20dc613f96d690e6f0fa2d6f80b4cb225c67381f58cc9f7f648bf6ae",
+    "screenshots/drawing-with-inputs-1280.png": "62bcfd5e40d107c5cc1b9c258483cbd46758893c90412094582f14f54f0d405f",
+    "screenshots/images-1280.png": "23d51d7f4d8c489f8c3a9c11db28861e822cbb0842056ddcb3f5c81795fde8df",
+    "screenshots/images-1440.png": "04ebd7ddb1cfdbc610f35766ffdb000e8d3c087e00305961a21fbdfbad4d2bb6",
+    "screenshots/answer-with-inputs-1440.png": "bfffd59f87a4ed1b2fd1b2f62f5e192c1b5ec3773dc6a1cb762f6e186a5f364a",
+    "screenshots/images-1024.png": "8c9ede8201c2664d3d9f2d41dfb1647a40940fb5d4978a2d83b16074a28dd4fb"
+  },
+  "imageCapabilityProbe": {
+    "oldObserved": {
+      "elapsed": 10759,
+      "state": "ready",
+      "images": false,
+      "catalogImages": true
+    },
+    "fixedRuntimeProbe": {
+      "elapsed": 1701,
+      "state": "ready",
+      "images": true,
+      "capabilities": {
+        "images": true
+      }
+    },
+    "imageProbeDeadlineMs": 20000,
+    "researchHttpDeadlineMs": 22000,
+    "fixedHttp": {
+      "status": 200,
+      "connections": [
+        {
+          "id": "codex",
+          "research": true,
+          "images": true
+        },
+        {
+          "id": "claude",
+          "research": false,
+          "images": false
+        },
+        {
+          "id": "opencode",
+          "research": false,
+          "images": false
+        },
+        {
+          "id": "model",
+          "research": false,
+          "images": false
+        },
+        {
+          "id": "demo",
+          "research": false,
+          "images": false
+        }
+      ]
+    }
+  }
+}

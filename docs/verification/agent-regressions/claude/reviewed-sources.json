@@ -1,0 +1,50 @@
+[
+  {
+    "path": "src/features/workbench/ResearchAgentWorkbench.tsx",
+    "start": 1,
+    "end": 142,
+    "sha256": "a48d0d8cafaa59c13ef0f90cc928585223184238c98cf7d125e5c1d4588b97ff"
+  },
+  {
+    "path": "src/services/research-agent.ts",
+    "start": 181,
+    "end": 330,
+    "sha256": "e2c81548d26045d69bdb635d95bdb4418007cc2f393b1cd210340c2e60d64b08"
+  },
+  {
+    "path": "server/research.mjs",
+    "start": 70,
+    "end": 103,
+    "sha256": "27e58881187e42b1f936c24b028a132056424703df3da59da72280b143254d18"
+  },
+  {
+    "path": "server/research.mjs",
+    "start": 109,
+    "end": 128,
+    "sha256": "27e58881187e42b1f936c24b028a132056424703df3da59da72280b143254d18"
+  },
+  {
+    "path": "server/research.mjs",
+    "start": 244,
+    "end": 263,
+    "sha256": "27e58881187e42b1f936c24b028a132056424703df3da59da72280b143254d18"
+  },
+  {
+    "path": "src/features/ai/SourceRecommendations.tsx",
+    "start": 1,
+    "end": 55,
+    "sha256": "89e4fddf309418016f8f3cd6f97284e615ec75a619ee3401826eb7c0d002cf15"
+  },
+  {
+    "path": "src/features/workbench/workbench.css",
+    "start": 1,
+    "end": 26,
+    "sha256": "6c659b09636048207ad35417e1502b249a4ec67055ff7c480860eee50984dfdf"
+  },
+  {
+    "path": "src/features/workbench/workbench.css",
+    "start": 52,
+    "end": 82,
+    "sha256": "6c659b09636048207ad35417e1502b249a4ec67055ff7c480860eee50984dfdf"
+  }
+]
