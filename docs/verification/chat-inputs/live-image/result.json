@@ -1,0 +1,277 @@
+{
+  "startedAt": "2026-10-21T13:21:23.087Z",
+  "nodeVersion": "v24.21.0",
+  "scope": "One real Codex generation with two self-generated public synthetic PNGs. No user research, workspace data, library writes, PDF reads, credential inspection, reasoning, private paths or native session IDs are recorded.",
+  "limits": {
+    "requestDeadlineMs": 170000,
+    "researchInactivityMs": 120000,
+    "totalBudgetMs": 180000,
+    "automaticRetries": 0
+  },
+  "request": {
+    "requestId": "synthetic-chat-image-smoke-20261021",
+    "researchId": "synthetic-image-research",
+    "connectionId": "codex",
+    "prompt": "请仅辨认附件，严格按图片输入顺序返回一个 JSON 对象：{\"images\":[{\"index\":1,\"color\":\"主要图形的中文颜色\",\"shape\":\"主要图形的中文形状\"},{\"index\":2,\"color\":\"主要图形的中文颜色\",\"shape\":\"主要图形的中文形状\"}]}。只写你实际看到的内容，不从文件名或元数据猜测。不要调用任何工具，不找论文，不写文稿，不读本机文件，不执行命令。",
+    "sources": [],
+    "history": [],
+    "images": [
+      {
+        "assetId": "synthetic-chat-1",
+        "hash": "3da9cb5a7a916d7e0dcc1bfc7ed2f312a44fcefb1f117ab134da16d08f0b544c",
+        "name": "input-1.png",
+        "mimeType": "image/png",
+        "size": 1209
+      },
+      {
+        "assetId": "synthetic-chat-2",
+        "hash": "0a0d8d5849535bd2b26af2cbd115a135f8f0ae2637bf333ecef253fbfe51a2be",
+        "name": "input-2.png",
+        "mimeType": "image/png",
+        "size": 1797
+      }
+    ]
+  },
+  "expected": [
+    {
+      "index": 1,
+      "color": "红色",
+      "shape": "矩形"
+    },
+    {
+      "index": 2,
+      "color": "蓝色",
+      "shape": "圆形"
+    }
+  ],
+  "events": [
+    {
+      "elapsedMs": 80,
+      "type": "progress"
+    },
+    {
+      "elapsedMs": 116247,
+      "type": "delta",
+      "text": "{\""
+    },
+    {
+      "elapsedMs": 116247,
+      "type": "delta",
+      "text": "images"
+    },
+    {
+      "elapsedMs": 116247,
+      "type": "delta",
+      "text": "\":["
+    },
+    {
+      "elapsedMs": 116247,
+      "type": "delta",
+      "text": "{\""
+    },
+    {
+      "elapsedMs": 116247,
+      "type": "delta",
+      "text": "index"
+    },
+    {
+      "elapsedMs": 116247,
+      "type": "delta",
+      "text": "\":"
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": "1"
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": ",\""
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": "color"
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": "\":\""
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": "红"
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": "色"
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": "\",\""
+    },
+    {
+      "elapsedMs": 116446,
+      "type": "delta",
+      "text": "shape"
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "\":\""
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "长"
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "方"
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "形"
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "\"},{\""
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "index"
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "\":"
+    },
+    {
+      "elapsedMs": 116555,
+      "type": "delta",
+      "text": "2"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": ",\""
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "color"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "\":\""
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "蓝"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "色"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "\",\""
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "shape"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "\":\""
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "圆"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "形"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "\"}"
+    },
+    {
+      "elapsedMs": 116695,
+      "type": "delta",
+      "text": "]}"
+    },
+    {
+      "elapsedMs": 117165,
+      "type": "done",
+      "model": "gpt-6.1-sol",
+      "readPages": [],
+      "nativeSessionObserved": true
+    }
+  ],
+  "toolCalls": [],
+  "cliVersion": "codex-cli 0.162.1",
+  "httpStatus": 200,
+  "transport": {
+    "localImageCount": 2,
+    "generatedFileNames": [
+      "chat-image-1.png",
+      "chat-image-2.png"
+    ],
+    "exactOrderedBytes": true,
+    "base64ExcludedFromPrompt": true,
+    "registeredTools": [
+      "search_literature",
+      "search_sources",
+      "read_page",
+      "submit_result"
+    ]
+  },
+  "answer": "{\"images\":[{\"index\":1,\"color\":\"红色\",\"shape\":\"长方形\"},{\"index\":2,\"color\":\"蓝色\",\"shape\":\"圆形\"}]}",
+  "recognized": {
+    "images": [
+      {
+        "index": 1,
+        "color": "红色",
+        "shape": "长方形"
+      },
+      {
+        "index": 2,
+        "color": "蓝色",
+        "shape": "圆形"
+      }
+    ]
+  },
+  "checks": {
+    "actualTwoImageFiles": true,
+    "exactOrderedBytes": true,
+    "base64ExcludedFromPrompt": true,
+    "firstRecognizedRedRectangle": true,
+    "secondRecognizedBlueCircle": true,
+    "cleanDone": true,
+    "noPdfReads": true,
+    "noArtifact": true,
+    "noToolCalls": true
+  },
+  "success": true,
+  "finishedAt": "2026-10-21T13:23:20.255Z",
+  "elapsedMs": 117168
+}

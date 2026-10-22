@@ -20,6 +20,53 @@ async function drawingAsset(source: string, image = false) {
 
 beforeEach(() => { vi.mocked(getAsset).mockReset().mockResolvedValue(pdf); });
 describe('研究目录的完整可读文件集', () => {
+  it('会话归档展示真实成果和当轮文献检索，保留原始顺序、摘要与查询且隔离其他研究', async () => {
+    const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
+    const conversation = seed.conversations['conversation-research-a'];
+    const candidates: LiteratureCandidate[] = [
+      { id: 'openalex-W90', provider: 'openalex', providerId: 'W90', title: '首位 Z 论文', authors: ['Z Author'], year: 2025, doi: '10.1000/first', url: 'https://example.org/first', abstract: '首位论文的来源摘要。', retrievedAt: '2026-10-21T12:00:00.000Z' },
+      { id: 'openalex-W10', provider: 'openalex', providerId: 'W10', title: '次位 A 论文', authors: ['A Author'], url: 'https://example.org/second', abstract: '次位论文的来源摘要。', retrievedAt: '2026-10-21T12:00:00.000Z' },
+    ];
+    const request = seed.requests['agent-archive'] = { id: 'agent-archive', researchId: 'research-a', conversationId: conversation.id,
+      prompt: '请找参考并形成笔记', body: '已整理为可编辑成果，引用可回到原文。', result: { title: '真实成果', body: '真正需要继续阅读的研究成果全文。', evidenceIds: [] },
+      status: 'done', createdAt: '2026-10-21T12:00:00.000Z', context: [], history: [], evidenceIds: [],
+      researchRun: { literatureSearches: [{ id: 'new-search', query: 'archive query', yearFrom: 2020, yearTo: 2026, createdAt: '2026-10-21T12:00:00.000Z', status: 'done', candidates, partial: true, warnings: ['部分条目未提供摘要。'] }] } };
+    conversation.requestIds.push(request.id);
+    seed.conversations['conversation-research-b'].requestIds.push('private-archive');
+    seed.requests['private-archive'] = { ...structuredClone(request), id: 'private-archive', researchId: 'research-b', conversationId: 'conversation-research-b', result: { title: '私有结果', body: '另一研究不可导出的正文。', evidenceIds: [] } };
+    seed.requests['private-archive'].researchRun!.literatureSearches![0].query = 'private query';
+    const before = structuredClone(seed), { files } = await buildResearchFiles(seed, 'research-a');
+    const map = Object.fromEntries(files.map(file => [file.path, file])), markdown = map[`sessions/${conversation.id}.md`].content;
+    expect(markdown).toContain(request.result!.body);
+    expect(markdown).not.toContain(request.body);
+    expect(markdown).toContain('archive query'); expect(markdown).toContain('2020–2026'); expect(markdown).toContain('状态：done');
+    for (const candidate of candidates) {
+      expect(markdown).toContain(candidate.title); expect(markdown).toContain(candidate.abstract); expect(markdown).toContain(candidate.url); expect(markdown).toContain(candidate.providerId);
+    }
+    expect(markdown.indexOf(candidates[0].title)).toBeLessThan(markdown.indexOf(candidates[1].title));
+    expect(markdown).toContain('10.1000/first'); expect(markdown).toContain('部分条目未提供摘要。');
+    expect(markdown).toContain('非 PDF 原文证据'); expect(markdown).not.toMatch(/PDF 第 \d+ 页/);
+    expect(JSON.stringify(files)).not.toContain('private query'); expect(JSON.stringify(files)).not.toContain('另一研究不可导出的正文。');
+    expect(JSON.parse(map['research.json'].content).entities.requests[request.id]).toEqual(request);
+    expect(seed).toEqual(before);
+  });
+  it('停止前已完成的候选和检索错误留在所属轮次，旧会话检索只输出一次', async () => {
+    const seed = createSeed(), hash = digest(await pdf.arrayBuffer());
+    Object.values(seed.documents).forEach(doc => { if (doc.assetId) doc.hash = hash; });
+    const conversation = seed.conversations['conversation-research-a'];
+    const candidate: LiteratureCandidate = { id: 'openalex-W7', provider: 'openalex', providerId: 'W7', title: '停止前返回的文献', authors: [], url: 'https://example.org/before-stop', abstract: '停止前保存的来源摘要。', retrievedAt: '2026-10-21T12:00:00.000Z' };
+    conversation.requestIds = ['stopped-search', 'legacy-chat'];
+    seed.requests['stopped-search'] = { id: 'stopped-search', researchId: 'research-a', conversationId: conversation.id, prompt: '继续找', body: '已收到部分结果。', status: 'stopped', createdAt: candidate.retrievedAt, context: [], history: [], evidenceIds: [], researchRun: { literatureSearches: [{ id: 'search-stopped', query: 'stopped query', createdAt: candidate.retrievedAt, status: 'stopped', candidates: [candidate], error: '用户停止检索。', errorCode: 'aborted', warnings: ['部分结果已经返回。'] }, { id: 'search-error', query: 'error query', createdAt: candidate.retrievedAt, status: 'error', candidates: [], error: '公开目录暂时不可用。', errorCode: 'upstream_error' }] } };
+    seed.requests['legacy-chat'] = { id: 'legacy-chat', researchId: 'research-a', conversationId: conversation.id, prompt: '旧问题', body: '旧会话原回答。', status: 'done', createdAt: candidate.retrievedAt, context: [], history: [], evidenceIds: [] };
+    conversation.literatureSearches = [{ id: 'legacy-search', researchId: 'research-a', conversationId: conversation.id, boardId: 'board-a', rootTitle: '旧局部研究', query: 'legacy query', createdAt: candidate.retrievedAt, status: 'done', candidates: [{ ...candidate, title: '旧检索独立文献' }] }];
+    const { files } = await buildResearchFiles(seed, 'research-a'), markdown = files.find(file => file.path === `sessions/${conversation.id}.md`)!.content;
+    expect(markdown).toContain('stopped query'); expect(markdown).toContain('状态：stopped'); expect(markdown).toContain(candidate.title); expect(markdown).toContain(candidate.abstract);
+    expect(markdown).toContain('用户停止检索。'); expect(markdown).toContain('aborted'); expect(markdown).toContain('部分结果已经返回。');
+    expect(markdown).toContain('error query'); expect(markdown).toContain('公开目录暂时不可用。'); expect(markdown).toContain('upstream_error');
+    expect(markdown.indexOf(candidate.title)).toBeLessThan(markdown.indexOf('旧问题'));
+    expect(markdown).toContain('旧会话原回答。'); expect(markdown.match(/legacy query/g)).toHaveLength(1); expect(markdown.match(/旧检索独立文献/g)).toHaveLength(1);
+  });
   it('归档本研究待发送与已发送绘图图片和结构，隔离其他研究', async () => {
     const seed = createSeed(), question = await drawingQuestionFixture();
     const pdfHash = digest(await pdf.arrayBuffer());

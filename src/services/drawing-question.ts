@@ -50,6 +50,7 @@ export async function attachDrawingQuestion(researchId: string, boardId: string,
   workspace.updateData(next => {
     if (next.boards[boardId]?.researchId !== researchId) throw new Error('白板已移出当前研究，请重新选择。');
     const owner = next.conversations[conversation.id];
+    if ((owner.chatImages?.length ?? 0) >= 4) throw new Error('每条消息最多 4 张图片，绘图选区也占一张；请先移除一张附件。');
     owner.drawingQuestion = { snapshot, mode: 'image' };
     delete owner.researchFocus;
   });
@@ -65,6 +66,7 @@ export function setDrawingQuestionMode(researchId: string, mode: 'image' | 'text
   if (conversation) workspace.updateData(data => {
     const question = data.conversations[conversation.id].drawingQuestion;
     if (!question) return;
+    if (mode === 'image' && (data.conversations[conversation.id].chatImages?.length ?? 0) >= 4) throw new Error('每条消息最多 4 张图片，请先移除一张附件。');
     validateDrawingQuestion({ ...question, mode });
     question.mode = mode;
   });

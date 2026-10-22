@@ -24,6 +24,7 @@ export type Research = {
   sourceRecords?: Record<string, { note: string; discoveries: SourceDiscovery[] }>;
 };
 export type SourceAbstract = { text: string; url: string; retrievedAt: string };
+export type ChatImageAttachment = { assetId: string; hash: string; name: string; mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; size: number };
 export type SourceCandidate = {
   url: string;
   title: string;
@@ -504,6 +505,8 @@ export type AIRequest = {
   materials?: ResearchMaterial[];
   boardResearch?: BoardResearchOrigin & { focus: ResourceRef[] };
   researchRun?: {
+    chatImages?: ChatImageAttachment[];
+    literatureSearches?: import('./research-agent').ResearchLiteratureSearch[];
     drawingQuestion?: DrawingQuestion;
     focus?: { ref: ResourceRef; title: string; body: string };
     sourceSummary?: string;
@@ -521,6 +524,7 @@ export type Conversation = {
   input?: string;
   researchFocus?: { ref: ResourceRef; title: string; body: string };
   drawingQuestion?: DrawingQuestion;
+  chatImages?: ChatImageAttachment[];
   researchScrollTop?: number;
   title?: string;
   createdAt?: string;

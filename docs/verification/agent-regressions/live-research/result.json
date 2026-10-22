@@ -1,0 +1,875 @@
+{
+  "startedAt": "2026-10-21T12:11:57.583Z",
+  "cliVersion": "codex-cli 0.162.1",
+  "nodeVersion": "v24.21.0",
+  "scope": "One synthetic public request; no application workspace, user research, library writes, PDF reads, credentials inspection or model fixtures.",
+  "literatureTransport": "Existing loopback OpenAlex HTTP service at 127.0.0.1:8787; only the model-selected short query and optional year filters are forwarded.",
+  "limits": {
+    "totalDeadlineMs": 180000,
+    "researchInactivityMs": 120000,
+    "upstreamMs": 20000,
+    "maximumSearchCalls": 3
+  },
+  "request": {
+    "requestId": "public-literature-smoke-20261021",
+    "researchId": "synthetic-public-research",
+    "connectionId": "codex",
+    "prompt": "请明确调用 search_literature，以 retrieval augmented generation evidence selection 为关键词找新论文。仅列出工具实际返回的前 2 篇题名和 DOI 或来源 URL，并注明尚未读 PDF。不要提交文稿，不要读取本机文件，不要执行 shell，不要使用其他工具，也不要改写检索词。",
+    "sources": [],
+    "history": []
+  },
+  "calls": [
+    {
+      "elapsedMs": 23328,
+      "input": {
+        "query": "retrieval augmented generation evidence selection"
+      },
+      "httpStatus": 200,
+      "completedMs": 25890,
+      "candidateCount": 10
+    }
+  ],
+  "events": [
+    {
+      "elapsedMs": 351,
+      "type": "progress",
+      "text": "Codex 正在按本轮授权资料开展研究"
+    },
+    {
+      "elapsedMs": 21623,
+      "type": "delta",
+      "text": "我"
+    },
+    {
+      "elapsedMs": 21623,
+      "type": "delta",
+      "text": "将"
+    },
+    {
+      "elapsedMs": 21623,
+      "type": "delta",
+      "text": "按"
+    },
+    {
+      "elapsedMs": 21833,
+      "type": "delta",
+      "text": "原"
+    },
+    {
+      "elapsedMs": 21936,
+      "type": "delta",
+      "text": "样"
+    },
+    {
+      "elapsedMs": 21936,
+      "type": "delta",
+      "text": "使用"
+    },
+    {
+      "elapsedMs": 22053,
+      "type": "delta",
+      "text": "指定"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "关键词"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "调用"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": " search"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "_l"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "iter"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "ature"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "，仅"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "列"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "出"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "返回"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "的"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "前"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": " "
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "2"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": " 篇"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "，并"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "注明"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "尚"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "未"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "读"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": " PDF"
+    },
+    {
+      "elapsedMs": 22523,
+      "type": "delta",
+      "text": "。\n"
+    },
+    {
+      "elapsedMs": 23330,
+      "type": "literature",
+      "search": {
+        "id": "literature-1",
+        "query": "retrieval augmented generation evidence selection",
+        "createdAt": "2026-10-21T12:12:20.911Z",
+        "status": "searching",
+        "candidates": []
+      }
+    },
+    {
+      "elapsedMs": 25892,
+      "type": "literature",
+      "search": {
+        "id": "literature-1",
+        "query": "retrieval augmented generation evidence selection",
+        "createdAt": "2026-10-21T12:12:20.911Z",
+        "status": "done",
+        "candidates": [
+          {
+            "id": "openalex-W7166815487",
+            "provider": "openalex",
+            "providerId": "W7166815487",
+            "title": "Utility-Oriented Visual Evidence Selection for Multimodal Retrieval-Augmented Generation",
+            "authors": [
+              "Weiqing Luo",
+              "ZongYe Hu",
+              "Xiao Wang",
+              "Zhiyuan Yu",
+              "Haofeng Zhang",
+              "Ziyi Huang"
+            ],
+            "year": 2026,
+            "doi": "10.18653/v1/2026.acl-long.1620",
+            "url": "https://doi.org/10.18653/v1/2026.acl-long.1620",
+            "abstract": "Visual evidence selection is a critical component of multimodal retrieval-augmented generation (RAG), yet existing methods typically rely on semantic relevance or surface-level similarity, which are often misaligned with the actual utility of visual evidence for downstream reasoning.We reformulate multimodal evidence selection from an information-theoretic perspective by defining evidence utility as the information gain induced on a model's output distribution.To overcome the intractability of answer-space optimization, we introduce a latent notion of evidence helpfulness and theoretically show that, under mild assumptions, ranking evidence by information gain on this latent variable is equivalent to answer-space utility.We further propose a training-free, surrogateaccelerated framework that efficiently estimates evidence utility using lightweight multimodal models.Experiments on MRAG-Bench and Visual-RAG across multiple model families demonstrate that our method consistently outperforms state-of-the-art RAG baselines while achieving substantial reductions in computational cost.We release our code at https: //github.com/Hcnaeg/utility-mrag.",
+            "pdfUrl": "https://aclanthology.org/2026.acl-long.1620.pdf",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7161354691",
+            "provider": "openalex",
+            "providerId": "W7161354691",
+            "title": "Utility-Oriented Visual Evidence Selection for Multimodal Retrieval-Augmented Generation",
+            "authors": [
+              "Weiqing Luo",
+              "ZongYe Hu",
+              "Xiao Jing Wang",
+              "Zhiyuan Yu",
+              "Haofeng Zhang",
+              "Ziyi Huang"
+            ],
+            "year": 2026,
+            "url": "https://arxiv.org/abs/2605.13277",
+            "abstract": "Visual evidence selection is a critical component of multimodal retrieval-augmented generation (RAG), yet existing methods typically rely on semantic relevance or surface-level similarity, which are often misaligned with the actual utility of visual evidence for downstream reasoning. We reformulate multimodal evidence selection from an information-theoretic perspective by defining evidence utility as the information gain induced on a model's output distribution. To overcome the intractability of answer-space optimization, we introduce a latent notion of evidence helpfulness and theoretically show that, under mild assumptions, ranking evidence by information gain on this latent variable is equivalent to answer-space utility. We further propose a training-free, surrogate-accelerated framework that efficiently estimates evidence utility using lightweight multimodal models. Experiments on MRAG-Bench and Visual-RAG across multiple model families demonstrate that our method consistently outperforms state-of-the-art RAG baselines while achieving substantial reductions in computational cost.",
+            "pdfUrl": "https://arxiv.org/pdf/2605.13277",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7168564237",
+            "provider": "openalex",
+            "providerId": "W7168564237",
+            "title": "Utility-Oriented Visual Evidence Selection for Multimodal Retrieval-Augmented Generation",
+            "authors": [
+              "Association for Computational Linguistics 2026",
+              "ZongYe Hu",
+              "Ziyi Huang",
+              "Weiqing Luo",
+              "Xiao Wang",
+              "Zhiyuan Yu",
+              "Haofeng Zhang"
+            ],
+            "year": 2026,
+            "doi": "10.48448/h6j6-rz23",
+            "url": "https://doi.org/10.48448/h6j6-rz23",
+            "abstract": "Visual evidence selection is a critical component of multimodal retrieval-augmented generation (RAG), yet existing methods typically rely on semantic relevance or surface-level similarity, which are often misaligned with the actual utility of visual evidence for downstream reasoning. We reformulate multimodal evidence selection from an information-theoretic perspective by defining evidence utility as the information gain induced on a model’s output distribution. To overcome the intractability of answer-space optimization, we introduce a latent notion of evidence helpfulness and theoretically show that, under mild assumptions, ranking evidence by information gain on this latent variable is equivalent to answer-space utility. We further propose a training-free, surrogate-accelerated framework that efficiently estimates evidence utility using lightweight multimodal models. Experiments on MRAG-Bench and Visual-RAG across multiple model families demonstrate that our method consistently outperforms state-of-the-art RAG baselines while achieving substantial reductions in computational cost. We release our code at https://github.com/Hcnaeg/utility-mrag.",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7161146263",
+            "provider": "openalex",
+            "providerId": "W7161146263",
+            "title": "Utility-Oriented Visual Evidence Selection for Multimodal Retrieval-Augmented Generation",
+            "authors": [
+              "Weiqing Luo",
+              "ZongYe Hu",
+              "Xiao Wang",
+              "Zhiyuan Yu",
+              "Haofeng Zhang",
+              "Ziyi Huang"
+            ],
+            "year": 2026,
+            "doi": "10.48550/arxiv.2605.13277",
+            "url": "https://doi.org/10.48550/arxiv.2605.13277",
+            "abstract": "Visual evidence selection is a critical component of multimodal retrieval-augmented generation (RAG), yet existing methods typically rely on semantic relevance or surface-level similarity, which are often misaligned with the actual utility of visual evidence for downstream reasoning. We reformulate multimodal evidence selection from an information-theoretic perspective by defining evidence utility as the information gain induced on a model's output distribution. To overcome the intractability of answer-space optimization, we introduce a latent notion of evidence helpfulness and theoretically show that, under mild assumptions, ranking evidence by information gain on this latent variable is equivalent to answer-space utility. We further propose a training-free, surrogate-accelerated framework that efficiently estimates evidence utility using lightweight multimodal models. Experiments on MRAG-Bench and Visual-RAG across multiple model families demonstrate that our method consistently outperforms state-of-the-art RAG baselines while achieving substantial reductions in computational cost.",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7163258846",
+            "provider": "openalex",
+            "providerId": "W7163258846",
+            "title": "When Knowledge Is Not Free: Cost-Aware Evidence Selection in Retrieval-Augmented Generation",
+            "authors": [
+              "Mingyan Wu",
+              "Han Yang",
+              "Omer Ben-Porat",
+              "Yftah Ziser"
+            ],
+            "year": 2026,
+            "doi": "10.48550/arxiv.2606.02245",
+            "url": "https://arxiv.org/abs/2606.02245",
+            "abstract": "Retrieval-Augmented Generation (RAG) typically assumes that external knowledge is free, but many high-quality sources are paywalled, licensed, restricted, or otherwise costly to access. We introduce cost-aware RAG, a setting where retrieved evidence is assigned access-cost tiers and systems must answer under an explicit evidence-access budget. We instantiate this setting by augmenting MS MARCO v2.1 with access-friction tiers and evaluate budgeted evidence selection across general-domain and domain-specific QA benchmarks. Our results show that static selection is brittle: no fixed selector uniformly dominates, and larger budgets do not reliably improve answer quality, even when costly evidence is domain-matched. We then study agentic cost-aware RAG, where an LLM decides when to retrieve, which tier to access, and when to stop. Agents show strong promise as adaptive evidence-acquisition controllers, but their behavior remains highly model- and task-dependent. These findings suggest that cost-aware evidence acquisition is a central challenge for the next generation of RAG systems. All code and data are available at https://github.com/Mignonmy/Cost-Aware.",
+            "pdfUrl": "https://arxiv.org/pdf/2606.02245",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7213239148",
+            "provider": "openalex",
+            "providerId": "W7213239148",
+            "title": "Candidate Evidence Reranking and Risk-Aware Answer Selection in Multi-Hop Retrieval-Augmented Generation",
+            "authors": [
+              "Pingrong Lin",
+              "Haimin Xu",
+              "Junqin Yang"
+            ],
+            "year": 2026,
+            "doi": "10.21203/rs.3.rs-11009751/v1",
+            "url": "https://doi.org/10.21203/rs.3.rs-11009751/v1",
+            "pdfUrl": "https://www.researchsquare.com/article/rs-11009751/latest.pdf",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7127628945",
+            "provider": "openalex",
+            "providerId": "W7127628945",
+            "title": "Rethinking the Reranker: Boundary-Aware Evidence Selection for Robust Retrieval-Augmented Generation",
+            "authors": [
+              "Jiashuo Sun",
+              "Pengcheng Jiang",
+              "Saizhuo Wang",
+              "Jiajun Fan",
+              "Heng Wang",
+              "Siru Ouyang",
+              "Ming Zhong",
+              "Yizhu Jiao",
+              "Chengsong Huang",
+              "Xueqiang Xu",
+              "Pengrui Han",
+              "Peiran Li",
+              "Jiaxin Huang",
+              "Ge Liu",
+              "Heng Ji",
+              "Jiawei Han"
+            ],
+            "year": 2026,
+            "doi": "10.48550/arxiv.2602.03689",
+            "url": "https://openalex.org/W7127628945",
+            "abstract": "Retrieval-Augmented Generation (RAG) systems remain brittle under realistic retrieval noise, even when the required evidence appears in the top-K results. A key reason is that retrievers and rerankers optimize solely for relevance, often selecting either trivial, answer-revealing passages or evidence that lacks the critical information required to answer the question, without considering whether the evidence is suitable for the generator. We propose BAR-RAG, which reframes the reranker as a boundary-aware evidence selector that targets the generator's Goldilocks Zone -- evidence that is neither trivially easy nor fundamentally unanswerable for the generator, but is challenging yet sufficient for inference and thus provides the strongest learning signal. BAR-RAG trains the selector with reinforcement learning using generator feedback, and adopts a two-stage pipeline that fine-tunes the generator under the induced evidence distribution to mitigate the distribution mismatch between training and inference. Experiments on knowledge-intensive question answering benchmarks show that BAR-RAG consistently improves end-to-end performance under noisy retrieval, achieving an average gain of 10.3 percent over strong RAG and reranking baselines while substantially improving robustness. Code is publicly avaliable at https://github.com/GasolSun36/BAR-RAG.",
+            "pdfUrl": "https://arxiv.org/pdf/2602.03689",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7167774090",
+            "provider": "openalex",
+            "providerId": "W7167774090",
+            "title": "Learning-to-Rank Meets Evidence Set Selection: An Empirical Evaluation of RL Estimators for Retrieval-Augmented Generation",
+            "authors": [
+              "Joseph Daniel Oronto-Pratt"
+            ],
+            "year": 2026,
+            "url": "https://dash.harvard.edu/handle/1/42744042",
+            "abstract": "Retrieval-augmented generation systems typically retrieve a candidate pool of passages and then select a small evidence set for answer generation. Standard retrieval pipelines score passages individually, often ignoring interactions among selected items. Yet evidence quality is fundamentally a set-level property, since the value of one passage depends on which others are included. We study whether stochastic ranking methods from reinforcement learning and Learning-to-Rank can be used effectively in this setting. Focusing on Plackett--Luce ranking policies, we compare naive REINFORCE, PG-Rank, and PL-Rank for evidence selection. We evaluate selectors with LLM-based set utility and held-out downstream question-answering (QA) to test whether estimator advantages from decomposable ranking survive when reward is defined on selected evidence sets rather than rank-weighted relevance. We find that PG-Rank transfers well both to document ranking with set-level reward and to setwise selection over candidate sets, while PL-Rank's structural variance and efficiency advantages weaken when set utility cannot be factored across ranked positions. We also find that learned selectors improve over the BM25 baseline in QA, though the highest-utility methods do not always achieve the strongest QA scores.",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W7214570769",
+            "provider": "openalex",
+            "providerId": "W7214570769",
+            "title": "Diversity-Aware Document Retrieval using Retrieval-Augmented Generation",
+            "authors": [
+              "Yuanting Liu"
+            ],
+            "year": 2026,
+            "url": "https://openalex.org/W7214570769",
+            "abstract": "Retrieval-Augmented Generation (RAG) systems rely on retrieved context to support grounded answer generation. However, standard nearest-neighbor retrieval may return chunks that are individually relevant to a query but collectively redundant or concentrated in a small number of source documents. This can limit evidence coverage and reduce the effective use of the language model's context budget, especially when retrieval is performed over long scientific documents. This thesis develops and evaluates a document-based RAG pipeline with a focus on diversity-aware retrieval. The pipeline uses a two-stage structure: Stage 1 retrieves candidate documents, and Stage 2 selects fine-grained body chunks as evidence for answer generation. For Stage 1, the thesis compares direct document representation retrieval with front-chunk aggregation. For Stage 2, it compares Relevance-Only Dense Retrieval with two diversity-aware selection strategies: Jaccard-Based Lexical Diversity Reranking and Embedding-Space Diverse Neighbor Selection. The system is evaluated on a corpus of scientific PDF documents using automatic proxy evaluation, manually written conceptual queries, retrieval-side context indicators, LLM-based context judging, and qualitative answer examples. The Stage 1 results show that direct document representation provides comparable candidate recall with lower retrieval time, while front-chunk aggregation can promote documents with stronger field-level matches. The Stage 2 results show that diversity-aware methods can increase source coverage and reduce lexical overlap, but they introduce different trade-offs. Jaccard reranking provides a lightweight way to reduce lexical repetition with little additional cost, while Embedding-Space Diverse Neighbor Selection can retrieve broader evidence but is substantially slower and can introduce noisier context. The results suggest that diversity-aware retrieval is useful for improving evidence coverage in document-based RAG, but it should not be treated as a universal replacement for relevance-based retrieval. Its benefit depends on the query, the diversity method, and the balance between relevance, coverage, redundancy, efficiency, and noise. The main contribution of this thesis is therefore an analysis of how diversity-aware evidence selection can support more informative context construction for grounded answer generation.",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          },
+          {
+            "id": "openalex-W4416379250",
+            "provider": "openalex",
+            "providerId": "W4416379250",
+            "title": "Graph Retrieval-Augmented Generation: A Survey",
+            "authors": [
+              "Boci Peng",
+              "Yun Zhu",
+              "Yongchao Liu",
+              "Xiaohe Bo",
+              "Haizhou Shi",
+              "Chuntao Hong",
+              "Yan Zhang",
+              "Siliang Tang"
+            ],
+            "year": 2025,
+            "doi": "10.1145/3777378",
+            "url": "https://doi.org/10.1145/3777378",
+            "abstract": "Recently, Retrieval-Augmented Generation (RAG) has achieved remarkable success in addressing the challenges of Large Language Models (LLMs) without necessitating retraining. By referencing an external knowledge base, RAG refines LLM outputs, effectively mitigating issues such as “hallucination,” lack of domain-specific knowledge, and outdated information. However, the complex structure of relationships among different entities in databases presents challenges for RAG systems. In response, GraphRAG leverages structural information across entities to enable more precise and comprehensive retrieval, capturing relational knowledge and facilitating more accurate, context-aware responses. Given the novelty and potential of GraphRAG, a systematic review of current technologies is imperative. This article provides the first comprehensive overview of GraphRAG methodologies. We formalize the GraphRAG workflow, encompassing Graph-Based Indexing, Graph-Guided Retrieval, and Graph-Enhanced Generation. We then outline the core technologies and training methods at each stage. Additionally, we examine downstream tasks, application domains, evaluation methodologies, and industrial use cases of GraphRAG. Finally, we explore future research directions to inspire further inquiries and advance progress in the field. In order to track recent progress, we set up a repository at https://github.com/pengboci/GraphRAG-Survey .",
+            "pdfUrl": "https://arxiv.org/pdf/2408.08921",
+            "retrievedAt": "2026-10-21T12:12:23.466Z"
+          }
+        ],
+        "warnings": [
+          "4 条文献缺少部分作者、年份、DOI 或摘要；未补写缺失信息。"
+        ],
+        "partial": true
+      }
+    },
+    {
+      "elapsedMs": 28773,
+      "type": "delta",
+      "text": "1"
+    },
+    {
+      "elapsedMs": 28773,
+      "type": "delta",
+      "text": "."
+    },
+    {
+      "elapsedMs": 28773,
+      "type": "delta",
+      "text": " **"
+    },
+    {
+      "elapsedMs": 28774,
+      "type": "delta",
+      "text": "Utility"
+    },
+    {
+      "elapsedMs": 28774,
+      "type": "delta",
+      "text": "-Or"
+    },
+    {
+      "elapsedMs": 28775,
+      "type": "delta",
+      "text": "iented"
+    },
+    {
+      "elapsedMs": 28992,
+      "type": "delta",
+      "text": " Visual"
+    },
+    {
+      "elapsedMs": 28992,
+      "type": "delta",
+      "text": " Evidence"
+    },
+    {
+      "elapsedMs": 28992,
+      "type": "delta",
+      "text": " Selection"
+    },
+    {
+      "elapsedMs": 28992,
+      "type": "delta",
+      "text": " for"
+    },
+    {
+      "elapsedMs": 28992,
+      "type": "delta",
+      "text": " Mult"
+    },
+    {
+      "elapsedMs": 28992,
+      "type": "delta",
+      "text": "im"
+    },
+    {
+      "elapsedMs": 28992,
+      "type": "delta",
+      "text": "odal"
+    },
+    {
+      "elapsedMs": 28993,
+      "type": "delta",
+      "text": " Retrieval"
+    },
+    {
+      "elapsedMs": 28993,
+      "type": "delta",
+      "text": "-Aug"
+    },
+    {
+      "elapsedMs": 28993,
+      "type": "delta",
+      "text": "mented"
+    },
+    {
+      "elapsedMs": 28994,
+      "type": "delta",
+      "text": " Generation"
+    },
+    {
+      "elapsedMs": 28994,
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "elapsedMs": 28995,
+      "type": "delta",
+      "text": "  \n"
+    },
+    {
+      "elapsedMs": 28996,
+      "type": "delta",
+      "text": "  "
+    },
+    {
+      "elapsedMs": 28996,
+      "type": "delta",
+      "text": " DOI"
+    },
+    {
+      "elapsedMs": 28997,
+      "type": "delta",
+      "text": "：https"
+    },
+    {
+      "elapsedMs": 29165,
+      "type": "delta",
+      "text": "://"
+    },
+    {
+      "elapsedMs": 29165,
+      "type": "delta",
+      "text": "doi"
+    },
+    {
+      "elapsedMs": 29165,
+      "type": "delta",
+      "text": ".org"
+    },
+    {
+      "elapsedMs": 29165,
+      "type": "delta",
+      "text": "/"
+    },
+    {
+      "elapsedMs": 29165,
+      "type": "delta",
+      "text": "10"
+    },
+    {
+      "elapsedMs": 29167,
+      "type": "delta",
+      "text": "."
+    },
+    {
+      "elapsedMs": 29167,
+      "type": "delta",
+      "text": "186"
+    },
+    {
+      "elapsedMs": 29167,
+      "type": "delta",
+      "text": "53"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": "/v"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": "1"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": "/"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": "202"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": "6"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": ".ac"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": "l"
+    },
+    {
+      "elapsedMs": 29274,
+      "type": "delta",
+      "text": "-long"
+    },
+    {
+      "elapsedMs": 29401,
+      "type": "delta",
+      "text": "."
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "162"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "0"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "  \n"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "  "
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": " 尚"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "未"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "读"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": " PDF"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "。\n\n"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "2"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "."
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": " **"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "Utility"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "-Or"
+    },
+    {
+      "elapsedMs": 29403,
+      "type": "delta",
+      "text": "iented"
+    },
+    {
+      "elapsedMs": 29897,
+      "type": "delta",
+      "text": " Visual"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": " Evidence"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": " Selection"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": " for"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": " Mult"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": "im"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": "odal"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": " Retrieval"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": "-Aug"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": "mented"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": " Generation"
+    },
+    {
+      "elapsedMs": 29898,
+      "type": "delta",
+      "text": "**"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "  \n"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "  "
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": " 来源"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "：https"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "://"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "ar"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "xiv"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": ".org"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "/"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "abs"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "/"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "260"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "5"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "."
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "132"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "77"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "  \n"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "  "
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": " 尚"
+    },
+    {
+      "elapsedMs": 29899,
+      "type": "delta",
+      "text": "未"
+    },
+    {
+      "elapsedMs": 29990,
+      "type": "delta",
+      "text": "读"
+    },
+    {
+      "elapsedMs": 29992,
+      "type": "delta",
+      "text": " PDF"
+    },
+    {
+      "elapsedMs": 29993,
+      "type": "delta",
+      "text": "。"
+    },
+    {
+      "elapsedMs": 30378,
+      "type": "done",
+      "model": "gpt-6.1-sol",
+      "readPages": [],
+      "nativeSessionObserved": true
+    }
+  ],
+  "registeredTools": [
+    "search_literature",
+    "search_sources",
+    "read_page",
+    "submit_result"
+  ],
+  "httpStatus": 200,
+  "contentType": "application/x-ndjson; charset=utf-8",
+  "answer": "我将按原样使用指定关键词调用 search_literature，仅列出返回的前 2 篇，并注明尚未读 PDF。\n1. **Utility-Oriented Visual Evidence Selection for Multimodal Retrieval-Augmented Generation**  \n   DOI：https://doi.org/10.18653/v1/2026.acl-long.1620  \n   尚未读 PDF。\n\n2. **Utility-Oriented Visual Evidence Selection for Multimodal Retrieval-Augmented Generation**  \n   来源：https://arxiv.org/abs/2605.13277  \n   尚未读 PDF。",
+  "checks": {
+    "actualSearchCalled": true,
+    "actualTwoCandidates": true,
+    "firstTwoTitlesInAnswer": true,
+    "firstTwoLinksInAnswer": true,
+    "cleanDone": true,
+    "noArtifact": true,
+    "noPdfReads": true,
+    "registeredOnlyResearchTools": true
+  },
+  "success": true,
+  "finishedAt": "2026-10-21T12:12:27.968Z",
+  "elapsedMs": 30385
+}

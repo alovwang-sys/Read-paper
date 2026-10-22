@@ -1,0 +1,168 @@
+
+Running 18 tests using 1 worker
+
+(node:81615) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/18] tests/desktop/agent-regressions.spec.ts:10:1 › 默认Agent桌面长消息、全文回复、文献收录和新草稿重启恢复
+  1) tests/desktop/agent-regressions.spec.ts:10:1 › 默认Agent桌面长消息、全文回复、文献收录和新草稿重启恢复 ─────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('region', { name: '回答中的资料' }).getByRole('button', { name: '加入本研究', exact: true })
+
+
+      47 |     await expect(page.getByText('完整结论直接留在会话里。可阅读', { exact: false })).toBeVisible();
+      48 |     const sources = page.getByRole('region', { name: '回答中的资料' });
+    > 49 |     await sources.getByRole('button', { name: '加入本研究', exact: true }).click();
+         |                                                                       ^
+      50 |     await expect(sources.getByText('已在本研究', { exact: true })).toBeVisible();
+      51 |     await expect(input()).toHaveValue('桌面下一条尚未发送的新草稿');
+      52 |     await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+        at /Users/amos/project/Read-paper/tests/desktop/agent-regressions.spec.ts:49:71
+
+    Error Context: test-results-desktop/agent-regressions-默认Agent桌面长消息、全文回复、文献收录和新草稿重启恢复/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results-desktop/agent-regressions-默认Agent桌面长消息、全文回复、文献收录和新草稿重启恢复/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results-desktop/agent-regressions-默认Agent桌面长消息、全文回复、文献收录和新草稿重启恢复/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:81852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/18] tests/desktop/composer-controls.spec.ts:54:1 › 打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿
+tests/desktop/composer-controls.spec.ts:54:1 › 打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿
+Packaged Codex metadata {
+  capabilityStatus: 200,
+  capabilityBranch: 'full-access-cancel',
+  modelCount: 8
+}
+
+[3/18] tests/desktop/composer-submission.spec.ts:33:1 › 打包桌面：长问题完整提交、挂起时可写下一条，网络失败恢复且重启保留
+[4/18] tests/desktop/desktop.spec.ts:50:1 › 安装产物：独立运行、PDF与双栏、模型设置、关闭保存及重启恢复
+[5/18] tests/desktop/desktop.spec.ts:153:1 › 保存失败保留窗口与最新修改，重试后允许退出
+[6/18] tests/desktop/desktop.spec.ts:185:1 › 生成过程中退出保留已收到的文字与原研究归属
+[7/18] tests/desktop/desktop.spec.ts:223:1 › 工作台没有关闭回应时保留应用，并允许用户明确强制退出
+[8/18] tests/desktop/desktop.spec.ts:248:1 › 复制权限只授予工作台写入，设置窗口和读取均拒绝
+[9/18] tests/desktop/drawing.spec.ts:44:1 › 打包桌面真实绘图与中文文字离线可用，字体本地加载且退出重启后保留
+[10/18] tests/desktop/fullscreen.spec.ts:36:63 › 打包桌面：默认窗口全屏可退出，刷新与快捷键保留草稿和原生框架
+tests/desktop/fullscreen.spec.ts:36:63 › 打包桌面：默认窗口全屏可退出，刷新与快捷键保留草稿和原生框架
+Native frame before fullscreen {
+  fullScreen: false,
+  normal: true,
+  maximized: false,
+  minimized: false,
+  closable: true,
+  minimizable: true,
+  fullScreenable: true,
+  frameInset: 32,
+  bounds: { x: 240, y: 67, width: 1440, height: 940 }
+}
+
+Verified native fullscreen keyboard audit {
+  focused: true,
+  contentsFocused: true,
+  fullScreen: false,
+  entered: 1,
+  left: 1,
+  inputs: [
+    {
+      type: 'keyDown',
+      key: 'f',
+      code: 'KeyF',
+      isAutoRepeat: false,
+      isComposing: false,
+      shift: false,
+      control: true,
+      alt: false,
+      meta: true,
+      location: 0,
+      _modifiers: 10,
+      modifiers: [Array]
+    },
+    {
+      type: 'keyDown',
+      key: 'f',
+      code: 'KeyF',
+      isAutoRepeat: false,
+      isComposing: false,
+      shift: false,
+      control: true,
+      alt: false,
+      meta: true,
+      location: 0,
+      _modifiers: 10,
+      modifiers: [Array]
+    }
+  ]
+}
+
+[11/18] tests/desktop/fullscreen.spec.ts:36:63 › 打包桌面：最大化窗口全屏可退出，刷新与快捷键保留草稿和原生框架
+tests/desktop/fullscreen.spec.ts:36:63 › 打包桌面：最大化窗口全屏可退出，刷新与快捷键保留草稿和原生框架
+Native frame before fullscreen {
+  fullScreen: false,
+  normal: false,
+  maximized: true,
+  minimized: false,
+  closable: true,
+  minimizable: true,
+  fullScreenable: true,
+  frameInset: 32,
+  bounds: { x: 0, y: 30, width: 1920, height: 977 }
+}
+
+Verified native fullscreen keyboard audit {
+  focused: true,
+  contentsFocused: true,
+  fullScreen: false,
+  entered: 1,
+  left: 1,
+  inputs: [
+    {
+      type: 'keyDown',
+      key: 'f',
+      code: 'KeyF',
+      isAutoRepeat: false,
+      isComposing: false,
+      shift: false,
+      control: true,
+      alt: false,
+      meta: true,
+      location: 0,
+      _modifiers: 10,
+      modifiers: [Array]
+    },
+    {
+      type: 'keyDown',
+      key: 'f',
+      code: 'KeyF',
+      isAutoRepeat: false,
+      isComposing: false,
+      shift: false,
+      control: true,
+      alt: false,
+      meta: true,
+      location: 0,
+      _modifiers: 10,
+      modifiers: [Array]
+    }
+  ]
+}
+
+[12/18] tests/desktop/inline-ai.spec.ts:25:1 › 打包桌面：内置 Pi 真实启动、就地解释、右侧输入隔离与正常退出重启
+[13/18] tests/desktop/native-session-recovery.spec.ts:56:1 › 打包桌面：连续会话沿用原生线程，旧来源不变且重启保留同一身份和累计材料
+[14/18] tests/desktop/project-sessions.spec.ts:31:1 › 打包桌面：目录取消、确认、项目列表与重启恢复，不发送模型请求
+[15/18] tests/desktop/reader-images.spec.ts:80:1 › 打包桌面：唯一论文标签拖边缘分屏、连续阅读和Codex区域图片在正常退出重启后保留
+[16/18] tests/desktop/research-directory.spec.ts:97:1 › 打包桌面：原生目录选择取消无残留，创建后左右沿用同一目录且重启恢复
+[17/18] tests/desktop/research-directory.spec.ts:147:1 › 打包桌面：真实PDF与卡片写入研究目录，UI修改同步，外部编辑冲突保护并可恢复退出
+[18/18] tests/desktop/source-intake.spec.ts:65:1 › 安装产物来源收录：先保存、补齐本地全文与摘要备注、重启恢复及打包 WASM
+  1 failed
+    tests/desktop/agent-regressions.spec.ts:10:1 › 默认Agent桌面长消息、全文回复、文献收录和新草稿重启恢复 ──────────────────
+  17 passed (3.1m)

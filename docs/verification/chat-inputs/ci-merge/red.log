@@ -1,0 +1,30 @@
+      88 |   await expect(thread(page).getByLabel('第 1 轮', { exact: true })).toContainText('A 第一轮完整回答');
+      89 |   await expect(thread(page).getByLabel('第 2 轮', { exact: true })).toContainText('A 第二轮完整回答');
+    > 90 |   await expect(thread(page).getByLabel('第 3 轮', { exact: true })).toContainText('已整理为可编辑成果');
+         |                                                                   ^
+      91 |   await expect(thread(page).getByLabel('第 3 轮', { exact: true }).getByRole('button', { name: `打开成果：${resultTitle}`, exact: true })).toBeVisible();
+      92 |   await expect(input(page)).toHaveValue('A 尚未发送的想法');
+      93 |   await openConversation(page, titleB);
+        at /Users/amos/project/Read-paper/tests/e2e/workbench-sessions.spec.ts:90:67
+
+    Error Context: test-results/workbench-sessions-多轮完整呈现，新会话不继承旧输入和焦点，切回原会话不落入经典模式/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/workbench-sessions-多轮完整呈现，新会话不继承旧输入和焦点，切回原会话不落入经典模式/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/workbench-sessions-多轮完整呈现，新会话不继承旧输入和焦点，切回原会话不落入经典模式/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:23199) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/4] tests/e2e/workbench-sessions.spec.ts:113:1 › 刷新恢复当前会话、未发送输入、局部焦点和该会话滚动位置
+[3/4] tests/e2e/workbench-sessions.spec.ts:135:1 › 查看共享成果和引用保持发送目标，三个窗口尺寸均无横向溢出且输入可用
+[4/4] tests/e2e/workbench-sessions.spec.ts:180:1 › 同研究内 A 的迟到成果仍归 A，不抢 B 的当前视图、输入和历史
+  1 failed
+    tests/e2e/workbench-sessions.spec.ts:86:1 › 多轮完整呈现，新会话不继承旧输入和焦点，切回原会话不落入经典模式 ───────────────────
+  3 passed (19.9s)

@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-21",
+  "scope": "Read-only code audit and isolated browser regression of existing Excalidraw and system dictation; no real model or recording",
+  "browser": {
+    "command": "npx playwright test tests/e2e/drawing.spec.ts tests/e2e/drawing-bindings.spec.ts tests/e2e/drawing-binding-rules.spec.ts tests/e2e/drawing-question.spec.ts tests/e2e/system-dictation.spec.ts --output=/tmp/papertrail-chat-inputs-drawing-tests --reporter=list",
+    "passed": 23,
+    "failed": 0,
+    "duration": "1.7m",
+    "breakdown": {
+      "drawing": 7,
+      "bindings": 5,
+      "bindingRules": 2,
+      "drawingQuestion": 5,
+      "systemDictation": 4
+    }
+  },
+  "desktopProtocol": {
+    "command": "node --test desktop/dictation.test.mjs",
+    "passed": 4,
+    "failed": 0,
+    "durationMs": 102.853291
+  },
+  "screenshots": {
+    "agent-board-source-1440.png": "812e5ed37d757c2d81d511e176af3917e538ae48f427c35703a1d2aa887a2bb1",
+    "agent-board-source-1280.png": "7f7da2887878a9f74f0329b7c9c01d7d393a9286d4ae5f3ef5e530c9b81be13f",
+    "agent-board-source-1024.png": "02ef5e2aedf3f93b3a0121affe31fcf0186033daa51a0f1cc060c1df9c57104e",
+    "drawing-selection-1280.png": "761afc3e119cf238500352625ca4cbde39a7b339f8831e5f9fb4429c54afd3e5",
+    "drawing-reply-1024.png": "0e80fcb8f4895cd67b7d05619af45fa9565db10e673c0e2d0c41b162c4b3a487",
+    "drawing-selection-1440.png": "ff30dbb7a2c514f2479b98f1150fe811706ebe28f7b1b766e38281bfd877320d",
+    "drawing-selection-1024.png": "38d8ee52b9b382768de349717641de855cbcd4985a97af6df869035a9131e158"
+  },
+  "oldScreenshotRestoration": {
+    "existingFilesBackedUp": 39,
+    "modifiedFilesRestored": 33,
+    "unexpectedNewFiles": []
+  }
+}

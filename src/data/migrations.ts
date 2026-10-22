@@ -4,6 +4,8 @@ import { boardSnapshot, parseBoardPlan, validateBoardContext, validateBoardHisto
 import { validateDrawingRef } from '../domain/drawing';
 import { validateDrawingQuestion } from '../domain/drawing-question';
 import { validateResearchData } from '../domain/research';
+import { validateResearchLiteratureSearch } from '../domain/research-agent';
+import { validateChatImages } from '../domain/chat-images';
 import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -120,6 +122,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       || ![undefined, 'read-only', 'workspace-write', 'full-access'].includes(settings.access))) throw new Error('Codex 设置损坏，未覆盖现有数据。');
   }
   for (const conversation of Object.values(data.conversations)) {
+    if (conversation.chatImages !== undefined) validateChatImages(conversation.chatImages);
     if (conversation.drawingQuestion !== undefined) validateDrawingQuestion(conversation.drawingQuestion);
     if (conversation.researchFocus !== undefined && !validAgentFocus(conversation.researchFocus)
       || conversation.researchScrollTop !== undefined && (!Number.isFinite(conversation.researchScrollTop) || conversation.researchScrollTop < 0)) throw new Error('研究会话的焦点或阅读位置损坏。');
@@ -146,6 +149,14 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   }
   for (const request of Object.values(data.requests)) {
     const run = request.researchRun;
+    if (run?.chatImages !== undefined) validateChatImages(run.chatImages);
+    if (run?.literatureSearches !== undefined) {
+      if (!Array.isArray(run.literatureSearches) || run.literatureSearches.length > 3) throw new Error('文献检索记录无效。');
+      for (const search of run.literatureSearches) {
+        validateResearchLiteratureSearch(search);
+        if (search.status === 'searching') { search.status = 'interrupted'; search.error = '检索因重新加载中断，已完成的候选仍保留。'; }
+      }
+    }
     if (run?.drawingQuestion !== undefined) {
       validateDrawingQuestion(run.drawingQuestion);
       if (run.focus !== undefined || run.suggestion !== undefined || run.previous !== undefined) throw new Error('绘图问题不能携带正文修改目标。');

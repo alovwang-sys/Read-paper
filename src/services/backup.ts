@@ -6,6 +6,7 @@ import { paneGroups } from './panes';
 import { archivedBoardCard } from '../domain/board-history';
 import { drawingReferences, parseDrawingScene, validateDrawingRef } from '../domain/drawing';
 import { drawingQuestionReferences, drawingSnapshotContent, validateDrawingPng, validateDrawingQuestion } from '../domain/drawing-question';
+import { chatImageReferences, validateChatImageBytes } from '../domain/chat-images';
 import { validateResearchData } from '../domain/research';
 import type { CardProvenance, ContextSnapshot, RegionSource, Session, WorkspaceData } from '../domain/types';
 
@@ -54,6 +55,16 @@ async function checkDrawingQuestions(data: WorkspaceData, assets: Map<string, Bl
     const image = assets.get(snapshot.image.assetId);
     requireValid(image, '缺少绘图问题的图片');
     validateDrawingPng(await image.arrayBuffer(), snapshot.image);
+  }
+}
+
+async function checkChatImages(data: WorkspaceData, assets: Map<string, Blob>) {
+  for (const image of chatImageReferences(data)) {
+    const blob = assets.get(image.assetId);
+    requireValid(blob, '缺少聊天图片附件');
+    requireValid(blob.type === image.mimeType, '聊天图片附件的 MIME 类型不一致');
+    requireValid(blob.size === image.size, '聊天图片附件大小不一致');
+    validateChatImageBytes(new Uint8Array(await blob.arrayBuffer()), image);
   }
 }
 
@@ -173,6 +184,7 @@ function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
     validateDrawingQuestion(question);
     asset(question.snapshot.image.assetId, question.snapshot.image.hash);
   }
+  for (const image of chatImageReferences(data)) asset(image.assetId, image.hash);
   for (const change of Object.values(data.boardChanges ?? {})) {
     requireValid(has(data.researches, change.researchId), '白板历史所属研究缺失');
     for (const card of change.createdCards ?? []) { evidenceIds(card.evidenceIds); if (card.provenance) source(card.provenance); }
@@ -288,6 +300,7 @@ export async function createWorkspaceBackup(original: WorkspaceData, originalAss
   }
   const expectedHashes = validateReferences(data);
   await checkDrawingQuestions(data, assets);
+  await checkChatImages(data, assets);
   const drawingIds = new Set(drawingReferences(data).map(ref => ref.assetId));
   const files: Record<string, Uint8Array> = {};
   const entries: AssetEntry[] = [];
@@ -299,13 +312,13 @@ export async function createWorkspaceBackup(original: WorkspaceData, originalAss
     sizeLimit(total, MAX_BACKUP_BYTES, '总解包大小');
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const hash = await contentHash(bytes.buffer as ArrayBuffer);
-    requireValid(!expectedHashes.has(id) || [...expectedHashes.get(id)!].every(value => value === hash), '原文件、历史区域图片或绘图 hash 不一致');
+    requireValid(!expectedHashes.has(id) || [...expectedHashes.get(id)!].every(value => value === hash), '原文件、历史区域图片、聊天图片或绘图 hash 不一致');
     if (drawingIds.has(id)) parseDrawingScene(strFromU8(bytes));
     const path = `assets/${id}`;
     files[path] = bytes;
     entries.push({ id, path, size: bytes.length, hash, type: blob.type });
   }
-  requireValid([...expectedHashes.keys()].every(id => assets.has(id)), '缺少原文件、历史区域图片或绘图');
+  requireValid([...expectedHashes.keys()].every(id => assets.has(id)), '缺少原文件、历史区域图片、聊天图片或绘图');
   const workspaceBytes = strToU8(JSON.stringify(data));
   sizeLimit(workspaceBytes.length, MAX_JSON_BYTES, '工作区 JSON');
   files['workspace.json'] = workspaceBytes;
@@ -365,9 +378,10 @@ export async function readWorkspaceBackup(file: Blob): Promise<WorkspaceBackup> 
     if (drawingIds.has(entry.id)) parseDrawingScene(strFromU8(content));
     assets.push({ id: entry.id, blob: new Blob([content as Uint8Array<ArrayBuffer>], { type: entry.type }) });
   }
-  requireValid([...expectedHashes.keys()].every(id => seenIds.has(id)), '缺少原文件、历史区域图片或绘图');
+  requireValid([...expectedHashes.keys()].every(id => seenIds.has(id)), '缺少原文件、历史区域图片、聊天图片或绘图');
   const assetMap = new Map(assets.map(asset => [asset.id, asset.blob]));
   await checkDrawingQuestions(data, assetMap);
+  await checkChatImages(data, assetMap);
   for (const doc of Object.values(data.documents)) if (hasFullText(doc)) await checkPdfAsset(assetMap.get(doc.assetId)!, doc.filename);
   return { data, assets, createdAt: manifest.createdAt, summary: { researches: Object.keys(data.researches).length, documents: Object.keys(data.documents).length, cards: Object.keys(data.cards).length, assets: assets.length, bytes: total } };
 }

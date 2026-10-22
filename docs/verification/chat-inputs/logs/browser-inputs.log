@@ -1,0 +1,14 @@
+
+Running 6 tests using 1 worker
+
+(node:90786) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/6] tests/e2e/chat-inputs.spec.ts:36:1 › 默认会话有系统听写入口，文字留草稿且不自动发送
+[2/6] tests/e2e/chat-inputs.spec.ts:53:1 › 原始PNG JPEG WebP上传、预览、冻结发送、去重及刷新恢复
+[3/6] tests/e2e/chat-inputs.spec.ts:78:1 › 纯图片可发送，失败恢复原图；重试冻结原图并保留新图片草稿
+[4/6] tests/e2e/chat-inputs.spec.ts:100:1 › 粘贴与拖入图片、拒绝不支持格式和超限，不覆盖原草稿
+[5/6] tests/e2e/chat-inputs.spec.ts:121:1 › 能力不支持时保留图片、切会话与刷新隔离，三尺寸入口可达
+[6/6] tests/e2e/chat-inputs.spec.ts:148:1 › 图片拖入由聊天接收，PDF拖入保留原资料导入路径
+  6 passed (14.8s)

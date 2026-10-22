@@ -1,0 +1,1 @@
+{"status":200,"connections":[{"id":"codex","research":true,"images":true},{"id":"claude","research":false,"images":false},{"id":"opencode","research":false,"images":false},{"id":"model","research":false,"images":false},{"id":"demo","research":false,"images":false}]}

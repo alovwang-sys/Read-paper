@@ -232,7 +232,7 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
   const agents = createAgentHandler({ env, runtimes: agentRuntimes, ports: [...config.ports] });
   const sources = createSourceHandler(sourceOptions);
   const literature = createLiteratureHandler({ env, fetchImpl });
-  const research = createResearchHandler({ env, runtimes: agentRuntimes, ports: [...config.ports] });
+  const research = createResearchHandler({ env, runtimes: agentRuntimes, ports: [...config.ports], searchLiterature: literature.search });
   const active = new Set();
   const controllers = new Set();
   const pending = new Set();

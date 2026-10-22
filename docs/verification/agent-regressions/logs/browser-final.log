@@ -1,0 +1,18 @@
+
+Running 10 tests using 1 worker
+
+(node:81616) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/10] tests/e2e/agent-workbench.spec.ts:44:1 › 一句委托形成真实持久草稿，局部修订保护人工修改，来源深读可以返回
+[2/10] tests/e2e/agent-workbench.spec.ts:123:1 › 全部旧功能可达，经典模式和Agent模式共享数据，连接能力不冒充
+[3/10] tests/e2e/agent-workbench.spec.ts:157:1 › 迟到结果归原研究，不打断另一个研究；停止保留输入
+[4/10] tests/e2e/source-intake.spec.ts:96:1 › 显式 AI 来源可在中央预览而不收录，三尺寸保留回答与输入
+[5/10] tests/e2e/source-intake.spec.ts:121:1 › 连续推荐列表收录局部说明，旧版整段快照刷新后也不展示成聊天记录
+[6/10] tests/e2e/source-intake.spec.ts:166:1 › 直接加入在后台取得有效 PDF，保持主区并在刷新后本地阅读
+[7/10] tests/e2e/source-intake.spec.ts:196:1 › 404 和 HTML 全文失败保留资料及原摘要，之后在原 ID 补齐 PDF
+[8/10] tests/e2e/source-intake.spec.ts:237:1 › 元数据失败也可收下链接，跨研究复用同一实体并隔离备注及发现记录
+[9/10] tests/e2e/source-intake.spec.ts:270:1 › 刷新获取中的资料显示已中断，记录仍在且可重试
+[10/10] tests/e2e/source-intake.spec.ts:298:1 › 迟到元数据保留手改字段，迟到全文不覆盖手动补充的 PDF
+  10 passed (48.8s)

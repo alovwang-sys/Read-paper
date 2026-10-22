@@ -131,6 +131,10 @@ async function readRequest(req) {
   let body;
   try { body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); }
   catch { throw invalid('检索请求不是有效 JSON。'); }
+  return validateLiteratureQuery(body);
+}
+
+export function validateLiteratureQuery(body) {
   if (!record(body) || Object.keys(body).some(key => !['query', 'yearFrom', 'yearTo'].includes(key))) throw invalid('检索请求仅接受 query、yearFrom 和 yearTo。');
   for (const year of [body.yearFrom, body.yearTo]) if (year !== undefined && (!Number.isInteger(year) || year < 1 || year > 9999)) throw invalid('年份须为 1–9999 的整数。');
   if (body.yearFrom !== undefined && body.yearTo !== undefined && body.yearFrom > body.yearTo) throw invalid('起始年份不能晚于截止年份。');
@@ -141,20 +145,16 @@ async function readRequest(req) {
 export function createLiteratureHandler({ env = process.env, fetchImpl = fetch, timeoutMs = 15_000 } = {}) {
   const controllers = new Set();
   const pending = new Set();
-  async function handle(req, res) {
-    if (req.url !== PATH) return false;
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
+  async function search(input, { signal } = {}) {
     const controller = new AbortController();
     let timer;
     let timedOut = false;
-    const cancel = () => { if (!res.writableEnded) controller.abort(); };
-    req.on('aborted', cancel);
-    res.on('close', cancel);
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted) cancel();
     try {
-      if (req.method !== 'POST') throw new LiteratureError(405, 'method_not_allowed', '文献检索仅支持 POST。');
-      const { query, yearFrom, yearTo } = await readRequest(req);
+      controller.signal.throwIfAborted();
+      const { query, yearFrom, yearTo } = validateLiteratureQuery(input);
       const key = env.OPENALEX_API_KEY?.trim() || '';
       if (key.length > 4096 || /[^\x21-\x7e]/.test(key)) throw new LiteratureError(503, 'configuration_invalid', 'OpenAlex 密钥格式无效，请检查本机 OPENALEX_API_KEY。');
       if (controllers.size >= 2) throw new LiteratureError(429, 'concurrency_limit', '已有两个文献检索正在进行，请等待或停止后重试。');
@@ -164,7 +164,7 @@ export function createLiteratureHandler({ env = process.env, fetchImpl = fetch, 
       url.search = new URLSearchParams({ search: query, per_page: '10', page: '1', select: SELECT }).toString();
       if (yearFrom !== undefined || yearTo !== undefined) url.searchParams.set('filter', `publication_year:${yearFrom ?? 1}-${yearTo ?? 9999}`);
       const aborted = new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(controller.signal.reason), { once: true }));
-      const result = await Promise.race([aborted, (async () => {
+      return await Promise.race([aborted, (async () => {
         const response = await fetchImpl(url.href, { signal: controller.signal, redirect: 'error', headers: { Accept: 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) } });
         if (!response.ok) {
           await response.body?.cancel().catch(() => {});
@@ -175,28 +175,47 @@ export function createLiteratureHandler({ env = process.env, fetchImpl = fetch, 
         }
         return candidatesFrom(await limitedJSON(response, controller.signal), new Date().toISOString());
       })()]);
-      if (!res.destroyed && !res.writableEnded) res.end(JSON.stringify(result));
     } catch (error) {
-      if (res.destroyed || res.writableEnded) return true;
-      const failure = timedOut ? new LiteratureError(504, 'timeout', '文献检索超时，请手动重试。')
+      throw timedOut ? new LiteratureError(504, 'timeout', '文献检索超时，请手动重试。')
         : controller.signal.aborted ? new LiteratureError(499, 'aborted', '文献检索已停止。')
         : error instanceof LiteratureError ? error : new LiteratureError(502, 'connection_failed', '无法连接 OpenAlex，请检查网络后手动重试。');
-      res.statusCode = failure.status;
-      res.end(JSON.stringify({ error: failure.message, code: failure.code }));
     } finally {
       clearTimeout(timer);
       controllers.delete(controller);
+      signal?.removeEventListener('abort', cancel);
+    }
+  }
+  const track = task => {
+    pending.add(task);
+    task.then(() => pending.delete(task), () => pending.delete(task));
+    return task;
+  };
+  async function handle(req, res) {
+    if (req.url !== PATH) return false;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    const controller = new AbortController();
+    const cancel = () => { if (!res.writableEnded) controller.abort(); };
+    req.on('aborted', cancel);
+    res.on('close', cancel);
+    try {
+      if (req.method !== 'POST') throw new LiteratureError(405, 'method_not_allowed', '文献检索仅支持 POST。');
+      const result = await handler.search(await readRequest(req), { signal: controller.signal });
+      if (!res.destroyed && !res.writableEnded) res.end(JSON.stringify(result));
+    } catch (error) {
+      if (res.destroyed || res.writableEnded) return true;
+      const failure = error instanceof LiteratureError ? error : new LiteratureError(502, 'connection_failed', '无法连接 OpenAlex，请检查网络后手动重试。');
+      res.statusCode = failure.status;
+      res.end(JSON.stringify({ error: failure.message, code: failure.code }));
+    } finally {
       req.off('aborted', cancel);
       res.off('close', cancel);
     }
     return true;
   }
-  const handler = (req, res) => {
-    const task = handle(req, res);
-    pending.add(task);
-    task.finally(() => pending.delete(task));
-    return task;
-  };
+  const handler = (req, res) => track(handle(req, res));
+  handler.search = (input, options) => track(search(input, options));
   handler.stop = async () => {
     for (const controller of controllers) controller.abort();
     await Promise.allSettled(pending);

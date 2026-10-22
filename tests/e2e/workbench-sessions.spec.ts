@@ -87,7 +87,12 @@ test('多轮完整呈现，新会话不继承旧输入和焦点，切回原会�
   await start(page);
   await expect(thread(page).getByLabel('第 1 轮', { exact: true })).toContainText('A 第一轮完整回答');
   await expect(thread(page).getByLabel('第 2 轮', { exact: true })).toContainText('A 第二轮完整回答');
-  await expect(thread(page).getByLabel('第 3 轮', { exact: true })).toContainText('已整理为可编辑成果');
+  const resultReply = thread(page).getByLabel('第 3 轮', { exact: true }).getByLabel('Agent 的回复', { exact: true });
+  await expect(resultReply.locator('.ai-markdown > p')).toHaveText([
+    'A 第三轮完整成果正文，不能只显示完成回执。[1]',
+    ...Array<string>(12).fill('受控成果说明：保留原文条件和不能推断的范围。'),
+  ]);
+  await expect(resultReply).not.toContainText('已整理为可编辑成果');
   await expect(thread(page).getByLabel('第 3 轮', { exact: true }).getByRole('button', { name: `打开成果：${resultTitle}`, exact: true })).toBeVisible();
   await expect(input(page)).toHaveValue('A 尚未发送的想法');
   await openConversation(page, titleB);
@@ -107,6 +112,20 @@ test('多轮完整呈现，新会话不继承旧输入和焦点，切回原会�
   expect((await data(page)).conversations[A].researchFocus?.ref.id).toBe('controlled-shared-draft');
   expect((await data(page)).agentWorkbench).toBe(true);
   await expect(page.getByRole('button', { name: '经典工作台', exact: true })).toBeVisible();
+  const saved = await data(page), sourceEvidence = saved.evidence['evidence-a'];
+  const sourcePageLabel = `${saved.documents[sourceEvidence.documentId].title} PDF 第 ${sourceEvidence.pageIndex + 1} 页`;
+  await resultReply.getByRole('button', { name: '[1]', exact: true }).click();
+  await expect(page.getByRole('complementary', { name: '参考面板' }).getByLabel(sourcePageLabel, { exact: true })).toBeVisible();
+  expect((await data(page)).sessions['research-a'].activeConversationId).toBe(A);
+  await expect(input(page)).toHaveValue('A 尚未发送的想法');
+  await page.getByRole('button', { name: '关闭右侧面板', exact: true }).click();
+  await resultReply.getByRole('button', { name: `打开成果：${resultTitle}`, exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '结论标题', exact: true })).toHaveValue(resultTitle);
+  await expect(page.getByRole('textbox', { name: '结论正文', exact: true })).toHaveValue(saved.drafts['controlled-shared-draft'].body);
+  expect((await data(page)).sessions['research-a'].activeConversationId).toBe(A);
+  await expect(input(page)).toHaveValue('A 尚未发送的想法');
+  await page.getByRole('button', { name: '返回会话', exact: true }).click();
+  await expect(resultReply.locator('.ai-markdown > p')).toHaveCount(13);
   await page.screenshot({ path: `${shots}/multiple-sessions-1440.png` });
 });
 

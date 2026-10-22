@@ -1,0 +1,26 @@
+{
+  "baseline": {
+    "command": "npx playwright test tests/e2e/workbench-sessions.spec.ts --reporter=line",
+    "exitCode": 1,
+    "result": "1 failed, 3 passed (19.9s)",
+    "signature": "workbench-sessions.spec.ts:90 toContainText(已整理为可编辑成果)"
+  },
+  "verification": {
+    "command": "npx playwright test tests/e2e/workbench-sessions.spec.ts tests/e2e/agent-workbench.spec.ts tests/e2e/agent-regressions.spec.ts --reporter=line",
+    "exitCode": 0,
+    "result": "16 passed (25.5s)"
+  },
+  "typecheck": {
+    "command": "npm run check",
+    "exitCode": 0
+  },
+  "environment": {
+    "initialFailure": "Playwright chromium_headless_shell-1248 missing; no browser launched",
+    "recoveryCommand": "npx playwright install chromium",
+    "exitCode": 0,
+    "repoDependenciesChanged": false
+  },
+  "originalScreenshotsRestored": "Both affected screenshot trees restored byte-for-byte from pre-test copies.",
+  "productionFilesChanged": false,
+  "liveModelCall": false
+}
