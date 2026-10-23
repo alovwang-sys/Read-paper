@@ -415,7 +415,7 @@ try {
     await expect(page.locator('.material')).toHaveCount(1);
     await expect(page.locator('.message')).toHaveCount(2);
     await page.locator('.material button').first().click();
-    await expect(page.locator('.popover pre')).toHaveText('样例结果：B的召回更高，但同义词扩展也是变化因素。');
+    await expect(page.locator('.popover pre')).toHaveText('样例结果：B的召回更高，但同义词扩展也是变化因素，不能只据此推断证据更可靠。');
   });
 
   await check('在途A通过菜单切B，迟到回答只归A且不覆盖B草稿', async () => {

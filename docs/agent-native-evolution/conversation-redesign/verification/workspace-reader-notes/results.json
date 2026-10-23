@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-23T07:09:27.167Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html",
+  "scope": "隔离阅读摘录/卡片预览；真实鼠标选择合成原文，不连接真实模型或正式产品",
+  "checks": [
+    {
+      "name": "三尺寸选文工具/编辑器无溢出、按钮可命中，Tab/Enter/Escape可完成路径",
+      "pass": true
+    },
+    {
+      "name": "真实鼠标选择不同原文后保存对应quote，12/13页分别保存pageIndex 11/12",
+      "pass": true
+    },
+    {
+      "name": "重复摘录不重复保存，摘录操作保留当前会话与未发送输入",
+      "pass": true
+    },
+    {
+      "name": "制作/修订卡片保存独立正文，保留原文引用与同一evidenceId",
+      "pass": true
+    },
+    {
+      "name": "稍后继续/关闭/Escape保留未保存卡片草稿，切资源后可恢复原依据",
+      "pass": true
+    },
+    {
+      "name": "保存项跨页/资源/分屏共用，点来源回原页且不改另一视图位置",
+      "pass": true
+    },
+    {
+      "name": "真实跨段选文保存完整quote，不裁成高亮示例句",
+      "pass": true
+    },
+    {
+      "name": "跨段来源回页时精确选回完整保存quote及段落分隔",
+      "pass": true
+    },
+    {
+      "name": "引用定位offset精确/空白映射正确，空quote或未匹配均返回null",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "blockedRequests": [],
+  "screenshots": [
+    "reader-editor-1024.png",
+    "different-selection-excerpts.png",
+    "reader-card-editor-1440.png",
+    "reader-card-saved.png",
+    "shared-reader-evidence.png",
+    "cross-paragraph-source.png"
+  ],
+  "measurements": {
+    "1440x900": {
+      "editor": {
+        "x": 1024,
+        "y": 231.1640625,
+        "width": 390,
+        "height": 437.671875
+      },
+      "toolbar": {
+        "x": 351,
+        "y": 414.421875,
+        "width": 602,
+        "height": 71.9375
+      }
+    },
+    "1280x800": {
+      "editor": {
+        "x": 864,
+        "y": 181.1640625,
+        "width": 390,
+        "height": 437.671875
+      },
+      "toolbar": {
+        "x": 263,
+        "y": 414.421875,
+        "width": 602,
+        "height": 71.9375
+      }
+    },
+    "1024x800": {
+      "editor": {
+        "x": 608,
+        "y": 181.1640625,
+        "width": 390,
+        "height": 437.671875
+      },
+      "toolbar": {
+        "x": 47,
+        "y": 414.421875,
+        "width": 570,
+        "height": 71.9375
+      }
+    },
+    "evidence": [
+      {
+        "documentId": "sample-paper-a",
+        "pageIndex": 11,
+        "id": "excerpt-1",
+        "quote": "比较两种检索策略时"
+      },
+      {
+        "documentId": "sample-paper-a",
+        "pageIndex": 11,
+        "id": "excerpt-2",
+        "quote": "跨数据库对照仍需补充核验"
+      },
+      {
+        "documentId": "sample-paper-a",
+        "pageIndex": 12,
+        "id": "excerpt-3",
+        "quote": "比较两种检索策略时"
+      }
+    ],
+    "crossParagraphQuote": "需要保持年份、数据库与去重条件一致。\n\n样例结果：B的召回更高，但同义词扩展也是变化因素，不能只据此推断证据更可靠。\n跨数据库对照仍需补充核验，并记录检索式",
+    "crossParagraphSavedQuote": "需要保持年份、数据库与去重条件一致。\n\n样例结果：B的召回更高，但同义词扩展也是变化因素，不能只据此推断证据更可靠。\n跨数据库对照仍需补充核验，并记录检索式",
+    "crossParagraphSourceSelection": "需要保持年份、数据库与去重条件一致。\n\n样例结果：B的召回更高，但同义词扩展也是变化因素，不能只据此推断证据更可靠。\n跨数据库对照仍需补充核验，并记录检索式",
+    "quoteOffsets": {
+      "mappedSlice": "甲 \n乙\t丙",
+      "compactSlice": "甲乙丙",
+      "exactSlice": "乙\t丙",
+      "empty": null,
+      "whitespace": null,
+      "missing": null
+    }
+  },
+  "sourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "e0ea01c35c42744f99f23d92eb45604e985600ad41ad144b430806daebc2b7bb",
+    "workspace-preview.css": "dc910d79c099ffb0dcf6183cbc501a2251cb6055462b3e493606625ebac935d9",
+    "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
+    "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41",
+    "workspace-paper-notes.jsx": "484c5389ed02fec47a0f20dcad87479b7edc7228bf55d485c55e5982ddae12aa"
+  },
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "status": "tested",
+  "endSourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "e0ea01c35c42744f99f23d92eb45604e985600ad41ad144b430806daebc2b7bb",
+    "workspace-preview.css": "dc910d79c099ffb0dcf6183cbc501a2251cb6055462b3e493606625ebac935d9",
+    "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
+    "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41",
+    "workspace-paper-notes.jsx": "484c5389ed02fec47a0f20dcad87479b7edc7228bf55d485c55e5982ddae12aa"
+  },
+  "sourceStable": true
+}

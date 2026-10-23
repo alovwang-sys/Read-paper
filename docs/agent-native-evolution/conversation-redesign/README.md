@@ -4,6 +4,8 @@
 
 后续五点反馈的最新方案见[连续工作区](workspace-continuity.md)与[新布局预览](http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html)：明确研究／全局资料范围、输入权限和系统听写、资源旁同会话聊天、原生 Excalidraw 绘图与框选、就地浮窗；追加浏览器式可拖标签分屏、标题下拉选／新建会话和本地相关建议。[新一组7轮讨论](review/workspace-continuity/README.md)、[17项交互检查](verification/workspace-preview/README.md)与[6项拖拽专项](verification/workspace-tabs/README.md)独立记录，不改变下方第一版的历史验收范围。
 
+随后补充[原文选区摘录／制卡](verification/workspace-reader-notes/README.md)：选中样例文字后直接存原句或在小浮窗写观点，出处关联保留；保存项在本篇笔记查看。仍为内存预览，本次增量未另送 Claude 看图，正式应用未修改。
+
 [打开可点击原型](http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/prototype.html) · [设计规则](design.md) · [本地 HTML](prototype.html) · [七轮讨论与取舍](review/README.md)
 
 ![最终对话界面](verification/visual/01-chat-1440.png)
