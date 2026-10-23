@@ -20,7 +20,7 @@ Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个
 
 ## 下载安装
 
-从 [GitHub Releases](https://github.com/alovwang-sys/Read-paper/releases) 选择已公开的技术预览，在 **Assets** 下载对应安装包。当前源码版本为 **0.1.16**，已将侧聊调宽、讨论归属、改发、带入／升级和“更早”折叠等7个提交重建并安装到本机，详见[v0.1.16说明](docs/releases/v0.1.16.md)；本轮没有公开发布新的 GitHub Release。此前发行见 [v0.1.13 说明](docs/releases/v0.1.13.md)。公开版本与附件以对应 GitHub Release 为准。
+从 [GitHub Releases](https://github.com/alovwang-sys/Read-paper/releases) 选择已公开的技术预览，在 **Assets** 下载对应安装包。当前源码版本为 **0.1.17**，已将会话删除与原文标记入口修复重建并安装到本机，详见[v0.1.17说明](docs/releases/v0.1.17.md)；本轮没有公开发布新的 GitHub Release。此前发行见 [v0.1.13 说明](docs/releases/v0.1.13.md)。公开版本与附件以对应 GitHub Release 为准。
 
 | 你的设备 | 选择的文件 | 安装方式 |
 | --- | --- | --- |
@@ -69,7 +69,7 @@ Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个
 
 左上研究名打开可搜索的切换弹层，当前项有勾选标记；方向键选择、Enter 切换、Esc 关闭。新建按钮仍在原位，资料库仍从左下进入。Agent 工作台改名后按 Enter 或离开输入框保存，Esc 取消，空名称不写入。两轮 Claude Code 审阅与本轮验收见[桌面导航修复记录](docs/verification/desktop-navigation/README.md)。
 
-开发分支新增会话／标记删除入口：左栏会话／讨论行及聊天标题可删除会话，再从“已删除会话”恢复；原文选区或就地问答可直接移除／恢复标记，并能撤销，已保存问答、卡片和引用保留。此增量尚未编入本机0.1.16，验证及实际范围见[删除入口验收](docs/verification/conversation-deletion/README.md)。
+开发分支新增会话／标记删除入口：左栏会话／讨论行及聊天标题可删除会话，再从“已删除会话”恢复；原文选区或就地问答可直接移除／恢复标记，并能撤销，已保存问答、卡片和引用保留。此增量已编入本机0.1.17，验证及实际范围见[删除入口验收](docs/verification/conversation-deletion/README.md)。
 
 **人工调整白板：** 左栏白板／文稿和研究卡片可拖动排序，也可点击手柄选择上移／下移。在白板选择模式下，Shift / Ctrl / ⌘ 多选后整体拖动；方向键移动 1px，Shift + 方向键移动 10px。卡片“编辑内容”在右侧修改共享正文，“历史与恢复”查看和恢复布局。连线随卡片实际边缘绘制曲线，可点击修改关系。见[本轮验收](docs/verification/human-board-control/README.md)。
 

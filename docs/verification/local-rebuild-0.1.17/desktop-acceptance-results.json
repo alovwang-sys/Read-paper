@@ -1,0 +1,79 @@
+{
+  "command": [
+    "npx",
+    "playwright",
+    "test",
+    "--config",
+    "playwright.desktop.config.ts",
+    "tests/desktop/continuous-workspace.spec.ts",
+    "--reporter=list",
+    "--output=docs/verification/local-rebuild-0.1.17/test-results"
+  ],
+  "executablePath": "/Users/amos/project/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail",
+  "bundleVersion": "0.1.17",
+  "bundleIdentifier": "io.github.alovwang-sys.papertrail",
+  "exitCode": 0,
+  "elapsedSeconds": 13.55,
+  "exception": null,
+  "backupDirectory": "/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/papertrail-017-evidence-ho79_awu",
+  "records": [
+    {
+      "name": "desktop-resource-chat-1440.png",
+      "original": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-resource-chat-1440.png",
+      "originalSha256": "528ff791b37b47fdf6b4d2ef6d0396939e86b01a2323e586a2412a04fb9a63cf",
+      "existed": true,
+      "newSha256": "3d5bd5ea3d2e7af661f126badc0a4afdcaf3218b743e6c53c5df4e3c1e699eb0",
+      "restoredSha256": "528ff791b37b47fdf6b4d2ef6d0396939e86b01a2323e586a2412a04fb9a63cf",
+      "restoredExactly": true
+    },
+    {
+      "name": "desktop-resource-chat-1280.png",
+      "original": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-resource-chat-1280.png",
+      "originalSha256": "847f81681afeeb66995a9d8b41d8e7f5fc78f3ccbdaab866e95b7b552e8bee1a",
+      "existed": true,
+      "newSha256": "50e177f26f4b105ba05e20bb9daf78855f5d854e41694d46c677a7486f7f6c7d",
+      "restoredSha256": "847f81681afeeb66995a9d8b41d8e7f5fc78f3ccbdaab866e95b7b552e8bee1a",
+      "restoredExactly": true
+    },
+    {
+      "name": "desktop-resource-chat-1024.png",
+      "original": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-resource-chat-1024.png",
+      "originalSha256": "3c2107b2e000771961c5299bc7a242f43964c66b27e8504d975ccab80e93695d",
+      "existed": true,
+      "newSha256": "2f702afafeb1f2e2ae61212e7d9915e4b630d9e278ffb9996d1708d642893ce9",
+      "restoredSha256": "3c2107b2e000771961c5299bc7a242f43964c66b27e8504d975ccab80e93695d",
+      "restoredExactly": true
+    },
+    {
+      "name": "desktop-restarted-conversation.png",
+      "original": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-restarted-conversation.png",
+      "originalSha256": "7ac4839b32e63d3d766cc5b8be6514286b54afa716f1347661753a27d94bfba1",
+      "existed": true,
+      "newSha256": "08563c69316c36c747a772d83ca0c0a6915a8a6958d5e20af6ca274ea8b39469",
+      "restoredSha256": "7ac4839b32e63d3d766cc5b8be6514286b54afa716f1347661753a27d94bfba1",
+      "restoredExactly": true
+    },
+    {
+      "name": "desktop-source-activity-before-restart.png",
+      "original": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-source-activity-before-restart.png",
+      "originalSha256": "3200a169497224e6344e6e3deaf67af2b95a2ea43426e420c7ec1fd3428951ed",
+      "existed": true,
+      "newSha256": "69f34bca9a5a62118cba5a72f870dfc9d3281c471237ee301be2fd6676145459",
+      "restoredSha256": "3200a169497224e6344e6e3deaf67af2b95a2ea43426e420c7ec1fd3428951ed",
+      "restoredExactly": true
+    },
+    {
+      "name": "desktop-source-activity-after-restart.png",
+      "original": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-source-activity-after-restart.png",
+      "originalSha256": "dade2f43d84191f514b72ba1e190dfefcdc1d8fafddab7d27469b12d5b579d26",
+      "existed": true,
+      "newSha256": "1086c5e86189318306e0c8cdbc7279a17a83d67d99af724c835866eb254353ac",
+      "restoredSha256": "dade2f43d84191f514b72ba1e190dfefcdc1d8fafddab7d27469b12d5b579d26",
+      "restoredExactly": true
+    }
+  ],
+  "allOldEvidenceRestored": true,
+  "remainingFixtureDirectories": [],
+  "backupDirectoryRemoved": true,
+  "remainingPackagedAppProcesses": []
+}

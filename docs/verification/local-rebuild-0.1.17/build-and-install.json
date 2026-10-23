@@ -1,0 +1,36 @@
+{
+  "version": "0.1.17",
+  "arch": "arm64",
+  "sourceCommit": "bd539ec9a30a5c681cc29019be6b80ffae1a53f4",
+  "bundleId": "io.github.alovwang-sys.papertrail",
+  "installedPath": "/Applications/Papertrail.app",
+  "appAsarSha256": "29e3458db53253963d99ff3c3d7453c51341f096b5d7888341f1e5ef8cd3c21e",
+  "oldAppMovedToTrash": true,
+  "oldInstallersMovedToTrash": 2,
+  "userDataFilesPreserved": 109,
+  "userDataUnchangedBeforeLaunch": true,
+  "normalOldQuitConfirmed": true,
+  "artifacts": {
+    "out/make/dmg/arm64/Papertrail-0.1.17-macos-arm64.dmg": "9a5f708e4b911ace5e560e5abc3887e877d21c8f021541c3071764c14d0b1ae9",
+    "out/make/zip/darwin/arm64/Papertrail-darwin-arm64-0.1.17.zip": "4007d889ad347a13e16c10913ced565c3f72d177963948cee397f563690114b4"
+  },
+  "launched": true,
+  "runningProcessId": 47263,
+  "originalResourcesRestored": true,
+  "newDeletionControlsVisible": true,
+  "saveStatus": "saved",
+  "directoryFilesUpdated": true,
+  "encryptedModelSettingsUnchanged": true,
+  "leftRunning": true,
+  "verification": {
+    "packagedDesktop": {
+      "passed": 2,
+      "total": 2,
+      "exitCode": 0
+    },
+    "sourceTestsPreviouslyVerifiedAt": "bd539ec",
+    "unitPreviouslyPassed": 790,
+    "newBrowserPathsPreviouslyPassed": 5,
+    "existingWorkspacePathsPreviouslyPassed": 11
+  }
+}
