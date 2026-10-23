@@ -135,6 +135,13 @@ export function researchConversationLists(data: WorkspaceData, researchId: strin
   }
   return { main, discussions: [...groups.values()] };
 }
+export const EARLIER_AFTER_DAYS = 14;
+/** Research conversations idle for 14 days fold into "更早"; unknown activity counts as old. */
+export function splitByRecency(data: WorkspaceData, conversations: Conversation[], now = Date.now()) {
+  const cutoff = now - EARLIER_AFTER_DAYS * 86_400_000, recent: Conversation[] = [], earlier: Conversation[] = [];
+  for (const item of conversations) (Date.parse(activityAt(data, item)) >= cutoff ? recent : earlier).push(item);
+  return { recent, earlier };
+}
 /** Show a conversation in the chat host without moving the main area. */
 export function openDiscussion(researchId: string, conversationId: string) {
   workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });

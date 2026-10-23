@@ -129,11 +129,11 @@ async function cardOnlyBoard(page: Page) {
   return box;
 }
 const response = () => [{ type: 'delta', text: '受控绘图回答：条件检查应先核对输入，所画箭头不是已证实因果。' }, { type: 'done', model: 'controlled-drawing-e2e', nativeSessionId: 'controlled-drawing-session', readPages: [] }].map(event => JSON.stringify(event)).join('\n') + '\n';
-// The conversation list lives in the left sidebar; board and card threads sit under its "讨论" group.
+// The conversation list lives in the left sidebar; threads may sit under its folded "讨论" or "更早" groups.
 async function openConversation(page: Page, name: string) {
   const list = (await openResearchNavigation(page)).getByRole('region', { name: '研究会话列表', exact: true });
   const row = list.getByRole('button', { name, exact: true });
-  if (!await row.isVisible()) await list.getByText(/^讨论（/).click();
+  if (!await row.isVisible()) await list.locator('details').evaluateAll(groups => groups.forEach(group => { (group as HTMLDetailsElement).open = true; }));
   await row.click();
 }
 const conversationB = '打开会话：另一会话 B', boardThreadA = '打开讨论：证据与论证';

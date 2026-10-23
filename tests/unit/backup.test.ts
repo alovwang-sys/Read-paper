@@ -356,7 +356,7 @@ describe('完整工作区备份', () => {
   });
 
   it.each(['missing-document', 'missing-evidence', 'invalid-page', 'board-edge', 'cross-research', 'missing-card', 'history-region-hash'])('即使 ZIP 文件校验正确，仍拒绝损坏的引用：%s', async problem => {
-    const { data, assets } = await fixture();
+    const { data, assets } = await fixture(), before = structuredClone(data);
     const backup = await createWorkspaceBackup(data, assets);
     const broken = await editWorkspace(backup, value => {
       if (problem === 'missing-document') delete value.documents['paper-a'];
@@ -368,7 +368,7 @@ describe('完整工作区备份', () => {
       if (problem === 'history-region-hash') value.cards['card-a'].provenance = { researchId: 'research-a', conversationId: 'conversation-research-a', conversationTitle: '对话', requestId: 'old', prompt: '', answer: '', selection: '', createdAt: '', generationRequestIds: [], context: [{ evidenceId: 'old-region', documentId: 'paper-a', documentHash: value.documents['paper-a'].hash!, title: '旧来源', pageIndex: 1, quote: '', kind: 'region', region: { assetId: assets[0].id, hash: '0'.repeat(64), rect: { x: 0, y: 0, width: 0.5, height: 0.5 }, rotation: 0, width: 20, height: 20 } }] };
     });
     await expect(readWorkspaceBackup(broken)).rejects.toThrow(/备份/);
-    expect(data).toEqual((await fixture()).data);
+    expect(data).toEqual(before);
   });
 
   it('在解压前拒绝超限文件、伪造的巨大解包大小、重复路径和目录穿越', async () => {

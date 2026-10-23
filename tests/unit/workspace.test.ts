@@ -188,7 +188,10 @@ describe('工作台共享实体与会话', () => {
   it('首次工作区和恢复备份使用同一默认字段规范，导出再恢复不依赖是否曾打开 AI', async () => {
     vi.mocked(loadWorkspace).mockResolvedValue(undefined);
     await workspace.load();
-    expect(workspace.getState().data.conversations['conversation-research-a']).toMatchObject({ title: '阅读对话', historyRange: 'all', createdAt: new Date(0).toISOString() });
+    // The sample conversation is stamped when the sample is created, so it does not count as long idle.
+    const sample = workspace.getState().data.conversations['conversation-research-a'];
+    expect(sample).toMatchObject({ title: '阅读对话', historyRange: 'all' });
+    expect(Date.parse(sample.createdAt!)).toBeGreaterThan(0); expect(sample.updatedAt).toBe(sample.createdAt);
     expect(workspace.getSession().activeConversationId).toBe('conversation-research-a');
   });
   it('来源页索引不合法时拒绝建立证据', () => {

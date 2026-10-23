@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { chat, composer, inline, installControlledServices, main, ndjson, openSeedPaper, paperTitle, primaryId, readData, readDrawing, saved, screenshot, secondaryId, selectPassage, selectionMenu } from '../../docs/verification/continuous-workspace/harness';
+import { chat, composer, controlledSeed, inline, installControlledServices, main, ndjson, openSeedPaper, paperTitle, primaryId, readData, readDrawing, saved, screenshot, secondaryId, selectPassage, selectionMenu } from '../../docs/verification/continuous-workspace/harness';
 import { openResearchNavigation } from './knowledge-helpers';
 import { groups, layout, pane, panes, split } from './workspace-split-helpers';
 
@@ -59,6 +59,25 @@ test('侧边聊天可拖动分隔条调宽，宽度刷新后保留，主区不�
   await page.reload(); await expect(composer(page)).toBeVisible();
   expect(Math.round((await chat(page).boundingBox())!.width)).toBe(width);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('14 天没有活动的研究会话收进"更早"；打开后保持展开，搜索时平铺显示', async ({ page }) => {
+  const seed = controlledSeed(), old = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  seed.conversations['idle-old'] = { id: 'idle-old', researchId: 'research-a', title: '一个月前的旧会话', contextIds: [], requestIds: [], connectionId: 'codex', input: '旧会话的草稿', createdAt: old, updatedAt: old };
+  await installControlledServices(page, { seed });
+  await page.goto('/'); await openSeedPaper(page);
+  const list = (await openResearchNavigation(page)).getByRole('region', { name: '研究会话列表', exact: true });
+  const oldRow = list.getByRole('button', { name: '打开会话：一个月前的旧会话', exact: true }), earlier = list.getByText('更早（1）', { exact: true });
+  await expect(earlier).toBeVisible(); await expect(oldRow).toBeHidden();
+  await expect(list.getByRole('button', { name: '打开会话：条件比较 A', exact: true })).toBeVisible();
+  await expect(list.getByRole('button', { name: '打开会话：补查证据 B', exact: true })).toBeVisible();
+  await screenshot(page, 'earlier-folded-1440.png');
+  await earlier.click(); await oldRow.click();
+  await expect(composer(page)).toHaveValue('旧会话的草稿');
+  await saved(page); await page.reload(); await openSeedPaper(page);
+  await expect(oldRow).toBeVisible();
+  await list.getByRole('textbox', { name: '搜索会话', exact: true }).fill('会话');
+  await expect(list.getByText(/^更早（/)).toHaveCount(0); await expect(oldRow).toBeVisible();
 });
 
 test('同一会话侧边、浮窗、完整显示连续移动；资源分屏、请求和草稿不复制', async ({ page }) => {

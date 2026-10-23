@@ -163,10 +163,10 @@
 .research-agent-history .research-agent-conversation-item[aria-current="true"] { background: #e6eee1; }
 .research-agent-history .research-agent-conversation-item:hover { background: #edf3e8; }
 .research-agent-history .research-agent-conversation-item-title { display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; color: #71816a; font-size: 12px; line-height: 1.5; }
-.research-discussions { margin-top: 6px; }
-.research-discussions > summary { cursor: pointer; padding: 6px 9px; font-size: 11px; color: #95a08e; }
-.research-discussions > summary:hover { color: #6b7d62; }
-.research-discussions > .research-agent-conversation-list { max-height: 240px; overflow-y: auto; margin-top: 0; }
+.research-fold { margin-top: 6px; }
+.research-fold > summary { cursor: pointer; padding: 6px 9px; font-size: 11px; color: #95a08e; }
+.research-fold > summary:hover { color: #6b7d62; }
+.research-fold > .research-agent-conversation-list { max-height: 240px; overflow-y: auto; margin-top: 0; }
 .research-discussion-group { padding: 6px 9px 2px; font-size: 10px; color: #a5ae9c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .conversation-status-dot { width: 5px; height: 5px; flex: none; border-radius: 50%; background: #bfcab8; }
 .research-agent-conversation-item[aria-current="true"] .conversation-status-dot { background: #6b8b5d; }

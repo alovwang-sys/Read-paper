@@ -13,6 +13,8 @@ export function emptySession(active: Session['active']): Session {
 }
 
 export function createSeed(): WorkspaceData {
+  // Sample conversations start when the sample is created, so they are not treated as long idle.
+  const now = new Date().toISOString();
   return {
     schemaVersion: 3,
     cardDrafts: {},
@@ -206,12 +208,16 @@ export function createSeed(): WorkspaceData {
         researchId: 'research-a',
         contextIds: [],
         requestIds: [],
+        createdAt: now,
+        updatedAt: now,
       },
       'conversation-research-b': {
         id: 'conversation-research-b',
         researchId: 'research-b',
         contextIds: [],
         requestIds: [],
+        createdAt: now,
+        updatedAt: now,
       },
     },
     requests: {},

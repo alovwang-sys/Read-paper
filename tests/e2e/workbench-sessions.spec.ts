@@ -67,7 +67,10 @@ async function openList(page: Page) {
 }
 async function openConversation(page: Page, title: string) {
   await openList(page);
-  await list(page).getByRole('button', { name: `打开会话：${title}`, exact: true }).click();
+  const row = list(page).getByRole('button', { name: `打开会话：${title}`, exact: true });
+  // Fixed seed dates eventually fall under "更早"; open folded groups instead of depending on today's date.
+  if (!await row.isVisible()) await list(page).locator('details').evaluateAll(groups => groups.forEach(group => { (group as HTMLDetailsElement).open = true; }));
+  await row.click();
   await expect(input(page)).toBeVisible();
 }
 async function flush(page: Page) { await page.evaluate(async () => { const path = performance.getEntriesByType('resource').map(entry => entry.name).find(name => new URL(name).pathname === '/src/services/workspace.ts') ?? '/src/services/workspace.ts'; await (await import(path)).workspace.flushSave(); }); }

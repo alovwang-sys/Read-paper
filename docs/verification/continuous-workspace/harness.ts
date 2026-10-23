@@ -27,8 +27,9 @@ export function controlledSeed() {
   session.activeConversationId = primaryId;
   session.agentChat = { mode: 'side' };
   seed.conversations[primaryId] = { ...seed.conversations[primaryId], title: '条件比较 A', connectionId: 'codex', input: '' };
+  const now = new Date().toISOString();
   seed.conversations[secondaryId] = { id: secondaryId, researchId: 'research-a', title: '补查证据 B',
-    contextIds: [], requestIds: [], connectionId: 'codex', input: '另一个会话的私有草稿' };
+    contextIds: [], requestIds: [], connectionId: 'codex', input: '另一个会话的私有草稿', createdAt: now, updatedAt: now };
   return seed;
 }
 
