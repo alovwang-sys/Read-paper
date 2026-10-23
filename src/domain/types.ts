@@ -591,6 +591,8 @@ export type Conversation = {
   inlineSource?: { documentId: string; pageIndex: number; evidenceId: string; draftId?: string; promoted?: boolean; operation?: ReaderOperation };
   paperBrief?: PaperBriefSnapshot;
   boardSkill?: { boardId: string; scope: 'board' | 'research'; allowNewCards?: boolean };
+  /** The card or board this thread discusses; asking from it again continues here. */
+  anchor?: { kind: 'card' | 'board'; id: string };
   boardSuggestionRequestId?: string;
   boardSuggestionDismissed?: boolean;
 };

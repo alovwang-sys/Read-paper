@@ -2,7 +2,7 @@ import type { DrawingSnapshot } from '../domain/types';
 import { drawingSnapshotContent, hasDrawingText, validateDrawingPng, validateDrawingQuestion } from '../domain/drawing-question';
 import { contentHash, getAsset, putAsset } from '../data/storage';
 import { getActiveConversation, uid, workspace } from './workspace';
-import { isResearchConversation } from './research-agent';
+import { createResearchConversation, isResearchConversation } from './research-agent';
 
 export { hasDrawingText };
 
@@ -19,6 +19,24 @@ export async function loadDrawingImage(snapshot: DrawingSnapshot) {
   validateDrawingPng(bytes, snapshot.image);
   if (await contentHash(bytes) !== snapshot.image.hash) throw new Error('绘图图片校验失败，未发送。');
   return new Blob([bytes], { type: 'image/png' });
+}
+
+/** One click lands in a thread: a single selected card continues that card's thread, anything else the board's. */
+export function openDrawingConversation(researchId: string, boardId: string, selection: { placementIds: string[]; elementIds: string[] }) {
+  const data = workspace.getState().data;
+  const ref = selection.elementIds.length === 1 && selection.placementIds.length === 1 ? data.placements[selection.placementIds[0]]?.resourceRef : undefined;
+  const anchor = ref?.kind === 'card' && data.cards[ref.id] ? { kind: 'card' as const, id: ref.id } : { kind: 'board' as const, id: boardId };
+  const existing = Object.values(data.conversations)
+    .filter(item => item.researchId === researchId && !item.archived && item.anchor?.kind === anchor.kind && item.anchor.id === anchor.id && isResearchConversation(data, item))
+    .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))[0];
+  const id = existing?.id ?? createResearchConversation(researchId, undefined, { navigate: false });
+  if (existing) workspace.selectConversation(researchId, id, { surface: 'workbench' });
+  workspace.updateData(next => {
+    if (!existing) Object.assign(next.conversations[id], { anchor, title: anchor.kind === 'card' ? `卡片：${next.cards[anchor.id].title}` : `白板：${next.boards[boardId].title}` });
+    const session = next.sessions[researchId];
+    if (session.agentChat?.mode !== 'float') session.agentChat = { ...session.agentChat, mode: 'side' };
+  });
+  return id;
 }
 
 export async function attachDrawingQuestion(researchId: string, boardId: string, capture: {
@@ -54,7 +72,7 @@ export async function attachDrawingQuestion(researchId: string, boardId: string,
     owner.drawingQuestion = { snapshot, mode: 'image' };
     delete owner.researchFocus;
   });
-  workspace.notice('已附到当前会话，可在底部输入问题；未追加论文原文。');
+  workspace.notice(`已附到「${workspace.getState().data.conversations[conversation.id].title ?? '当前会话'}」，直接输入问题即可；未追加论文原文。`);
 }
 
 export function removeDrawingQuestion(researchId: string) {

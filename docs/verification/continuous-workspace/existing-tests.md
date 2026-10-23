@@ -16,3 +16,5 @@
 经典工作台及 `tests/desktop/helpers.ts` 仍可用于专门验证旧面板路径；不应把所有新界面测试切回经典模式来绕过连续工作区验收。
 
 除明确记载已迁移和执行的项目外，以上为静态入口审计，未声称所有旧脚本已经重跑通过。新增独立验收已经走真实新界面。
+
+2026-10-23 补记：`drawing-question.spec.ts` 已按上表迁移（左侧列表选会话，不再关闭右面板），原断言全部保留；会话 A 预置为白板讨论（`anchor`），以配合新的问 Agent 归属规则（见[会话归属](../../agent-native-evolution/conversation-redesign/conversation-model.md)）。新增单卡片一键进入用例，实际运行 6/6 通过。`continuous-workspace.spec.ts` 新增侧边聊天拖宽用例，10/10 通过。

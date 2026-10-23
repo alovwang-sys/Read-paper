@@ -22,8 +22,8 @@ import {
   stageBoardDrawing,
   subscribeDrawingSaves,
 } from '../../services/drawing-storage';
-import { getActiveConversation, resourceExists, resourceTitle, uid, useWorkspace } from '../../services/workspace';
-import { attachDrawingQuestion } from '../../services/drawing-question';
+import { resourceExists, resourceTitle, uid, useWorkspace } from '../../services/workspace';
+import { attachDrawingQuestion, openDrawingConversation } from '../../services/drawing-question';
 import { BoardQuestionDialog, type DrawingQuestionSource } from './BoardQuestionDialog';
 import { BoardResearchActions } from './BoardResearchActions';
 import { drawingResearchSelection } from './board-research-selection';
@@ -426,9 +426,7 @@ export default function BoardDrawing({ boardId, onViewport }: { boardId: string;
       const current = actions.getState().data;
       const currentBoard = current.boards[boardId];
       if (!currentBoard) throw new Error('白板已不存在，请重新打开。');
-      const conversation = getActiveConversation(current, currentBoard.researchId);
-      if (!conversation) throw new Error('请先在当前研究中新建会话，再选择绘图问 Agent。');
-      const conversationId = conversation.id;
+      const conversationId = openDrawingConversation(currentBoard.researchId, boardId, researchSelection);
       const workspaceGeneration = actions.getGeneration();
       const capture = await captureDrawingQuestion(
         editor.getSceneElements(), editor.getAppState(), editor.getFiles(),
@@ -437,6 +435,7 @@ export default function BoardDrawing({ boardId, onViewport }: { boardId: string;
       await attachDrawingQuestion(currentBoard.researchId, boardId, {
         ...capture, conversationId, generation: workspaceGeneration,
       });
+      requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.research-conversation-host .research-agent-input')?.focus());
     } catch (problem) {
       setDrawingQuestionError(problem instanceof Error ? problem.message : '选区图片准备失败，请重试。');
     } finally { setDrawingQuestionBusy(false); }
@@ -518,7 +517,7 @@ export default function BoardDrawing({ boardId, onViewport }: { boardId: string;
     </div>
     {data.agentWorkbench !== false && researchSelection.elementIds.length > 0 ? <div className="drawing-local-research drawing-agent-action" style={{ left: researchSelection.left, top: researchSelection.top }} onPointerDown={event => event.stopPropagation()}>
       <button className="button" disabled={drawingQuestionBusy} onClick={() => void askDrawing()}><MessageCircle size={14} />{drawingQuestionBusy ? '正在准备选区…' : '问 Agent'}</button>
-      <small>{researchSelection.elementIds.length} 个所选元素 · 发送前可预览</small>
+      <small>{researchSelection.elementIds.length === 1 && researchSelection.placementIds.length === 1 ? '进入这张卡片的讨论' : `${researchSelection.elementIds.length} 个元素 · 进入本白板讨论`}</small>
     </div> : data.agentWorkbench === false && (researchSelection.placementIds.length > 0 || researchSelection.texts.length > 0) && <div className="drawing-local-research" style={{ left: researchSelection.left, top: researchSelection.top }} onPointerDown={event => event.stopPropagation()}>
       {researchSelection.placementIds.length > 0 && <BoardResearchActions boardId={boardId} placementIds={researchSelection.placementIds} />}
       {researchSelection.texts.length > 0 && <button className="button" onClick={() => {
