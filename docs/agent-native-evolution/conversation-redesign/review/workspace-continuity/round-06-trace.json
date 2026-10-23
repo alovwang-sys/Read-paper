@@ -1,0 +1,388 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01Q7zKdymCNkx3Yhw61fVBLV",
+        "fileName": "screenshot-01.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01Q7zKdymCNkx3Yhw61fVBLV",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01PjD3px36KG6mFrxE1RUP9U",
+        "fileName": "screenshot-02.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01PjD3px36KG6mFrxE1RUP9U",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01QgUZ19oW8XAyQEDzQnGy3h",
+        "fileName": "screenshot-03.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01QgUZ19oW8XAyQEDzQnGy3h",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01XtbcpiQm6x412NGs2J4qun",
+        "fileName": "screenshot-04.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01XtbcpiQm6x412NGs2J4qun",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01VMdPQt1J9kSDt8xgxSfzZf",
+        "fileName": "screenshot-05.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01VMdPQt1J9kSDt8xgxSfzZf",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_018Tewqtj2wt1Kz9NBh66TLi",
+        "fileName": "screenshot-06.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_018Tewqtj2wt1Kz9NBh66TLi",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "rate_limit_event",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "text"
+    ]
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "blockTypes": [],
+    "is_error": false,
+    "num_turns": 7,
+    "duration_ms": 68356
+  }
+]

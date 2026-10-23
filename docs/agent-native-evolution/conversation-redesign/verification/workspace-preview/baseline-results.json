@@ -1,0 +1,116 @@
+{
+  "date": "2026-10-23T03:50:12.128Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html",
+  "scope": "隔离布局预览；回答为定时合成，PDF与分屏为示意；Excalidraw为真实本地编辑实例",
+  "checks": [
+    {
+      "name": "三尺寸：唯一输入、权限/语音/发送命中、无页面横向溢出",
+      "pass": true
+    },
+    {
+      "name": "研究资料A/全局A+B，浏览不关联，显式加入后本研究可见",
+      "pass": true
+    },
+    {
+      "name": "权限反映Codex研究工具/Claude文字问答，无假三档选项",
+      "pass": true
+    },
+    {
+      "name": "语音示例仅追加草稿，不自动发送或切换资源",
+      "pass": true
+    },
+    {
+      "name": "侧边/浮窗/主聊天移位保同会话草稿，连续键入保持焦点",
+      "pass": true
+    },
+    {
+      "name": "资源旁发送不跳页，回答留侧边，已发输入清空",
+      "pass": true
+    },
+    {
+      "name": "PDF问这段建立具名局部会话，侧边继续保持同会话",
+      "pass": true
+    },
+    {
+      "name": "关闭进行中浮窗不停止，完成后列表未读，不抢当前资源",
+      "pass": true
+    },
+    {
+      "name": "双页独立页码，1024主动放大/恢复保持各页位置",
+      "pass": true
+    },
+    {
+      "name": "原生画布绘制矩形→问所选→局部PNG快照，改选不扩大材料",
+      "pass": true
+    },
+    {
+      "name": "Claude含图阻止示例发送，保留草稿与材料",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "blockedRequests": [],
+  "screenshots": [
+    "workspace-1440x900.png",
+    "workspace-1024x800.png",
+    "global-library.png",
+    "pdf-side-answer.png",
+    "pdf-local-float.png",
+    "closed-float-unread.png",
+    "split-1024-maximized.png",
+    "board-selection-snapshot.png"
+  ],
+  "measurements": {
+    "1440x900": {
+      "main": {
+        "x": 224,
+        "y": 0,
+        "width": 856,
+        "height": 900
+      },
+      "chat": {
+        "x": 1080,
+        "y": 0,
+        "width": 360,
+        "height": 900
+      }
+    },
+    "1280x800": {
+      "main": {
+        "x": 208,
+        "y": 0,
+        "width": 712,
+        "height": 800
+      },
+      "chat": {
+        "x": 920,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "1024x800": {
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 664,
+        "height": 800
+      },
+      "chat": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "boardSelection": {
+      "width": 262,
+      "height": 160
+    }
+  },
+  "summary": {
+    "total": 11,
+    "passed": 11,
+    "failed": 0
+  }
+}

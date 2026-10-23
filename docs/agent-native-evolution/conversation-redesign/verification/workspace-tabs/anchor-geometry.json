@@ -1,0 +1,16 @@
+{
+  "mode": "chat chat-float",
+  "mark": {
+    "x": 531,
+    "y": 324.734375,
+    "width": 501.09375,
+    "height": 20
+  },
+  "chat": {
+    "x": 1046.09375,
+    "y": 324.734375,
+    "width": 360,
+    "height": 420
+  },
+  "overlap": false
+}

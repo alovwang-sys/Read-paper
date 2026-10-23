@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-23T04:24:31.410Z",
+  "checks": [
+    {
+      "name": "组内鼠标拖拽排序，标签稳定且不关闭页面",
+      "pass": true
+    },
+    {
+      "name": "拖到右边缘有落点预览，创建独立PDF分屏",
+      "pass": true
+    },
+    {
+      "name": "双PDF页码独立；跨组移动不重置view；关闭空组收回布局",
+      "pass": true
+    },
+    {
+      "name": "拖到左边缘创建左侧组，白板只有一个编辑实例",
+      "pass": true
+    },
+    {
+      "name": "普通打开只影响当前组；同一对话输入跨侧栏/浮窗/主区保留",
+      "pass": true
+    },
+    {
+      "name": "1440/1280/1024双组页面无文档溢出，标签/聊天可点击",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "screenshots": [
+    "01-reordered-tabs.png",
+    "drag-preview.png",
+    "02-browser-split.png",
+    "03-close-recycles-group.png",
+    "04-left-board-group.png",
+    "split-1440x900.png",
+    "split-1280x800.png",
+    "split-1024x800.png"
+  ],
+  "scope": "隔离交互原型；鼠标真实拖拽，不合成 drop 事件。两组标签示例，未修改正式应用。"
+}

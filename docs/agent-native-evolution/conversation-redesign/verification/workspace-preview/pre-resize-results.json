@@ -1,0 +1,176 @@
+{
+  "date": "2026-10-23T04:07:07.826Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html",
+  "scope": "隔离布局预览；回答为定时合成，PDF与分屏为示意；Excalidraw为真实本地编辑实例",
+  "checks": [
+    {
+      "name": "三尺寸：唯一输入、权限/语音/发送命中、无页面横向溢出",
+      "pass": true
+    },
+    {
+      "name": "研究资料A/全局A+B，浏览不关联，显式加入后本研究可见",
+      "pass": true
+    },
+    {
+      "name": "权限反映Codex研究工具/Claude文字问答，无假三档选项",
+      "pass": true
+    },
+    {
+      "name": "语音示例仅追加草稿，不自动发送或切换资源",
+      "pass": true
+    },
+    {
+      "name": "侧边/浮窗/主聊天移位保同会话草稿，连续键入保持焦点",
+      "pass": true
+    },
+    {
+      "name": "资源旁发送不跳页，回答留侧边，已发输入清空",
+      "pass": true
+    },
+    {
+      "name": "PDF问这段建立具名局部会话，侧边继续保持同会话",
+      "pass": true
+    },
+    {
+      "name": "关闭进行中浮窗不停止，完成后列表未读，不抢当前资源",
+      "pass": true
+    },
+    {
+      "name": "双页独立页码，1024主动放大/恢复保持各页位置",
+      "pass": true
+    },
+    {
+      "name": "原生画布绘制矩形→问所选→局部PNG快照，改选不扩大材料",
+      "pass": true
+    },
+    {
+      "name": "Claude含图阻止示例发送，保留草稿与材料",
+      "pass": true
+    },
+    {
+      "name": "会话菜单可搜索，所有聊天host可打开，新建保资源/host且只有一处输入",
+      "pass": true
+    },
+    {
+      "name": "菜单A/B切换各自恢复草稿，新会话为空且原稿/旧消息保留",
+      "pass": true
+    },
+    {
+      "name": "选区携带可取消，启用复制快照并去重，不搬运旧消息",
+      "pass": true
+    },
+    {
+      "name": "在途A通过菜单切B，迟到回答只归A且不覆盖B草稿",
+      "pass": true
+    },
+    {
+      "name": "推荐阈值/同研究过滤/材料去重键断言，实际相关菜单最多3条且不自动切换",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "blockedRequests": [],
+  "screenshots": [
+    "workspace-1440x900.png",
+    "workspace-1024x800.png",
+    "global-library.png",
+    "pdf-side-answer.png",
+    "pdf-local-float.png",
+    "closed-float-unread.png",
+    "split-1024-maximized.png",
+    "board-selection-snapshot.png",
+    "conversation-picker-related.png"
+  ],
+  "measurements": {
+    "1440x900": {
+      "main": {
+        "x": 224,
+        "y": 0,
+        "width": 856,
+        "height": 900
+      },
+      "chat": {
+        "x": 1080,
+        "y": 0,
+        "width": 360,
+        "height": 900
+      }
+    },
+    "1280x800": {
+      "main": {
+        "x": 208,
+        "y": 0,
+        "width": 712,
+        "height": 800
+      },
+      "chat": {
+        "x": 920,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "1024x800": {
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 664,
+        "height": 800
+      },
+      "chat": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "1157pxSplit": [
+      398.5,
+      398.5
+    ],
+    "boardSelection": {
+      "width": 262,
+      "height": 160
+    },
+    "recommendations": {
+      "rows": [
+        {
+          "id": 2,
+          "related": true
+        },
+        {
+          "id": 4,
+          "related": true
+        },
+        {
+          "id": 3,
+          "related": false
+        }
+      ],
+      "sameKey": true,
+      "changedTextDiffers": true
+    }
+  },
+  "sourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "8e02b94ad8e72411574cf278b12077dc3458c93f9e2c593b148eb8874d50fc40",
+    "workspace-preview.css": "a6dff5468b408320e7455b743b8935d19020d79ed28e881349e38653348f16de",
+    "workspace-preview-board.jsx": "d9947c868f0e2a28eddd6bc8ad98272fae06002d6b6bd16c4a469b5561fcfadc",
+    "workspace-preview-board.css": "c1d50ea8b6e995760253c7a66789bd8067dd4753af678c2a75fb22822b79c3b6",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41"
+  },
+  "summary": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0
+  },
+  "endSourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "8e02b94ad8e72411574cf278b12077dc3458c93f9e2c593b148eb8874d50fc40",
+    "workspace-preview.css": "a6dff5468b408320e7455b743b8935d19020d79ed28e881349e38653348f16de",
+    "workspace-preview-board.jsx": "d9947c868f0e2a28eddd6bc8ad98272fae06002d6b6bd16c4a469b5561fcfadc",
+    "workspace-preview-board.css": "c1d50ea8b6e995760253c7a66789bd8067dd4753af678c2a75fb22822b79c3b6",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41"
+  },
+  "sourceStable": true
+}
