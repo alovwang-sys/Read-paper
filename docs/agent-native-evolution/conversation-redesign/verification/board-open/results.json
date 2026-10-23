@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-23T03:03:34.455Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/prototype.html",
+  "scope": "白板交互原型：合成卡片、内存保存、固定示例回答；不验证生产 Excalidraw、真实 AI 或磁盘持久化。",
+  "checks": [
+    {
+      "name": "1440×900：白板打开为关系画布，卡片正文可打开，画布不撑破页面",
+      "pass": true
+    },
+    {
+      "name": "1280×800：白板打开为关系画布，卡片正文可打开，画布不撑破页面",
+      "pass": true
+    },
+    {
+      "name": "1024×800：白板打开为关系画布，卡片正文可打开，画布不撑破页面",
+      "pass": true
+    },
+    {
+      "name": "打开正文编辑，返回白板再打开保留编辑内容",
+      "pass": true
+    },
+    {
+      "name": "卡片拖动改变连线，打开正文与会话往返均保留位置",
+      "pass": true
+    },
+    {
+      "name": "独立加入提问带正文快照，后续修改卡片不会悄悄更换已选上下文",
+      "pass": true
+    }
+  ],
+  "screenshots": [
+    "board-1440x900.png",
+    "board-1280x800.png",
+    "board-1024x800.png",
+    "card-open-edited.png",
+    "board-after-drag-chat-return.png",
+    "card-context-snapshot-in-chat.png"
+  ],
+  "errors": [],
+  "nonLocalRequests": [],
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  }
+}

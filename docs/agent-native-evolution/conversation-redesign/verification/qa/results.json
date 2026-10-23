@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-23T02:17:08.481Z",
+  "date": "2026-10-23T03:03:14.182Z",
   "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/prototype.html",
   "scope": "本地静态交互原型；合成回答，不调用真实模型",
   "checks": [
