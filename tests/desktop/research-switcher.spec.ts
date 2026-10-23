@@ -49,7 +49,7 @@ async function fixture() {
       const page = await application.firstWindow();
       page.on('pageerror', error => pageErrors.push(error.message));
       await page.setViewportSize({ width: 1440, height: 900 });
-      await expect(main(page)).toBeVisible();
+      await expect(page.getByRole('region', { name: '当前会话', exact: true })).toBeVisible();
       await expect(page.locator('.app-shell.agent-workbench')).toBeVisible();
       await expect(composer(page)).toBeVisible();
       await saved(page);

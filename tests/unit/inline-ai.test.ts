@@ -83,7 +83,7 @@ describe('原文旁问答', () => {
       expect(request.context.map(item => item.quote)).toEqual([source.quote]);
       finish = () => resolve({ body: '原选区的解释 [1]', evidenceIds: [request.context[0].evidenceId] });
     });
-    const running = submitAI('research-a', id, '原问题', responder);
+    const running = submitAI('research-a', id, '原问题', responder, { paperBrief: 'none' });
     await vi.waitFor(() => expect(finish).toBeDefined());
     const second = createInlineConversation('research-a', { ...source, quote: 'A separate selected passage.' });
     workspace.switchResearch('research-b');
@@ -98,7 +98,7 @@ describe('原文旁问答', () => {
   it('就地编辑并确认存卡保留双来源，连点不重复，不抢占右侧', async () => {
     const before = structuredClone(state().sessions['research-a'].panel);
     const id = createInlineConversation('research-a', source);
-    const requestId = await submitAI('research-a', id, '解释术语', async request => ({ body: '可以编辑的解释 [1]', evidenceIds: [request.context[0].evidenceId] }));
+    const requestId = await submitAI('research-a', id, '解释术语', async request => ({ body: '可以编辑的解释 [1]', evidenceIds: [request.context[0].evidenceId] }), { paperBrief: 'none' });
     const draftId = createInlineCardDraft(requestId);
     expect(createInlineCardDraft(requestId)).toBe(draftId);
     expect(state().conversations[id].inlineSource?.draftId).toBe(draftId);

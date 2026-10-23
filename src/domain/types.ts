@@ -87,7 +87,41 @@ export type PaperDocument = {
   updatedAt?: string;
   readingStatus: 'unread' | 'reading' | 'skimmed' | 'read';
   textStatus: 'pending' | 'ready' | 'empty' | 'error';
+  paperBrief?: PaperBrief;
   discovery?: LiteratureCandidate;
+};
+export type TextSourceAnchor = { start: number; end: number; prefix?: string; suffix?: string };
+export type PaperBrief = {
+  key: string;
+  documentId: string;
+  documentHash: string;
+  version: number;
+  schema: 1;
+  extractionVersion: string;
+  status: 'preparing' | 'ready' | 'error';
+  body: string;
+  pageIndices: number[];
+  totalPages: number;
+  truncatedPageIndices: number[];
+  createdAt: string;
+  connectionId: AIConnectionId;
+  model?: string;
+  error?: string;
+};
+export type PaperBriefSnapshot = Omit<PaperBrief, 'status' | 'error'>;
+export type ReaderOperation = 'question' | 'translation' | 'summary';
+export type ReaderManualAction = { id: string; kind: 'excerpt' | 'highlight' | 'card'; createdAt: string; refId?: string };
+export type ReaderActivity = {
+  id: string;
+  kind: ReaderOperation | ReaderManualAction['kind'];
+  createdAt: string;
+  status: AIRequest['status'] | 'draft';
+  conversationId?: string;
+  requestId?: string;
+  draftId?: string;
+  cardId?: string;
+  body?: string;
+  error?: string;
 };
 export type Evidence = {
   contextOnly?: boolean;
@@ -103,6 +137,8 @@ export type Evidence = {
   printedPage?: string;
   kind?: 'text' | 'region';
   region?: RegionSource;
+  textAnchor?: TextSourceAnchor;
+  readerActions?: ReaderManualAction[];
 };
 export type RegionSource = {
   assetId: string;
@@ -251,6 +287,7 @@ export type ResourceAnchor = {
   citationNumber?: number;
 };
 export type Session = {
+  agentChat?: { mode: 'main' | 'side' | 'float' | 'closed'; rect?: { left: number; top: number; width: number; height: number } };
   documentInfoId?: string;
   sourcePreview?: { candidate: SourceCandidate; discovery?: SourceDiscovery };
   active: WorkspaceViewRef;
@@ -503,6 +540,10 @@ export type AIRequest = {
   boardProposal?: BoardPlan;
   boardApplyError?: string;
   materials?: ResearchMaterial[];
+  readerOperation?: ReaderOperation;
+  readerEvidenceId?: string;
+  paperBrief?: PaperBriefSnapshot;
+  paperBriefState?: 'preparing' | 'selection-only' | 'error';
   boardResearch?: BoardResearchOrigin & { focus: ResourceRef[] };
   researchRun?: {
     chatImages?: ChatImageAttachment[];
@@ -547,7 +588,8 @@ export type Conversation = {
   sentContext?: ContextSnapshot[];
   skills?: AgentSkill[];
   codex?: CodexSettings;
-  inlineSource?: { documentId: string; pageIndex: number; evidenceId: string; draftId?: string; promoted?: boolean };
+  inlineSource?: { documentId: string; pageIndex: number; evidenceId: string; draftId?: string; promoted?: boolean; operation?: ReaderOperation };
+  paperBrief?: PaperBriefSnapshot;
   boardSkill?: { boardId: string; scope: 'board' | 'research'; allowNewCards?: boolean };
   boardSuggestionRequestId?: string;
   boardSuggestionDismissed?: boolean;

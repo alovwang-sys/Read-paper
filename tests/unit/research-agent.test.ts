@@ -131,7 +131,8 @@ describe('通用图片聊天请求与草稿隔离', () => {
     const image = await prepareImage();
     focusResearchResource(researchId, { kind: 'card', id: 'card-a' }); expect(state().conversations[conversationId].chatImages).toEqual([image]);
     clearResearchFocus(researchId);
-    const newId = changeResearchAgent(researchId, 'claude'); expect(newId).not.toBe(conversationId); expect(state().conversations[conversationId].chatImages).toEqual([image]);
+    const newId = changeResearchAgent(researchId, 'claude'); expect(newId).toBe(conversationId); expect(state().conversations[conversationId].chatImages).toEqual([image]);
+    changeResearchAgent(researchId, 'codex');
     workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });
     vi.mocked(getAsset).mockResolvedValue(undefined); const fetcher = imageRun(); vi.stubGlobal('fetch', fetcher);
     const id = await submitResearchRun(researchId, ''); expect(state().requests[id].error).toContain('已缺失'); expect(fetcher).toHaveBeenCalledTimes(1); expect(state().conversations[conversationId].chatImages).toEqual([image]);
@@ -411,14 +412,14 @@ describe('多会话导航与上下文隔离', () => {
     expect(state().conversations[fresh].input).toBe('B的未发送文字');
     expect(state().conversations[fresh].researchFocus).toBeUndefined();
   });
-  it('换助手对已有话题新开会话，不跳入同供应商的旧话题或复制输入和目标', () => {
+  it('普通研究话题换助手保留同一会话与草稿，不跳入同供应商旧话题', () => {
     const old = createResearchConversation(researchId, 'claude');
     workspace.updateData(data => { data.conversations[old].input = '旧Claude话题'; });
     openResearchConversation(researchId, conversationId);
     const next = changeResearchAgent(researchId, 'claude');
-    expect(next).not.toBe(old); expect(next).not.toBe(conversationId);
+    expect(next).not.toBe(old); expect(next).toBe(conversationId);
     expect(state().conversations[next].connectionId).toBe('claude');
-    expect(state().conversations[next].input).toBe('');
+    expect(state().conversations[next].input).toBe('整理研究资料');
     expect(state().conversations[old].input).toBe('旧Claude话题');
     expect(state().conversations[conversationId].input).toBe('整理研究资料');
   });

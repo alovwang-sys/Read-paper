@@ -1,15 +1,17 @@
-import type { Conversation, Evidence, RegionSource } from '../domain/types';
+import { validateTextAnchor } from '../domain/reader-context';
+import type { AIConnectionId, Conversation, Evidence, ReaderOperation, RegionSource, TextSourceAnchor } from '../domain/types';
 import { hasFullText } from '../domain/knowledge';
-import { codexSupportsImages, conversationConnection, getCodexCapabilities } from './agents';
+import { codexSupportsImages, conversationConnection, getAgents, getCodexCapabilities } from './agents';
 import { createCardDraftFromAnswer, getAIConfig, type AIConfig } from './ai';
 import { getActiveConversation, uid, workspace } from './workspace';
 
-export type InlineAISelection = { documentId: string; pageIndex: number; quote: string; kind?: 'text' | 'region'; region?: RegionSource };
+export type InlineAISelection = { documentId: string; pageIndex: number; quote: string; kind?: 'text' | 'region'; region?: RegionSource; textAnchor?: TextSourceAnchor };
+type InlineOptions = { operation?: ReaderOperation; forceNew?: boolean };
 
-function inlineConnection(researchId: string): 'model' | 'demo' | 'codex' {
+function inlineConnection(researchId: string): AIConnectionId {
   const conversation = getActiveConversation(workspace.getState().data, researchId);
   const connection = conversation && conversationConnection(conversation);
-  return connection === 'demo' || connection === 'codex' ? connection : 'model';
+  return connection ?? 'model';
 }
 
 export async function inlineAIConfig(researchId: string, conversationId?: string): Promise<AIConfig> {
@@ -22,6 +24,12 @@ export async function inlineAIConfig(researchId: string, conversationId?: string
     const model = conversation && conversation.codex?.model;
     return { configured: true, model: model || capabilities.models.find(model => model.isDefault)?.id || capabilities.models[0]?.id || 'Codex', provider: 'Codex', images: codexSupportsImages(capabilities, model), mode: 'live', limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } };
   }
+  if (connection === 'claude' || connection === 'opencode') {
+    if (!workspace.getState().data.researches[researchId]?.directory) throw new Error('请先在项目设置中关联研究目录。');
+    const agent = (await getAgents()).find(item => item.id === connection);
+    if (agent?.state !== 'ready') throw new Error(agent?.detail || '当前助手尚未连接，请在设置中检查。');
+    return { configured: true, model: agent.name, provider: agent.name, images: agent.capabilities.images, mode: 'live', limits: { maxInputChars: 120000, maxImages: 4, maxImageBytes: 8388608 } };
+  }
   const config = await getAIConfig();
   if (!config.configured) throw new Error('请先在设置中配置模型连接；原文旁提问不需要安装本机 CLI。');
   return config;
@@ -31,24 +39,26 @@ function matchesSelection(evidence: Evidence, selection: InlineAISelection) {
   return evidence.documentId === selection.documentId && evidence.pageIndex === selection.pageIndex
     && (selection.kind === 'region' ? evidence.kind === 'region' && evidence.region?.hash === selection.region?.hash
       && evidence.region?.rotation === selection.region?.rotation && JSON.stringify(evidence.region?.rect) === JSON.stringify(selection.region?.rect)
-      : evidence.kind !== 'region' && evidence.quote === selection.quote.trim());
+      : evidence.kind !== 'region' && evidence.quote === selection.quote.trim()
+        && (selection.textAnchor ? evidence.textAnchor?.start === selection.textAnchor.start && evidence.textAnchor?.end === selection.textAnchor.end : !evidence.textAnchor));
 }
 
-export function findInlineConversation(researchId: string, selection: InlineAISelection): Conversation | undefined {
+export function findInlineConversation(researchId: string, selection: InlineAISelection, options: InlineOptions = {}): Conversation | undefined {
   const { data } = workspace.getState();
   return Object.values(data.conversations).filter(conversation => {
     const source = conversation.inlineSource, evidence = source && data.evidence[source.evidenceId];
-    return !conversation.archived && conversation.researchId === researchId && conversationConnection(conversation) === inlineConnection(researchId) && evidence
+    return !conversation.archived && (source?.operation ?? 'question') === (options.operation ?? 'question') && conversation.researchId === researchId && conversationConnection(conversation) === inlineConnection(researchId) && evidence
       && matchesSelection(evidence, selection);
   }).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''))[0];
 }
 
-export function createInlineConversation(researchId: string, selection: InlineAISelection): string {
+export function createInlineConversation(researchId: string, selection: InlineAISelection, options: InlineOptions = {}): string {
   const { data } = workspace.getState(), research = data.researches[researchId], document = data.documents[selection.documentId];
   if (!research?.documentIds.includes(selection.documentId) || !hasFullText(document)) throw new Error('请先把原 PDF 加入当前研究。');
   if (!Number.isInteger(selection.pageIndex) || selection.pageIndex < 0 || selection.pageIndex >= document.pageCount
     || (selection.kind === 'region' ? !selection.region : !selection.quote.trim())) throw new Error('请选择有效的原文或区域后再提问。');
-  const previous = findInlineConversation(researchId, selection);
+  if (selection.textAnchor) validateTextAnchor(selection.textAnchor);
+  const previous = !options.forceNew && findInlineConversation(researchId, selection, options);
   if (previous) return previous.id;
   const connectionId = inlineConnection(researchId), id = uid('conversation');
   const active = getActiveConversation(data, researchId);
@@ -59,10 +69,11 @@ export function createInlineConversation(researchId: string, selection: InlineAI
     if (!existing) next.evidence[evidenceId] = { id: evidenceId, researchId, documentId: selection.documentId,
       pageIndex: selection.pageIndex, quote: selection.quote.trim(), kind: selection.kind ?? 'text',
       ...(selection.region ? { region: structuredClone(selection.region) } : {}), contextOnly: true, createdAt: now };
+    if (selection.textAnchor) next.evidence[evidenceId].textAnchor = structuredClone(selection.textAnchor);
     next.conversations[id] = { id, researchId, connectionId, title: '原文旁提问', contextIds: [evidenceId], requestIds: [],
       input: '', historyRange: 'all', createdAt: now, updatedAt: now,
       ...(connectionId === 'codex' && active ? { codex: structuredClone(active.codex ?? {}), skills: structuredClone(active.skills ?? []) } : {}),
-      inlineSource: { documentId: selection.documentId, pageIndex: selection.pageIndex, evidenceId } };
+      inlineSource: { documentId: selection.documentId, pageIndex: selection.pageIndex, evidenceId, operation: options.operation ?? 'question' } };
   });
   return id;
 }
@@ -75,7 +86,7 @@ export function continueInlineInPanel(conversationId: string) {
     scope: { kind: 'research', researchId: conversation.researchId }, target: 'main',
     anchor: { pageIndex: conversation.inlineSource.pageIndex, evidenceId: conversation.inlineSource.evidenceId },
   });
-  workspace.updateData(next => { next.conversations[conversationId].inlineSource!.promoted = true; });
+  workspace.updateData(next => { next.conversations[conversationId].inlineSource!.promoted = true; next.sessions[conversation.researchId].agentChat = { ...next.sessions[conversation.researchId].agentChat, mode: 'side' }; });
   workspace.selectConversation(conversation.researchId, conversationId);
   workspace.setPanel('ai');
 }

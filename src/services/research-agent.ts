@@ -94,25 +94,26 @@ export function isResearchConversation(data: WorkspaceData, conversation: Conver
     && !conversation.requestIds.some(id => data.requests[id] && !data.requests[id].researchRun);
 }
 
-export function openResearchConversation(researchId: string, conversationId: string) {
+export function openResearchConversation(researchId: string, conversationId: string, options: { navigate?: boolean } = {}) {
   workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });
-  workspace.openResearchView(researchId, 'home');
+  if (options.navigate !== false) workspace.openResearchView(researchId, 'home');
 }
 
-export function createResearchConversation(researchId: string, connectionId?: AIConnectionId) {
+export function createResearchConversation(researchId: string, connectionId?: AIConnectionId, options: { navigate?: boolean } = {}) {
   const current = getActiveConversation(workspace.getState().data, researchId);
   const id = workspace.createConversation(researchId, { surface: 'workbench' });
   workspace.updateData(data => {
     Object.assign(data.conversations[id], { connectionId: connectionId ?? current?.connectionId ?? 'codex', title: '新会话' });
   });
-  openResearchConversation(researchId, id);
+  openResearchConversation(researchId, id, options);
   return id;
 }
 
 export function changeResearchAgent(researchId: string, connectionId: AIConnectionId) {
   const data = workspace.getState().data, current = getActiveConversation(data, researchId);
   if (current && (current.connectionId ?? 'codex') === connectionId) return current.id;
-  if (current && !current.requestIds.length && !current.input?.trim() && !current.researchFocus && !current.drawingQuestion && !current.chatImages?.length && isResearchConversation(data, current)) {
+  if (current && isResearchConversation(data, current)) {
+    if (current.requestIds.some(id => data.requests[id]?.status === 'generating')) throw new Error('请先停止当前回答，再切换助手。');
     workspace.updateData(next => { next.conversations[current.id].connectionId = connectionId; });
     return current.id;
   }

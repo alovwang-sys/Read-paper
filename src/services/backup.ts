@@ -1,3 +1,4 @@
+import { validateReaderContext } from '../domain/reader-context';
 import { strFromU8, strToU8, unzipSync, zipSync, type UnzipFileInfo } from 'fflate';
 import { migrateWorkspace } from '../data/migrations';
 import { contentHash } from '../data/storage';
@@ -98,6 +99,7 @@ function checkZip32(bytes: Uint8Array) {
 /** Validates references, including frozen conversation and region-image snapshots. */
 function validateReferences(data: WorkspaceData): Map<string, Set<string>> {
   validateResearchData(data);
+  validateReaderContext(data);
   const hashes = new Map<string, Set<string>>();
   const asset = (id: string, hash: string) => {
     requireValid(assetIdPattern.test(id) && hashPattern.test(hash), '来源资产标识或 SHA-256 损坏');

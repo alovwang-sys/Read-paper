@@ -1,3 +1,9 @@
+import { ChatImagePreview } from '../workbench/ChatImagePreview';
+import { DrawingQuestionPreview } from '../workbench/DrawingQuestionPreview';
+import { clearResearchFocus } from '../../services/research-agent';
+import { removeChatImage } from '../../services/chat-images';
+import { removeDrawingQuestion } from '../../services/drawing-question';
+import { ResearchAgentTurn } from '../workbench/ResearchAgentWorkbench';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowDown,
@@ -164,6 +170,7 @@ export function AIPanel() {
     !(connectionId === 'codex' ? codexSupportsImages(codexCatalog, conversation?.codex?.model) : native ? agent?.capabilities.images : config?.images);
   const canUseAgent =
     !generating &&
+    !conversation?.chatImages?.length && !conversation?.drawingQuestion &&
     (!native || (directoryReady && !legacyNative && !nativeBlocked && (!nativeRefreshError || !!conversation?.boardResearch))) &&
     (mode === 'demo' || (native ? agent?.state === 'ready' && !loadingAgents && !agentError : !!config?.configured && !configError)) &&
     !missingImages;
@@ -648,7 +655,8 @@ export function AIPanel() {
             <p className="board-capability-example">也可以直接说：“把这些观点画成关系图”。生成的白板会留在聊天中，随时打开或撤销。</p>
           </div>
         )}
-        {requests.map((request) => {
+        {requests.map((request, index) => {
+          if (request.researchRun && data.agentWorkbench !== false) return <ResearchAgentTurn key={request.id} researchId={research.id} request={request} index={index} busy={requests.some(item => item.status === 'generating')}/>;
           const incomplete = request.status !== 'done';
           const blocked = incomplete || !!request.validationError || !!request.nativeImported;
           return (
@@ -940,6 +948,10 @@ export function AIPanel() {
                 : ''}
       </div>
       <div className="ai-composer-new">
+        {!!conversation.chatImages?.length && <ChatImagePreview images={conversation.chatImages} onRemove={id => removeChatImage(research.id, id)}/>}
+        {conversation.drawingQuestion && <DrawingQuestionPreview question={conversation.drawingQuestion} onRemove={() => removeDrawingQuestion(research.id)}/>}
+        {(conversation.chatImages?.length || conversation.drawingQuestion) ? <p className="ai-error" role="status">当前连接暂不能发送这些附件；可移除附件，或切回 Codex 研究助手。草稿已保留。</p> : null}
+        {conversation.researchFocus && <div className="research-agent-focus"><span>围绕：{conversation.researchFocus.title}</span><button aria-label="清除追问对象" onClick={() => clearResearchFocus(research.id)}><X size={14}/></button></div>}
         <div className="ai-composer-options">
         {native && !directoryReady && <div className="ai-directory-needed" role="status"><strong>{research.directory ? refreshingNative ? '正在检查研究目录…' : '研究目录暂不可用' : '为这个研究选择目录'}</strong><ResearchDirectory researchId={research.id} label={research.directory ? '重新连接目录' : '选择研究目录'} />{directoryError && <p>{directoryError}</p>}</div>}
         {legacyNative && directoryReady && <div className="ai-scope-notice"><strong>旧版阅读对话</strong><p>此记录仍属于旧目录，可继续查看；在研究目录中开始新对话，原记录和输入会保留。</p><button className="text-button" onClick={() => { rememberScroll(); actions.createConversation(research.id); }}>在研究目录开始新对话</button></div>}

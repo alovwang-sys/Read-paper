@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-23",
+  "initialStats": {
+    "startTime": "2026-10-23T11:09:54.652Z",
+    "duration": 73228.522,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  },
+  "rerunStats": {
+    "startTime": "2026-10-23T11:16:19.157Z",
+    "duration": 9965.222,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "uniqueCasesPassed": 3,
+  "compatibilityFixes": [
+    "Wait for the conversation host rather than inert resource main on initial full chat.",
+    "Confirm classic mode, independently expand reference panel, and require actual AI tab before unchanged business assertions."
+  ],
+  "cases": [
+    {
+      "title": "打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿",
+      "initiallyPassed": false,
+      "finallyPassed": true
+    },
+    {
+      "title": "打包桌面：研究切换键盘、重复点击收起、窄屏空白点击后Esc逐层关闭",
+      "initiallyPassed": true,
+      "finallyPassed": true
+    },
+    {
+      "title": "打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑",
+      "initiallyPassed": false,
+      "finallyPassed": true
+    }
+  ]
+}

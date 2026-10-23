@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowUp, ArrowUpRight, BookOpen, ChevronDown, ImagePlus, MessageSquare, Plus, Settings2, Square, X } from 'lucide-react';
+import { ArrowUp, ArrowUpRight, BookOpen, ChevronDown, ImagePlus, Plus, Search, Square, X } from 'lucide-react';
 import type { AIConnectionId, AIRequest } from '../../domain/types';
 import type { ResearchAgentCapability } from '../../domain/research-agent';
 import { connectionLabel } from '../../services/agents';
@@ -21,7 +21,7 @@ export { focusResearchResource } from '../../services/research-agent';
 const statusLabels = { generating: '执行中', done: '已完成', error: '失败', stopped: '已停止', interrupted: '已中断' };
 const titleOf = (title?: string) => title?.trim() || '新会话';
 
-function ResearchAgentTurn({ researchId, request, index, busy }: { researchId: string; request: AIRequest; index: number; busy: boolean }) {
+export function ResearchAgentTurn({ researchId, request, index, busy }: { researchId: string; request: AIRequest; index: number; busy: boolean }) {
   const { data, actions } = useWorkspace();
   const [error, setError] = useState('');
   const run = request.researchRun;
@@ -122,7 +122,6 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
   const input = useRef<HTMLTextAreaElement>(null);
   const imagePicker = useRef<HTMLInputElement>(null);
   const running = (conversation?.requestIds ?? []).map(id => data.requests[id]).find(request => request?.status === 'generating');
-  const latest = (conversation?.requestIds ?? []).map(id => data.requests[id]).filter(Boolean).at(-1);
   const connectionId = conversation?.connectionId ?? 'codex';
   const capability = capabilities.find(item => item.id === connectionId);
   const focus = conversation?.researchFocus;
@@ -132,7 +131,6 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
   const chatImageBlocked = chatImages.length > 0 && capability?.images !== true;
   const attachmentBlocked = drawingImageBlocked || chatImageBlocked || pendingImages > 0;
   const nativeReadOnly = !!conversation && !isResearchConversation(data, conversation);
-  const onConversation = data.sessions[researchId].active.kind === 'researchView' && data.sessions[researchId].active.id === 'home';
   const text = conversation?.input ?? '';
   async function detect() { setCapabilityError(''); try { setCapabilities(await getResearchAgentCapabilities()); } catch (problem) { setCapabilityError((problem as Error).message); } }
   useEffect(() => { if (!conversation) createResearchConversation(researchId, 'codex'); void detect(); }, [researchId]);
@@ -148,10 +146,7 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
     finally { setPendingImages(count => count - 1); }
   }
   function changeDrawingMode(mode: 'image' | 'text') { try { setDrawingQuestionMode(researchId, mode); setError(''); } catch (problem) { setError((problem as Error).message); } }
-  function openList() { actions.updateData(next => { next.sessions[researchId].panel.aiView = 'history'; }); actions.setPanel('ai', true); }
   return <section className="research-agent-dock" aria-label="研究 Agent">
-    {!onConversation && conversation && <div className="research-agent-resource-status"><span>{running ? running.events?.at(-1)?.text || '当前会话正在执行…' : latest?.status === 'done' ? '会话已有回复，可返回继续。' : '成果与当前会话的输入分别保留。'}</span></div>}
-    <div className="research-agent-input-binding"><span>发送到 <strong title={titleOf(conversation?.title)}>{titleOf(conversation?.title)}</strong></span><button type="button" aria-label="会话列表" onClick={openList}><MessageSquare size={14}/>会话列表</button></div>
     {error && <p className="research-agent-error" role="alert">{error}</p>}
     {focus && !drawingQuestion && <div className="research-agent-focus"><span>围绕：{focus.title}</span><button aria-label="清除追问对象" onClick={() => clearResearchFocus(researchId)}><X size={14}/></button></div>}
     <form className={`research-agent-composer${draggingImages ? ' is-dragging-images' : ''}`} aria-busy={!!running || pendingImages > 0} onDragEnter={event => { if (Array.from(event.dataTransfer.items).some(item => item.kind === 'file' && item.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); setDraggingImages(true); } }} onDragOver={event => { if (Array.from(event.dataTransfer.items).some(item => item.kind === 'file' && item.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); setDraggingImages(true); } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDraggingImages(false); }} onDrop={event => { setDraggingImages(false); const files = Array.from(event.dataTransfer.files); if (files.some(file => file.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); if (!nativeReadOnly) void addImages(files); } }} onSubmit={event => { event.preventDefault(); if (!running && !nativeReadOnly && !attachmentBlocked) void send(); }}>
@@ -162,25 +157,30 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
       {drawingQuestion && <DrawingQuestionPreview question={drawingQuestion} onRemove={() => removeDrawingQuestion(researchId)}/>}
       {drawingQuestion && <div className="research-drawing-mode"><span>未追加论文原文 · 只读分析 · 继续当前会话历史</span>{drawingImageBlocked && <p role="status">{capability ? '当前连接尚未确认支持图片，附件与输入已保留。可在下方选择研究助手并检测图片能力。' : capabilityError || '正在检测图片能力；附件与输入已保留。'}{hasDrawingText(drawingQuestion.snapshot) ? <button type="button" onClick={() => changeDrawingMode('text')}>仅发送文字和结构</button> : '这段选区没有可发送的文字，需使用支持图片的连接。'}</p>}{drawingQuestion.mode === 'text' && <p>本轮 Agent 未看图。{capability?.images === true && <button type="button" onClick={() => changeDrawingMode('image')}>改为发送图片</button>}</p>}</div>}
       <textarea ref={input} className="research-agent-input" aria-label="研究目标" placeholder={nativeReadOnly ? '原生或经典记录的草稿会保留；请到经典工作台继续…' : drawingQuestion ? '围绕这张选区图，继续问点什么…' : chatImages.length ? '补充问题，或直接发送图片…' : '在当前会话继续研究，或围绕选定内容追问…'} value={text} onPaste={event => { const files = Array.from(event.clipboardData.files); if (files.some(file => file.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); if (!nativeReadOnly) void addImages(files); } }} onChange={event => { const current = actions.getActiveConversation(researchId); actions.updateData(next => { next.conversations[current.id].input = event.target.value; }); }} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (!running && !nativeReadOnly && !attachmentBlocked && (text.trim() || chatImages.length)) void send(); } }}/>
-      <div className="research-agent-composer-foot"><button type="button" className="research-agent-connection" aria-label="选择研究助手" onClick={() => setConfigOpen(!configOpen)} aria-expanded={configOpen}><Settings2 size={14}/>{connectionLabel(connectionId)}<ChevronDown size={12}/></button><button type="button" className="research-agent-add-image" aria-label="添加图片" title="添加图片，也可粘贴或拖入；PNG / JPEG / WebP，最多 4 张、每张 8 MB" disabled={!conversation || nativeReadOnly || pendingImages > 0} onClick={() => imagePicker.current?.click()}><ImagePlus size={17}/></button><VoiceInput key={conversation?.id} inputRef={input} disabled={nativeReadOnly}/><span className="research-agent-enter-hint">Enter 发送 · Shift Enter 换行</span>{running ? <button key="stop" type="button" className="research-agent-send" onClick={event => { event.preventDefault(); running.researchRun ? stopResearchRun(running.id) : stopAI(running.id); }} aria-label="停止研究"><Square size={16}/></button> : <button key="send" type="submit" className="research-agent-send" disabled={(!text.trim() && !chatImages.length) || !conversation || nativeReadOnly || attachmentBlocked} aria-label="开始研究"><ArrowUp size={19}/></button>}</div>
+      <div className="research-agent-composer-foot"><button type="button" className="research-agent-connection" aria-label="选择研究助手" onClick={() => setConfigOpen(!configOpen)} aria-expanded={configOpen}>{connectionLabel(connectionId)}<ChevronDown size={12}/></button><span className="research-agent-permission" title="仅使用已关联研究资料；成果与修改建议在应用中保存">只读资料</span><button type="button" className="research-agent-add-image" aria-label="添加图片" title="添加图片，也可粘贴或拖入；PNG / JPEG / WebP，最多 4 张、每张 8 MB" disabled={!conversation || nativeReadOnly || pendingImages > 0} onClick={() => imagePicker.current?.click()}><ImagePlus size={17}/></button><VoiceInput key={conversation?.id} inputRef={input} disabled={nativeReadOnly}/><span className="research-agent-enter-hint">Enter 发送 · Shift Enter 换行</span>{running ? <button key="stop" type="button" className="research-agent-send" onClick={event => { event.preventDefault(); running.researchRun ? stopResearchRun(running.id) : stopAI(running.id); }} aria-label="停止研究"><Square size={16}/></button> : <button key="send" type="submit" className="research-agent-send" disabled={(!text.trim() && !chatImages.length) || !conversation || nativeReadOnly || attachmentBlocked} aria-label="开始研究"><ArrowUp size={19}/></button>}</div>
     </form>
     {nativeReadOnly && <p className="research-agent-native-note">这是原生或经典会话记录，研究工具暂不接续这段会话。<button onClick={() => actions.updateData(next => { next.agentWorkbench = false; })}>到经典工作台继续</button></p>}
-    {configOpen && <div className="research-agent-config"><div className="research-agent-config-heading"><strong>研究 Agent</strong><button aria-label="关闭 Agent 配置" onClick={() => setConfigOpen(false)}><X size={16}/></button></div><label>连接<select aria-label="研究 Agent 连接" value={connectionId} disabled={!!running} onChange={event => { try { changeResearchAgent(researchId, event.target.value as AIConnectionId); setError(''); } catch (problem) { setError((problem as Error).message); } }}>{(['codex', 'claude', 'opencode', 'model', 'demo'] as const).map(id => <option key={id} value={id}>{connectionLabel(id)}</option>)}</select></label><p>更换助手会开始独立话题，原会话和输入保留；不会跳到另一段旧话题。</p><p>{capabilityError || capability?.detail || '正在检测本机研究工具能力。'}</p><p>研究运行通过应用中明确保存的历史延续上下文，暂不继承原生线程、Skills 或 Plan 配置。</p>{capability?.research === false && <button onClick={() => actions.updateData(next => { next.agentWorkbench = false; })}>到经典工作台使用原有连接</button>}<button onClick={() => void detect()}>重新检测连接</button></div>}
+    {configOpen && <div className="research-agent-config" role="dialog" aria-label="选择研究助手"><div className="research-agent-config-heading"><strong>助手</strong><button aria-label="关闭 Agent 配置" onClick={() => setConfigOpen(false)}><X size={16}/></button></div><div className="research-agent-options" role="listbox" aria-label="研究 Agent 连接">{(['codex', 'claude', 'opencode', 'model', 'demo'] as const).map(id => <button type="button" role="option" aria-selected={connectionId === id} key={id} disabled={!!running} onClick={() => { try { changeResearchAgent(researchId, id); setError(''); setConfigOpen(false); } catch (problem) { setError((problem as Error).message); } }}><span>{connectionLabel(id)}</span>{connectionId === id && <span aria-hidden="true">✓</span>}</button>)}</div><div className="research-agent-config-status"><span role="status">{capabilityError || (capability?.research ? '研究工具已连接' : capability?.detail) || '正在检测连接…'}</span><button onClick={() => void detect()}>重新检测</button></div></div>}
+
   </section>;
 }
 
-export function ResearchAgentHistory({ researchId }: { researchId: string }) {
-  const { data } = useWorkspace();
+export function ResearchAgentHistory({ researchId, compact = false, onSelected }: { researchId: string; compact?: boolean; onSelected?: () => void }) {
+  const { data, actions } = useWorkspace();
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
   const current = getActiveConversation(data, researchId);
   const activityAt = (id: string) => { const item = data.conversations[id]; return item.updatedAt ?? item.requestIds.map(requestId => data.requests[requestId]).filter(Boolean).at(-1)?.createdAt ?? item.createdAt ?? ''; };
-  const conversations = Object.values(data.conversations).filter(item => item.researchId === researchId && !item.archived).sort((a, b) => activityAt(b.id).localeCompare(activityAt(a.id)));
-  function act(operation: () => void) { try { operation(); setError(''); } catch (problem) { setError((problem as Error).message); } }
-  return <section className="research-agent-history" aria-label="研究会话列表"><div className="research-agent-history-heading"><div><h2>会话列表</h2><p>每个话题保留自己的问答与输入。</p></div><button onClick={() => act(() => { createResearchConversation(researchId, current?.connectionId ?? 'codex'); })}><Plus size={15}/>新建会话</button></div>{error && <p className="research-agent-error" role="alert">{error}</p>}{!conversations.length && <p>还没有会话。新建一个话题开始研究。</p>}<div className="research-agent-conversation-list">{conversations.map(conversation => {
-    const last = conversation.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1);
-    const updatedAt = activityAt(conversation.id);
-    const preview = last?.researchRun && last.result ? last.result.title : last?.body.trim() || last?.prompt || conversation.input?.trim() || (conversation.chatImages?.length ? `待发送图片 ${conversation.chatImages.length} 张` : conversation.drawingQuestion ? `待发送绘图：${conversation.drawingQuestion.snapshot.boardTitle}` : '从一个研究目标开始。');
+  const conversations = Object.values(data.conversations).filter(item => item.researchId === researchId && !item.archived && (!item.inlineSource?.operation || item.inlineSource.operation === 'question') && (!query || titleOf(item.title).toLocaleLowerCase().includes(query.toLocaleLowerCase()))).sort((a, b) => activityAt(b.id).localeCompare(activityAt(a.id)));
+  function act(operation: () => void) { try { operation(); setError(''); onSelected?.(); } catch (problem) { setError((problem as Error).message); } }
+  function select(id: string) {
+    if (!compact) { openResearchConversation(researchId, id); return; }
+    actions.selectConversation(researchId, id, { surface: 'workbench' });
+    actions.updateData(next => { next.sessions[researchId].panel.aiView = 'chat'; });
+  }
+  return <section className={`research-agent-history ${compact ? 'is-compact' : ''}`} aria-label="研究会话列表"><div className="research-agent-history-heading"><h2>会话</h2><button aria-label="新建会话" title="新建会话" onClick={() => act(() => { createResearchConversation(researchId, current?.connectionId ?? 'codex', { navigate: !compact }); if (compact) actions.updateData(next => { next.sessions[researchId].panel.aiView = 'chat'; }); })}><Plus size={15}/>{!compact && '新建会话'}</button></div><label className="conversation-search"><Search size={13}/><input aria-label="搜索会话" value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索会话"/></label>{error && <p className="research-agent-error" role="alert">{error}</p>}{!conversations.length && <p className="conversation-empty">{query ? '没有匹配的会话' : '新建会话，开始研究'}</p>}<div className="research-agent-conversation-list">{conversations.map(conversation => {
+    const running = conversation.requestIds.some(id => data.requests[id]?.status === 'generating');
     const active = conversation.id === current?.id;
-    return <button key={conversation.id} className="research-agent-conversation-item" aria-label={`打开会话：${titleOf(conversation.title)}`} aria-current={active ? 'true' : undefined} onClick={() => act(() => openResearchConversation(researchId, conversation.id))}><span className="research-agent-conversation-item-title"><strong>{titleOf(conversation.title)}</strong>{active && <small>当前会话</small>}</span><span className="research-agent-conversation-preview">{preview.replace(/[#*`]/g, '').slice(0, 100)}</span><span className="research-agent-conversation-meta"><span>{connectionLabel(conversation.connectionId)}{conversation.nativeImported || conversation.nativeSessionRef ? ' · 原生记录' : ''}{last?.status === 'generating' ? ' · 执行中' : ''}</span>{updatedAt && <time dateTime={updatedAt}>{new Date(updatedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>}</span></button>;
+    return <button key={conversation.id} className={`research-agent-conversation-item ${running ? 'is-running' : ''}`} aria-label={`打开会话：${titleOf(conversation.title)}`} title={titleOf(conversation.title)} aria-current={active ? 'true' : undefined} onClick={() => act(() => select(conversation.id))}><span className="conversation-status-dot" aria-label={running ? '执行中' : active ? '当前会话' : undefined}/><span className="research-agent-conversation-item-title">{titleOf(conversation.title)}</span></button>;
   })}</div></section>;
 }

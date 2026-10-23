@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-23",
+  "initialStats": {
+    "startTime": "2026-10-23T10:59:57.884Z",
+    "duration": 74339.25499999999,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "compatibilityFix": "Use actual mouse coordinates on the underlying text instead of clicking the pointer-events:none highlight span, then open More actions; all prior business assertions retained.",
+  "rerunStats": {
+    "startTime": "2026-10-23T11:03:15.440Z",
+    "duration": 3402.4339999999997,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "uniqueCasesPassed": 9,
+  "cases": [
+    {
+      "file": "chat-inputs.spec.ts",
+      "title": "默认会话有系统听写入口，文字留草稿且不自动发送",
+      "initiallyPassed": true,
+      "finalPassed": true
+    },
+    {
+      "file": "chat-inputs.spec.ts",
+      "title": "原始PNG JPEG WebP上传、预览、冻结发送、去重及刷新恢复",
+      "initiallyPassed": true,
+      "finalPassed": true
+    },
+    {
+      "file": "chat-inputs.spec.ts",
+      "title": "纯图片可发送，失败恢复原图；重试冻结原图并保留新图片草稿",
+      "initiallyPassed": true,
+      "finalPassed": true
+    },
+    {
+      "file": "chat-inputs.spec.ts",
+      "title": "粘贴与拖入图片、拒绝不支持格式和超限，不覆盖原草稿",
+      "initiallyPassed": true,
+      "finalPassed": true
+    },
+    {
+      "file": "knowledge-excerpts.spec.ts",
+      "title": "H 摘录可撤销，重复选区复用，刷新保留原文高亮",
+      "initiallyPassed": false,
+      "finalPassed": true
+    },
+    {
+      "file": "knowledge-excerpts.spec.ts",
+      "title": "略读与读完保留阅读位置，读完提示只出现一次",
+      "initiallyPassed": true,
+      "finalPassed": true
+    },
+    {
+      "file": "persistence.spec.ts",
+      "title": "不支持的存储版本加载失败后不覆盖已有数据",
+      "initiallyPassed": true,
+      "finalPassed": true
+    },
+    {
+      "file": "persistence.spec.ts",
+      "title": "未发送的 AI 输入按研究保留，切换面板和刷新后恢复",
+      "initiallyPassed": true,
+      "finalPassed": true
+    },
+    {
+      "file": "workspace-split.spec.ts",
+      "title": "多窗格与聚焦状态按研究隔离，刷新后恢复原布局和每个视图的阅读位置",
+      "initiallyPassed": true,
+      "finalPassed": true
+    }
+  ]
+}

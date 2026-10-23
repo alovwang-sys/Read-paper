@@ -1,3 +1,4 @@
+import { validateTextAnchor } from '../domain/reader-context';
 import { useContext, useMemo, useState, useSyncExternalStore, type Dispatch, type SetStateAction } from 'react';
 import { PaneContext } from './pane-context';
 import { createSeed, emptySession } from '../data/seed';
@@ -516,8 +517,9 @@ export const workspace = {
     }, { boardChange: { summary: '合并重复资料', documentMerge: { fromId: stubId, intoId } } });
     status({ selection: undefined });
   },
-  captureExcerpt(researchId: string, range: { documentId: string; pageIndex: number; quote: string }) {
-    const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.researchId === researchId && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim());
+  captureExcerpt(researchId: string, range: { documentId: string; pageIndex: number; quote: string; textAnchor?: import('../domain/types').TextSourceAnchor }) {
+    if (range.textAnchor) validateTextAnchor(range.textAnchor);
+    const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.researchId === researchId && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim() && (range.textAnchor ? e.textAnchor?.start === range.textAnchor.start && e.textAnchor?.end === range.textAnchor.end : !e.textAnchor));
     if (existing) {
       if (existing.contextOnly || existing.annotationHidden) workspace.updateData(data => { delete data.evidence[existing.id].contextOnly; delete data.evidence[existing.id].annotationHidden; });
       return existing.id;
@@ -790,8 +792,10 @@ export const workspace = {
     documentId: string;
     pageIndex: number;
     quote: string;
+    textAnchor?: import('../domain/types').TextSourceAnchor;
   }): string {
-    const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim());
+    if (range.textAnchor) validateTextAnchor(range.textAnchor);
+    const existing = Object.values(state.data.evidence).find(e => e.kind !== 'region' && e.documentId === range.documentId && e.pageIndex === range.pageIndex && e.quote === range.quote.trim() && (range.textAnchor ? e.textAnchor?.start === range.textAnchor.start && e.textAnchor?.end === range.textAnchor.end : !e.textAnchor));
     if (existing) return existing.id;
     const id = uid('evidence');
     workspace.updateData((data) => {

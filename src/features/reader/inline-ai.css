@@ -77,3 +77,18 @@
 .inline-ai .agent-question-options small { font-size: 11px; color: #6b7e70; }
 .inline-ai .agent-interaction-card textarea { width: 100%; min-height: 54px; margin: 7px 0; font: inherit; resize: vertical; }
 .inline-ai .agent-interaction-actions { display: flex; gap: 8px; margin-top: 8px; }
+.inline-ai-brief-row { display: flex; align-items: flex-start; gap: 8px; padding: 7px 14px; color: var(--muted); font-size: 11px; line-height: 1.6; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.inline-ai-brief-row > span { flex: 1; }
+.inline-ai-brief-row > .text-button { flex-shrink: 0; font-size: 11px; padding: 0; color: var(--accent); }
+.inline-ai-brief { flex: 1; min-width: 0; }
+.inline-ai-brief summary { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--accent); }
+.inline-ai-brief summary span { color: var(--muted); margin-left: auto; }
+.inline-ai-brief > div { max-height: 160px; overflow-y: auto; margin-top: 8px; overscroll-behavior: contain; }
+.inline-ai-brief > div > p, .inline-ai-brief .ai-markdown { font-size: 12px; line-height: 1.75; }
+.inline-ai-turn-scope { margin: -3px 0 10px; font-size: 11px; color: var(--muted); }
+.inline-ai-turn-scope summary { cursor: pointer; font-size: 10px; }
+.inline-ai-turn-scope[open] { max-height: 150px; overflow: auto; padding-bottom: 8px; }
+.inline-ai-turn-scope p { line-height: 1.65; margin: 6px 0; }
+.inline-ai-turn-scope blockquote { border-left: 2px solid var(--border); margin: 7px 0; padding-left: 8px; line-height: 1.7; }
+.inline-ai-turn-brief { white-space: pre-wrap; }
+.inline-ai-request-error { flex-wrap: wrap; }

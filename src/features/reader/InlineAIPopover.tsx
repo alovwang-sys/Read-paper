@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowUp, Check, ChevronRight, GripHorizontal, Layers, MoveDiagonal2, Square, X } from 'lucide-react';
-import { commitCardDraft, resumeNativeRuns, retryAI, snapshotContext, steerNativeRun, stopAI, submitAI } from '../../services/ai';
+import { commitCardDraft, resumeNativeRuns, retryAI, skipPaperBrief, snapshotContext, steerNativeRun, stopAI, submitAI } from '../../services/ai';
 import { continueInlineInPanel, createInlineCardDraft, inlineAIConfig } from '../../services/inline-ai';
 import { useWorkspace } from '../../services/workspace';
 import { MarkdownContent } from '../ai/MarkdownContent';
@@ -39,7 +39,7 @@ export function ReaderPopover({ anchor, pageElement, boundary, className, label,
         const left = movable ? 8 : Math.max(8, bounds.left + 8), right = movable ? window.innerWidth - 8 : Math.min(window.innerWidth - 8, bounds.right - 8);
         const top = movable ? 8 : Math.max(8, bounds.top + 8), bottom = movable ? window.innerHeight - 8 : Math.min(window.innerHeight - 8, bounds.bottom - 8);
         const start = page.top + anchor.top, end = start + anchor.height;
-        const width = Math.max(120, Math.min(className.includes('inline-ai') ? 430 : 560, right - left));
+        const width = Math.max(120, Math.min(className.includes('inline-ai') ? 430 : 376, right - left));
         const maxHeight = Math.max(80, Math.min(className.includes('inline-ai') ? 520 : 300, bottom - top));
         node.style.width = `${width}px`;
         node.style.maxHeight = `${maxHeight}px`;
@@ -96,12 +96,14 @@ export function ReaderPopover({ anchor, pageElement, boundary, className, label,
 }
 
 export function InlineAIPopover({ conversationId, initialAction, onClose, onSource }: {
-  conversationId: string; initialAction: 'explain' | 'ask'; onClose: () => void; onSource: (evidenceId: string) => void;
+  conversationId: string; initialAction: 'explain' | 'ask' | 'translation' | 'summary'; onClose: () => void; onSource: (evidenceId: string) => void;
 }) {
   const { data, actions, saveStatus } = useWorkspace();
   const conversation = data.conversations[conversationId];
   useEffect(() => { void resumeNativeRuns(); }, [conversationId]);
   const source = conversation?.inlineSource;
+  const operation = source?.operation ?? (initialAction === 'translation' || initialAction === 'summary' ? initialAction : 'question');
+  const operationLabel = operation === 'translation' ? '翻译' : operation === 'summary' ? '摘要卡片' : '提问';
   const evidence = source && data.evidence[source.evidenceId];
   let materials: ReturnType<typeof snapshotContext> = [], scopeProblem = '';
   if (conversation) {
@@ -116,7 +118,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
   const [supplementing, setSupplementing] = useState(false);
   const steering = useRef(false);
   const [problem, setProblem] = useState('');
-  const [draftOpen, setDraftOpen] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(!!source?.draftId && operation === 'summary');
   const draft = source?.draftId ? data.cardDrafts[source.draftId] : undefined;
   const input = useRef<HTMLTextAreaElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -124,26 +126,42 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
   const requestBusy = useRef(false);
   const followOutput = useRef(true);
   const busy = preparing || !!generating;
+  const brief = latest ? latest.paperBrief : conversation?.paperBrief;
+  const sharedBrief = source && data.documents[source.documentId]?.paperBrief;
+  const autoPrompt = operation === 'translation'
+    ? '请把本次选区中的原文完整翻译为准确、自然的中文，保留术语、公式和限定条件。仅翻译所选原文；不概括整篇论文，不引入其他段落或论文知识，不加入解释。译文末尾标明所用原文引用。'
+    : operation === 'summary'
+      ? '请把本次所选原文或区域整理为一张简洁、独立可读的摘要卡片。仅总结此选区，不能当作整篇论文摘要。第一行为简短标题，正文用中文保留关键观点、条件和限制，并标明本次原文引用；图像不清或无法确认时明确说明，不编造文字。'
+      : '请用容易理解的中文解释这段原文的意思，再点出理解它所需的关键概念。区分原文结论和补充解释，回答简洁。';
   const close = () => onClose();
-  async function ask(prompt: string) {
+  async function ask(prompt: string, selectionOnly = false) {
     if (!conversation || requestBusy.current || busy || !prompt.trim()) return;
     if (scopeProblem) { setProblem(scopeProblem); return; }
     requestBusy.current = true; setPreparing(true); setProblem('');
     try {
       const config = await inlineAIConfig(conversation.researchId, conversationId);
+      if (operation === 'translation' && !evidence?.quote.trim()) throw new Error('此区域没有可提取的原文，尚未进行 OCR。可以返回选择文字或对区域提问。');
       if (materials.some(item => item.kind === 'region') && !config.images) throw new Error('当前模型未开启图片理解。区域已保留，可改选文字，或在设置中配置支持图片的模型。');
       followOutput.current = true;
-      await submitAI(conversation.researchId, conversationId, prompt);
+      await submitAI(conversation.researchId, conversationId, prompt, undefined,
+        { board: 'none', readerOperation: operation, paperBrief: operation === 'question' && !selectionOnly ? 'auto' : 'none' });
     } catch (error) { setProblem(error instanceof Error ? error.message : '暂时无法回答，请重试。'); }
     finally { requestBusy.current = false; setPreparing(false); }
   }
   useEffect(() => {
     input.current?.focus();
-    if (!started.current && initialAction === 'explain' && !requests.length) {
+    if (!started.current && (initialAction === 'explain' || operation !== 'question') && !requests.length) {
       started.current = true;
-      void ask('请用容易理解的中文解释这段原文的意思，再点出理解它所需的关键概念。区分原文结论和补充解释，回答简洁。');
+      void ask(autoPrompt);
     }
   }, [conversationId]);
+  useEffect(() => {
+    if (operation !== 'summary' || latest?.status !== 'done' || latest.validationError) return;
+    try {
+      createInlineCardDraft(latest.id);
+      setDraftOpen(true);
+    } catch (error) { setProblem(error instanceof Error ? error.message : '卡片草稿暂时无法创建，回答已保留。'); }
+  }, [operation, latest?.id, latest?.status]);
   useEffect(() => {
     const node = content.current;
     if (node && followOutput.current) node.scrollTop = node.scrollHeight;
@@ -176,17 +194,23 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     const current = source.draftId && next.cardDrafts[source.draftId];
     if (current && current.status !== 'saved') { current[field] = value; current.revision++; current.status = 'editing'; }
   });
-  return <section className="inline-ai-dialog" role="dialog" aria-label="原文旁提问" onKeyDown={event => {
+  return <section className="inline-ai-dialog" role="dialog" aria-label={`原文旁${operationLabel}`} onKeyDown={event => {
     event.stopPropagation();
     if (event.key === 'Escape') { event.preventDefault(); close(); }
   }}>
     <header className="inline-ai-header" data-popover-drag>
       {draftOpen && <button className="icon-button" aria-label="返回就地问答并保留卡片草稿" onClick={() => setDraftOpen(false)}><ArrowLeft size={15} /></button>}
-      <button type="button" className="inline-ai-move" data-popover-move aria-label="移动原文旁问答" title="拖动标题栏移动 · 方向键移动，Shift 加速" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><GripHorizontal size={14} /><strong>{draftOpen ? draft?.status === 'saved' ? '卡片已保存' : '整理为卡片' : '解释与提问'}</strong></button>
+      <button type="button" className="inline-ai-move" data-popover-move aria-label="移动原文旁问答" title="拖动标题栏移动 · 方向键移动，Shift 加速" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><GripHorizontal size={14} /><strong>{draftOpen ? draft?.status === 'saved' ? '卡片已保存' : operation === 'summary' ? '摘要卡片' : '整理为卡片' : operationLabel}</strong></button>
       <span>PDF 第 {source.pageIndex + 1} 页</span>
       <button className="icon-button" aria-label="关闭就地问答并保留内容" title="收起，内容会保留 · Esc" onClick={close}><X size={15} /></button>
     </header>
-    <details className="inline-ai-source"><summary>{scopeProblem ? '材料暂不可用' : onlyOriginal ? `仅所选${evidence.kind === 'region' ? '区域' : '原文'}` : `本轮材料 · ${materials.length}`}<span>查看来源</span></summary><div className="inline-ai-materials">{scopeProblem ? <p role="alert">{scopeProblem}</p> : materials.map(item => <div key={item.evidenceId}>{!onlyOriginal && <strong>{item.title} · PDF 第 {item.pageIndex + 1} 页</strong>}<blockquote>{item.quote || `PDF 第 ${item.pageIndex + 1} 页的框选区域`}</blockquote></div>)}</div></details>
+    <details className="inline-ai-source"><summary>{scopeProblem ? '材料暂不可用' : onlyOriginal ? `所选${evidence.kind === 'region' ? '区域' : '原文'}` : `本轮原文 · ${materials.length}`}<span>查看来源</span></summary><div className="inline-ai-materials">{scopeProblem ? <p role="alert">{scopeProblem}</p> : materials.map(item => <div key={item.evidenceId}>{!onlyOriginal && <strong>{item.title} · PDF 第 {item.pageIndex + 1} 页</strong>}<blockquote>{item.quote || `PDF 第 ${item.pageIndex + 1} 页的框选区域`}</blockquote></div>)}</div></details>
+    {operation === 'question' && <div className="inline-ai-brief-row">
+      {brief ? <details className="inline-ai-brief"><summary>文章简要 v{brief.version}<span>覆盖 {brief.pageIndices.length}/{brief.totalPages} 页</span></summary>
+        <div><p>仅作背景，引用仍以原文选区为准。已覆盖 PDF 页：{brief.pageIndices.map(index => index + 1).join('、') || '无'}{brief.truncatedPageIndices.length ? `；其中 ${brief.truncatedPageIndices.map(index => index + 1).join('、')} 页文字不完整` : ''}。</p><MarkdownContent text={brief.body} /></div>
+      </details> : <span>{generating?.paperBriefState === 'preparing' || sharedBrief?.status === 'preparing' ? '正在生成本篇文章简要…' : generating?.paperBriefState === 'selection-only' || latest?.paperBriefState === 'selection-only' ? '本轮仅使用选区' : sharedBrief?.status === 'error' ? '文章简要暂不可用' : '首次提问时生成文章简要'}</span>}
+      {generating?.paperBriefState === 'preparing' && <button type="button" className="text-button" onClick={() => run(() => skipPaperBrief(generating.id))}>先只问选区</button>}
+    </div>}
     {draftOpen && draft ? <>
       <div className="inline-ai-draft">
         {draft.status === 'saved' ? <><h3>{draft.title}</h3><MarkdownContent text={draft.body} onCitation={number => draft.evidenceIds[number - 1] && onSource(draft.evidenceIds[number - 1])} /><p className="inline-ai-saved" role="status"><Check size={13} />{saveStatus === 'error' ? '本地保存失败，草稿仍保留' : '已加入当前研究的卡片，原文和问答来源一并保留。'}{saveStatus === 'error' && <button className="text-button" onClick={() => actions.retrySave()}>重试保存</button>}</p></> : <>
@@ -198,9 +222,13 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
       {draft.status !== 'saved' && <div className="inline-ai-draft-footer"><span>编辑确认后保存 · 保留原文与问答来源</span><button className="primary" disabled={!draft.title.trim() || !draft.body.trim()} onClick={() => run(() => { commitCardDraft(draft.id); })}>保存卡片</button></div>}
     </> : <>
       <div ref={content} className="inline-ai-content" onScroll={event => { const node = event.currentTarget; followOutput.current = node.scrollHeight - node.scrollTop - node.clientHeight < 50; }}>
-        {!requests.length && !busy && <p className="inline-ai-empty">这段哪里不明白？可以直接问。</p>}
+        {!requests.length && !busy && <p className="inline-ai-empty">{operation === 'question' ? '这段哪里不明白？可以直接问。' : `准备${operationLabel}所选原文。`}</p>}
         {requests.map((request, index) => <article className="inline-ai-turn" key={request.id}>
-          <p className="inline-ai-question">{index === 0 && initialAction === 'explain' && request.prompt.startsWith('请用容易理解') ? '解释这段' : request.prompt}</p>
+          <p className="inline-ai-question">{index === 0 && operation !== 'question' ? operation === 'translation' ? '翻译所选原文' : '整理选区摘要卡片' : index === 0 && initialAction === 'explain' && request.prompt.startsWith('请用容易理解') ? '解释这段' : request.prompt}</p>
+          <details className="inline-ai-turn-scope"><summary>当轮上下文</summary><p>{request.paperBrief ? `文章简要 v${request.paperBrief.version} · 覆盖 ${request.paperBrief.pageIndices.length}/${request.paperBrief.totalPages} 页；` : '未使用文章简要；'}原文 {request.context.length} 处；本会话历史 {request.historyRequestIds?.length ?? request.history?.length ?? 0} 轮。</p>
+            {request.context.map(item => <blockquote key={item.evidenceId}>{item.title} · PDF 第 {item.pageIndex + 1} 页<br />{item.quote || '所选区域图片'}</blockquote>)}
+            {request.paperBrief && <p className="inline-ai-turn-brief">{request.paperBrief.body}</p>}
+          </details>
           {request.nativeRun ? <NativeRunTimeline request={request} onCitation={number => {
             const ids = request.status === 'done' ? request.evidenceIds : request.context.map(item => item.evidenceId);
             if (ids[number - 1]) onSource(ids[number - 1]);
@@ -209,13 +237,15 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
             if (ids[number - 1]) onSource(ids[number - 1]);
           }} />}
           {request.status === 'generating' && !request.nativeRun && <p className="inline-ai-working" role="status">{request.body ? '正在回答…' : '正在理解所选内容…'}</p>}
-          {request.status !== 'done' && request.status !== 'generating' && <div className="inline-ai-request-error" role={request.status === 'stopped' ? 'status' : 'alert'}><span>{request.error || '回答未完成，已有内容已保留。'}</span>{index === requests.length - 1 && <button className="text-button" disabled={busy} onClick={() => void retry()}>重试</button>}</div>}
+          {request.status !== 'done' && request.status !== 'generating' && <div className="inline-ai-request-error" role={request.status === 'stopped' ? 'status' : 'alert'}><span>{request.error || '回答未完成，已有内容已保留。'}</span>{index === requests.length - 1 && <button className="text-button" disabled={busy} onClick={() => void retry()}>重试</button>}
+            {index === requests.length - 1 && request.paperBriefState === 'error' && <button className="text-button" disabled={busy} onClick={() => void ask(request.prompt, true)}>仅按选区重试</button>}
+          </div>}
           {request.mode === 'demo' && <span className="inline-ai-demo">演示回答</span>}
         </article>)}
         {preparing && !generating && !latest && <p className="inline-ai-working" role="status">正在连接阅读助手…</p>}
       </div>
       <div className="inline-ai-answer-actions">
-        {latest?.status === 'done' && !latest.validationError && <button className="text-button" onClick={() => run(() => { createInlineCardDraft(latest.id); setDraftOpen(true); })}><Layers size={13} />{draft?.source.requestId === latest.id ? draft.status === 'saved' ? '查看已存卡片' : '查看卡片草稿' : '收为卡片'}</button>}
+        {latest?.status === 'done' && !latest.validationError && <button className="text-button" onClick={() => run(() => { createInlineCardDraft(latest.id); setDraftOpen(true); })}><Layers size={13} />{draft?.source.requestId === latest.id ? draft.status === 'saved' ? '查看已存卡片' : '查看卡片草稿' : operation === 'translation' ? '另存翻译笔记' : '收为卡片'}</button>}
         <button className="text-button" onClick={() => run(() => { continueInlineInPanel(conversationId); close(); })}>在右侧继续<ChevronRight size={13} /></button>
       </div>
       <form className="inline-ai-composer" onSubmit={event => { event.preventDefault(); void ask(conversation.input ?? ''); }}>
@@ -226,7 +256,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
         {busy ? <button className="inline-ai-send" type="button" aria-label="停止就地回答" disabled={!generating} onClick={() => generating && stopAI(generating.id)}><Square size={13} /></button> : <button className="inline-ai-send" type="submit" aria-label="发送就地问题" disabled={!conversation.input?.trim() || !!scopeProblem}><ArrowUp size={16} /></button>}
       </form>
     </>}
-    {problem && <div className="inline-ai-problem" role="alert">{problem}{!requests.length && initialAction === 'explain' && <button className="text-button" disabled={busy} onClick={() => void ask('请用容易理解的中文解释这段原文的意思，区分原文与补充解释。')}>重试解释</button>}</div>}
+    {problem && <div className="inline-ai-problem" role="alert">{problem}{!requests.length && (initialAction === 'explain' || operation !== 'question') && <button className="text-button" disabled={busy} onClick={() => void ask(autoPrompt)}>重试{operationLabel}</button>}</div>}
     <button type="button" className="inline-ai-resize" data-popover-resize aria-label="调整原文旁问答大小" title="拖动调整大小 · 方向键调整，Shift 加速" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><MoveDiagonal2 size={13} /></button>
   </section>;
 }

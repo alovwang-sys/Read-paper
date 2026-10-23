@@ -1,0 +1,21 @@
+{
+  "version": "0.1.15",
+  "bundleId": "io.github.alovwang-sys.papertrail",
+  "arch": "arm64",
+  "appAsarSha256": "41c82fe62b5f49f7c893821d7f625a6477848ee13ddfae8b9604f48b335fc4e9",
+  "artifacts": {
+    "out/make/dmg/arm64/Papertrail-0.1.15-macos-arm64.dmg": "9f6ac1e0d9d80da140f048332a6ead9fa3cd186c1f322e6a70a3229dcb8fa85e",
+    "out/make/zip/darwin/arm64/Papertrail-darwin-arm64-0.1.15.zip": "47eff00d2134d679608625c1f4be755e94b196e89d2915611cd4399411a4e6aa"
+  },
+  "runtimeSourceSha256": "73fc057b535ded0d35f4b80440e9ac502e2e1746d411ccf7d290b0880e755465",
+  "publisherSigned": false,
+  "notarized": false,
+  "signatureNote": "Existing Electron linker ad-hoc executable only; bundle resource verification reports no resources. Same unsigned preview baseline as installed 0.1.14; no security settings changed.",
+  "packagedRuntimeSourceSha256": "97917bfbad17441a6feb7ac1d112bf87db4eb3ec9a2b61a841c750804ef7bb4a",
+  "finalFormattingVerification": {
+    "change": "Removed one trailing space in ResearchConversationHost.tsx",
+    "rebuilt": true,
+    "compiledDistFiles": 499,
+    "allBytesEqualInstalledAsar": true
+  }
+}

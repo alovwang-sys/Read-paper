@@ -1,5 +1,7 @@
 # 论文研究工作台的 agent 开发任务
 
+2026-10-23 v0.1.15 连续工作区实施：已接统一会话宿主、紧凑列表、普通研究助手切换保留话题与草稿、侧边／浮窗／完整显示、固定卡片摘录浮窗；原文选区三操作、精确文字锚点、原处记录、独立位置会话和共享文章简要快照接入真实持久化。简要与引用分离，抽取支持停止，目录变更阻止旧请求，重生成保存实际材料；旧 PDF／标签分屏／Excalidraw／收录沿用原模块。受控模型、实际安装与真实模型质量分别验收，详见[本轮记录](verification/continuous-workspace/README.md)。此前“仅原型／待实施”记录描述当时状态，不再代表本条已交付切片；语义推荐会话、Claude/OpenCode研究工具和OCR仍未交付。
+
 2026-10-23 集合入口修订：用户反对卡片放在论文底部。最新[位置方案](agent-native-evolution/conversation-redesign/notes-placement.md)移除文末列表，以固定顶栏“卡片与摘录”、独立滚动浮窗及保存后“查看”承接查找/编辑，保留原文、聊天与逐条草稿。仍仅更新原型，不代表正式应用或安装包已改版。
 
 2026-10-23 连续工作区提案：用户追加资料范围、权限／语音、侧聊分屏、绘图框选及就地浮窗要求，并明确分屏沿用浏览器式可拖标签。源码核实与真实 Claude Code 讨论见[追加方案](agent-native-evolution/conversation-redesign/workspace-continuity.md)。新预览不等于正式完成：实施仍需统一会话承载／唯一输入、移除侧聊暗切经典、接回既有标签树与 Excalidraw，验证范围隔离及保存恢复后再交安装包。 浮窗会话选择复用标题下拉，提供搜索、新会话与本研究内的来源／关键词建议；草稿归原会话，材料由用户选择携带。
@@ -307,7 +309,7 @@ T4 和 T5 可先基于 T0 的同一组样例做隔离视图，真实数据集成
 
 ## T7 全链路验收
 
-2026-10-23 选区研究增量仍处于[方案与隔离原型](agent-native-evolution/conversation-redesign/selection-context.md)阶段。正式接入待办：复用 ReaderPopover 的提问/翻译/选区摘要入口；稳定 SourceAnchor 与可回查 Activity；共享 PaperBrief 的覆盖范围、单次生成、版本与请求快照；分别验证真实裁图、失败重试和刷新恢复。不要以原型测试将 T6 或这些正式接入项标为完成。
+2026-10-23 选区研究从[方案与隔离原型](agent-native-evolution/conversation-redesign/selection-context.md)接入 v0.1.15：ReaderPopover 三操作、精确文字锚点与活动记录、共享 PaperBrief、版本及逐轮快照已实现。真实 PDF 字形／裁图、受控回答、失败／停止、刷新与打包重启分别按[实施记录](verification/continuous-workspace/README.md)验收；本轮没有将受控回答当作真实模型质量证明，也不据此扩大 T6 全部完成范围。
 
 负责人：主 agent 与独立验收 agent。依赖：T2–T6。
 

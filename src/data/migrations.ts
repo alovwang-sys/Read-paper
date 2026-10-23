@@ -1,3 +1,4 @@
+import { validateReaderContext } from '../domain/reader-context';
 import { hasFullText } from '../domain/knowledge';
 import { ensurePaneLayout, validatePaneLayout, syncPaneSession } from '../services/panes';
 import { boardSnapshot, parseBoardPlan, validateBoardContext, validateBoardHistory, validateBoardSnapshot } from '../domain/board-history';
@@ -271,6 +272,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (evidence.researchId !== undefined && !data.researches[evidence.researchId] || evidence.note !== undefined && typeof evidence.note !== 'string' || evidence.dismissed !== undefined && typeof evidence.dismissed !== 'boolean') throw new Error('摘录信息损坏。');
   }
   for (const draft of Object.values(data.drafts)) if (draft.cardRefs !== undefined && (!Array.isArray(draft.cardRefs) || draft.cardRefs.some(ref => !record(ref) || typeof ref.cardId !== 'string' || typeof ref.insertedAt !== 'string' || ref.evidenceIds !== undefined && !strings(ref.evidenceIds)))) throw new Error('文稿卡片记录损坏。');
+  validateReaderContext(data, true);
   data.schemaVersion = 3;
   for (const [key, session] of Object.entries(data.sessions)) {
     validatePaneLayout(data, key);

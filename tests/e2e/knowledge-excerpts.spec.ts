@@ -93,7 +93,11 @@ test('H 摘录可撤销，重复选区复用，刷新保留原文高亮', async 
   await page.reload();
   await expect(main(page).locator('.pdf-excerpt-highlight')).not.toHaveCount(0);
   expect((await state(page)).evidence[excerpt.id]).toMatchObject({ quote: excerpt.quote, researchId: 'research-a' });
-  await main(page).locator(`.pdf-excerpt-highlight[data-evidence-id="${excerpt.id}"]`).first().click();
+  const highlight = main(page).locator(`.pdf-excerpt-highlight[data-evidence-id="${excerpt.id}"]`).first();
+  await highlight.scrollIntoViewIfNeeded();
+  const bounds = (await highlight.boundingBox())!;
+  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.getByLabel('原文选区操作').getByLabel('更多操作', { exact: true }).click();
   await expect(page.getByLabel('原文选区操作').getByRole('button', { name: '移除标记', exact: true })).toBeEnabled();
 });
 

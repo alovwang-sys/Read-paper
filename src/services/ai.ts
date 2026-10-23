@@ -13,6 +13,7 @@ import { flushBoardDrawings } from './drawing-storage';
 import { researchMaterials } from './board-research';
 import { requestProvenance, validateResearchMaterials } from '../domain/research';
 import { stopAllResearchRuns } from './research-agent';
+import { briefMaterial, preparePaperBrief, stopPaperBriefs } from './paper-brief';
 
 export type AIConfig = {
   configured: boolean; model: string; provider: string; images: boolean; mode: 'live' | 'demo';
@@ -41,7 +42,7 @@ export function historyForConversation(data: WorkspaceData, conversationId: stri
   return chosen.map(r => {
     const evidenceIds = r.boardProposal ? [...new Set(r.boardProposal.nodes.flatMap(node => node.card?.evidenceIds ?? []))].filter(id => r.context.some(source => source.evidenceId === id)) : [...r.evidenceIds];
     const allowed = evidenceIds.filter(id => !excluded.has(`evidence:${id}`));
-    const body = r.boardProposal ? JSON.stringify(r.boardProposal) : remapHistoryCitations(r.body, evidenceIds, allowed);
+    const body = r.boardProposal ? JSON.stringify(r.boardProposal) : remapHistoryCitations(r.researchRun && r.result ? r.result.body : r.body, evidenceIds, allowed);
     return { requestId: r.id, prompt: originalRequestPrompt(r), body, evidenceIds: allowed,
       context: structuredClone((r.boardProposal ? r.context.filter(source => evidenceIds.includes(source.evidenceId)) : r.context).filter(source => !excluded.has(`evidence:${source.evidenceId}`))),
       ...(r.materials ? { materials: structuredClone(r.materials.filter(material => !excluded.has(material.id))) } : {}) };
@@ -65,7 +66,7 @@ export function snapshotContext(data: WorkspaceData, researchId: string, convers
   history ??= codex ? [] : historyForConversation(data, conversationId);
   const snapshots = new Map<string, ContextSnapshot>();
   const excluded = new Set(conversation.boardResearch?.excludedSourceIds ?? []);
-  if (codex && !conversation.boardResearch) {
+  if (codex && !conversation.boardResearch && !conversation.inlineSource) {
     const previous = conversation.requestIds.map(id => data.requests[id]).filter(request => request && (!request.purpose || request.purpose === 'chat')).at(-1);
     for (const item of conversation.sentContext ?? previous?.context ?? []) {
       if (excluded.has(`evidence:${item.evidenceId}`)) continue;
@@ -87,13 +88,14 @@ export function snapshotContext(data: WorkspaceData, researchId: string, convers
 export function buildRequestScope(data: WorkspaceData, researchId: string, conversationId: string, excludeId?: string) {
   const conversation = data.conversations[conversationId];
   if (!conversation || conversation.researchId !== researchId) throw new Error('会话不属于当前研究');
-  const history = conversationConnection(conversation) === 'codex' && !conversation.boardResearch ? [] : historyForConversation(data, conversationId, excludeId);
+  const history = conversationConnection(conversation) === 'codex' && !conversation.boardResearch && !conversation.inlineSource ? [] : historyForConversation(data, conversationId, excludeId);
   const context = snapshotContext(data, researchId, conversationId, history);
   const materials = researchMaterials(data, conversationId);
+  if (conversation.researchFocus) { const focus = conversation.researchFocus; materials.push({ id: `focus:${focus.ref.kind}:${focus.ref.id}`, kind: focus.ref.kind === 'card' ? 'card_note' : 'background', title: focus.title, text: focus.body, version: new Date().toISOString(), resourceRef: structuredClone(focus.ref) }); }
   validateResearchMaterials(materials);
   const boardResearch = conversation.boardResearch && structuredClone({ ...conversation.boardResearch.origin, focus: conversation.boardResearch.focus });
   const scope = { context, materials, history, ...(boardResearch ? { boardResearch } : {}) };
-  if (conversationConnection(conversation) !== 'codex' || boardResearch) assertRequestBudget({ prompt: '', ...scope });
+  if (conversationConnection(conversation) !== 'codex' || boardResearch || conversation.inlineSource) assertRequestBudget({ prompt: '', ...scope });
   return scope;
 }
 function assertRequestBudget(request: Pick<AIRequest, 'prompt' | 'context' | 'history' | 'materials' | 'boardContext' | 'boardResearch'>) {
@@ -240,7 +242,7 @@ const agentResponder: AIResponder = async (request, options) => {
     ...(bindingId ? { bindingId, ...(request.purpose === 'chat' && conversation.nativeSessionRef ? { sessionRef: conversation.nativeSessionRef } : {}) } : {}),
     ...(request.connectionId === 'codex' ? request.purpose === 'chat' ? { skillIds: request.skills?.map(skill => skill.id) ?? [], codex: request.codex ?? {} } : request.codex?.model ? { codex: { model: request.codex.model } } : {} : {}),
     ...(request.nativeRun?.managed ? { managed: true } : {}),
-    reset: request.nativeRun?.managed ? false : !!request.retryOf || !!request.regeneratedFrom || !!request.boardResearch || (!!conversation && conversation.historyRange !== 'all') };
+    reset: request.nativeRun?.managed ? false : !!request.retryOf || !!request.regeneratedFrom || !!request.boardResearch || !!conversation?.inlineSource || (!!conversation && conversation.historyRange !== 'all') };
   if (request.nativeRun?.managed) {
     await observeManagedRequest(request.id, options!.signal, payload);
     const current = workspace.getState().data.requests[request.id];
@@ -277,7 +279,7 @@ const agentResponder: AIResponder = async (request, options) => {
         const current = data.requests[request.id];
         if (current?.status !== 'generating') return;
         current.nativeSessionId = event.nativeSessionId;
-        if (request.purpose === 'chat') {
+        if (request.purpose === 'chat' && !data.conversations[request.conversationId]?.inlineSource) {
           const target = data.conversations[request.conversationId];
           const continuesHistory = target.nativeSessionId === event.nativeSessionId || typeof event.forkedFromId === 'string' && event.forkedFromId === target.nativeSessionId;
           const previous = continuesHistory ? target.sentContext ?? [] : [];
@@ -617,6 +619,23 @@ const running = new Map<string, { controller: AbortController; flush: () => void
 const pendingConversations = new Set<string>();
 let stoppingAll = false;
 let preparingRequests = 0;
+const briefWaiters = new Map<string, () => void>();
+export function skipPaperBrief(requestId: string) { briefWaiters.get(requestId)?.(); }
+async function attachPaperBrief(request: AIRequest, responder: AIResponder, signal: AbortSignal) {
+  let abort: () => void = () => {};
+  const skipped = new Promise<null>(resolve => briefWaiters.set(request.id, () => resolve(null)));
+  const cancelled = new Promise<never>((_, reject) => { abort = () => reject(new DOMException('已停止', 'AbortError')); signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort(); });
+  try {
+    const brief = await Promise.race([preparePaperBrief(request, responder), skipped, cancelled]);
+    signal.throwIfAborted();
+    if (brief) { request.paperBrief = brief; request.materials = [...(request.materials ?? []).filter(item => !item.id.startsWith('paper-brief:')), briefMaterial(brief)]; delete request.paperBriefState; }
+    else request.paperBriefState = 'selection-only';
+    workspace.updateData(data => { const stored = data.requests[request.id]; if (!stored || stored.status !== 'generating') return; stored.paperBrief = structuredClone(request.paperBrief); stored.paperBriefState = request.paperBriefState; stored.materials = structuredClone(request.materials); if (brief) data.conversations[request.conversationId].paperBrief = structuredClone(brief); });
+  } catch (problem) {
+    workspace.updateData(data => { if (data.requests[request.id]?.status === 'generating') data.requests[request.id].paperBriefState = 'error'; });
+    throw problem;
+  } finally { briefWaiters.delete(request.id); signal.removeEventListener('abort', abort); }
+}
 async function runChatRequest(request: AIRequest, responder: AIResponder, submittedInput?: string) {
   const data = workspace.getState().data;
   if (pendingConversations.has(request.conversationId) || data.conversations[request.conversationId].requestIds.some(id => data.requests[id]?.status === 'generating' && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) throw new Error('当前会话正在回答，请停止或等待完成。');
@@ -630,6 +649,12 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
   request.mode = responder === demoResponder ? 'demo' : 'live';
   const data = workspace.getState().data;
   request.history = request.history?.map(turn => ({ ...turn, sentBody: data.requests[turn.requestId]?.boardContext ? turn.body : remapHistoryCitations(turn.body, turn.evidenceIds, request.context.map(c => c.evidenceId)) }));
+  if (responder === demoResponder && request.readerOperation) {
+    delete request.paperBrief;
+    request.paperBriefState = 'selection-only';
+    request.materials = request.materials?.filter(item => !item.id.startsWith('paper-brief:'));
+  }
+  if (request.paperBrief) request.materials = [...(request.materials ?? []).filter(item => !item.id.startsWith('paper-brief:')), briefMaterial(request.paperBrief)];
   if (request.connectionId !== 'codex' || request.boardResearch || request.purpose && request.purpose !== 'chat') assertRequestBudget(request);
   const selectedBoard = data.conversations[request.conversationId]?.boardSkill;
   const syncDirectory = responder === liveResponder && ['codex', 'claude', 'opencode'].includes(request.connectionId ?? '')
@@ -659,7 +684,7 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
   if (stoppingAll) throw new Error('生成已在关闭前取消。');
   if (workspace.getGeneration() !== generation) throw new Error('工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。');
   if (request.draftId && !workspace.getState().data.cardDrafts[request.draftId]) throw new Error('草稿已放弃，未发送生成请求。');
-  const managed = responder === liveResponder && request.connectionId === 'codex' && !request.boardResearch && (!request.purpose || request.purpose === 'chat');
+  const managed = responder === liveResponder && request.connectionId === 'codex' && !request.boardResearch && !data.conversations[request.conversationId]?.inlineSource && (!request.purpose || request.purpose === 'chat');
   if (managed) {
     request.historyRequestIds ??= request.history?.map(turn => turn.requestId) ?? [];
     request.history = [];
@@ -694,6 +719,14 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
   const timer = managed ? undefined : setInterval(flush, 180);
   const checkpoint = setInterval(() => workspace.retrySave(), 1200);
   try {
+    if (request.readerOperation === 'question' && request.paperBriefState !== 'selection-only' && !request.paperBrief) {
+      workspace.updateData(data => { data.requests[request.id].paperBriefState = 'preparing'; });
+      await attachPaperBrief(request, responder, controller.signal);
+      if (workspace.getGeneration() !== generation) throw new Error('工作区已改变，本次问题未发送。');
+      verifyDirectoryScope();
+    }
+    if (request.paperBrief) { request.materials = [...(request.materials ?? []).filter(item => !item.id.startsWith('paper-brief:')), briefMaterial(request.paperBrief)]; assertRequestBudget(request); }
+    controller.signal.throwIfAborted();
     let response = await responder(structuredClone(request), { signal: controller.signal, onDelta: text => { if (!controller.signal.aborted) received += text; } });
     if (managed) {
       const current = workspace.getState().data.requests[request.id];
@@ -762,6 +795,7 @@ export async function stopAllAI() {
   try {
     await stopAllResearchRuns();
     for (const id of running.keys()) stopAI(id);
+    await stopPaperBriefs();
     for (const request of Object.values(workspace.getState().data.requests)) if (request.nativeRun?.managed && !nativeTerminal(request.nativeRun.state) && !running.has(request.id)) stopAI(request.id);
     const deadline = Date.now() + 12000;
     while (running.size || pendingConversations.size || preparingRequests) {
@@ -773,20 +807,26 @@ export async function stopAllAI() {
     if (Object.values(workspace.getState().data.requests).some(request => request.nativeRun?.managed && !nativeTerminal(request.nativeRun.state))) throw new Error('原生回合尚未确认停止。已保留工作台，请恢复连接后重试关闭。');
   } finally { stoppingAll = false; }
 }
-export async function submitAI(researchId: string, conversationId: string, prompt: string, responder?: AIResponder, options: { board?: 'create' | 'none' } = {}) {
+export async function submitAI(researchId: string, conversationId: string, prompt: string, responder?: AIResponder, options: { board?: 'create' | 'none'; readerOperation?: import('../domain/types').ReaderOperation; paperBrief?: 'auto' | 'none' } = {}) {
   if (!prompt.trim()) throw new Error('请输入问题');
   await flushBoardDrawings();
   const data = workspace.getState().data, conversation = data.conversations[conversationId];
   if (!conversation || conversation.archived) throw new Error('请先恢复此会话再继续讨论。');
+  if (conversation.chatImages?.length || conversation.drawingQuestion) throw new Error('这段会话仍有待发送图片或绘图，请切回 Codex 研究助手发送，或先移除附件；输入已保留。');
   const connectionId = responder === demoResponder ? 'demo' : conversationConnection(conversation);
   responder ??= connectionId === 'demo' ? demoResponder : liveResponder;
   if (pendingConversations.has(conversationId) || conversation.requestIds.some(id => data.requests[id]?.status === 'generating' && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) throw new Error('当前会话正在回答，请停止或等待完成。');
   const scope = buildRequestScope(data, researchId, conversationId);
   const { context } = scope;
   const request: AIRequest = { id: uid('request'), researchId, conversationId, connectionId, prompt: prompt.trim(), ...scope, purpose: 'chat', mode: responder === demoResponder ? 'demo' : 'live', createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [] };
+  if (conversation.inlineSource) {
+    request.readerOperation = options.readerOperation ?? conversation.inlineSource.operation ?? 'question';
+    request.readerEvidenceId = conversation.inlineSource.evidenceId;
+    if (options.paperBrief === 'none' || request.readerOperation !== 'question') request.paperBriefState = 'selection-only';
+  }
   const intent = detectBoardIntent(prompt);
   if (options.board === 'create') request.boardContext = createChatBoardContext(data, researchId, context.map(item => item.evidenceId));
-  else if (options.board !== 'none' && !isBoardNonAction(prompt)) {
+  else if (options.board !== 'none' && !conversation.inlineSource && !isBoardNonAction(prompt)) {
     if (intent === 'create') request.boardContext = createChatBoardContext(data, researchId, context.map(item => item.evidenceId));
     else if (conversation.boardSkill) request.boardContext = captureBoardContext(data, researchId, conversation.boardSkill.boardId, conversation.boardSkill.scope, { allowNewCards: conversation.boardSkill.allowNewCards, evidenceIds: context.map(item => item.evidenceId) });
     else if (intent === 'edit') throw new Error('请先选择要修改的白板；要从讨论生成新的白板，请使用“生成白板”。');
@@ -794,7 +834,7 @@ export async function submitAI(researchId: string, conversationId: string, promp
   if (connectionId === 'codex') {
     request.skills = structuredClone(conversation.skills ?? []); request.codex = structuredClone(conversation.codex ?? {});
     const previous = conversation.requestIds.map(id => data.requests[id]).filter(request => request && (!request.purpose || request.purpose === 'chat')).at(-1);
-    request.historyRequestIds = previous ? [previous.id] : [];
+    request.historyRequestIds = conversation.inlineSource ? request.history?.map(turn => turn.requestId) ?? [] : previous ? [previous.id] : [];
   }
   return runChatRequest(request, responder, prompt);
 }

@@ -5,6 +5,8 @@ import {
   ChevronRight,
   FileText,
   Layers,
+  Languages,
+  MessageCircle,
   List,
   LoaderCircle,
   Minus,
@@ -15,22 +17,25 @@ import {
   X,
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { ReadingPosition, ReaderTarget, ResourceAnchor } from '../../domain/types';
+import type { ReadingPosition, ReaderActivity, ReaderTarget, ResourceAnchor } from '../../domain/types';
 import { getReaderPosition, registerReaderFlush, scopeKey, useWorkspace } from '../../services/workspace';
 import { loadPdfDocument } from '../../services/pdf';
-import { createInlineConversation, findInlineConversation, type InlineAISelection } from '../../services/inline-ai';
+import { createInlineConversation, type InlineAISelection } from '../../services/inline-ai';
+import { readerActivities, recordReaderAction } from '../../services/reader-actions';
 import { PdfPage, type PageHandle, type PageSize } from './PdfPage';
 import { contentHash, putAsset } from '../../data/storage';
 import { hasFullText } from '../../domain/knowledge';
 import { ImportPDFButton } from './ImportPDFButton';
 import { cropRegion, regionFromPoints, rotateRegion, validRegion, type RegionRect } from './region';
 import { InlineAIPopover, ReaderPopover, type ReaderSelectionAnchor } from './InlineAIPopover';
+import { ReaderActivityList } from './ReaderActivityList';
+import { captureTextAnchor, rangeForTextAnchor, textInsideRegion, type TextAnchor } from './text-anchor';
 import './reader.css';
 
 type Outline = { title: string; pageIndex: number; depth: number };
 const normalize = (value: string) => value.replace(/\s+/g, ' ').trim();
-type SelectionAction = 'excerpt' | 'card' | 'ai' | 'explain' | 'attach';
-type RegionPreview = { blob: Blob; url: string; width: number; height: number; rect: RegionRect; rotation: number };
+type SelectionAction = 'excerpt' | 'card' | 'ai' | 'explain' | 'translation' | 'summary' | 'highlight' | 'attach';
+type RegionPreview = { blob: Blob; url: string; width: number; height: number; rect: RegionRect; rotation: number; quote: string };
 
 export function PdfReader({
   documentId,
@@ -63,10 +68,12 @@ export function PdfReader({
   const [showNavigation, setShowNavigation] = useState(false);
   const [search, setSearch] = useState('');
   const [quote, setQuote] = useState('');
+  const [textAnchor, setTextAnchor] = useState<TextAnchor>();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'text' | 'region'>('text');
   const [selectionAnchor, setSelectionAnchor] = useState<ReaderSelectionAnchor>({ left: 12, top: 12, width: 1, height: 1 });
   const [inlineConversationId, setInlineConversationId] = useState<string>();
-  const [inlineInitialAction, setInlineInitialAction] = useState<'explain' | 'ask'>('ask');
+  const [inlineInitialAction, setInlineInitialAction] = useState<'explain' | 'ask' | 'translation' | 'summary'>('ask');
   const [inlinePage, setInlinePage] = useState<number>();
   const anchorPageWidth = useRef(0);
   const [regionRect, setRegionRect] = useState<RegionRect>();
@@ -160,12 +167,16 @@ export function PdfReader({
     };
   }, [documentId, doc?.assetId, doc?.assetRevision, retry]);
 
-  const documentExcerpts = Object.values(data.evidence).filter(item => !item.contextOnly && !item.annotationHidden && item.documentId === documentId && (!research || !item.researchId || item.researchId === research.id));
+  const activityByEvidence = useMemo(() => Object.fromEntries(Object.values(data.evidence)
+    .filter(item => item.documentId === documentId).map(item => [item.id, readerActivities(data, item.id)])), [data, documentId]);
+  const documentMarks = Object.values(data.evidence).filter(item => !item.annotationHidden && item.documentId === documentId
+    && (!item.contextOnly || activityByEvidence[item.id]?.length) && (!research || !item.researchId || item.researchId === research.id));
+  const documentExcerpts = documentMarks.filter(item => !item.contextOnly);
   const pickedId = selection?.viewInstanceId === `reader:${viewScope}:${target}:${documentId}` ? selection.evidenceIds[0] : undefined;
   const pickedExcerpt = pickedId ? data.evidence[pickedId] : undefined;
-  const selectedExcerpt = pickedExcerpt?.documentId === documentId && pickedExcerpt.pageIndex === selectedPageIndex ? pickedExcerpt : [...documentExcerpts, ...(sourceValid && sourceEvidence ? [sourceEvidence] : [])].find(item => item.pageIndex === selectedPageIndex && (selectionMode === 'region'
+  const selectedExcerpt = pickedExcerpt?.documentId === documentId && pickedExcerpt.pageIndex === selectedPageIndex ? pickedExcerpt : [...documentMarks, ...(sourceValid && sourceEvidence ? [sourceEvidence] : [])].find(item => item.pageIndex === selectedPageIndex && (selectionMode === 'region'
     ? item.kind === 'region' && !!item.region && !!regionPreview && JSON.stringify(rotateRegion(item.region.rect, regionPreview.rotation - item.region.rotation)) === JSON.stringify(regionPreview.rect)
-    : item.kind !== 'region' && !!quote && item.quote === quote));
+    : item.kind !== 'region' && !!quote && item.quote === quote && (!textAnchor || item.textAnchor?.start === textAnchor.start && item.textAnchor?.end === textAnchor.end)));
   const findCard = session.panel.findEvidenceFor && data.cards[session.panel.findEvidenceFor];
 
   useEffect(() => {
@@ -404,6 +415,8 @@ export function PdfReader({
     selectionVersion.current++;
     setSelectionPage(undefined);
     setQuote('');
+    setTextAnchor(undefined);
+    setHistoryOpen(false);
     setRegionRect(undefined);
     setRegionPreview(undefined);
     setSelectionBusy(false);
@@ -437,6 +450,8 @@ export function PdfReader({
     const selected = normalize(selection.toString());
     if (!selected) {
       setQuote('');
+      setTextAnchor(undefined);
+      setHistoryOpen(false);
       actions.setSelection(undefined);
       return;
     }
@@ -449,6 +464,8 @@ export function PdfReader({
     setSelectionError('');
     setPendingAction(undefined);
     setQuote(selected);
+    setTextAnchor(captureTextAnchor(pageLayer, range));
+    setHistoryOpen(false);
     setInlineConversationId(undefined);
     setInlinePage(undefined);
     const bounds = range.getBoundingClientRect();
@@ -508,7 +525,8 @@ export function PdfReader({
     try {
       const result = await cropRegion(handle.canvas, rect);
       if (version !== selectionVersion.current) return;
-      setRegionPreview({ ...result, url: URL.createObjectURL(result.blob), rect: { ...rect }, rotation: handle.size.rotation });
+      setRegionPreview({ ...result, url: URL.createObjectURL(result.blob), rect: { ...rect }, rotation: handle.size.rotation,
+        quote: handle.textReady ? textInsideRegion(handle.layer, rect) : '' });
     } catch (error) {
       if (version === selectionVersion.current)
         setSelectionError(error instanceof Error ? error.message : '区域截图失败，请重试');
@@ -535,13 +553,18 @@ export function PdfReader({
     const version = selectionVersion.current;
     const originScope = data.scope;
     const selectedDocument = documentId, selectedPage = selectedPageIndex, selectedQuote = quote;
+    const selectedTextAnchor = textAnchor;
     const selectedRegion = regionPreview, selectedMode = selectionMode;
     const selectedResearchId = researchId ?? research!.id;
     const cardIdToAttach = session.panel.findEvidenceFor;
     setSelectionBusy(true); setSelectionError('');
     try {
-      if (mode === 'ai' || mode === 'explain') {
-        const source: InlineAISelection = { documentId: selectedDocument, pageIndex: selectedPage, quote: selectedMode === 'text' ? selectedQuote : '', kind: selectedMode };
+      if (mode === 'ai' || mode === 'explain' || mode === 'translation' || mode === 'summary') {
+        const operation = mode === 'translation' || mode === 'summary' ? mode : 'question';
+        const source: InlineAISelection = { documentId: selectedDocument, pageIndex: selectedPage,
+          quote: selectedMode === 'text' ? selectedQuote : selectedRegion?.quote ?? '', kind: selectedMode,
+          ...(selectedMode === 'text' && selectedTextAnchor ? { textAnchor: selectedTextAnchor } : {}) };
+        if (mode === 'translation' && !source.quote.trim()) throw new Error('此区域没有可提取的文字，尚未进行 OCR。可以提问或生成区域摘要。');
         if (selectedMode === 'region' && selectedRegion) {
           const hash = await contentHash(await selectedRegion.blob.arrayBuffer());
           const assetId = crypto.randomUUID();
@@ -550,10 +573,9 @@ export function PdfReader({
         }
         if (version !== selectionVersion.current || scopeKey(actions.getState().data.scope) !== scopeKey(originScope)) return;
         actions.associateDocument(selectedResearchId, selectedDocument);
-        const conversation = findInlineConversation(selectedResearchId, source);
-        const id = conversation?.id ?? createInlineConversation(selectedResearchId, source);
+        const id = createInlineConversation(selectedResearchId, source, { operation });
         if (!research) actions.updateData(next => { next.sessions[scopeKey(originScope)].libraryResearchId = selectedResearchId; });
-        setInlineInitialAction(mode === 'explain' ? 'explain' : 'ask');
+        setInlineInitialAction(mode === 'translation' || mode === 'summary' ? mode : mode === 'explain' ? 'explain' : 'ask');
         setInlinePage(selectedPage);
         setInlineConversationId(id);
         setPendingAction(undefined);
@@ -564,15 +586,16 @@ export function PdfReader({
       let evidenceId: string;
       const existing = Object.values(actions.getState().data.evidence).find(item =>
         (!item.researchId || item.researchId === selectedResearchId) && item.documentId === selectedDocument && item.pageIndex === selectedPage &&
-        (selectedMode === 'region' ? item.kind === 'region' && !!item.region && !!selectedRegion && JSON.stringify(rotateRegion(item.region.rect, selectedRegion.rotation - item.region.rotation)) === JSON.stringify(selectedRegion.rect) : item.kind !== 'region' && item.quote === selectedQuote));
+        (selectedMode === 'region' ? item.kind === 'region' && !!item.region && !!selectedRegion && JSON.stringify(rotateRegion(item.region.rect, selectedRegion.rotation - item.region.rotation)) === JSON.stringify(selectedRegion.rect)
+          : item.kind !== 'region' && item.quote === selectedQuote && (!selectedTextAnchor || item.textAnchor?.start === selectedTextAnchor.start && item.textAnchor?.end === selectedTextAnchor.end)));
       if (existing) { evidenceId = existing.id; if (existing.contextOnly || existing.annotationHidden) actions.updateData(next => { delete next.evidence[evidenceId].contextOnly; delete next.evidence[evidenceId].annotationHidden; }); }
       else if (selectedMode === 'region' && selectedRegion) {
         const hash = await contentHash(await selectedRegion.blob.arrayBuffer());
         const assetId = crypto.randomUUID();
         await putAsset(assetId, selectedRegion.blob);
-        evidenceId = actions.createRegionEvidence({ documentId: selectedDocument, pageIndex: selectedPage, quote: '', region: { assetId, hash, rect: selectedRegion.rect, rotation: selectedRegion.rotation, width: selectedRegion.width, height: selectedRegion.height } });
+        evidenceId = actions.createRegionEvidence({ documentId: selectedDocument, pageIndex: selectedPage, quote: selectedRegion.quote, region: { assetId, hash, rect: selectedRegion.rect, rotation: selectedRegion.rotation, width: selectedRegion.width, height: selectedRegion.height } });
         actions.updateData(next => { next.evidence[evidenceId].researchId = selectedResearchId; });
-      } else evidenceId = actions.captureExcerpt(selectedResearchId, { documentId: selectedDocument, pageIndex: selectedPage, quote: selectedQuote });
+      } else evidenceId = actions.captureExcerpt(selectedResearchId, { documentId: selectedDocument, pageIndex: selectedPage, quote: selectedQuote, ...(selectedTextAnchor ? { textAnchor: selectedTextAnchor } : {}) });
       if (mode === 'attach') {
         if (!cardIdToAttach) throw new Error('找依据的卡片已关闭，请重新选择。');
         actions.attachEvidenceToCard(cardIdToAttach, evidenceId);
@@ -580,11 +603,13 @@ export function PdfReader({
       if (version !== selectionVersion.current || scopeKey(actions.getState().data.scope) !== scopeKey(originScope)) {
         actions.notice('已保存摘录；当前阅读位置已改变，请从摘录列表继续。'); return;
       }
-      if (mode === 'excerpt') {
+      if (mode === 'excerpt' || mode === 'highlight') {
+        recordReaderAction(evidenceId, mode);
         setUndoExcerpt(beforeIds.has(evidenceId) ? undefined : evidenceId);
         actions.notice(beforeIds.has(evidenceId) ? '已摘录，已复用已有原文。' : '已摘录');
       } else if (mode === 'card') {
         const cardId = actions.createCard([evidenceId], '新的观点', '', selectedResearchId);
+        recordReaderAction(evidenceId, 'card', cardId);
         actions.openResource({ kind: 'card', id: cardId }, { scope: { kind: 'research', researchId: selectedResearchId }, target: 'inspector' });
       }
       setPendingAction(undefined);
@@ -607,9 +632,11 @@ export function PdfReader({
     const item = id && data.evidence[id];
     if (!item || item.kind === 'region') return;
     activatePage(index);
-    selectionVersion.current++; setQuote(item.quote); setSelectionError(''); setInlineConversationId(undefined); setInlinePage(undefined);
+    selectionVersion.current++; setQuote(item.quote); setTextAnchor(item.textAnchor); setHistoryOpen(true); setSelectionMode('text'); setSelectionError(''); setInlineConversationId(undefined); setInlinePage(undefined);
     actions.setSelection({ scope: data.scope, viewInstanceId: `reader:${viewScope}:${target}:${documentId}`, selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }], textRange: { documentId, pageIndex: index, quote: item.quote }, evidenceIds: [item.id] });
-    const bounds = element.getBoundingClientRect(), pageBounds = layer.current!.getBoundingClientRect();
+    const pageLayer = pageHandles.current.get(index)?.layer;
+    if (!pageLayer) return;
+    const bounds = rangeForTextAnchor(pageLayer, item.quote, item.textAnchor)?.getBoundingClientRect() ?? element.getBoundingClientRect(), pageBounds = pageLayer.getBoundingClientRect();
     anchorPageWidth.current = pageBounds.width;
     setSelectionAnchor({ left: bounds.left - pageBounds.left, top: bounds.top - pageBounds.top, width: bounds.width, height: bounds.height });
   }
@@ -651,6 +678,17 @@ export function PdfReader({
     });
     const height = pageSizes[item.pageIndex]?.height ?? 1;
     navigatePosition({ pageIndex: item.pageIndex, scale: position.scale, offset: Math.max(0, (selectionAnchor.top - 50) / height) }, true);
+  }
+  function openReaderActivity(activity: ReaderActivity) {
+    const conversationId = activity.conversationId ?? (activity.draftId && data.cardDrafts[activity.draftId]?.conversationId);
+    const conversation = conversationId ? data.conversations[conversationId] : undefined;
+    if (conversation?.inlineSource) {
+      setInlinePage(conversation.inlineSource.pageIndex);
+      setInlineInitialAction(conversation.inlineSource.operation === 'translation' || conversation.inlineSource.operation === 'summary' ? conversation.inlineSource.operation : 'ask');
+      setInlineConversationId(conversation.id);
+    } else if (activity.cardId && data.cards[activity.cardId]) {
+      actions.openResource({ kind: 'card', id: activity.cardId }, { scope: data.scope, target: 'inspector' });
+    }
   }
   if (!doc)
     return (
@@ -710,15 +748,24 @@ export function PdfReader({
   const selectionActions = (
     <>
       <div className="pdf-selection-actions">
-        {findCard && <button className="button" disabled={selectionBusy} onClick={() => void saveSelection('attach')}>作为「{findCard.title}」的依据</button>}
-        {!selectedExcerpt && <button className="primary" aria-label="摘录" disabled={selectionBusy} onClick={() => void saveSelection('excerpt')}>摘录 <kbd>H</kbd></button>}
-        <button className="button" aria-label="写成卡片" disabled={selectionBusy} onClick={() => void saveSelection('card')}><Layers size={14} />写成卡片 <kbd>C</kbd></button>
-        <button className="text-button pdf-inline-explain" data-inline-trigger={`${target}:explain`} disabled={selectionBusy} onClick={() => void saveSelection('explain')}>解释这段</button>
-        <button className="text-button" data-inline-trigger={`${target}:ask`} disabled={selectionBusy} onClick={() => void saveSelection('ai')}>提问</button>
-        {selectedExcerpt && <button className="text-button" disabled={selectionBusy} title="移除原文标记，保留摘录、卡片和 AI 引用" onClick={() => removeMark(selectedExcerpt.id)}>移除标记</button>}
+        <button className="text-button pdf-selection-primary" data-inline-trigger={`${target}:ask`} disabled={selectionBusy} onClick={() => void saveSelection('ai')}><MessageCircle size={14} />提问</button>
+        <button className="text-button" data-inline-trigger={`${target}:translation`} disabled={selectionBusy || !(selectionMode === 'text' ? quote : regionPreview?.quote)} title={selectionMode === 'region' && !regionPreview?.quote ? '此区域没有可提取文字，尚未进行 OCR' : '翻译所选原文'} onClick={() => void saveSelection('translation')}><Languages size={14} />翻译</button>
+        <button className="text-button" data-inline-trigger={`${target}:summary`} disabled={selectionBusy} onClick={() => void saveSelection('summary')}><Layers size={14} />摘要卡片</button>
+        <details className="pdf-selection-more"><summary aria-label="更多操作">•••</summary><div>
+          {findCard && <button className="text-button" disabled={selectionBusy} onClick={() => void saveSelection('attach')}>作为「{findCard.title}」的依据</button>}
+          <button className="text-button" aria-label="摘录" disabled={selectionBusy} onClick={() => void saveSelection('excerpt')}>{selectedExcerpt && !selectedExcerpt.contextOnly ? '已存摘录' : '保存摘录'} <kbd>H</kbd></button>
+          <button className="text-button" aria-label="写成卡片" disabled={selectionBusy} onClick={() => void saveSelection('card')}>制作卡片 <kbd>C</kbd></button>
+          <button className="text-button" disabled={selectionBusy} onClick={() => void saveSelection('highlight')}>高亮</button>
+          <button className="text-button" data-inline-trigger={`${target}:explain`} disabled={selectionBusy} onClick={() => void saveSelection('explain')}>解释这段</button>
+          {selectedExcerpt && <button className="text-button" disabled={selectionBusy} title="移除原文标记，保留摘录、卡片和 AI 引用" onClick={() => removeMark(selectedExcerpt.id)}>移除标记</button>}
+        </div></details>
         <button className="icon-button" aria-label="取消原文选区" onClick={clearSelection}><X size={14} /></button>
       </div>
-      {selectedExcerpt && <span className="pdf-selection-hint">移除标记会保留摘录、卡片和 AI 来源。</span>}
+      {selectionMode === 'region' && !regionPreview?.quote && <span className="pdf-selection-hint">未提取到区域文字 · 提问和摘要需要图片理解</span>}
+      {selectedExcerpt && (activityByEvidence[selectedExcerpt.id]?.length ?? 0) > 0 && <>
+        <button className="reader-activity-toggle text-button" aria-expanded={historyOpen} onClick={() => setHistoryOpen(value => !value)}>此处记录 <span>{activityByEvidence[selectedExcerpt.id].length}</span></button>
+        {historyOpen && <ReaderActivityList activities={activityByEvidence[selectedExcerpt.id]} onOpen={openReaderActivity} />}
+      </>}
       {researchPicker}
     </>
   );
@@ -952,12 +999,22 @@ export function PdfReader({
             const sourceRegion = source?.kind === 'region' && source.region ? rotateRegion(source.region.rect, size.rotation - source.region.rotation) : undefined;
             return <PdfPage key={index} pdf={pdf} documentId={documentId} title={doc.title} pageIndex={index} size={size}
               active={Math.abs(index - pageIndex) <= 2 || (!!quote || !!regionRect) && selected}
-              selectionMode={selectionMode} excerpts={documentExcerpts.filter(item => item.pageIndex === index)} source={source} retry={textRetry}
+              selectionMode={selectionMode} excerpts={documentMarks.filter(item => item.pageIndex === index)} source={source}
+              activityCounts={Object.fromEntries(Object.entries(activityByEvidence).map(([id, items]) => [id, items.length]))} retry={textRetry}
               onUpdate={handle => { if (handle) pageHandles.current.set(index, handle); else pageHandles.current.delete(index); refreshPages(value => value + 1); }}
               onTextError={() => { setTextState('error'); actions.updateData(next => { if (next.documents[documentId]) next.documents[documentId].textStatus = 'error'; }); }}
               onError={message => setError(message)}
               onSelect={() => captureSelection(index)} onExcerptClick={element => openHighlightedExcerpt(element, index)}>
-              {documentExcerpts.filter(item => item.pageIndex === index && item.kind === 'region' && item.region).map(item => { const rect = rotateRegion(item.region!.rect, size.rotation - item.region!.rotation); return <button key={item.id} className="pdf-saved-region" aria-label={`已摘录区域：PDF 第 ${index + 1} 页`} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} onClick={() => { clearSelection(); activatePage(index); setSelectionMode('region'); setRegionRect(rect); actions.setSelection({ scope: data.scope, viewInstanceId: `reader:${viewScope}:${target}:${documentId}`, selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }], evidenceIds: [item.id] }); void previewRegion(rect, index); }} />; })}
+              {documentMarks.filter(item => item.pageIndex === index && item.kind === 'region' && item.region).map(item => {
+                const rect = rotateRegion(item.region!.rect, size.rotation - item.region!.rotation);
+                return <div key={item.id} className={`pdf-saved-region ${item.contextOnly ? 'pdf-activity-region' : ''}`} style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }}>
+                  <button className="pdf-region-activity-marker" aria-label={`查看此处记录 · ${activityByEvidence[item.id]?.length || 1}条`} onClick={() => {
+                    clearSelection(); activatePage(index); setSelectionMode('region'); setRegionRect(rect); setHistoryOpen(true);
+                    actions.setSelection({ scope: data.scope, viewInstanceId: `reader:${viewScope}:${target}:${documentId}`, selectedItems: [{ resourceRef: { kind: 'document', id: documentId } }], evidenceIds: [item.id] });
+                    void previewRegion(rect, index);
+                  }}>{activityByEvidence[item.id]?.length || 1}</button>
+                </div>;
+              })}
               {sourceRegion && <div className="pdf-region-source" aria-label="来源区域高亮" style={{ left: `${sourceRegion.x * 100}%`, top: `${sourceRegion.y * 100}%`, width: `${sourceRegion.width * 100}%`, height: `${sourceRegion.height * 100}%` }} />}
               {selectionMode === 'region' && <div className="pdf-region-layer" aria-label={index === pageIndex ? '拖动框选当前 PDF 页区域' : `拖动框选 PDF 第 ${index + 1} 页区域`} onPointerDown={event => startRegion(event, index)} onPointerMove={moveRegion} onPointerUp={event => finishRegion(event, index)} onPointerCancel={() => { dragStart.current = undefined; }} onKeyDown={event => { if (event.key === 'Escape') clearSelection(); }} tabIndex={0}>
                 {selected && regionRect && <div className="pdf-region-box" style={{ left: `${regionRect.x * 100}%`, top: `${regionRect.y * 100}%`, width: `${regionRect.width * 100}%`, height: `${regionRect.height * 100}%` }} />}

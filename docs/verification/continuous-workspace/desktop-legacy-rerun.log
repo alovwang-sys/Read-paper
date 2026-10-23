@@ -1,0 +1,213 @@
+
+> read-paper@0.1.15 test:desktop:e2e
+> playwright test --config playwright.desktop.config.ts tests/desktop/research-switcher.spec.ts tests/desktop/composer-controls.spec.ts -g 研究名称仍聚焦|原生输入控件可达 --reporter=line,json
+
+
+Running 2 tests using 1 worker
+
+(node:19612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] tests/desktop/composer-controls.spec.ts:54:1 › 打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿
+tests/desktop/composer-controls.spec.ts:54:1 › 打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿
+Packaged Codex metadata {
+  capabilityStatus: 200,
+  capabilityBranch: 'full-access-cancel',
+  modelCount: 8
+}
+
+[2/2] tests/desktop/research-switcher.spec.ts:178:1 › 打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑
+  2 passed (10.0s)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "--config",
+      "playwright.desktop.config.ts",
+      "tests/desktop/research-switcher.spec.ts",
+      "tests/desktop/composer-controls.spec.ts",
+      "-g",
+      "研究名称仍聚焦|原生输入控件可达",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.desktop.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/desktop",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results-desktop",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/desktop",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results-desktop",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/desktop",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/desktop",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 120000,
+        "use": {
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "composer-controls.spec.ts",
+      "file": "composer-controls.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7216,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Packaged Codex metadata {\n  capabilityStatus: \u001b[33m200\u001b[39m,\n  capabilityBranch: \u001b[32m'full-access-cancel'\u001b[39m,\n  modelCount: \u001b[33m8\u001b[39m\n}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T11:16:19.414Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "58dfd315ae63bda0077c-586693698e92f187055b",
+          "file": "composer-controls.spec.ts",
+          "line": 54,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "research-switcher.spec.ts",
+      "file": "research-switcher.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2446,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T11:16:26.650Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b08c12c05610d3cace59-a96f0dc8e80deccb89a0",
+          "file": "research-switcher.spec.ts",
+          "line": 178,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T11:16:19.157Z",
+    "duration": 9965.222,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

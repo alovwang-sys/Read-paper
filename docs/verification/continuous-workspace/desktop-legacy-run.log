@@ -1,0 +1,376 @@
+
+> read-paper@0.1.15 test:desktop:e2e
+> playwright test --config playwright.desktop.config.ts tests/desktop/research-switcher.spec.ts tests/desktop/composer-controls.spec.ts -g 研究切换键盘|研究名称仍聚焦|原生输入控件可达 --reporter=line,json
+
+
+Running 3 tests using 1 worker
+
+(node:18302) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/3] tests/desktop/composer-controls.spec.ts:54:1 › 打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿
+  1) tests/desktop/composer-controls.spec.ts:54:1 › 打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿 ─────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('complementary', { name: '参考面板' }).getByRole('tab', { name: 'AI', exact: true })
+
+
+      66 |     let session = await launch(userData, home); application = session.application; let page = session.page; watch(page); await observeMedia(page);
+      67 |     expect(page.url()).toBe('papertrail://app/');
+    > 68 |     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
+         |                                                                     ^
+      69 |     const capabilityResponse = page.waitForResponse(response => response.url().endsWith('/api/ai/agents/codex/capabilities') && response.request().method() === 'GET');
+      70 |     await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();
+      71 |     await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();
+        at /Users/amos/project/Read-paper/tests/desktop/composer-controls.spec.ts:68:69
+
+    Error Context: test-results-desktop/composer-controls-打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results-desktop/composer-controls-打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results-desktop/composer-controls-打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:18423) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/3] tests/desktop/research-switcher.spec.ts:74:1 › 打包桌面：研究切换键盘、重复点击收起、窄屏空白点击后Esc逐层关闭
+[3/3] tests/desktop/research-switcher.spec.ts:178:1 › 打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑
+  2) tests/desktop/research-switcher.spec.ts:178:1 › 打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑 ──────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('main', { name: '主工作区' })
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('main', { name: '主工作区' }) with timeout 15000ms
+      - waiting for getByRole('main', { name: '主工作区' })
+
+
+      50 |       page.on('pageerror', error => pageErrors.push(error.message));
+      51 |       await page.setViewportSize({ width: 1440, height: 900 });
+    > 52 |       await expect(main(page)).toBeVisible();
+         |                                ^
+      53 |       await expect(page.locator('.app-shell.agent-workbench')).toBeVisible();
+      54 |       await expect(composer(page)).toBeVisible();
+      55 |       await saved(page);
+        at Object.launch (/Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts:52:32)
+        at /Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts:181:16
+
+    Error Context: test-results-desktop/research-switcher-打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results-desktop/research-switcher-打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results-desktop/research-switcher-打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  2 failed
+    tests/desktop/composer-controls.spec.ts:54:1 › 打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿 ──────────────
+    tests/desktop/research-switcher.spec.ts:178:1 › 打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑 ───────────────
+  1 passed (1.2m)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "--config",
+      "playwright.desktop.config.ts",
+      "tests/desktop/research-switcher.spec.ts",
+      "tests/desktop/composer-controls.spec.ts",
+      "-g",
+      "研究切换键盘|研究名称仍聚焦|原生输入控件可达",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.desktop.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/desktop",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results-desktop",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/desktop",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results-desktop",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/desktop",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/desktop",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 120000,
+        "use": {
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "composer-controls.spec.ts",
+      "file": "composer-controls.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 42477,
+                  "error": {
+                    "message": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('complementary', { name: '参考面板' }).getByRole('tab', { name: 'AI', exact: true })\u001b[22m\n",
+                    "stack": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('complementary', { name: '参考面板' }).getByRole('tab', { name: 'AI', exact: true })\u001b[22m\n\n    at /Users/amos/project/Read-paper/tests/desktop/composer-controls.spec.ts:68:69",
+                    "location": {
+                      "file": "/Users/amos/project/Read-paper/tests/desktop/composer-controls.spec.ts",
+                      "column": 69,
+                      "line": 68
+                    },
+                    "snippet": "  66 |     let session = await launch(userData, home); application = session.application; let page = session.page; watch(page); await observeMedia(page);\n  67 |     expect(page.url()).toBe('papertrail://app/');\n> 68 |     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();\n     |                                                                     ^\n  69 |     const capabilityResponse = page.waitForResponse(response => response.url().endsWith('/api/ai/agents/codex/capabilities') && response.request().method() === 'GET');\n  70 |     await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();\n  71 |     await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/desktop/composer-controls.spec.ts",
+                        "column": 69,
+                        "line": 68
+                      },
+                      "message": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('complementary', { name: '参考面板' }).getByRole('tab', { name: 'AI', exact: true })\u001b[22m\n\n\n  66 |     let session = await launch(userData, home); application = session.application; let page = session.page; watch(page); await observeMedia(page);\n  67 |     expect(page.url()).toBe('papertrail://app/');\n> 68 |     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();\n     |                                                                     ^\n  69 |     const capabilityResponse = page.waitForResponse(response => response.url().endsWith('/api/ai/agents/codex/capabilities') && response.request().method() === 'GET');\n  70 |     await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click();\n  71 |     await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();\n    at /Users/amos/project/Read-paper/tests/desktop/composer-controls.spec.ts:68:69"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T11:09:54.826Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results-desktop/composer-controls-打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results-desktop/composer-controls-打包桌面：原生输入控件可达，取消权限与材料、系统听写及重启均保留草稿/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/amos/project/Read-paper/tests/desktop/composer-controls.spec.ts",
+                    "column": 69,
+                    "line": 68
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "58dfd315ae63bda0077c-586693698e92f187055b",
+          "file": "composer-controls.spec.ts",
+          "line": 54,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "research-switcher.spec.ts",
+      "file": "research-switcher.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "打包桌面：研究切换键盘、重复点击收起、窄屏空白点击后Esc逐层关闭",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 14637,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T11:10:37.608Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b08c12c05610d3cace59-99f8156449264566e3bf",
+          "file": "research-switcher.spec.ts",
+          "line": 74,
+          "column": 1
+        },
+        {
+          "title": "打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 15565,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('main', { name: '主工作区' })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('main', { name: '主工作区' }) with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('main', { name: '主工作区' })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('main', { name: '主工作区' })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('main', { name: '主工作区' }) with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('main', { name: '主工作区' })\u001b[22m\n\n    at Object.launch (/Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts:52:32)\n    at /Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts:181:16",
+                    "location": {
+                      "file": "/Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts",
+                      "column": 32,
+                      "line": 52
+                    },
+                    "snippet": "  50 |       page.on('pageerror', error => pageErrors.push(error.message));\n  51 |       await page.setViewportSize({ width: 1440, height: 900 });\n> 52 |       await expect(main(page)).toBeVisible();\n     |                                ^\n  53 |       await expect(page.locator('.app-shell.agent-workbench')).toBeVisible();\n  54 |       await expect(composer(page)).toBeVisible();\n  55 |       await saved(page);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts",
+                        "column": 32,
+                        "line": 52
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('main', { name: '主工作区' })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('main', { name: '主工作区' }) with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('main', { name: '主工作区' })\u001b[22m\n\n\n  50 |       page.on('pageerror', error => pageErrors.push(error.message));\n  51 |       await page.setViewportSize({ width: 1440, height: 900 });\n> 52 |       await expect(main(page)).toBeVisible();\n     |                                ^\n  53 |       await expect(page.locator('.app-shell.agent-workbench')).toBeVisible();\n  54 |       await expect(composer(page)).toBeVisible();\n  55 |       await saved(page);\n    at Object.launch (/Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts:52:32)\n    at /Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts:181:16"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T11:10:52.264Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results-desktop/research-switcher-打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results-desktop/research-switcher-打包桌面：研究名称仍聚焦且未按Enter，直接正常退出后保留编辑/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/amos/project/Read-paper/tests/desktop/research-switcher.spec.ts",
+                    "column": 32,
+                    "line": 52
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "b08c12c05610d3cace59-a96f0dc8e80deccb89a0",
+          "file": "research-switcher.spec.ts",
+          "line": 178,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T11:09:54.652Z",
+    "duration": 73228.522,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

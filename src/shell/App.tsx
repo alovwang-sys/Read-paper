@@ -60,8 +60,10 @@ import { DesktopWindowControls } from './DesktopWindowControls';
 import { ResearchNavigation, researchViews } from './ResearchNavigation';
 import { ResearchSwitcher } from './ResearchSwitcher';
 import { BackupControls } from '../features/settings/BackupControls';
-import { ResearchAgentHome, ResearchAgentDock, ResearchAgentHistory } from '../features/workbench/ResearchAgentWorkbench';
-import { focusResearchResource } from '../services/research-agent';
+import { ResearchAgentHistory } from '../features/workbench/ResearchAgentWorkbench';
+import { ResearchConversationHost, type ChatMode } from '../features/workbench/ResearchConversationHost';
+import { WorkspaceNotesPanel } from './WorkspaceNotesPanel';
+import { focusResearchResource, isResearchConversation } from '../services/research-agent';
 import './workbench-shell.css';
 
 const modes: { id: PanelMode; name: string }[] = [
@@ -158,8 +160,20 @@ export function App() {
   const agentEnabled = data.agentWorkbench !== false;
   const agentWorkbench = agentEnabled && !!research;
   const currentConversation = research && getActiveConversation(data, research.id);
-  const atConversation = active.kind === 'researchView' && active.id === 'home';
-  const panelOpen = session.panel.open && (!agentWorkbench || session.agentWorkbenchStarted === true);
+  const chatMode: ChatMode = session.agentChat?.mode ?? (active.kind === 'researchView' && active.id === 'home' ? 'main' : 'side');
+  const [notesOpen, setNotesOpen] = useState(false);
+  const previousResource = useRef<{ researchId?: string; key: string }>({ key: '' });
+  const panelOpen = session.panel.open && (!agentWorkbench || session.panel.mode !== 'ai');
+  function setChatMode(mode: ChatMode) {
+    if (!research) return;
+    actions.updateData(next => { next.sessions[research.id].agentChat = { ...next.sessions[research.id].agentChat, mode }; });
+  }
+  useEffect(() => { setNotesOpen(false); }, [research?.id]);
+  useEffect(() => {
+    const resource = `${research?.id}:${active.kind}:${active.id}`;
+    if (previousResource.current.researchId === research?.id && previousResource.current.key && previousResource.current.key !== resource && agentWorkbench && chatMode === 'main' && !(active.kind === 'researchView' && active.id === 'home')) setChatMode('side');
+    previousResource.current = { researchId: research?.id, key: resource };
+  }, [research?.id, active.kind, active.id]);
   useEffect(() => {
     if (loaded && !loadError && agentWorkbench && research && !session.agentWorkbenchStarted) actions.updateData(next => {
       next.sessions[research.id].panel.open = false;
@@ -167,10 +181,13 @@ export function App() {
     });
   }, [loaded, loadError, agentWorkbench, research?.id, session.agentWorkbenchStarted]);
   useEffect(() => {
-    if (!loaded || loadError || !agentWorkbench || !session.agentWorkbenchStarted || !session.panel.open || session.panel.mode !== 'ai' || session.panel.aiView === 'history') return;
-    actions.updateData(next => { next.agentWorkbench = false; });
-    actions.notice('此操作在经典工作台继续，原有对话、局部材料和输入均已保留。');
-  }, [loaded, loadError, agentWorkbench, session.agentWorkbenchStarted, session.panel.open, session.panel.mode, session.panel.aiView]);
+    if (!loaded || loadError || !agentWorkbench || !research || !session.panel.open || session.panel.mode !== 'ai') return;
+    actions.updateData(next => {
+      const own = next.sessions[research.id];
+      own.panel.open = false;
+      own.agentChat = { ...own.agentChat, mode: own.agentChat?.mode === 'float' ? 'float' : active.kind === 'researchView' && active.id === 'home' ? 'main' : 'side' };
+    });
+  }, [loaded, loadError, agentWorkbench, research?.id, session.panel.open, session.panel.mode, session.panel.aiView, currentConversation?.id]);
   function toggleWorkbench() {
     actions.updateData(next => {
       next.agentWorkbench = !agentEnabled;
@@ -264,7 +281,7 @@ export function App() {
       name?.focus(); name?.select();
     });
   }
-  function navigate(view: ResearchViewId) { if (research) actions.openResearchView(research.id, view); if (narrow) closeNavigation(); }
+  function navigate(view: ResearchViewId) { if (research) actions.openResearchView(research.id, view); if (agentWorkbench && chatMode === 'main' && view !== 'home') setChatMode('side'); if (narrow) closeNavigation(); }
   function showDialog(kind: typeof dialog) {
     lastFocus.current = document.activeElement as HTMLElement;
     setDialog(kind);
@@ -279,7 +296,7 @@ export function App() {
   function viewContent(ref: import('../domain/types').WorkspaceViewRef, target: ReaderTarget, anchor?: import('../domain/types').ResourceAnchor, documentInfo?: boolean, tab?: import('../domain/types').WorkspaceTab) {
     if (ref.kind === 'sourcePreview') return tab?.preview ? <SourcePreview key={tab.id} {...tab.preview} scope={data.scope} /> : <div className="empty-state">此预览已关闭。</div>;
     if (ref.kind === 'collection') return <LibraryView collection={ref.id} />;
-    if (ref.kind === 'researchView') return research ? ref.id === 'home' ? (agentWorkbench ? <ResearchAgentHome researchId={research.id} /> : <ResearchView researchId={research.id} />) : ref.id === 'sources' ? <SourcesView researchId={research.id} /> : ref.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : ref.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={ref.id === 'boards' ? 'board' : 'draft'} /> : <div className="empty-state">请先选择研究。</div>;
+    if (ref.kind === 'researchView') return research ? ref.id === 'home' ? <ResearchView researchId={research.id} /> : ref.id === 'sources' ? <SourcesView researchId={research.id} /> : ref.id === 'excerpts' ? <ExcerptsView researchId={research.id} /> : ref.id === 'cards' ? <CardsView researchId={research.id} /> : <ResourceListView researchId={research.id} kind={ref.id === 'boards' ? 'board' : 'draft'} /> : <div className="empty-state">请先选择研究。</div>;
     if (!resourceExists(data, ref))
       return (
         <div className="empty-state">
@@ -386,12 +403,14 @@ export function App() {
         </div>
         <div className="sidebar-actions"><button className="new-research" onClick={newResearch}><Plus size={16} />新建研究</button><button className="icon-button search-trigger" aria-label="全局搜索" onClick={() => showDialog('search')}><Search size={18} /></button></div>
         {agentWorkbench ? <nav className="research-nav" aria-label="研究内导航">
-            <button className={`nav-item ${active.kind === 'researchView' && active.id === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}><Sparkles size={17} />研究工作台</button>
+            <button className={`nav-item ${chatMode === 'main' ? 'active' : ''}`} onClick={() => setChatMode('main')}><Sparkles size={17} />研究工作台</button>
+            <button className={`nav-item ${active.kind === 'researchView' && active.id === 'sources' && chatMode !== 'main' ? 'active' : ''}`} onClick={() => { navigate('sources'); if (chatMode === 'main') setChatMode('side'); }}><BookOpen size={17}/>本研究资料</button>
+            <ResearchAgentHistory researchId={research!.id} compact onSelected={() => { if (chatMode === 'closed') setChatMode(active.kind === 'researchView' && active.id === 'home' ? 'main' : 'side'); if (narrow) closeNavigation(); }}/>
             <div className="sidebar-section-label">最近打开</div>
-            {(session.recentItems ?? session.openItems).filter(ref => resourceExists(data, ref)).slice(0, 6).map(ref => <button className={`nav-item ${active.kind === ref.kind && active.id === ref.id ? 'active' : ''}`} key={`${ref.kind}:${ref.id}`} title={resourceTitle(data, ref)} onClick={() => { open(ref); if (narrow) closeNavigation(); }}><ResourceIcon kind={ref.kind} /><span>{resourceTitle(data, ref)}</span></button>)}
+            {(session.recentItems ?? session.openItems).filter(ref => resourceExists(data, ref)).slice(0, 6).map(ref => <button className={`nav-item ${active.kind === ref.kind && active.id === ref.id ? 'active' : ''}`} key={`${ref.kind}:${ref.id}`} title={resourceTitle(data, ref)} onClick={() => { open(ref); if (chatMode === 'main') setChatMode('side'); if (narrow) closeNavigation(); }}><ResourceIcon kind={ref.kind} /><span>{resourceTitle(data, ref)}</span></button>)}
             <details className="agent-browse"><summary>浏览研究内容</summary><div className="agent-browse-links">{researchViews.filter(item => item.id !== 'home').map(({ id, name, icon: Icon }) => <button className={`nav-item ${active.kind === 'researchView' && active.id === id ? 'active' : ''}`} key={id} onClick={() => navigate(id)}><Icon size={15} />{name}</button>)}</div></details>
         </nav> : research && <ResearchNavigation researchId={research.id} active={active} onNavigate={navigate} onOpen={ref => { open(ref); if (narrow) closeNavigation(); }} />}
-        <div className="sidebar-bottom-nav">{research && <button className="nav-item workbench-switch" onClick={toggleWorkbench}><Layers size={17} />{agentWorkbench ? '经典工作台' : 'Agent 工作台'}</button>}<button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
+        <div className="sidebar-bottom-nav">{research && <button className="nav-item workbench-switch" onClick={toggleWorkbench}><Layers size={17} />{agentWorkbench ? '经典工作台' : 'Agent 工作台'}</button>}<button className={`nav-item ${data.scope.kind === 'library' ? 'active' : ''}`} onClick={() => { actions.openCollection('documents'); if (narrow) closeNavigation(); }}><BookOpen size={17} />全局资料库</button><button className="nav-item" onClick={() => showDialog('settings')}><Settings2 size={17} />设置</button></div>
         <div className="sidebar-footer">
           <span
             className={`status-dot ${saveStatus === 'error' ? 'error' : ''}`}
@@ -453,7 +472,7 @@ export function App() {
               <ArrowLeft size={17} />{agentWorkbench && !!session.history.length && <span>返回上一处</span>}
             </button>
             {!research && session.libraryResearchId && data.researches[session.libraryResearchId] && <button className="text-button" onClick={() => actions.switchResearch(session.libraryResearchId!)}>返回研究</button>}
-            {agentWorkbench && !atConversation && <button className="text-button agent-return" aria-label="返回会话" title={`返回会话：${currentConversation?.title ?? '当前话题'}`} onClick={() => actions.openResearchView(research!.id, 'home')}><MessageSquare size={15} /><span>返回会话</span></button>}
+            {agentWorkbench && chatMode !== 'main' && <button className="text-button agent-return" aria-label="返回会话" title={currentConversation?.title ?? '当前会话'} onClick={() => setChatMode('main')}><MessageSquare size={15} /><span>完整对话</span></button>}
             {agentWorkbench && research ? <ResearchName key={research.id} research={research} onRename={title => actions.updateData(next => { next.researches[research.id].title = title; })}/> : <><span>{research ? research.title : '全局资料库'}</span><ChevronRight size={13} /><strong>{activeTitle}</strong></>}
           </div>
           <div className="header-actions">
@@ -477,8 +496,8 @@ export function App() {
                 '未保存'
               )}
             </span>
-            {agentWorkbench && active.kind !== 'sourcePreview' && active.kind !== 'collection' && active.kind !== 'researchView' && <button className="text-button agent-local-ask" onClick={() => focusResearchResource(research!.id, active)}><Sparkles size={14} />围绕这里追问</button>}
-            {agentWorkbench && <button className="text-button" onClick={() => navigate('sources')}><BookOpen size={15} />本研究资料</button>}
+            {agentWorkbench && (!currentConversation || isResearchConversation(data, currentConversation) && (currentConversation.connectionId ?? 'codex') === 'codex') && active.kind !== 'sourcePreview' && active.kind !== 'collection' && active.kind !== 'researchView' && <button className="text-button agent-local-ask" onClick={() => { focusResearchResource(research!.id, active); if (chatMode === 'closed') setChatMode('side'); }}><Sparkles size={14} />围绕这里追问</button>}
+            {agentWorkbench && <><button className="text-button workspace-notes-trigger" aria-label="卡片与摘录" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}><Layers size={15}/>卡片与摘录</button><button className="text-button workspace-chat-trigger" aria-label={chatMode === 'closed' ? '打开聊天' : '聊天'} aria-pressed={chatMode !== 'closed'} onClick={() => setChatMode(chatMode === 'closed' ? 'side' : 'closed')}><MessageSquare size={15}/>聊天</button></>}
             {research && <ImportPDFButton compact />}
             <button
               className="icon-button"
@@ -506,12 +525,15 @@ export function App() {
             </button>
           </div>
         )}
-        <main aria-label="主工作区" className="main-workspace">
-          <ErrorBoundary key={`${scopeKey(data.scope)}:${actions.getGeneration()}`}>
-            <WorkspaceSplit renderResource={resourceView} />
-          </ErrorBoundary>
-        </main>
-        {agentWorkbench && <ResearchAgentDock key={research!.id} researchId={research!.id} />}
+        <div className={`continuous-workspace ${agentWorkbench ? `has-chat chat-mode-${chatMode}` : ''}`}>
+          <main aria-label="主工作区" className="main-workspace" inert={agentWorkbench && chatMode === 'main' || undefined} aria-hidden={agentWorkbench && chatMode === 'main' || undefined}>
+            <ErrorBoundary key={`${scopeKey(data.scope)}:${actions.getGeneration()}`}>
+              <WorkspaceSplit renderResource={resourceView} />
+            </ErrorBoundary>
+          </main>
+          {agentWorkbench && <ResearchConversationHost key={research!.id} researchId={research!.id} mode={chatMode} onMode={setChatMode}/>}
+          {agentWorkbench && <WorkspaceNotesPanel key={`notes:${research!.id}`} researchId={research!.id} open={notesOpen} documentId={active.kind === 'document' ? active.id : undefined} onClose={() => setNotesOpen(false)}/>}
+        </div>
 
       </div>
       {panelOpen && (
@@ -593,7 +615,7 @@ export function App() {
               key={`${scopeKey(data.scope)}:${session.panel.mode}:${session.panel.ref?.id}:${session.panel.findEvidenceFor}:${session.panel.citation?.evidenceId}`}
             >
               {session.panel.mode === 'ai' ? (
-                agentWorkbench ? <ResearchAgentHistory researchId={research!.id} /> : <AIPanel />
+                <AIPanel />
               ) : session.panel.mode === 'excerpts' ? (
                 <EvidenceList
                   documentId={documentId}
