@@ -1,5 +1,7 @@
 # 论文阅读与研究工作台产品规划
 
+2026-10-23 集合入口修订：用户反对卡片放在论文底部。最新[位置方案](agent-native-evolution/conversation-redesign/notes-placement.md)移除文末列表，以固定顶栏“卡片与摘录”、独立滚动浮窗及保存后“查看”承接查找/编辑，保留原文、聊天与逐条草稿。仍仅更新原型，不代表正式应用或安装包已改版。
+
 2026-10-23 追加设计：[连续工作区](agent-native-evolution/conversation-redesign/workspace-continuity.md)将研究资料／全局资料、能力对应权限与系统听写、同一会话侧聊／浮窗、既有浏览器式拖动标签分屏及 Excalidraw 放回同一条操作路径。新原型使用合成资料与示例回答，不修改正式应用；正式实施需复用已有会话与窗格契约，不能因 UI 简化删除旧能力。 浮窗会话选择复用标题下拉，提供搜索、新会话与本研究内的来源／关键词建议；草稿归原会话，材料由用户选择携带。
 
 2026-10-23 选文补充：新布局原型补回原文选择后的保存摘录／制作卡片入口，原处浮窗编辑并保留来源、未完成草稿与本篇笔记。正式 `PdfReader` 原有此能力，未在本次改动；原型刷新复位，新增验证见[选文专项](agent-native-evolution/conversation-redesign/verification/workspace-reader-notes/README.md)。

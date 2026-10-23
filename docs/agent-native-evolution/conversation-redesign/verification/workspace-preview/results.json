@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-23T07:11:39.251Z",
+  "date": "2026-10-23T07:44:55.169Z",
   "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html",
   "scope": "隔离布局预览；回答为定时合成，PDF与分屏为示意；Excalidraw为真实本地编辑实例",
   "checks": [
@@ -858,8 +858,8 @@
   },
   "sourceHashes": {
     "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
-    "workspace-preview.jsx": "e0ea01c35c42744f99f23d92eb45604e985600ad41ad144b430806daebc2b7bb",
-    "workspace-preview.css": "dc910d79c099ffb0dcf6183cbc501a2251cb6055462b3e493606625ebac935d9",
+    "workspace-preview.jsx": "7a744efcf52481e21463c46d36720340ba6390d14af64308ee57e9a686e2eee8",
+    "workspace-preview.css": "e74c4e32befc6189a519adfc87fbc3c5dbc7c37ef2b1005a22cb90b441f93118",
     "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
     "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
     "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41"
@@ -871,8 +871,8 @@
   },
   "endSourceHashes": {
     "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
-    "workspace-preview.jsx": "e0ea01c35c42744f99f23d92eb45604e985600ad41ad144b430806daebc2b7bb",
-    "workspace-preview.css": "dc910d79c099ffb0dcf6183cbc501a2251cb6055462b3e493606625ebac935d9",
+    "workspace-preview.jsx": "7a744efcf52481e21463c46d36720340ba6390d14af64308ee57e9a686e2eee8",
+    "workspace-preview.css": "e74c4e32befc6189a519adfc87fbc3c5dbc7c37ef2b1005a22cb90b441f93118",
     "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
     "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
     "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41"

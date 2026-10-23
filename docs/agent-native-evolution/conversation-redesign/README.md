@@ -1,5 +1,7 @@
 # Papertrail 对话工作台重设计
 
+最新修订：[卡片与摘录的位置](notes-placement.md)将保存项移出论文底部；顶栏固定入口随时查看、搜索和编辑，保存提示可直接定位新卡片。[打开当前预览](http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html)。
+
 2026-10-23。用户要求重新画设计稿、与 Claude Code 讨论六轮以上，并特别强调美观性。本轮完成 **7 轮真实讨论**、Claude 原创稿、最终可点击原型和16项交互验证；正式应用与本机安装未改动。
 
 后续五点反馈的最新方案见[连续工作区](workspace-continuity.md)与[新布局预览](http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html)：明确研究／全局资料范围、输入权限和系统听写、资源旁同会话聊天、原生 Excalidraw 绘图与框选、就地浮窗；追加浏览器式可拖标签分屏、标题下拉选／新建会话和本地相关建议。[新一组7轮讨论](review/workspace-continuity/README.md)、[17项交互检查](verification/workspace-preview/README.md)与[6项拖拽专项](verification/workspace-tabs/README.md)独立记录，不改变下方第一版的历史验收范围。

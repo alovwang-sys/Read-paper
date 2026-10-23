@@ -1,0 +1,249 @@
+{
+  "date": "2026-10-23T07:44:55.166Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html",
+  "scope": "隔离笔记集合访问预览；合成PDF内容与定时回答，不接正式产品或真实模型",
+  "checks": [
+    {
+      "name": "三尺寸集合/编辑共用一容器，不覆盖侧聊；键盘入口与正文可命中",
+      "pass": true
+    },
+    {
+      "name": "顶栏随时访问，不在PDF底部堆列表；空/搜索/显式范围关闭再开保留",
+      "pass": true
+    },
+    {
+      "name": "长集合独立滚动，关闭重开保留范围/查询/滚动，不改变PDF非零位置",
+      "pass": true
+    },
+    {
+      "name": "保存不自动开集合；查看清空过滤/切研究/标记新行，一步找到长列表新项",
+      "pass": true
+    },
+    {
+      "name": "不同摘录/已存卡片草稿逐条隔离，同一项恢复同稿，引用与正文独立",
+      "pass": true
+    },
+    {
+      "name": "关闭PDF后由卡片来源新开准确阅读页，保留未保存修订且不创建会话",
+      "pass": true
+    },
+    {
+      "name": "双组来源优先当前PDF再复用另一组，不重排标签/误改另一页，jump只消费一次",
+      "pass": true
+    },
+    {
+      "name": "集合操作不改A/B输入，在途A迟到仍只归A并显示未读，不抢集合/资源",
+      "pass": true
+    },
+    {
+      "name": "notesForScope覆盖不同文献/无来源卡片/搜索，真实UI仅样例A",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "blockedRequests": [],
+  "screenshots": [
+    "notes-collection-1440.png",
+    "notes-editor-1280.png",
+    "notes-collection-1024.png",
+    "notes-saved-view-long-list.png"
+  ],
+  "measurements": {
+    "collection-1440": {
+      "box": {
+        "x": 708,
+        "y": 64,
+        "width": 360,
+        "height": 262.4375
+      },
+      "main": {
+        "x": 224,
+        "y": 0,
+        "width": 856,
+        "height": 900
+      },
+      "chat": {
+        "x": 1080,
+        "y": 0,
+        "width": 360,
+        "height": 900
+      }
+    },
+    "editor-1440": {
+      "box": {
+        "x": 708,
+        "y": 64,
+        "width": 360,
+        "height": 439.671875
+      },
+      "main": {
+        "x": 224,
+        "y": 0,
+        "width": 856,
+        "height": 900
+      },
+      "chat": {
+        "x": 1080,
+        "y": 0,
+        "width": 360,
+        "height": 900
+      }
+    },
+    "collection-1280": {
+      "box": {
+        "x": 568,
+        "y": 64,
+        "width": 340,
+        "height": 262.4375
+      },
+      "main": {
+        "x": 208,
+        "y": 0,
+        "width": 712,
+        "height": 800
+      },
+      "chat": {
+        "x": 920,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "editor-1280": {
+      "box": {
+        "x": 568,
+        "y": 64,
+        "width": 340,
+        "height": 439.671875
+      },
+      "main": {
+        "x": 208,
+        "y": 0,
+        "width": 712,
+        "height": 800
+      },
+      "chat": {
+        "x": 920,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "collection-1024": {
+      "box": {
+        "x": 332,
+        "y": 64,
+        "width": 320,
+        "height": 262.4375
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 664,
+        "height": 800
+      },
+      "chat": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "editor-1024": {
+      "box": {
+        "x": 332,
+        "y": 64,
+        "width": 320,
+        "height": 439.671875
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 664,
+        "height": 800
+      },
+      "chat": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "independentScroll": {
+      "viewport": "1280x540",
+      "pdfScroll": 69,
+      "noteScroll": 420
+    },
+    "two-groups-1024": {
+      "box": {
+        "x": 332,
+        "y": 64,
+        "width": 320,
+        "height": 262.4375
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 664,
+        "height": 800
+      },
+      "chat": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "scopeHelper": {
+      "research": [
+        "c4",
+        "c3",
+        "e2",
+        "e1"
+      ],
+      "docA": [
+        "c3",
+        "e1"
+      ],
+      "docB": [
+        "e2"
+      ],
+      "bodySearch": [
+        "c3"
+      ],
+      "sourceSearch": [
+        "e2"
+      ],
+      "orphan": null
+    }
+  },
+  "sourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "7a744efcf52481e21463c46d36720340ba6390d14af64308ee57e9a686e2eee8",
+    "workspace-preview.css": "e74c4e32befc6189a519adfc87fbc3c5dbc7c37ef2b1005a22cb90b441f93118",
+    "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
+    "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41",
+    "workspace-paper-notes.jsx": "aef1d3c788c5e8672d792295485eaf755dad78e117575e7ff9c809cd866fcef2",
+    "workspace-notes-panel.jsx": "e804460690acbadf08bf077546fc161ba5004954e70236bf3b24baea80067e12",
+    "workspace-notes-panel.css": "ce63a595b49e7497e5a5fb51e38b720c06323459d73843aedf803d8c9c89a555"
+  },
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "status": "tested",
+  "endSourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "7a744efcf52481e21463c46d36720340ba6390d14af64308ee57e9a686e2eee8",
+    "workspace-preview.css": "e74c4e32befc6189a519adfc87fbc3c5dbc7c37ef2b1005a22cb90b441f93118",
+    "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
+    "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41",
+    "workspace-paper-notes.jsx": "aef1d3c788c5e8672d792295485eaf755dad78e117575e7ff9c809cd866fcef2",
+    "workspace-notes-panel.jsx": "e804460690acbadf08bf077546fc161ba5004954e70236bf3b24baea80067e12",
+    "workspace-notes-panel.css": "ce63a595b49e7497e5a5fb51e38b720c06323459d73843aedf803d8c9c89a555"
+  },
+  "sourceStable": true
+}

@@ -1,5 +1,7 @@
 # 阅读摘录与卡片预览验收
 
+本页是上一版文末集合的历史验收，脚本、截图与结果按当时源码保留。当前集合入口已迁出文末，后续验证见[固定入口专项](../workspace-notes-access/README.md)。
+
 2026-10-23，隔离 Playwright / Chromium 验证本地阅读预览。**9 项通过，0 项失败，0 个运行错误，0 个外域或 API 请求**。结果见 [results.json](results.json)，七个预览源文件起止哈希一致，包含新增 `workspace-paper-notes.jsx`。
 
 运行方式（仓库已有 Vite 在 `127.0.0.1:5173` 运行）：
