@@ -20,7 +20,7 @@ Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个
 
 ## 下载安装
 
-从 [GitHub Releases](https://github.com/alovwang-sys/Read-paper/releases) 选择已公开的技术预览，在 **Assets** 下载对应安装包。当前源码版本为 **0.1.15**，连续工作区的本地构建、安装与验证状态见[v0.1.15说明](docs/releases/v0.1.15.md)；本轮没有公开发布新的 GitHub Release。此前发行见 [v0.1.13 说明](docs/releases/v0.1.13.md)。公开版本与附件以对应 GitHub Release 为准。
+从 [GitHub Releases](https://github.com/alovwang-sys/Read-paper/releases) 选择已公开的技术预览，在 **Assets** 下载对应安装包。当前源码版本为 **0.1.16**，已将侧聊调宽、讨论归属、改发、带入／升级和“更早”折叠等7个提交重建并安装到本机，详见[v0.1.16说明](docs/releases/v0.1.16.md)；本轮没有公开发布新的 GitHub Release。此前发行见 [v0.1.13 说明](docs/releases/v0.1.13.md)。公开版本与附件以对应 GitHub Release 为准。
 
 | 你的设备 | 选择的文件 | 安装方式 |
 | --- | --- | --- |

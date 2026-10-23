@@ -1,0 +1,312 @@
+
+Running 5 tests using 1 worker
+
+(node:40934) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/5] tests/e2e/continuous-workspace.spec.ts:8:1 › 资源中发送即清空并直接显示回答；紧凑会话切换保留 PDF 和独立草稿
+[2/5] tests/e2e/continuous-workspace.spec.ts:47:1 › 侧边聊天可拖动分隔条调宽，宽度刷新后保留，主区不被挤没
+[3/5] tests/e2e/continuous-workspace.spec.ts:64:1 › 14 天没有活动的研究会话收进"更早"；打开后保持展开，搜索时平铺显示
+[4/5] tests/e2e/drawing-question.spec.ts:194:1 › 单张卡片一键进入该卡片讨论：当前会话不可用也不报错，再问同卡片回到同一讨论
+[5/5] tests/e2e/drawing-question.spec.ts:355:1 › 卡片讨论的回答可带入研究会话随下一问发送，讨论可升为研究会话
+  5 passed (19.1s)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/continuous-workspace.spec.ts",
+      "tests/e2e/drawing-question.spec.ts",
+      "-g",
+      "(资源中发送即清空并直接显示回答；紧凑会话切换保留 PDF 和独立草稿|侧边聊天可拖动分隔条调宽，宽度刷新后保留，主区不被挤没|14 天没有活动的研究会话收进\"更早\"；打开后保持展开，搜索时平铺显示|单张卡片一键进入该卡片讨论：当前会话不可用也不报错，再问同卡片回到同一讨论|卡片讨论的回答可带入研究会话随下一问发送，讨论可升为研究会话)$",
+      "--output=docs/verification/local-rebuild-0.1.16/logs/browser-output",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/docs/verification/local-rebuild-0.1.16/logs/browser-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/docs/verification/local-rebuild-0.1.16/logs/browser-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "continuous-workspace.spec.ts",
+      "file": "continuous-workspace.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "资源中发送即清空并直接显示回答；紧凑会话切换保留 PDF 和独立草稿",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4513,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:34:44.270Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-231e22221c213432c5e2",
+          "file": "continuous-workspace.spec.ts",
+          "line": 8,
+          "column": 1
+        },
+        {
+          "title": "侧边聊天可拖动分隔条调宽，宽度刷新后保留，主区不被挤没",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1871,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:34:49.005Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-e4cea4da7c5607939c4f",
+          "file": "continuous-workspace.spec.ts",
+          "line": 47,
+          "column": 1
+        },
+        {
+          "title": "14 天没有活动的研究会话收进\"更早\"；打开后保持展开，搜索时平铺显示",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2500,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:34:50.881Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-1d8c4170f8e77b7a987a",
+          "file": "continuous-workspace.spec.ts",
+          "line": 64,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "drawing-question.spec.ts",
+      "file": "drawing-question.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "单张卡片一键进入该卡片讨论：当前会话不可用也不报错，再问同卡片回到同一讨论",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5784,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:34:53.398Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0800d35c95b268872ce9-58c43737a59ebb751307",
+          "file": "drawing-question.spec.ts",
+          "line": 194,
+          "column": 1
+        },
+        {
+          "title": "卡片讨论的回答可带入研究会话随下一问发送，讨论可升为研究会话",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3909,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:34:59.186Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0800d35c95b268872ce9-0cfc10a6b9158ef7c537",
+          "file": "drawing-question.spec.ts",
+          "line": 355,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T13:34:44.082Z",
+    "duration": 19063.728,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

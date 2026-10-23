@@ -1,0 +1,29 @@
+{
+  "version": "0.1.16",
+  "arch": "arm64",
+  "sourceCommit": "a9d7a5d445af78c8542b1ac7f6b73ea79402314b",
+  "bundleId": "io.github.alovwang-sys.papertrail",
+  "installedPath": "/Applications/Papertrail.app",
+  "appAsarSha256": "267402138712288846c56f9e41457272ca5429ed33d320e57b7c2abed2b1517b",
+  "oldAppMovedToTrash": true,
+  "userDataFilesPreserved": 109,
+  "userDataUnchangedBeforeLaunch": true,
+  "fullWorkspaceExportVerified": true,
+  "artifacts": {
+    "out/make/dmg/arm64/Papertrail-0.1.16-macos-arm64.dmg": "ffa765e09cfb461b02377291600536eccecb8b3ef24dc8db3ee2c804d16ac29a",
+    "out/make/zip/darwin/arm64/Papertrail-darwin-arm64-0.1.16.zip": "d01d109dd6b71d2e44e36c144eaa68c1034c8a2dc2cbc3e8fb3d0636968e9747"
+  },
+  "launched": true,
+  "normalQuitConfirmed": true,
+  "restarted": true,
+  "originalResourcesRestored": true,
+  "directoryFilesUpdated": true,
+  "encryptedModelSettingsUnchanged": true,
+  "verification": {
+    "unit": 768,
+    "server": 357,
+    "desktopUnit": 27,
+    "packagedDesktop": 2,
+    "selectedBrowser": 5
+  }
+}
