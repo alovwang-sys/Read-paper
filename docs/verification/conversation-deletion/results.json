@@ -1,0 +1,169 @@
+{
+  "verifiedAt": "2026-10-23T13:59:39.027Z",
+  "unit": {
+    "passed": 15,
+    "total": 15,
+    "exitCode": 0,
+    "log": "logs/unit.log"
+  },
+  "browser": {
+    "startTime": "2026-10-23T13:57:46.416Z",
+    "duration": 25574.393,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0,
+    "exitCode": 0,
+    "cases": [
+      {
+        "title": "侧栏与标题均可删除当前会话；恢复原历史和草稿，资源保持，刷新不复活",
+        "status": "expected",
+        "durationMs": 7907
+      },
+      {
+        "title": "已删除列表严格按研究隔离，恢复另一个研究不会恢复原研究",
+        "status": "expected",
+        "durationMs": 1972
+      },
+      {
+        "title": "请求仍在进行时确认删除显示原因，保留会话与草稿",
+        "status": "expected",
+        "durationMs": 2254
+      },
+      {
+        "title": "文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留",
+        "status": "expected",
+        "durationMs": 7065
+      },
+      {
+        "title": "区域提问后可直接移除标记、撤销和刷新恢复，问答及引用保留",
+        "status": "expected",
+        "durationMs": 5837
+      }
+    ],
+    "log": "logs/browser.log"
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "log": "logs/check.log"
+  },
+  "diffCheck": {
+    "exitCode": 0,
+    "log": "logs/diff-check.log"
+  },
+  "scope": "Synthetic PDFs, isolated browser storage, controlled responses; no installed app or real user data accessed.",
+  "screenshots": [
+    {
+      "file": "screenshots/delete-busy-rejected.png",
+      "sha256": "8164df2f2949daf0c82be350d2ae6ad1ba1a1d2729a3cf527e68ed4df2fb9ad7"
+    },
+    {
+      "file": "screenshots/delete-confirm-1024.png",
+      "sha256": "8ebb3b58b179cae5e7d34d104906920999f26fb3cb3d91d8267022caa07b6404"
+    },
+    {
+      "file": "screenshots/delete-confirm-1280.png",
+      "sha256": "956e271e426b82385daac0b77cbe15d2fccbf67d5c06c92e236d7d15b335c828"
+    },
+    {
+      "file": "screenshots/delete-confirm-1440.png",
+      "sha256": "ae6a9a207e9ab782f2c20b6881d9124648dad7867e592e2dfb1c204ad9b969ec"
+    },
+    {
+      "file": "screenshots/deleted-inline-readonly-1440.png",
+      "sha256": "5945b4b2c5d2b5032181e613460b3de9b1e96b4519e81c3fa9266f5e737442fb"
+    },
+    {
+      "file": "screenshots/deleted-list-1024.png",
+      "sha256": "f7990c5880eccf3df3da0467183b2b882addd8bcc4b74aa3dd16ae6b20cbc2bd"
+    },
+    {
+      "file": "screenshots/deleted-list-1280.png",
+      "sha256": "9b0b4e729ac414a11282bcce79d868ec31b6e5ddd6d4b711d58bda5af383428f"
+    },
+    {
+      "file": "screenshots/deleted-list-1440.png",
+      "sha256": "44819dea4196bf1435be33eeea9f6aec7bbf3b75efd2e7addb405bb1ea948f8d"
+    },
+    {
+      "file": "screenshots/mark-hidden-region-1440.png",
+      "sha256": "8a14c1843f46c7034e101527b7705cb73635508bc2aa9b378d930dca51666b35"
+    },
+    {
+      "file": "screenshots/mark-hidden-text-1024.png",
+      "sha256": "f0f8ee23ff1b81d8b8e3e911cbac553843b431aaa0cf5e0c0493b05909c9409d"
+    },
+    {
+      "file": "screenshots/mark-hidden-text-1280.png",
+      "sha256": "7b93c3bf09a1145bb51bce508e39eb3e602ccc078e53a97a368c892a59035a32"
+    },
+    {
+      "file": "screenshots/mark-hidden-text-1440.png",
+      "sha256": "ad0bd139d30a3f5de790f43dce4ece5ca62674fb35562bbee7381fb3f3007a05"
+    }
+  ],
+  "integration": {
+    "command": "npm run check && npm test && npm run build",
+    "exitCode": 0,
+    "typecheck": "passed",
+    "unit": {
+      "files": 50,
+      "passed": 790,
+      "total": 790
+    },
+    "productionBuild": "passed",
+    "desktopPackageRebuilt": false,
+    "installedVersion": "0.1.16",
+    "buildWarnings": [
+      "Existing large chunks",
+      "Excalidraw static and dynamic import overlap"
+    ]
+  },
+  "regression": {
+    "continuousWorkspace": {
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0,
+      "durationMs": 37631.771,
+      "log": "logs/regression-continuous-workspace.log"
+    },
+    "annotationRemoval": {
+      "total": 6,
+      "passed": 0,
+      "failed": 2,
+      "interrupted": 1,
+      "notRun": 3,
+      "exitCode": 130,
+      "reason": "Legacy locator clicks hidden 写成卡片 without opening 更多操作; matching UI already exists in HEAD 6fb1f04. Aborted duplicate sizes, no baseline runtime rerun.",
+      "log": "logs/regression-annotation-interrupted.log",
+      "initialBatchStats": {
+        "startTime": "2026-10-23T14:01:15.607Z",
+        "duration": 174989.02599999998,
+        "expected": 0,
+        "skipped": 23,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    "inlineAI": {
+      "total": 8,
+      "passed": 0,
+      "failed": 2,
+      "notRun": 6,
+      "exitCode": 1,
+      "reason": "Legacy locator clicks hidden 解释这段 without opening 更多操作. Stopped by max-failures=2; remaining cases not run.",
+      "log": "logs/regression-inline-ai.log",
+      "durationMs": 120939.57699999999
+    },
+    "oldEvidence": {
+      "originalPNGCount": 29,
+      "restoredUnchanged": true,
+      "newEvidenceCopied": 14,
+      "manifest": "logs/regression-evidence.json"
+    },
+    "runtimeOrOldTestsModified": false,
+    "baselineWasRerun": false
+  }
+}

@@ -47,7 +47,7 @@ export function findInlineConversation(researchId: string, selection: InlineAISe
   const { data } = workspace.getState();
   return Object.values(data.conversations).filter(conversation => {
     const source = conversation.inlineSource, evidence = source && data.evidence[source.evidenceId];
-    return !conversation.archived && (source?.operation ?? 'question') === (options.operation ?? 'question') && conversation.researchId === researchId && conversationConnection(conversation) === inlineConnection(researchId) && evidence
+    return !conversation.archived && !conversation.deletedAt && (source?.operation ?? 'question') === (options.operation ?? 'question') && conversation.researchId === researchId && conversationConnection(conversation) === inlineConnection(researchId) && evidence
       && matchesSelection(evidence, selection);
   }).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''))[0];
 }
@@ -80,7 +80,7 @@ export function createInlineConversation(researchId: string, selection: InlineAI
 
 export function continueInlineInPanel(conversationId: string) {
   const { data } = workspace.getState(), conversation = data.conversations[conversationId];
-  if (!conversation?.inlineSource || conversation.archived) throw new Error('此原文旁问答暂时不可用。');
+  if (!conversation?.inlineSource || conversation.archived || conversation.deletedAt) throw new Error('此原文旁问答暂时不可用，请先恢复会话。');
   if (data.scope.kind === 'research' && data.scope.researchId !== conversation.researchId) throw new Error('请回到原研究后继续此问答。');
   if (data.scope.kind === 'library') workspace.openResource({ kind: 'document', id: conversation.inlineSource.documentId }, {
     scope: { kind: 'research', researchId: conversation.researchId }, target: 'main',

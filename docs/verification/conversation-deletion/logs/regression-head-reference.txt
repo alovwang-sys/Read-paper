@@ -1,0 +1,27 @@
+Static HEAD 6fb1f04:src/features/reader/PdfReader.tsx lines 742-767. This is source inspection, not a baseline test run.
+742:           加入所选研究并继续
+743:         </button>
+744:       ) : <p>请先新建研究；当前选区会保留到离开本页。</p>}
+745:       <button className="text-button" onClick={() => setPendingAction(undefined)}>取消</button>
+746:     </div>
+747:   );
+748:   const selectionActions = (
+749:     <>
+750:       <div className="pdf-selection-actions">
+751:         <button className="text-button pdf-selection-primary" data-inline-trigger={`${target}:ask`} disabled={selectionBusy} onClick={() => void saveSelection('ai')}><MessageCircle size={14} />提问</button>
+752:         <button className="text-button" data-inline-trigger={`${target}:translation`} disabled={selectionBusy || !(selectionMode === 'text' ? quote : regionPreview?.quote)} title={selectionMode === 'region' && !regionPreview?.quote ? '此区域没有可提取文字，尚未进行 OCR' : '翻译所选原文'} onClick={() => void saveSelection('translation')}><Languages size={14} />翻译</button>
+753:         <button className="text-button" data-inline-trigger={`${target}:summary`} disabled={selectionBusy} onClick={() => void saveSelection('summary')}><Layers size={14} />摘要卡片</button>
+754:         <details className="pdf-selection-more"><summary aria-label="更多操作">•••</summary><div>
+755:           {findCard && <button className="text-button" disabled={selectionBusy} onClick={() => void saveSelection('attach')}>作为「{findCard.title}」的依据</button>}
+756:           <button className="text-button" aria-label="摘录" disabled={selectionBusy} onClick={() => void saveSelection('excerpt')}>{selectedExcerpt && !selectedExcerpt.contextOnly ? '已存摘录' : '保存摘录'} <kbd>H</kbd></button>
+757:           <button className="text-button" aria-label="写成卡片" disabled={selectionBusy} onClick={() => void saveSelection('card')}>制作卡片 <kbd>C</kbd></button>
+758:           <button className="text-button" disabled={selectionBusy} onClick={() => void saveSelection('highlight')}>高亮</button>
+759:           <button className="text-button" data-inline-trigger={`${target}:explain`} disabled={selectionBusy} onClick={() => void saveSelection('explain')}>解释这段</button>
+760:           {selectedExcerpt && <button className="text-button" disabled={selectionBusy} title="移除原文标记，保留摘录、卡片和 AI 引用" onClick={() => removeMark(selectedExcerpt.id)}>移除标记</button>}
+761:         </div></details>
+762:         <button className="icon-button" aria-label="取消原文选区" onClick={clearSelection}><X size={14} /></button>
+763:       </div>
+764:       {selectionMode === 'region' && !regionPreview?.quote && <span className="pdf-selection-hint">未提取到区域文字 · 提问和摘要需要图片理解</span>}
+765:       {selectedExcerpt && (activityByEvidence[selectedExcerpt.id]?.length ?? 0) > 0 && <>
+766:         <button className="reader-activity-toggle text-button" aria-expanded={historyOpen} onClick={() => setHistoryOpen(value => !value)}>此处记录 <span>{activityByEvidence[selectedExcerpt.id].length}</span></button>
+767:         {historyOpen && <ReaderActivityList activities={activityByEvidence[selectedExcerpt.id]} onOpen={openReaderActivity} />}

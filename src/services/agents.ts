@@ -125,6 +125,7 @@ async function readLatestHistory(researchId: string, sessionRef: string, cursor?
 async function mergeNativeSession(researchId: string, snapshot: NativeSessionSnapshot): Promise<string> {
   const { data } = workspace.getState();
   const previous = Object.values(data.conversations).find(c => c.researchId === researchId && c.connectionId === snapshot.agentId && (c.nativeSessionRef === snapshot.id || !!snapshot.nativeSessionId && c.nativeSessionId === snapshot.nativeSessionId));
+  if (previous?.deletedAt) throw new Error('这段会话已在本应用中删除，请先从“已删除会话”恢复。');
   const id = previous?.id ?? uid('conversation');
   const recoveredBoards: string[] = [];
   workspace.updateData(next => {
@@ -230,7 +231,7 @@ export async function openProjectSession(researchId: string, summary: NativeSess
 }
 export async function refreshProjectConversation(researchId: string, conversationId: string): Promise<void> {
   const conversation = workspace.getState().data.conversations[conversationId];
-  if (!conversation?.nativeSessionRef || conversation.researchId !== researchId || conversation.requestIds.some(id => {
+  if (!conversation?.nativeSessionRef || conversation.deletedAt || conversation.researchId !== researchId || conversation.requestIds.some(id => {
     const request = workspace.getState().data.requests[id];
     return request?.status === 'generating' && !request.nativeImported && (!request.nativeRun || request.nativeRun.transport === 'connected' && request.nativeRun.state !== 'unknown');
   })) return;
@@ -239,7 +240,7 @@ export async function refreshProjectConversation(researchId: string, conversatio
 }
 export async function loadOlderProjectConversation(researchId: string, conversationId: string): Promise<void> {
   const conversation = workspace.getState().data.conversations[conversationId];
-  if (!conversation?.nativeSessionRef || !conversation.nativeHistoryCursor || conversation.researchId !== researchId) return;
+  if (!conversation?.nativeSessionRef || conversation.deletedAt || !conversation.nativeHistoryCursor || conversation.researchId !== researchId) return;
   const snapshot = await readLatestHistory(researchId, conversation.nativeSessionRef, conversation.nativeHistoryCursor);
   if (snapshot) await mergeNativeSession(researchId, snapshot);
 }
@@ -255,7 +256,7 @@ export function selectAgent(researchId: string, connectionId: AIConnectionId) {
   // Keep an explicit identity before the legacy panel preference changes.
   if (current) workspace.updateData(next => { next.conversations[current.id].connectionId = conversationConnection(current); });
   const target = Object.values(workspace.getState().data.conversations)
-    .filter(item => item.researchId === researchId && !item.archived && (!item.inlineSource || item.inlineSource.promoted) && item.connectionId === connectionId)
+    .filter(item => item.researchId === researchId && !item.archived && !item.deletedAt && (!item.inlineSource || item.inlineSource.promoted) && item.connectionId === connectionId)
     .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))[0];
   const id = target?.id ?? workspace.createConversation(researchId);
   workspace.updateData(next => {

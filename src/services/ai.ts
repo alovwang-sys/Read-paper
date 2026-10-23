@@ -638,6 +638,8 @@ async function attachPaperBrief(request: AIRequest, responder: AIResponder, sign
 }
 async function runChatRequest(request: AIRequest, responder: AIResponder, submittedInput?: string) {
   const data = workspace.getState().data;
+  const owner = data.conversations[request.conversationId];
+  if (!owner || owner.deletedAt || owner.archived && (!request.purpose || request.purpose === 'chat')) throw new Error('此会话已删除或归档，请先恢复后继续。');
   if (pendingConversations.has(request.conversationId) || data.conversations[request.conversationId].requestIds.some(id => data.requests[id]?.status === 'generating' && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) throw new Error('当前会话正在回答，请停止或等待完成。');
   pendingConversations.add(request.conversationId);
   try { return await runRequest(request, responder, submittedInput); }
@@ -648,6 +650,7 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
   if (stoppingAll) throw new Error('正在保存并关闭，请稍后。');
   request.mode = responder === demoResponder ? 'demo' : 'live';
   const data = workspace.getState().data;
+  if (!data.conversations[request.conversationId] || data.conversations[request.conversationId].deletedAt) throw new Error('此会话已删除，请先恢复后继续。');
   request.history = request.history?.map(turn => ({ ...turn, sentBody: data.requests[turn.requestId]?.boardContext ? turn.body : remapHistoryCitations(turn.body, turn.evidenceIds, request.context.map(c => c.evidenceId)) }));
   if (responder === demoResponder && request.readerOperation) {
     delete request.paperBrief;
@@ -664,11 +667,12 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
     const current = workspace.getState().data, directory = current.researches[request.researchId]?.directory;
     const conversation = current.conversations[request.conversationId];
     return JSON.stringify([current.agentWorkspaceId, directory?.id, directory?.projectId, directory?.path,
-      conversation?.researchId, conversation?.connectionId, conversation?.nativeSessionId, conversation?.nativeSessionRef, conversation?.archived]);
+      conversation?.researchId, conversation?.connectionId, conversation?.nativeSessionId, conversation?.nativeSessionRef, conversation?.archived, conversation?.deletedAt]);
   };
   const submittedScope = scope();
   const verifyDirectoryScope = () => {
     if (stoppingAll) throw new Error('生成已在关闭前取消。');
+    if (workspace.getState().data.conversations[request.conversationId]?.deletedAt) throw new Error('此会话已删除，本次请求未发送，草稿已保留。');
     if (workspace.getGeneration() !== generation || scope() !== submittedScope) throw new Error('研究目录或工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。');
   };
   preparingRequests++;
@@ -682,7 +686,7 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
   }
   finally { preparingRequests--; }
   if (stoppingAll) throw new Error('生成已在关闭前取消。');
-  if (workspace.getGeneration() !== generation) throw new Error('工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。');
+  verifyDirectoryScope();
   if (request.draftId && !workspace.getState().data.cardDrafts[request.draftId]) throw new Error('草稿已放弃，未发送生成请求。');
   const managed = responder === liveResponder && request.connectionId === 'codex' && !request.boardResearch && !data.conversations[request.conversationId]?.inlineSource && (!request.purpose || request.purpose === 'chat');
   if (managed) {

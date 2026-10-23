@@ -538,3 +538,11 @@
 .reader-activity-row time { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; }
 .reader-activity-preview, .reader-activity-error { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.6; overflow-wrap: anywhere; }
 .reader-activity-error { color: #a27847; }
+.pdf-mark-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border); padding-top: 3px; }
+.pdf-mark-controls .reader-activity-toggle { margin: 0; }
+.pdf-mark-toggle { margin-left: auto; font-size: 11px; color: var(--muted); padding: 5px 3px; }
+.pdf-mark-toggle:hover { color: var(--text); }
+.pdf-mark-notice { display: flex; align-items: center; gap: 10px; padding: 7px 16px; background: var(--accent-soft); border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; flex-shrink: 0; }
+.pdf-mark-notice > span { flex: 1; }
+.pdf-mark-notice .text-button { color: var(--accent); font-size: 11px; font-weight: 500; padding: 4px; white-space: nowrap; }
+.pdf-mark-notice .icon-button { width: 23px; height: 23px; min-height: 23px; }

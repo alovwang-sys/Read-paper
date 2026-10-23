@@ -1,0 +1,460 @@
+
+Running 5 tests using 1 worker
+
+(node:43747) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/5] tests/e2e/conversation-deletion.spec.ts:16:1 › 侧栏与标题均可删除当前会话；恢复原历史和草稿，资源保持，刷新不复活
+[2/5] tests/e2e/conversation-deletion.spec.ts:70:1 › 已删除列表严格按研究隔离，恢复另一个研究不会恢复原研究
+[3/5] tests/e2e/conversation-deletion.spec.ts:94:1 › 原生任务仍忙时确认删除显示原因，保留会话与草稿
+  1) tests/e2e/conversation-deletion.spec.ts:94:1 › 原生任务仍忙时确认删除显示原因，保留会话与草稿 ────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')
+    Expected substring: "任务进行中"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert') with timeout 5000ms
+      - waiting for getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')
+
+
+       98 |   await chat(page).getByRole('button', { name: '删除会话：条件比较 A', exact: true }).click();
+       99 |   await confirmation(page).getByRole('button', { name: '确认删除', exact: true }).click();
+    > 100 |   await expect(confirmation(page).getByRole('alert')).toContainText('任务进行中');
+          |                                                       ^
+      101 |   await shot(page, 'delete-busy-rejected');
+      102 |   await confirmation(page).getByRole('button', { name: '取消', exact: true }).click();
+      103 |   await expect(composer(page)).toHaveValue('任务进行中也应保留的草稿');
+        at /Users/amos/project/Read-paper/tests/e2e/conversation-deletion.spec.ts:100:55
+
+    Error Context: test-results/conversation-deletion-原生任务仍忙时确认删除显示原因，保留会话与草稿/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/conversation-deletion-原生任务仍忙时确认删除显示原因，保留会话与草稿/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/conversation-deletion-原生任务仍忙时确认删除显示原因，保留会话与草稿/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:43838) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[4/5] tests/e2e/reader-mark-removal.spec.ts:12:43 › 文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留
+  2) tests/e2e/reader-mark-removal.spec.ts:12:43 › 文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留 ────────────────────
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')
+    Expected: 1
+    Received: 3
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker') with timeout 5000ms
+      - waiting for getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')
+        14 × locator resolved to 3 elements
+           - unexpected value "3"
+
+
+      31 |   const evidenceId = conversation.inlineSource!.evidenceId;
+      32 |   const marker = () => main(page).locator(kind === '文字' ? '.pdf-activity-marker' : '.pdf-region-activity-marker');
+    > 33 |   await expect(marker()).toHaveCount(1);
+         |                          ^
+      34 |   await inline(page).getByRole('button', { name: '移除标记', exact: true }).click();
+      35 |   await expect(inline(page)).toBeVisible();
+      36 |   await expect(marker()).toHaveCount(0);
+        at /Users/amos/project/Read-paper/tests/e2e/reader-mark-removal.spec.ts:33:26
+
+    Error Context: test-results/reader-mark-removal-文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/reader-mark-removal-文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/reader-mark-removal-文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:43852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[5/5] tests/e2e/reader-mark-removal.spec.ts:12:43 › 区域提问后可直接移除标记、撤销和刷新恢复，问答及引用保留
+  2 failed
+    tests/e2e/conversation-deletion.spec.ts:94:1 › 原生任务仍忙时确认删除显示原因，保留会话与草稿 ─────────────────────────
+    tests/e2e/reader-mark-removal.spec.ts:12:43 › 文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留 ─────────────────────
+  3 passed (31.6s)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/conversation-deletion.spec.ts",
+      "tests/e2e/reader-mark-removal.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "conversation-deletion.spec.ts",
+      "file": "conversation-deletion.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "侧栏与标题均可删除当前会话；恢复原历史和草稿，资源保持，刷新不复活",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7382,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:56:26.173Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "abb0f8c85197bbbd6210-2a8bc043e7a8e04af69e",
+          "file": "conversation-deletion.spec.ts",
+          "line": 16,
+          "column": 1
+        },
+        {
+          "title": "已删除列表严格按研究隔离，恢复另一个研究不会恢复原研究",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1974,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:56:33.863Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "abb0f8c85197bbbd6210-0cf58db0faa2bcd8ed58",
+          "file": "conversation-deletion.spec.ts",
+          "line": 70,
+          "column": 1
+        },
+        {
+          "title": "原生任务仍忙时确认删除显示原因，保留会话与草稿",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 6821,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"任务进行中\"\u001b[39m\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"任务进行中\"\u001b[39m\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')\u001b[22m\n\n    at /Users/amos/project/Read-paper/tests/e2e/conversation-deletion.spec.ts:100:55",
+                    "location": {
+                      "file": "/Users/amos/project/Read-paper/tests/e2e/conversation-deletion.spec.ts",
+                      "column": 55,
+                      "line": 100
+                    },
+                    "snippet": "   98 |   await chat(page).getByRole('button', { name: '删除会话：条件比较 A', exact: true }).click();\n   99 |   await confirmation(page).getByRole('button', { name: '确认删除', exact: true }).click();\n> 100 |   await expect(confirmation(page).getByRole('alert')).toContainText('任务进行中');\n      |                                                       ^\n  101 |   await shot(page, 'delete-busy-rejected');\n  102 |   await confirmation(page).getByRole('button', { name: '取消', exact: true }).click();\n  103 |   await expect(composer(page)).toHaveValue('任务进行中也应保留的草稿');"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/conversation-deletion.spec.ts",
+                        "column": 55,
+                        "line": 100
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"任务进行中\"\u001b[39m\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('alertdialog', { name: '删除会话', exact: true }).getByRole('alert')\u001b[22m\n\n\n   98 |   await chat(page).getByRole('button', { name: '删除会话：条件比较 A', exact: true }).click();\n   99 |   await confirmation(page).getByRole('button', { name: '确认删除', exact: true }).click();\n> 100 |   await expect(confirmation(page).getByRole('alert')).toContainText('任务进行中');\n      |                                                       ^\n  101 |   await shot(page, 'delete-busy-rejected');\n  102 |   await confirmation(page).getByRole('button', { name: '取消', exact: true }).click();\n  103 |   await expect(composer(page)).toHaveValue('任务进行中也应保留的草稿');\n    at /Users/amos/project/Read-paper/tests/e2e/conversation-deletion.spec.ts:100:55"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:56:35.844Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/conversation-deletion-原生任务仍忙时确认删除显示原因，保留会话与草稿/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/conversation-deletion-原生任务仍忙时确认删除显示原因，保留会话与草稿/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/amos/project/Read-paper/tests/e2e/conversation-deletion.spec.ts",
+                    "column": 55,
+                    "line": 100
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "abb0f8c85197bbbd6210-643e4d81354f2acadb54",
+          "file": "conversation-deletion.spec.ts",
+          "line": 94,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "reader-mark-removal.spec.ts",
+      "file": "reader-mark-removal.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 8237,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m3\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')\u001b[22m\n\u001b[2m    14 × locator resolved to 3 elements\u001b[22m\n\u001b[2m       - unexpected value \"3\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m3\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')\u001b[22m\n\u001b[2m    14 × locator resolved to 3 elements\u001b[22m\n\u001b[2m       - unexpected value \"3\"\u001b[22m\n\n    at /Users/amos/project/Read-paper/tests/e2e/reader-mark-removal.spec.ts:33:26",
+                    "location": {
+                      "file": "/Users/amos/project/Read-paper/tests/e2e/reader-mark-removal.spec.ts",
+                      "column": 26,
+                      "line": 33
+                    },
+                    "snippet": "  31 |   const evidenceId = conversation.inlineSource!.evidenceId;\n  32 |   const marker = () => main(page).locator(kind === '文字' ? '.pdf-activity-marker' : '.pdf-region-activity-marker');\n> 33 |   await expect(marker()).toHaveCount(1);\n     |                          ^\n  34 |   await inline(page).getByRole('button', { name: '移除标记', exact: true }).click();\n  35 |   await expect(inline(page)).toBeVisible();\n  36 |   await expect(marker()).toHaveCount(0);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/reader-mark-removal.spec.ts",
+                        "column": 26,
+                        "line": 33
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m3\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('main', { name: '主工作区' }).locator('.pdf-activity-marker')\u001b[22m\n\u001b[2m    14 × locator resolved to 3 elements\u001b[22m\n\u001b[2m       - unexpected value \"3\"\u001b[22m\n\n\n  31 |   const evidenceId = conversation.inlineSource!.evidenceId;\n  32 |   const marker = () => main(page).locator(kind === '文字' ? '.pdf-activity-marker' : '.pdf-region-activity-marker');\n> 33 |   await expect(marker()).toHaveCount(1);\n     |                          ^\n  34 |   await inline(page).getByRole('button', { name: '移除标记', exact: true }).click();\n  35 |   await expect(inline(page)).toBeVisible();\n  36 |   await expect(marker()).toHaveCount(0);\n    at /Users/amos/project/Read-paper/tests/e2e/reader-mark-removal.spec.ts:33:26"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:56:42.906Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/reader-mark-removal-文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/reader-mark-removal-文字提问后可直接移除标记、撤销和刷新恢复，问答及引用保留/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/amos/project/Read-paper/tests/e2e/reader-mark-removal.spec.ts",
+                    "column": 26,
+                    "line": 33
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "512483d734458fcfe27e-8e08dc2ce045dd865318",
+          "file": "reader-mark-removal.spec.ts",
+          "line": 12,
+          "column": 43
+        },
+        {
+          "title": "区域提问后可直接移除标记、撤销和刷新恢复，问答及引用保留",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5864,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T13:56:51.506Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "512483d734458fcfe27e-186d8a037aa6c29c08dc",
+          "file": "reader-mark-removal.spec.ts",
+          "line": 12,
+          "column": 43
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T13:56:25.888Z",
+    "duration": 31608.929,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

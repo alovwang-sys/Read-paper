@@ -287,8 +287,8 @@ export function ConversationSource({
             className="button ai-full-width"
             onClick={() => {
               if (!sameResearch) actions.switchResearch(source.researchId);
-              if (conversation.archived)
-                actions.archiveConversation(conversation.id, false);
+              if (conversation.deletedAt) actions.restoreDeletedConversation(conversation.id);
+              else if (conversation.archived) actions.archiveConversation(conversation.id, false);
               actions.selectConversation(
                 source.researchId,
                 source.conversationId,
@@ -300,7 +300,9 @@ export function ConversationSource({
             }}
           >
             <MessageSquare size={14} />
-            {!sameResearch
+            {conversation.deletedAt
+              ? '恢复已删除会话并继续'
+              : !sameResearch
               ? '去原研究继续讨论'
               : conversation.archived
                 ? '恢复并继续此对话'

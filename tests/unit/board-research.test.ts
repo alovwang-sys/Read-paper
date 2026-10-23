@@ -32,6 +32,38 @@ function open(boardId = 'board-a', placementId = 'placement-a') {
 }
 
 describe('白板局部研究共享服务', () => {
+  it('摆放仍指向已删除讨论时新开讨论，不复用墓碑；原请求、卡片与原文引用保留', () => {
+    const id = open();
+    workspace.updateData(next => {
+      const evidence = next.evidence['evidence-a'], document = next.documents[evidence.documentId];
+      next.requests['deleted-board-answer'] = { id: 'deleted-board-answer', researchId: 'research-a', conversationId: id,
+        prompt: '旧讨论中已核对的问题', body: '带原文依据的旧回答 [1]', purpose: 'chat', status: 'done',
+        createdAt: '2026-10-23T00:00:00.000Z', evidenceIds: [evidence.id],
+        context: [{ evidenceId: evidence.id, documentId: document.id, documentHash: document.hash!, title: document.title, pageIndex: evidence.pageIndex, quote: evidence.quote }] };
+      next.conversations[id].requestIds = ['deleted-board-answer'];
+      next.conversations[id].input = '留在回收站中的旧草稿';
+      next.placements['placement-a'].researchConversationId = id;
+    });
+    workspace.deleteConversation(id);
+    const deleted = structuredClone(workspace.getState().data.conversations[id]);
+    const request = structuredClone(workspace.getState().data.requests['deleted-board-answer']);
+    const card = structuredClone(workspace.getState().data.cards['card-a']);
+    const evidence = structuredClone(workspace.getState().data.evidence);
+    expect(workspace.getState().data.placements['placement-a'].researchConversationId).toBe(id);
+
+    const replacement = open();
+    const next = workspace.getState().data;
+    expect(replacement).not.toBe(id);
+    expect(next.sessions['research-a'].activeConversationId).toBe(replacement);
+    expect(next.conversations[replacement]).toMatchObject({ requestIds: [], input: '', boardResearch: { origin: { boardId: 'board-a', rootPlacementId: 'placement-a' } } });
+    expect(next.conversations[replacement].deletedAt).toBeUndefined();
+    expect(next.conversations[id]).toEqual(deleted);
+    expect(next.requests['deleted-board-answer']).toEqual(request);
+    expect(next.cards['card-a']).toEqual(card);
+    expect(next.evidence).toEqual(evidence);
+    expect(() => validateResearchData(next)).not.toThrow();
+  });
+
   it('按摆放复用探索，显式提问才更换焦点；不会把卡片引用自动加入原文', () => {
     const id = open();
     const before = workspace.getState().data.conversations[id];

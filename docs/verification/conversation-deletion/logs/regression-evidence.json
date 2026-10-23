@@ -1,0 +1,32 @@
+{
+  "codes": [
+    {
+      "group": "continuous-workspace",
+      "exitCode": 0
+    },
+    {
+      "group": "inline-ai",
+      "exitCode": 1
+    }
+  ],
+  "originalCount": 29,
+  "newEvidenceCount": 14,
+  "restoredUnchanged": true,
+  "changedFiles": [
+    "docs/verification/continuous-workspace/screenshots/assistant-switch-retains-image-and-history.png",
+    "docs/verification/continuous-workspace/screenshots/card-editor-over-source-1440.png",
+    "docs/verification/continuous-workspace/screenshots/earlier-folded-1440.png",
+    "docs/verification/continuous-workspace/screenshots/existing-drawing-and-chat-1440.png",
+    "docs/verification/continuous-workspace/screenshots/passage-answer-carried-1440.png",
+    "docs/verification/continuous-workspace/screenshots/region-question-1024.png",
+    "docs/verification/continuous-workspace/screenshots/region-question-1280.png",
+    "docs/verification/continuous-workspace/screenshots/region-question-1440.png",
+    "docs/verification/continuous-workspace/screenshots/resource-chat-1024.png",
+    "docs/verification/continuous-workspace/screenshots/resource-chat-1280.png",
+    "docs/verification/continuous-workspace/screenshots/resource-chat-1440.png",
+    "docs/verification/continuous-workspace/screenshots/same-conversation-floating-1440.png",
+    "docs/verification/continuous-workspace/screenshots/shared-brief-independent-source-questions.png",
+    "docs/verification/continuous-workspace/screenshots/translation-on-source-1440.png"
+  ],
+  "invalid": []
+}

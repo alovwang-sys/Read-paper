@@ -6,6 +6,8 @@ import { researchEvidence } from '../../src/domain/knowledge';
 import { exportMarkdown } from '../../src/features/export/exportMarkdown';
 import { createInlineConversation } from '../../src/services/inline-ai';
 import { validateEvidence, workspace } from '../../src/services/workspace';
+import type { InlineAISelection } from '../../src/services/inline-ai';
+import type { AIRequest } from '../../src/domain/types';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn() }));
 const state = () => workspace.getState().data;
@@ -83,6 +85,52 @@ describe('原文标记与来源证据独立保存', () => {
     workspace.setExcerptMarked(evidenceId, false);
     expect(() => workspace.removeExcerpt(evidenceId)).toThrow(/引用/);
     expect(() => migrateWorkspace(structuredClone(state()))).not.toThrow();
+  });
+
+  it.each(['text', 'region'] as const)('纯提问%s标记移除与恢复不收藏来源，问答、草稿和另一位置均保留', async kind => {
+    workspace.updateData(data => { data.documents['paper-a'].hash = 'a'.repeat(64); });
+    const region = { assetId: 'question-region', hash: 'b'.repeat(64), rect: { x: .1, y: .1, width: .2, height: .2 }, rotation: 0, width: 200, height: 200 };
+    const source: InlineAISelection = { documentId: 'paper-a', pageIndex: 0, quote: kind === 'text' ? 'same selected sentence' : '', kind,
+      ...(kind === 'text' ? { textAnchor: { start: 10, end: 32 } } : { region }) };
+    const conversationId = createInlineConversation('research-a', source);
+    const otherId = createInlineConversation('research-a', { ...source, ...(kind === 'text'
+      ? { textAnchor: { start: 50, end: 72 } } : { region: { ...region, rect: { ...region.rect, x: .5 } } }) });
+    const evidenceId = state().conversations[conversationId].inlineSource!.evidenceId;
+    const otherEvidenceId = state().conversations[otherId].inlineSource!.evidenceId;
+    expect(otherEvidenceId).not.toBe(evidenceId);
+    const now = new Date().toISOString(), requestId = `question-${kind}`, draftId = `draft-${kind}`;
+    const request: AIRequest = { id: requestId, researchId: 'research-a', conversationId, purpose: 'chat', prompt: '已提交的局部问题', body: '已收到且保留的回答 [1]',
+      context: [{ evidenceId, documentId: 'paper-a', documentHash: 'a'.repeat(64), title: state().documents['paper-a'].title, pageIndex: 0, quote: source.quote,
+        ...(kind === 'region' ? { kind: 'region', region } : {}) }],
+      readerOperation: 'question', readerEvidenceId: evidenceId, evidenceIds: [evidenceId], history: [], status: 'done', createdAt: now };
+    workspace.updateData(data => {
+      data.requests[requestId] = request;
+      const conversation = data.conversations[conversationId];
+      conversation.requestIds.push(requestId); conversation.input = '仍未发送的下一轮草稿'; conversation.inlineSource!.draftId = draftId;
+      data.cardDrafts[draftId] = { id: draftId, researchId: 'research-a', conversationId,
+        source: { researchId: 'research-a', conversationId, conversationTitle: '局部提问', requestId, prompt: request.prompt, answer: request.body,
+          selection: request.body, context: structuredClone(request.context), createdAt: now, generationRequestIds: [] },
+        title: '未保存卡片标题', body: '正在编辑的正文 [1]', evidenceIds: [evidenceId], needsReview: true, status: 'editing', revision: 2 };
+    });
+    const before = structuredClone(state()), excerpts = researchEvidence(state(), 'research-a').map(item => item.id);
+    workspace.setExcerptMarked(evidenceId, false);
+    expect(state().evidence[evidenceId]).toMatchObject({ contextOnly: true, annotationHidden: true });
+    const refreshed = migrateWorkspace(structuredClone(state()));
+    expect(refreshed.evidence[evidenceId]).toMatchObject({ contextOnly: true, annotationHidden: true });
+    expect(refreshed.requests[requestId]).toEqual(before.requests[requestId]);
+    workspace.setExcerptMarked(evidenceId, true);
+    expect(state().evidence[evidenceId]).toEqual(before.evidence[evidenceId]);
+    expect(state().evidence[evidenceId].contextOnly).toBe(true);
+    expect(researchEvidence(state(), 'research-a').map(item => item.id)).toEqual(excerpts);
+    expect(state().evidence[otherEvidenceId]).toEqual(before.evidence[otherEvidenceId]);
+    expect(state().conversations).toEqual(before.conversations);
+    expect(state().requests).toEqual(before.requests);
+    expect(state().cardDrafts).toEqual(before.cardDrafts);
+    expect(() => workspace.removeExcerpt(evidenceId)).toThrow(/引用/);
+    await workspace.flushSave();
+    const persisted = vi.mocked(saveWorkspace).mock.calls.at(-1)![0];
+    expect(persisted.evidence[evidenceId]).toEqual(before.evidence[evidenceId]);
+    expect(migrateWorkspace(structuredClone(persisted)).cardDrafts[draftId]).toEqual(before.cardDrafts[draftId]);
   });
 
   it('文稿保留的卡片引用也保护摘录不被硬删', () => {

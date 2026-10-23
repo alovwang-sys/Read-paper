@@ -92,3 +92,14 @@
 .inline-ai-turn-scope blockquote { border-left: 2px solid var(--border); margin: 7px 0; padding-left: 8px; line-height: 1.7; }
 .inline-ai-turn-brief { white-space: pre-wrap; }
 .inline-ai-request-error { flex-wrap: wrap; }
+.inline-ai-source-row { display: flex; align-items: flex-start; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; padding-right: 14px; }
+.inline-ai-source-row > .inline-ai-source { border-bottom: 0; flex: 1; min-width: 0; }
+.inline-ai-source-row .inline-ai-source[open] { max-height: 140px; }
+.inline-ai-mark-toggle { padding: 0; color: var(--muted); font-size: 11px; line-height: 19px; white-space: nowrap; }
+.inline-ai-mark-toggle:hover { color: var(--text); }
+.inline-ai-deleted { display: flex; align-items: flex-start; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--muted); background: #f7f8f5; font-size: 11px; line-height: 1.65; }
+.inline-ai-deleted > span { flex: 1; }
+.inline-ai-deleted .text-button { padding: 0; color: var(--accent); font-size: 11px; white-space: nowrap; }
+.inline-ai-retained-input { margin: 10px 0; color: var(--muted); font-size: 12px; }
+.inline-ai-retained-input strong { font-size: 11px; font-weight: 500; }
+.inline-ai-retained-input p { margin: 5px 0; white-space: pre-wrap; overflow-wrap: anywhere; }

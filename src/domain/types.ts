@@ -571,6 +571,7 @@ export type Conversation = {
   createdAt?: string;
   updatedAt?: string;
   archived?: boolean;
+  deletedAt?: string;
   historyRange?: 'all' | 'latest' | 'none' | 'guided' | 'selected';
   historyRequestIds?: string[];
   boardResearch?: BoardResearchState;

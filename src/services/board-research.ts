@@ -64,7 +64,7 @@ export function openBoardResearch(input: { boardId: string; placementIds: string
     placements.forEach(item => assertResource(data, board.researchId, item.resourceRef));
     const first = placements[0];
     const related = first.researchConversationId ? data.conversations[first.researchConversationId] : undefined;
-    const previous = !input.fresh && (related?.researchId === board.researchId && related.boardResearch?.origin.boardId === board.id ? related : Object.values(data.conversations).filter(c => !c.archived && c.researchId === board.researchId && c.boardResearch?.origin.boardId === board.id && c.boardResearch.origin.rootPlacementId === first.id).at(-1));
+    const previous = !input.fresh && (related?.researchId === board.researchId && !related.archived && !related.deletedAt && related.boardResearch?.origin.boardId === board.id ? related : Object.values(data.conversations).filter(c => !c.archived && !c.deletedAt && c.researchId === board.researchId && c.boardResearch?.origin.boardId === board.id && c.boardResearch.origin.rootPlacementId === first.id).at(-1));
     const current = getActiveConversation(data, board.researchId);
     const conversation: Conversation = previous || { id: uid('conversation'), researchId: board.researchId, title: resourceTitle(data, first.resourceRef).slice(0, 120), contextIds: [], requestIds: [], input: '', historyRange: 'guided', connectionId: current?.connectionId ?? 'model', createdAt: new Date().toISOString(),
       boardResearch: { origin: { boardId: board.id, rootTitle: resourceTitle(data, first.resourceRef), rootRef: { ...first.resourceRef }, rootPlacementId: first.id }, focus: [], automatic: [], pinned: [], excludedSourceIds: [], includeBackground: true } };

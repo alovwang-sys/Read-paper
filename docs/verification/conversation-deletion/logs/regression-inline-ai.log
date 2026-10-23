@@ -1,0 +1,442 @@
+
+Running 8 tests using 1 worker
+
+(node:45725) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/8] tests/e2e/inline-ai.spec.ts:43:3 › 选区旁解释、追问、存卡与刷新保持右侧独立 1440
+  1) tests/e2e/inline-ai.spec.ts:43:3 › 选区旁解释、追问、存卡与刷新保持右侧独立 1440 ──────────────────────────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true })
+
+
+      49 |     await selectPassage(page);
+      50 |     expect(requests.calls()).toBe(0);
+    > 51 |     await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).click();
+         |                                                                                        ^
+      52 |     await expect(dialog(page)).toContainText('这段是在比较固定检索');
+      53 |     await dialog(page).getByRole('button', { name: '[1]', exact: true }).click();
+      54 |     await expect(dialog(page)).toBeVisible();
+        at /Users/amos/project/Read-paper/tests/e2e/inline-ai.spec.ts:51:88
+
+    Error Context: test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1440/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1440/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1440/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:45823) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/8] tests/e2e/inline-ai.spec.ts:43:3 › 选区旁解释、追问、存卡与刷新保持右侧独立 1280
+  2) tests/e2e/inline-ai.spec.ts:43:3 › 选区旁解释、追问、存卡与刷新保持右侧独立 1280 ──────────────────────────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true })
+
+
+      49 |     await selectPassage(page);
+      50 |     expect(requests.calls()).toBe(0);
+    > 51 |     await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).click();
+         |                                                                                        ^
+      52 |     await expect(dialog(page)).toContainText('这段是在比较固定检索');
+      53 |     await dialog(page).getByRole('button', { name: '[1]', exact: true }).click();
+      54 |     await expect(dialog(page)).toBeVisible();
+        at /Users/amos/project/Read-paper/tests/e2e/inline-ai.spec.ts:51:88
+
+    Error Context: test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1280/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1280/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1280/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+Testing stopped early after 2 maximum allowed failures.
+
+  2 failed
+    tests/e2e/inline-ai.spec.ts:43:3 › 选区旁解释、追问、存卡与刷新保持右侧独立 1440 ───────────────────────────────────
+    tests/e2e/inline-ai.spec.ts:43:3 › 选区旁解释、追问、存卡与刷新保持右侧独立 1280 ───────────────────────────────────
+  6 did not run
+  1 error was not a part of any test, see above for details
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/inline-ai.spec.ts",
+      "--max-failures=2",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 2,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "inline-ai.spec.ts",
+      "file": "inline-ai.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "选区旁解释、追问、存卡与刷新保持右侧独立 1440",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60101,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/inline-ai.spec.ts",
+                        "column": 88,
+                        "line": 51
+                      },
+                      "message": "Error: locator.click: Test timeout of 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true })\u001b[22m\n\n\n  49 |     await selectPassage(page);\n  50 |     expect(requests.calls()).toBe(0);\n> 51 |     await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).click();\n     |                                                                                        ^\n  52 |     await expect(dialog(page)).toContainText('这段是在比较固定检索');\n  53 |     await dialog(page).getByRole('button', { name: '[1]', exact: true }).click();\n  54 |     await expect(dialog(page)).toBeVisible();\n    at /Users/amos/project/Read-paper/tests/e2e/inline-ai.spec.ts:51:88"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:05:28.795Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1440/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1440/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-0dcdcf49f88c248715e9",
+          "file": "inline-ai.spec.ts",
+          "line": 43,
+          "column": 3
+        },
+        {
+          "title": "选区旁解释、追问、存卡与刷新保持右侧独立 1280",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60099,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/inline-ai.spec.ts",
+                        "column": 88,
+                        "line": 51
+                      },
+                      "message": "Error: locator.click: Test timeout of 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true })\u001b[22m\n\n\n  49 |     await selectPassage(page);\n  50 |     expect(requests.calls()).toBe(0);\n> 51 |     await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).click();\n     |                                                                                        ^\n  52 |     await expect(dialog(page)).toContainText('这段是在比较固定检索');\n  53 |     await dialog(page).getByRole('button', { name: '[1]', exact: true }).click();\n  54 |     await expect(dialog(page)).toBeVisible();\n    at /Users/amos/project/Read-paper/tests/e2e/inline-ai.spec.ts:51:88"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:06:29.279Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1280/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/inline-ai-选区旁解释、追问、存卡与刷新保持右侧独立-1280/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-70e2515d713463e8be44",
+          "file": "inline-ai.spec.ts",
+          "line": 43,
+          "column": 3
+        },
+        {
+          "title": "选区旁解释、追问、存卡与刷新保持右侧独立 1024",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-2127a85851f495a41aca",
+          "file": "inline-ai.spec.ts",
+          "line": 43,
+          "column": 3
+        },
+        {
+          "title": "手动提问不自动发送，模型报错后就地重试且保留问题",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-5d63644600693f0ff03e",
+          "file": "inline-ai.spec.ts",
+          "line": 90,
+          "column": 1
+        },
+        {
+          "title": "停止等待中的回答保留问题，关闭后仍能恢复继续",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-a407ea1bc52789e6d96f",
+          "file": "inline-ai.spec.ts",
+          "line": 105,
+          "column": 1
+        },
+        {
+          "title": "原文旁问答支持拖动、缩放和键盘操作 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-b31900454f5d59aebead",
+          "file": "inline-ai.spec.ts",
+          "line": 130,
+          "column": 3
+        },
+        {
+          "title": "原文旁问答支持拖动、缩放和键盘操作 1280",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-25944041834e69d2f1a3",
+          "file": "inline-ai.spec.ts",
+          "line": 130,
+          "column": 3
+        },
+        {
+          "title": "原文旁问答支持拖动、缩放和键盘操作 1024",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-10597b4e91719ce4849b",
+          "file": "inline-ai.spec.ts",
+          "line": 130,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "message": "\u001b[31mTesting stopped early after 2 maximum allowed failures.\u001b[39m"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-10-23T14:05:28.601Z",
+    "duration": 120939.57699999999,
+    "expected": 0,
+    "skipped": 6,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

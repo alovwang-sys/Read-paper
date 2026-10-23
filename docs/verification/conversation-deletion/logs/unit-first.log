@@ -1,0 +1,65 @@
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+stderr | tests/unit/conversation-deletion.test.ts
+Warning: Please use the `legacy` build in Node.js environments.
+
+ × tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除当前会话回落到同研究的可用会话，不改变资源、阅读位置或其他研究 12ms
+   → Cannot read properties of undefined (reading 'kind')
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除最后可用会话生成同助手的空会话，重复删除不再创建，普通入口不能复活 5ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除和恢复保留历史、可编辑卡片草稿、卡片来源、附件、绘图快照与未发送输入 5ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed running 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed waiting-input 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed compacting 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed stopping 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed unknown 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed completed 已终止允许删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed failed 已终止允许删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed interrupted 已终止允许删除 0ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 生成中的请求、原生busy和卡片生成分别拒绝删除且不改数据 2ms
+ × tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 资产准备阶段删除后不登记请求、不调用模型，也不清空草稿 52ms
+   → expected [Function] to throw error matching /已删除|已归档/ but got '研究目录或工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。'
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除的就地会话不被自动发现；再次提问新建记录，显式恢复后可找回原历史 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 保存刷新、迁移和真实ZIP备份往返保留删除墓碑与请求，恢复只解除指定记录 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除当前会话回落到同研究的可用会话，不改变资源、阅读位置或其他研究
+TypeError: Cannot read properties of undefined (reading 'kind')
+ ❯ src/services/workspace.ts:599:25
+    597|       if (!resourceExists(data, ref))
+    598|         throw new Error('资源不存在，请从资料库重新打开。');
+    599|       if (options.scope.kind === 'research') {
+       |                         ^
+    600|         const research = data.researches[options.scope.researchId];
+    601|         if (!research) throw new Error('研究不存在');
+ ❯ Object.updateData src/services/workspace.ts:304:5
+ ❯ Object.openResource src/services/workspace.ts:596:15
+ ❯ tests/unit/conversation-deletion.test.ts:52:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 资产准备阶段删除后不登记请求、不调用模型，也不清空草稿
+AssertionError: expected [Function] to throw error matching /已删除|已归档/ but got '研究目录或工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。'
+
+- Expected:
+/已删除|已归档/
+
++ Received:
+"研究目录或工作区已改变，未发送本次请求。输入已保留，请重新确认后发送。"
+
+ ❯ tests/unit/conversation-deletion.test.ts:151:37
+    149|     const requests = Object.keys(state().requests);
+    150|     const pending = submitAI('research-a', id, '准备时删除，保留原输入', responde…
+    151|     const rejected = expect(pending).rejects.toThrow(/已删除|已归档/);
+       |                                     ^
+    152|     await vi.waitFor(() => expect(release).toBeDefined());
+    153|     workspace.deleteConversation(id);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 passed (15)
+   Start at  21:53:07
+   Duration  365ms (transform 159ms, setup 0ms, import 206ms, tests 86ms, environment 0ms)

@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+stderr | tests/unit/conversation-deletion.test.ts
+Warning: Please use the `legacy` build in Node.js environments.
+
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除当前会话回落到同研究的可用会话，不改变资源、阅读位置或其他研究 16ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除最后可用会话生成同助手的空会话，重复删除不再创建，普通入口不能复活 7ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除和恢复保留历史、可编辑卡片草稿、卡片来源、附件、绘图快照与未发送输入 4ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed running 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed waiting-input 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed compacting 尚未终止，即使外层done也拒绝删除 0ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed stopping 尚未终止，即使外层done也拒绝删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed unknown 尚未终止，即使外层done也拒绝删除 0ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed completed 已终止允许删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed failed 已终止允许删除 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > managed interrupted 已终止允许删除 0ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 生成中的请求、原生busy和卡片生成分别拒绝删除且不改数据 2ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 资产准备阶段删除后不登记请求、不调用模型，也不清空草稿 53ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 删除的就地会话不被自动发现；再次提问新建记录，显式恢复后可找回原历史 1ms
+ ✓ tests/unit/conversation-deletion.test.ts > 可恢复的会话删除 > 保存刷新、迁移和真实ZIP备份往返保留删除墓碑与请求，恢复只解除指定记录 3ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  21:58:04
+   Duration  391ms (transform 169ms, setup 0ms, import 221ms, tests 92ms, environment 0ms)

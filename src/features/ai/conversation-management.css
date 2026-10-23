@@ -1,0 +1,32 @@
+.conversation-delete-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; width: 26px; min-width: 26px; height: 27px; padding: 4px; color: #99a392; border: 0; border-radius: 5px; background: transparent; font-size: 11px; cursor: pointer; }
+.conversation-delete-button:hover, .conversation-delete-button:focus-visible { color: #a66250; background: #f8eee9; }
+.conversation-delete-button:has(> span) { width: auto; padding-inline: 7px; }
+.deleted-conversations-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 7px; border: 0; border-radius: 5px; background: transparent; color: #8d9c82; font-size: 11px; cursor: pointer; }
+.deleted-conversations-trigger:hover, .deleted-conversations-trigger:focus-visible { color: #59774b; background: #edf3e7; }
+.deleted-conversations-trigger.is-compact { width: 26px; height: 27px; padding: 4px; }
+.conversation-management-backdrop { position: fixed; z-index: 2500; inset: 0; display: grid; place-items: center; padding: 20px; background: #253a2b38; backdrop-filter: blur(2px); }
+.conversation-management-dialog { display: flex; flex-direction: column; width: min(430px, 100%); max-height: min(540px, calc(100dvh - 48px)); overflow: hidden; padding: 0; border: 1px solid #d9e2d3; border-radius: 13px; background: #fffefb; box-shadow: 0 18px 70px #1f382e2b; color: #4d6047; }
+.conversation-management-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 18px; border-bottom: 1px solid #edf0e8; }
+.conversation-management-dialog h2 { margin: 0; font-size: 14px; font-weight: 550; color: #45573f; }
+.conversation-management-close { display: grid; place-items: center; width: 27px; height: 27px; padding: 4px; color: #94a08b; border: 0; border-radius: 5px; background: transparent; }
+.conversation-management-close:hover { background: #edf2e7; }
+.conversation-delete-copy { padding: 19px 20px 8px; }
+.conversation-delete-copy > strong { display: block; font-size: 13px; font-weight: 550; line-height: 1.7; overflow-wrap: anywhere; }
+.conversation-delete-copy > p { margin: 10px 0; color: #8c9784; font-size: 12px; line-height: 1.8; }
+.conversation-management-dialog > footer { display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 10px 20px 20px; }
+.conversation-management-dialog > footer button { min-height: 32px; padding: 6px 14px; border-radius: 6px; font-size: 12px; }
+.conversation-management-cancel { color: #75836c; border: 1px solid #e0e6d9; background: transparent; }
+.conversation-management-danger { color: #fff; border: 1px solid #a96e58; background: #a96e58; }
+.conversation-management-danger:hover { background: #955e49; }
+.conversation-management-dialog button:focus-visible { outline: 2px solid #789365; outline-offset: 2px; }
+.conversation-management-error, .conversation-management-restored { margin: 8px 20px 14px; font-size: 12px; line-height: 1.7; }
+.conversation-management-error { color: #a96d54; }
+.conversation-management-restored { color: #6b8458; }
+.deleted-conversations-list { min-height: 100px; padding: 8px 12px; overflow: auto; overscroll-behavior: contain; }
+.deleted-conversation-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px; border-bottom: 1px solid #eff2eb; }
+.deleted-conversation-row > svg { flex: none; color: #a6b09b; }
+.deleted-conversation-row > span { flex: 1; min-width: 0; font-size: 12px; color: #65765b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deleted-conversation-row > button { display: flex; align-items: center; gap: 5px; flex: none; padding: 6px 9px; color: #668252; background: #f0f5e9; border: 0; border-radius: 5px; font-size: 11px; }
+.deleted-conversation-row > button:hover { background: #e5efda; }
+.deleted-conversations-empty { display: flex; align-items: center; flex-direction: column; gap: 12px; padding: 38px 18px; color: #acb5a3; }
+.deleted-conversations-empty p { margin: 0; font-size: 12px; }

@@ -104,7 +104,7 @@ export function discussionAnchor(conversation: Conversation): DiscussionAnchor |
 const activityAt = (data: WorkspaceData, item: Conversation) => item.updatedAt ?? item.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1)?.createdAt ?? item.createdAt ?? '';
 export function anchoredConversations(data: WorkspaceData, researchId: string, anchor: NonNullable<Conversation['anchor']>) {
   return Object.values(data.conversations)
-    .filter(item => item.researchId === researchId && !item.archived && item.anchor?.kind === anchor.kind && item.anchor.id === anchor.id)
+    .filter(item => item.researchId === researchId && !item.archived && !item.deletedAt && item.anchor?.kind === anchor.kind && item.anchor.id === anchor.id)
     .sort((a, b) => activityAt(data, b).localeCompare(activityAt(data, a)));
 }
 /** Research conversations stay in the main list; discussions are grouped by the object they hang on. */
@@ -112,7 +112,7 @@ export function researchConversationLists(data: WorkspaceData, researchId: strin
   const needle = query.trim().toLocaleLowerCase(), matches = (...texts: string[]) => !needle || texts.some(text => text.toLocaleLowerCase().includes(needle));
   const main: Conversation[] = [], groups = new Map<string, { label: string; items: { conversation: Conversation; label: string }[] }>();
   const listed = Object.values(data.conversations)
-    .filter(item => item.researchId === researchId && !item.archived && (item.inlineSource?.operation ?? 'question') === 'question')
+    .filter(item => item.researchId === researchId && !item.archived && !item.deletedAt && (item.inlineSource?.operation ?? 'question') === 'question')
     .sort((a, b) => activityAt(data, b).localeCompare(activityAt(data, a)));
   const anchorKey = (item: Conversation) => item.anchor && `${item.anchor.kind}:${item.anchor.id}`, totals = new Map<string, number>(), seen = new Map<string, number>();
   for (const item of listed) { const key = anchorKey(item); if (key) totals.set(key, (totals.get(key) ?? 0) + 1); }

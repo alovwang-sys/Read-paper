@@ -1,0 +1,877 @@
+
+Running 25 tests using 1 worker
+
+(node:44786) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/25] tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1440
+  1) tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1440 ───────────────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })
+
+
+      82 |     const second = await capture(page, 'This self-authored fixture describes');
+      83 |     const excerpt = await capture(page);
+    > 84 |     await menu(page).getByRole('button', { name: '写成卡片', exact: true }).click();
+         |                                                                         ^
+      85 |     await panel(page).getByLabel('卡片标题', { exact: true }).fill('标记移除仍保留观点');
+      86 |     await panel(page).getByLabel('卡片正文', { exact: true }).fill('保留同一条原文证据，继续核查检索条件。');
+      87 |     const card = Object.values((await state(page)).cards).find(item => item.title === '标记移除仍保留观点')!;
+        at /Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts:84:73
+
+    Error Context: test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1440/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1440/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1440/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:45037) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/25] tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1280
+  2) tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1280 ───────────────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })
+
+
+      82 |     const second = await capture(page, 'This self-authored fixture describes');
+      83 |     const excerpt = await capture(page);
+    > 84 |     await menu(page).getByRole('button', { name: '写成卡片', exact: true }).click();
+         |                                                                         ^
+      85 |     await panel(page).getByLabel('卡片标题', { exact: true }).fill('标记移除仍保留观点');
+      86 |     await panel(page).getByLabel('卡片正文', { exact: true }).fill('保留同一条原文证据，继续核查检索条件。');
+      87 |     const card = Object.values((await state(page)).cards).find(item => item.title === '标记移除仍保留观点')!;
+        at /Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts:84:73
+
+    Error Context: test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1280/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1280/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1280/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:45358) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[3/25] tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1024
+  3) tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1024 ───────────────────────
+
+    Test was interrupted.
+
+    Error: locator.click: Test ended.
+    Call log:
+      - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })
+
+
+      82 |     const second = await capture(page, 'This self-authored fixture describes');
+      83 |     const excerpt = await capture(page);
+    > 84 |     await menu(page).getByRole('button', { name: '写成卡片', exact: true }).click();
+         |                                                                         ^
+      85 |     await panel(page).getByLabel('卡片标题', { exact: true }).fill('标记移除仍保留观点');
+      86 |     await panel(page).getByLabel('卡片正文', { exact: true }).fill('保留同一条原文证据，继续核查检索条件。');
+      87 |     const card = Object.values((await state(page)).cards).find(item => item.title === '标记移除仍保留观点')!;
+        at /Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts:84:73
+
+    Error Context: test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1024/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1024/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1024/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  2 failed
+    tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1440 ────────────────────────
+    tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1280 ────────────────────────
+  1 interrupted
+    tests/e2e/annotation-removal.spec.ts:79:3 › 引用中的文字标记可移除和恢复，刷新与研究隔离 1024 ────────────────────────
+  22 did not run
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/continuous-workspace.spec.ts",
+      "tests/e2e/annotation-removal.spec.ts",
+      "tests/e2e/inline-ai.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "annotation-removal.spec.ts",
+      "file": "annotation-removal.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "引用中的文字标记可移除和恢复，刷新与研究隔离 1440",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60090,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts",
+                        "column": 73,
+                        "line": 84
+                      },
+                      "message": "Error: locator.click: Test timeout of 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })\u001b[22m\n\n\n  82 |     const second = await capture(page, 'This self-authored fixture describes');\n  83 |     const excerpt = await capture(page);\n> 84 |     await menu(page).getByRole('button', { name: '写成卡片', exact: true }).click();\n     |                                                                         ^\n  85 |     await panel(page).getByLabel('卡片标题', { exact: true }).fill('标记移除仍保留观点');\n  86 |     await panel(page).getByLabel('卡片正文', { exact: true }).fill('保留同一条原文证据，继续核查检索条件。');\n  87 |     const card = Object.values((await state(page)).cards).find(item => item.title === '标记移除仍保留观点')!;\n    at /Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts:84:73"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:01:15.794Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1440/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1440/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "193ca36d57921d24cb5e-e2e4d01db538e1d627f2",
+          "file": "annotation-removal.spec.ts",
+          "line": 79,
+          "column": 3
+        },
+        {
+          "title": "引用中的文字标记可移除和恢复，刷新与研究隔离 1280",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60143,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts",
+                        "column": 73,
+                        "line": 84
+                      },
+                      "message": "Error: locator.click: Test timeout of 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })\u001b[22m\n\n\n  82 |     const second = await capture(page, 'This self-authored fixture describes');\n  83 |     const excerpt = await capture(page);\n> 84 |     await menu(page).getByRole('button', { name: '写成卡片', exact: true }).click();\n     |                                                                         ^\n  85 |     await panel(page).getByLabel('卡片标题', { exact: true }).fill('标记移除仍保留观点');\n  86 |     await panel(page).getByLabel('卡片正文', { exact: true }).fill('保留同一条原文证据，继续核查检索条件。');\n  87 |     const card = Object.values((await state(page)).cards).find(item => item.title === '标记移除仍保留观点')!;\n    at /Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts:84:73"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:02:16.328Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1280/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1280/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "193ca36d57921d24cb5e-b190102d5d27a4423611",
+          "file": "annotation-removal.spec.ts",
+          "line": 79,
+          "column": 3
+        },
+        {
+          "title": "引用中的文字标记可移除和恢复，刷新与研究隔离 1024",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "interrupted",
+                  "duration": 53414,
+                  "error": {
+                    "message": "Error: locator.click: Test ended.\nCall log:\n\u001b[2m  - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })\u001b[22m\n",
+                    "stack": "Error: locator.click: Test ended.\nCall log:\n\u001b[2m  - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })\u001b[22m\n\n    at /Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts:84:73",
+                    "location": {
+                      "file": "/Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts",
+                      "column": 73,
+                      "line": 84
+                    },
+                    "snippet": "  82 |     const second = await capture(page, 'This self-authored fixture describes');\n  83 |     const excerpt = await capture(page);\n> 84 |     await menu(page).getByRole('button', { name: '写成卡片', exact: true }).click();\n     |                                                                         ^\n  85 |     await panel(page).getByLabel('卡片标题', { exact: true }).fill('标记移除仍保留观点');\n  86 |     await panel(page).getByLabel('卡片正文', { exact: true }).fill('保留同一条原文证据，继续核查检索条件。');\n  87 |     const card = Object.values((await state(page)).cards).find(item => item.title === '标记移除仍保留观点')!;"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts",
+                        "column": 73,
+                        "line": 84
+                      },
+                      "message": "Error: locator.click: Test ended.\nCall log:\n\u001b[2m  - waiting for getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '写成卡片', exact: true })\u001b[22m\n\n\n  82 |     const second = await capture(page, 'This self-authored fixture describes');\n  83 |     const excerpt = await capture(page);\n> 84 |     await menu(page).getByRole('button', { name: '写成卡片', exact: true }).click();\n     |                                                                         ^\n  85 |     await panel(page).getByLabel('卡片标题', { exact: true }).fill('标记移除仍保留观点');\n  86 |     await panel(page).getByLabel('卡片正文', { exact: true }).fill('保留同一条原文证据，继续核查检索条件。');\n  87 |     const card = Object.values((await state(page)).cards).find(item => item.title === '标记移除仍保留观点')!;\n    at /Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts:84:73"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:03:16.880Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1024/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/annotation-removal-引用中的文字标记可移除和恢复，刷新与研究隔离-1024/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/amos/project/Read-paper/tests/e2e/annotation-removal.spec.ts",
+                    "column": 73,
+                    "line": 84
+                  }
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "193ca36d57921d24cb5e-239cbce814c17038161b",
+          "file": "annotation-removal.spec.ts",
+          "line": 79,
+          "column": 3
+        },
+        {
+          "title": "已保存区域框可直接点开移除，恢复后仍保留图片、卡片与来源定位",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "193ca36d57921d24cb5e-234b844d8542e5bb3a24",
+          "file": "annotation-removal.spec.ts",
+          "line": 149,
+          "column": 1
+        },
+        {
+          "title": "其他研究同段来源的移除操作只影响被点击的证据",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "193ca36d57921d24cb5e-b1dbdbe0549c9f939d26",
+          "file": "annotation-removal.spec.ts",
+          "line": 188,
+          "column": 1
+        },
+        {
+          "title": "问答打开时从右侧移除标记立即清除高亮，问答与显式引用仍可用",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "193ca36d57921d24cb5e-1db98857243c6e02816c",
+          "file": "annotation-removal.spec.ts",
+          "line": 216,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "continuous-workspace.spec.ts",
+      "file": "continuous-workspace.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "资源中发送即清空并直接显示回答；紧凑会话切换保留 PDF 和独立草稿",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-231e22221c213432c5e2",
+          "file": "continuous-workspace.spec.ts",
+          "line": 8,
+          "column": 1
+        },
+        {
+          "title": "侧边聊天可拖动分隔条调宽，宽度刷新后保留，主区不被挤没",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-e4cea4da7c5607939c4f",
+          "file": "continuous-workspace.spec.ts",
+          "line": 47,
+          "column": 1
+        },
+        {
+          "title": "14 天没有活动的研究会话收进\"更早\"；打开后保持展开，搜索时平铺显示",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-1d8c4170f8e77b7a987a",
+          "file": "continuous-workspace.spec.ts",
+          "line": 64,
+          "column": 1
+        },
+        {
+          "title": "同一会话侧边、浮窗、完整显示连续移动；资源分屏、请求和草稿不复制",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-2caaf6044c4e06301d79",
+          "file": "continuous-workspace.spec.ts",
+          "line": 83,
+          "column": 1
+        },
+        {
+          "title": "完整聊天后重进同一白板列表可见；关闭聊天后围绕白板追问会打开输入",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-64af9469823d226ffdc4",
+          "file": "continuous-workspace.spec.ts",
+          "line": 115,
+          "column": 1
+        },
+        {
+          "title": "卡片与摘录以浮窗编辑和按本篇筛选，定位原文后保留聊天与修改",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-e9df213987ec95dc0623",
+          "file": "continuous-workspace.spec.ts",
+          "line": 140,
+          "column": 1
+        },
+        {
+          "title": "切换文字助手保留同会话历史、草稿与图片；不支持的附件阻止提交，语音入口说明范围",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-dbd4fc7640152ecff2fb",
+          "file": "continuous-workspace.spec.ts",
+          "line": 172,
+          "column": 1
+        },
+        {
+          "title": "真实 PDF 文字选区三动作分开；翻译和摘要卡片可从原位记录找回",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-8113562d4970dcf5ba6a",
+          "file": "continuous-workspace.spec.ts",
+          "line": 211,
+          "column": 1
+        },
+        {
+          "title": "两个原文位置独立问答，共用本篇文章简要；简要与原文证据分开并刷新恢复",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-8ebe4b808ff284228a1b",
+          "file": "continuous-workspace.spec.ts",
+          "line": 250,
+          "column": 1
+        },
+        {
+          "title": "实际区域框选带局部 PNG 提问，原文和图片范围保持；原位记录可找回",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-26e34b34031f233a225a",
+          "file": "continuous-workspace.spec.ts",
+          "line": 306,
+          "column": 1
+        },
+        {
+          "title": "原有 Excalidraw 绘图、人工箭头和资料收录在连续工作区仍可用",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4ca11d5710c4eeb11a85-ad89307a6abcad08aee8",
+          "file": "continuous-workspace.spec.ts",
+          "line": 346,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "inline-ai.spec.ts",
+      "file": "inline-ai.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "选区旁解释、追问、存卡与刷新保持右侧独立 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-0dcdcf49f88c248715e9",
+          "file": "inline-ai.spec.ts",
+          "line": 43,
+          "column": 3
+        },
+        {
+          "title": "选区旁解释、追问、存卡与刷新保持右侧独立 1280",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-70e2515d713463e8be44",
+          "file": "inline-ai.spec.ts",
+          "line": 43,
+          "column": 3
+        },
+        {
+          "title": "选区旁解释、追问、存卡与刷新保持右侧独立 1024",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-2127a85851f495a41aca",
+          "file": "inline-ai.spec.ts",
+          "line": 43,
+          "column": 3
+        },
+        {
+          "title": "手动提问不自动发送，模型报错后就地重试且保留问题",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-5d63644600693f0ff03e",
+          "file": "inline-ai.spec.ts",
+          "line": 90,
+          "column": 1
+        },
+        {
+          "title": "停止等待中的回答保留问题，关闭后仍能恢复继续",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-a407ea1bc52789e6d96f",
+          "file": "inline-ai.spec.ts",
+          "line": 105,
+          "column": 1
+        },
+        {
+          "title": "原文旁问答支持拖动、缩放和键盘操作 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-b31900454f5d59aebead",
+          "file": "inline-ai.spec.ts",
+          "line": 130,
+          "column": 3
+        },
+        {
+          "title": "原文旁问答支持拖动、缩放和键盘操作 1280",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-25944041834e69d2f1a3",
+          "file": "inline-ai.spec.ts",
+          "line": 130,
+          "column": 3
+        },
+        {
+          "title": "原文旁问答支持拖动、缩放和键盘操作 1024",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "74ad29b1b7cc52e12e6a-10597b4e91719ce4849b",
+          "file": "inline-ai.spec.ts",
+          "line": 130,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T14:01:15.607Z",
+    "duration": 174989.02599999998,
+    "expected": 0,
+    "skipped": 23,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

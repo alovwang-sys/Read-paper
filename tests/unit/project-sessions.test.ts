@@ -36,6 +36,65 @@ beforeEach(async () => {
 afterEach(async () => { await vi.runOnlyPendingTimersAsync(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('研究项目原生历史的公开服务路径', () => {
+  it('已删除原生会话不能从发现重新打开，刷新和分页不读取；显式恢复才允许继续', async () => {
+    const mock = mockSnapshot(snapshot({ nextCursor: 'older-page' }));
+    const id = await openProjectSession('research-a', summary());
+    const requestId = data().conversations[id].requestIds[0];
+    const draftId = createManualCardDraft(requestId);
+    workspace.updateData(next => { next.conversations[id].input = '删除后仍保留的原生草稿'; });
+    workspace.deleteConversation(id);
+    const deleted = structuredClone(data().conversations[id]);
+    const requests = structuredClone(data().requests), draft = structuredClone(data().cardDrafts[draftId]);
+    const activeId = data().sessions['research-a'].activeConversationId;
+    mock.mockClear();
+
+    await refreshProjectConversation('research-a', id);
+    await loadOlderProjectConversation('research-a', id);
+    expect(mock).not.toHaveBeenCalled();
+    await expect(openProjectSession('research-a', summary())).rejects.toThrow(/已在本应用中删除/);
+    expect(mock).toHaveBeenCalledTimes(1);
+    expect(data().conversations[id]).toEqual(deleted);
+    expect(data().requests).toEqual(requests);
+    expect(data().cardDrafts[draftId]).toEqual(draft);
+    expect(data().sessions['research-a'].activeConversationId).toBe(activeId);
+    expect(Object.values(data().conversations).filter(item => item.nativeSessionId === 'native-thread')).toHaveLength(1);
+
+    workspace.restoreDeletedConversation(id);
+    expect(await openProjectSession('research-a', summary())).toBe(id);
+    expect(data().conversations[id]).toMatchObject({ archived: false, input: '删除后仍保留的原生草稿' });
+    expect(data().conversations[id].deletedAt).toBeUndefined();
+    expect(data().requests[requestId]).toEqual(requests[requestId]);
+    expect(data().cardDrafts[draftId]).toEqual(draft);
+  });
+
+  it.each(['open', 'refresh', 'older'] as const)('原生%s读取等待期间删除会话，迟到的正文和新消息不能改写墓碑或来源', async operation => {
+    mockSnapshot(snapshot({ nextCursor: 'older-page' }));
+    const id = await openProjectSession('research-a', summary());
+    workspace.addContext({ researchId: 'research-a', conversationId: id, evidenceIds: ['evidence-a'] });
+    workspace.updateData(next => { next.conversations[id].input = '读取中继续写下的私有草稿'; });
+    let release!: (response: Response) => void;
+    const fetcher = vi.fn(() => new Promise<Response>(resolve => { release = resolve; }));
+    vi.stubGlobal('fetch', fetcher);
+    const pending = operation === 'open' ? openProjectSession('research-a', summary())
+      : operation === 'refresh' ? refreshProjectConversation('research-a', id) : loadOlderProjectConversation('research-a', id);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    workspace.deleteConversation(id);
+    const deleted = structuredClone(data().conversations[id]);
+    const requests = structuredClone(data().requests), evidence = structuredClone(data().evidence);
+    const activeId = data().sessions['research-a'].activeConversationId;
+    release(Response.json(snapshot({ title: '不能复活的原生标题', updatedAt: '2026-10-23T12:00:00.000Z', messages: [
+      ...snapshot().messages,
+      { id: 'late-native-user', role: 'user', text: '删除之后迟到的新问题', turnId: 'late-turn', turnStatus: 'completed' },
+      { id: 'late-native-answer', role: 'assistant', text: '不能写入的新回答', turnId: 'late-turn', turnStatus: 'completed' },
+    ] })));
+    await expect(pending).rejects.toThrow(/已在本应用中删除/);
+    expect(data().conversations[id]).toEqual(deleted);
+    expect(data().requests).toEqual(requests);
+    expect(data().evidence).toEqual(evidence);
+    expect(data().sessions['research-a'].activeConversationId).toBe(activeId);
+    expect(Object.values(data().conversations).filter(item => item.nativeSessionId === 'native-thread')).toHaveLength(1);
+  });
+
   it('截断的原生预览不能覆盖较长的已接收正文或冻结为完整回答', async () => {
     mockSnapshot(snapshot({ messages: [] }));
     const id = await openProjectSession('research-a', summary());

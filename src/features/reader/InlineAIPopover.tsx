@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUp, Check, ChevronRight, GripHorizontal, Layers, MoveDi
 import { commitCardDraft, resumeNativeRuns, retryAI, skipPaperBrief, snapshotContext, steerNativeRun, stopAI, submitAI } from '../../services/ai';
 import { continueInlineInPanel, createInlineCardDraft, inlineAIConfig } from '../../services/inline-ai';
 import { useWorkspace } from '../../services/workspace';
+import { readerActivities } from '../../services/reader-actions';
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { NativeRunTimeline } from '../ai/NativeRunTimeline';
 import { constrainPopover, type PopoverRect } from './popover-layout';
@@ -95,16 +96,19 @@ export function ReaderPopover({ anchor, pageElement, boundary, className, label,
   </div>, document.body);
 }
 
-export function InlineAIPopover({ conversationId, initialAction, onClose, onSource }: {
+export function InlineAIPopover({ conversationId, initialAction, onClose, onSource, onMarkChange }: {
   conversationId: string; initialAction: 'explain' | 'ask' | 'translation' | 'summary'; onClose: () => void; onSource: (evidenceId: string) => void;
+  onMarkChange: (evidenceId: string, marked: boolean) => void;
 }) {
   const { data, actions, saveStatus } = useWorkspace();
   const conversation = data.conversations[conversationId];
-  useEffect(() => { void resumeNativeRuns(); }, [conversationId]);
+  const deleted = !!conversation?.deletedAt;
+  useEffect(() => { if (!actions.getState().data.conversations[conversationId]?.deletedAt) void resumeNativeRuns(); }, [conversationId]);
   const source = conversation?.inlineSource;
   const operation = source?.operation ?? (initialAction === 'translation' || initialAction === 'summary' ? initialAction : 'question');
   const operationLabel = operation === 'translation' ? '翻译' : operation === 'summary' ? '摘要卡片' : '提问';
   const evidence = source && data.evidence[source.evidenceId];
+  const hasAnnotation = evidence && (!evidence.contextOnly || evidence.annotationHidden || readerActivities(data, evidence.id).length > 0);
   let materials: ReturnType<typeof snapshotContext> = [], scopeProblem = '';
   if (conversation) {
     try { materials = snapshotContext(data, conversation.researchId, conversationId); }
@@ -135,11 +139,12 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
       : '请用容易理解的中文解释这段原文的意思，再点出理解它所需的关键概念。区分原文结论和补充解释，回答简洁。';
   const close = () => onClose();
   async function ask(prompt: string, selectionOnly = false) {
-    if (!conversation || requestBusy.current || busy || !prompt.trim()) return;
+    if (!conversation || actions.getState().data.conversations[conversationId]?.deletedAt || requestBusy.current || busy || !prompt.trim()) return;
     if (scopeProblem) { setProblem(scopeProblem); return; }
     requestBusy.current = true; setPreparing(true); setProblem('');
     try {
       const config = await inlineAIConfig(conversation.researchId, conversationId);
+      if (actions.getState().data.conversations[conversationId]?.deletedAt) return;
       if (operation === 'translation' && !evidence?.quote.trim()) throw new Error('此区域没有可提取的原文，尚未进行 OCR。可以返回选择文字或对区域提问。');
       if (materials.some(item => item.kind === 'region') && !config.images) throw new Error('当前模型未开启图片理解。区域已保留，可改选文字，或在设置中配置支持图片的模型。');
       followOutput.current = true;
@@ -149,6 +154,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     finally { requestBusy.current = false; setPreparing(false); }
   }
   useEffect(() => {
+    if (deleted) { started.current = true; return; }
     input.current?.focus();
     if (!started.current && (initialAction === 'explain' || operation !== 'question') && !requests.length) {
       started.current = true;
@@ -156,7 +162,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     }
   }, [conversationId]);
   useEffect(() => {
-    if (operation !== 'summary' || latest?.status !== 'done' || latest.validationError) return;
+    if (actions.getState().data.conversations[conversationId]?.deletedAt || operation !== 'summary' || latest?.status !== 'done' || latest.validationError) return;
     try {
       createInlineCardDraft(latest.id);
       setDraftOpen(true);
@@ -170,21 +176,21 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
   // The capture handler persists typing before unrelated workspace updates render.
   const updateInput = (value: string) => {
     const current = actions.getState().data.conversations[conversationId];
-    if (!current || current.input === value) return;
+    if (!current || current.deletedAt || current.input === value) return;
     actions.updateData(next => { if (next.conversations[conversationId]) next.conversations[conversationId].input = value; });
   };
   const run = (operation: () => void) => { setProblem(''); try { operation(); } catch (error) { setProblem(error instanceof Error ? error.message : '操作失败，内容已保留。'); } };
   const retry = async () => {
-    if (!latest || requestBusy.current || busy || scopeProblem) return;
+    if (deleted || !latest || requestBusy.current || busy || scopeProblem) return;
     requestBusy.current = true; setPreparing(true); setProblem('');
-    try { await inlineAIConfig(conversation.researchId, conversationId); await retryAI(latest.id); }
+    try { await inlineAIConfig(conversation.researchId, conversationId); if (!actions.getState().data.conversations[conversationId]?.deletedAt) await retryAI(latest.id); }
     catch (error) { setProblem(error instanceof Error ? error.message : '重试失败，请稍后再试。'); }
     finally { requestBusy.current = false; setPreparing(false); }
   };
-  const canSupplement = generating?.nativeRun?.transport === 'connected' && !!generating.nativeTurnId
+  const canSupplement = !deleted && generating?.nativeRun?.transport === 'connected' && !!generating.nativeTurnId
     && ['running', 'compacting'].includes(generating.nativeRun.state) && !generating.nativeRun.pendingSteer;
   const supplement = async () => {
-    if (!generating || !canSupplement || steering.current) return;
+    if (actions.getState().data.conversations[conversationId]?.deletedAt || !generating || !canSupplement || steering.current) return;
     steering.current = true; setSupplementing(true); setProblem('');
     try { await steerNativeRun(generating.id, conversation.input ?? ''); }
     catch (error) { setProblem(error instanceof Error ? error.message : '补充尚未确认，草稿已保留。'); }
@@ -192,7 +198,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
   };
   const updateDraft = (field: 'title' | 'body', value: string) => actions.updateData(next => {
     const current = source.draftId && next.cardDrafts[source.draftId];
-    if (current && current.status !== 'saved') { current[field] = value; current.revision++; current.status = 'editing'; }
+    if (!next.conversations[conversationId]?.deletedAt && current && current.status !== 'saved') { current[field] = value; current.revision++; current.status = 'editing'; }
   });
   return <section className="inline-ai-dialog" role="dialog" aria-label={`原文旁${operationLabel}`} onKeyDown={event => {
     event.stopPropagation();
@@ -204,25 +210,29 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
       <span>PDF 第 {source.pageIndex + 1} 页</span>
       <button className="icon-button" aria-label="关闭就地问答并保留内容" title="收起，内容会保留 · Esc" onClick={close}><X size={15} /></button>
     </header>
-    <details className="inline-ai-source"><summary>{scopeProblem ? '材料暂不可用' : onlyOriginal ? `所选${evidence.kind === 'region' ? '区域' : '原文'}` : `本轮原文 · ${materials.length}`}<span>查看来源</span></summary><div className="inline-ai-materials">{scopeProblem ? <p role="alert">{scopeProblem}</p> : materials.map(item => <div key={item.evidenceId}>{!onlyOriginal && <strong>{item.title} · PDF 第 {item.pageIndex + 1} 页</strong>}<blockquote>{item.quote || `PDF 第 ${item.pageIndex + 1} 页的框选区域`}</blockquote></div>)}</div></details>
+    {deleted && <div className="inline-ai-deleted" role="status"><span>会话已删除，此处记录仅供查看。提问与草稿仍保留。</span><button className="text-button" onClick={() => run(() => actions.restoreDeletedConversation(conversationId))}>恢复会话</button></div>}
+    <div className="inline-ai-source-row">
+      <details className="inline-ai-source"><summary>{scopeProblem ? '材料暂不可用' : onlyOriginal ? `所选${evidence.kind === 'region' ? '区域' : '原文'}` : `本轮原文 · ${materials.length}`}<span>查看来源</span></summary><div className="inline-ai-materials">{scopeProblem ? <p role="alert">{scopeProblem}</p> : materials.map(item => <div key={item.evidenceId}>{!onlyOriginal && <strong>{item.title} · PDF 第 {item.pageIndex + 1} 页</strong>}<blockquote>{item.quote || `PDF 第 ${item.pageIndex + 1} 页的框选区域`}</blockquote></div>)}</div></details>
+      {hasAnnotation && <button className="text-button inline-ai-mark-toggle" title="仅改变原文标记，保留提问、摘录、卡片与引用" onClick={() => run(() => onMarkChange(evidence.id, !!evidence.annotationHidden))}>{evidence.annotationHidden ? '恢复标记' : '移除标记'}</button>}
+    </div>
     {operation === 'question' && <div className="inline-ai-brief-row">
       {brief ? <details className="inline-ai-brief"><summary>文章简要 v{brief.version}<span>覆盖 {brief.pageIndices.length}/{brief.totalPages} 页</span></summary>
         <div><p>仅作背景，引用仍以原文选区为准。已覆盖 PDF 页：{brief.pageIndices.map(index => index + 1).join('、') || '无'}{brief.truncatedPageIndices.length ? `；其中 ${brief.truncatedPageIndices.map(index => index + 1).join('、')} 页文字不完整` : ''}。</p><MarkdownContent text={brief.body} /></div>
       </details> : <span>{generating?.paperBriefState === 'preparing' || sharedBrief?.status === 'preparing' ? '正在生成本篇文章简要…' : generating?.paperBriefState === 'selection-only' || latest?.paperBriefState === 'selection-only' ? '本轮仅使用选区' : sharedBrief?.status === 'error' ? '文章简要暂不可用' : '首次提问时生成文章简要'}</span>}
-      {generating?.paperBriefState === 'preparing' && <button type="button" className="text-button" onClick={() => run(() => skipPaperBrief(generating.id))}>先只问选区</button>}
+      {!deleted && generating?.paperBriefState === 'preparing' && <button type="button" className="text-button" onClick={() => run(() => skipPaperBrief(generating.id))}>先只问选区</button>}
     </div>}
     {draftOpen && draft ? <>
       <div className="inline-ai-draft">
         {draft.status === 'saved' ? <><h3>{draft.title}</h3><MarkdownContent text={draft.body} onCitation={number => draft.evidenceIds[number - 1] && onSource(draft.evidenceIds[number - 1])} /><p className="inline-ai-saved" role="status"><Check size={13} />{saveStatus === 'error' ? '本地保存失败，草稿仍保留' : '已加入当前研究的卡片，原文和问答来源一并保留。'}{saveStatus === 'error' && <button className="text-button" onClick={() => actions.retrySave()}>重试保存</button>}</p></> : <>
-          <label>标题<input aria-label="就地卡片标题" value={draft.title} maxLength={200} onChange={event => updateDraft('title', event.target.value)} /></label>
-          <label>正文<textarea aria-label="就地卡片正文" value={draft.body} onChange={event => updateDraft('body', event.target.value)} /></label>
-          <label className="inline-ai-review"><input type="checkbox" checked={draft.needsReview} onChange={event => actions.updateData(next => { next.cardDrafts[draft.id].needsReview = event.target.checked; })} />待核查</label>
+          <label>标题<input aria-label="就地卡片标题" readOnly={deleted} value={draft.title} maxLength={200} onChange={event => updateDraft('title', event.target.value)} /></label>
+          <label>正文<textarea aria-label="就地卡片正文" readOnly={deleted} value={draft.body} onChange={event => updateDraft('body', event.target.value)} /></label>
+          <label className="inline-ai-review"><input type="checkbox" disabled={deleted} checked={draft.needsReview} onChange={event => actions.updateData(next => { if (!next.conversations[conversationId]?.deletedAt) next.cardDrafts[draft.id].needsReview = event.target.checked; })} />待核查</label>
         </>}
       </div>
-      {draft.status !== 'saved' && <div className="inline-ai-draft-footer"><span>编辑确认后保存 · 保留原文与问答来源</span><button className="primary" disabled={!draft.title.trim() || !draft.body.trim()} onClick={() => run(() => { commitCardDraft(draft.id); })}>保存卡片</button></div>}
+      {draft.status !== 'saved' && <div className="inline-ai-draft-footer"><span>{deleted ? '草稿已保留，恢复会话后可继续编辑' : '编辑确认后保存 · 保留原文与问答来源'}</span>{!deleted && <button className="primary" disabled={!draft.title.trim() || !draft.body.trim()} onClick={() => run(() => { commitCardDraft(draft.id); })}>保存卡片</button>}</div>}
     </> : <>
       <div ref={content} className="inline-ai-content" onScroll={event => { const node = event.currentTarget; followOutput.current = node.scrollHeight - node.scrollTop - node.clientHeight < 50; }}>
-        {!requests.length && !busy && <p className="inline-ai-empty">{operation === 'question' ? '这段哪里不明白？可以直接问。' : `准备${operationLabel}所选原文。`}</p>}
+        {!requests.length && !busy && <p className="inline-ai-empty">{deleted ? '这里还没有已发送的回答。' : operation === 'question' ? '这段哪里不明白？可以直接问。' : <>准备{operationLabel}所选原文。<button className="text-button" onClick={() => void ask(autoPrompt)}>开始{operationLabel}</button></>}</p>}
         {requests.map((request, index) => <article className="inline-ai-turn" key={request.id}>
           <p className="inline-ai-question">{index === 0 && operation !== 'question' ? operation === 'translation' ? '翻译所选原文' : '整理选区摘要卡片' : index === 0 && initialAction === 'explain' && request.prompt.startsWith('请用容易理解') ? '解释这段' : request.prompt}</p>
           <details className="inline-ai-turn-scope"><summary>当轮上下文</summary><p>{request.paperBrief ? `文章简要 v${request.paperBrief.version} · 覆盖 ${request.paperBrief.pageIndices.length}/${request.paperBrief.totalPages} 页；` : '未使用文章简要；'}原文 {request.context.length} 处；本会话历史 {request.historyRequestIds?.length ?? request.history?.length ?? 0} 轮。</p>
@@ -236,27 +246,30 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
             const ids = request.status === 'done' ? request.evidenceIds : request.context.map(item => item.evidenceId);
             if (ids[number - 1]) onSource(ids[number - 1]);
           }} />}
-          {request.status === 'generating' && !request.nativeRun && <p className="inline-ai-working" role="status">{request.body ? '正在回答…' : '正在理解所选内容…'}</p>}
-          {request.status !== 'done' && request.status !== 'generating' && <div className="inline-ai-request-error" role={request.status === 'stopped' ? 'status' : 'alert'}><span>{request.error || '回答未完成，已有内容已保留。'}</span>{index === requests.length - 1 && <button className="text-button" disabled={busy} onClick={() => void retry()}>重试</button>}
-            {index === requests.length - 1 && request.paperBriefState === 'error' && <button className="text-button" disabled={busy} onClick={() => void ask(request.prompt, true)}>仅按选区重试</button>}
+          {!deleted && request.status === 'generating' && !request.nativeRun && <p className="inline-ai-working" role="status">{request.body ? '正在回答…' : '正在理解所选内容…'}</p>}
+          {request.status !== 'done' && request.status !== 'generating' && <div className="inline-ai-request-error" role={request.status === 'stopped' ? 'status' : 'alert'}><span>{request.error || '回答未完成，已有内容已保留。'}</span>{!deleted && index === requests.length - 1 && <button className="text-button" disabled={busy} onClick={() => void retry()}>重试</button>}
+            {!deleted && index === requests.length - 1 && request.paperBriefState === 'error' && <button className="text-button" disabled={busy} onClick={() => void ask(request.prompt, true)}>仅按选区重试</button>}
           </div>}
           {request.mode === 'demo' && <span className="inline-ai-demo">演示回答</span>}
         </article>)}
-        {preparing && !generating && !latest && <p className="inline-ai-working" role="status">正在连接阅读助手…</p>}
+        {!deleted && preparing && !generating && !latest && <p className="inline-ai-working" role="status">正在连接阅读助手…</p>}
+        {deleted && conversation.input && <div className="inline-ai-retained-input"><strong>未发送草稿</strong><p>{conversation.input}</p></div>}
       </div>
       <div className="inline-ai-answer-actions">
-        {latest?.status === 'done' && !latest.validationError && <button className="text-button" onClick={() => run(() => { createInlineCardDraft(latest.id); setDraftOpen(true); })}><Layers size={13} />{draft?.source.requestId === latest.id ? draft.status === 'saved' ? '查看已存卡片' : '查看卡片草稿' : operation === 'translation' ? '另存翻译笔记' : '收为卡片'}</button>}
-        <button className="text-button" onClick={() => run(() => { continueInlineInPanel(conversationId); close(); })}>在右侧继续<ChevronRight size={13} /></button>
+        {deleted ? draft && <button className="text-button" onClick={() => setDraftOpen(true)}><Layers size={13} />查看保留草稿</button> : <>
+          {latest?.status === 'done' && !latest.validationError && <button className="text-button" onClick={() => run(() => { createInlineCardDraft(latest.id); setDraftOpen(true); })}><Layers size={13} />{draft?.source.requestId === latest.id ? draft.status === 'saved' ? '查看已存卡片' : '查看卡片草稿' : operation === 'translation' ? '另存翻译笔记' : '收为卡片'}</button>}
+          <button className="text-button" onClick={() => run(() => { continueInlineInPanel(conversationId); close(); })}>在右侧继续<ChevronRight size={13} /></button>
+        </>}
       </div>
-      <form className="inline-ai-composer" onSubmit={event => { event.preventDefault(); void ask(conversation.input ?? ''); }}>
+      {!deleted && <form className="inline-ai-composer" onSubmit={event => { event.preventDefault(); void ask(conversation.input ?? ''); }}>
         <textarea ref={input} rows={2} aria-label="向原文旁助手提问" placeholder={requests.length ? '继续问这段原文…' : '这段是什么意思？'} value={conversation.input ?? ''} onInputCapture={event => updateInput(event.currentTarget.value)} onChange={event => updateInput(event.currentTarget.value)} onKeyDown={event => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void ask(conversation.input ?? ''); }
         }} />
         {canSupplement && <button className="text-button" type="button" aria-label="补充就地本轮" disabled={supplementing || !conversation.input?.trim()} onClick={() => void supplement()}>补充本轮</button>}
         {busy ? <button className="inline-ai-send" type="button" aria-label="停止就地回答" disabled={!generating} onClick={() => generating && stopAI(generating.id)}><Square size={13} /></button> : <button className="inline-ai-send" type="submit" aria-label="发送就地问题" disabled={!conversation.input?.trim() || !!scopeProblem}><ArrowUp size={16} /></button>}
-      </form>
+      </form>}
     </>}
-    {problem && <div className="inline-ai-problem" role="alert">{problem}{!requests.length && (initialAction === 'explain' || operation !== 'question') && <button className="text-button" disabled={busy} onClick={() => void ask(autoPrompt)}>重试{operationLabel}</button>}</div>}
+    {problem && <div className="inline-ai-problem" role="alert">{problem}{!deleted && !requests.length && (initialAction === 'explain' || operation !== 'question') && <button className="text-button" disabled={busy} onClick={() => void ask(autoPrompt)}>重试{operationLabel}</button>}</div>}
     <button type="button" className="inline-ai-resize" data-popover-resize aria-label="调整原文旁问答大小" title="拖动调整大小 · 方向键调整，Shift 加速" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><MoveDiagonal2 size={13} /></button>
   </section>;
 }

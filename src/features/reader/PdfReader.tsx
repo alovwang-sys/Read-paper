@@ -83,6 +83,7 @@ export function PdfReader({
   const [pendingAction, setPendingAction] = useState<SelectionAction>();
   const [targetResearch, setTargetResearch] = useState('');
   const [undoExcerpt, setUndoExcerpt] = useState<string>();
+  const [undoMark, setUndoMark] = useState<{ evidenceId: string; readerKey: string; generation: number }>();
   const [finishPrompt, setFinishPrompt] = useState(false);
   const dragStart = useRef<{ x: number; y: number } | undefined>(undefined);
   const selectionVersion = useRef(0);
@@ -182,6 +183,7 @@ export function PdfReader({
   useEffect(() => {
     setFinishPrompt(false);
     setUndoExcerpt(undefined);
+    setUndoMark(undefined);
     setInlineConversationId(undefined);
     setInlinePage(undefined);
   }, [documentId, viewScope]);
@@ -622,9 +624,15 @@ export function PdfReader({
     try { actions.removeExcerpt(evidenceId); setUndoExcerpt(undefined); clearSelection(); actions.notice('已取消摘录'); }
     catch (problem) { setSelectionError(problem instanceof Error ? problem.message : '取消摘录失败，请重试。'); }
   }
-  function removeMark(evidenceId: string) {
-    try { actions.setExcerptMarked(evidenceId, false); setUndoExcerpt(undefined); clearSelection(); actions.notice('已移除原文标记，摘录与引用已保留。'); }
-    catch (problem) { setSelectionError(problem instanceof Error ? problem.message : '移除标记失败，请重试。'); }
+  function changeMark(evidenceId: string, marked: boolean, closeSelection = false) {
+    try {
+      actions.setExcerptMarked(evidenceId, marked);
+      setUndoExcerpt(undefined);
+      if (marked) setUndoMark(previous => previous?.evidenceId === evidenceId ? undefined : previous);
+      else setUndoMark({ evidenceId, readerKey, generation: actions.getGeneration() });
+      if (closeSelection) clearSelection();
+      actions.notice(marked ? '已恢复原文标记。' : '已移除原文标记，提问、摘录与卡片已保留。');
+    } catch (problem) { setSelectionError(problem instanceof Error ? problem.message : '标记操作失败，请重试。'); }
   }
   function openHighlightedExcerpt(element: HTMLElement, index: number) {
     if (normalize(window.getSelection()?.toString() ?? '')) return;
@@ -651,7 +659,7 @@ export function PdfReader({
     return () => document.removeEventListener('keydown', shortcut);
   }, [quote, regionPreview, selectionBusy, documentId, pageIndex, viewScope, selectedExcerpt?.id, session.panel.findEvidenceFor, inlineConversationId]);
   const inlineResearchId = research?.id ?? session.libraryResearchId;
-  const lastInline = inlineResearchId ? Object.values(data.conversations).filter(item => item.researchId === inlineResearchId && item.inlineSource?.documentId === documentId && !item.archived).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''))[0] : undefined;
+  const lastInline = inlineResearchId ? Object.values(data.conversations).filter(item => item.researchId === inlineResearchId && item.inlineSource?.documentId === documentId && !item.archived && !item.deletedAt).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''))[0] : undefined;
   function closeInline() {
     setInlineConversationId(undefined);
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
@@ -757,14 +765,16 @@ export function PdfReader({
           <button className="text-button" aria-label="写成卡片" disabled={selectionBusy} onClick={() => void saveSelection('card')}>制作卡片 <kbd>C</kbd></button>
           <button className="text-button" disabled={selectionBusy} onClick={() => void saveSelection('highlight')}>高亮</button>
           <button className="text-button" data-inline-trigger={`${target}:explain`} disabled={selectionBusy} onClick={() => void saveSelection('explain')}>解释这段</button>
-          {selectedExcerpt && <button className="text-button" disabled={selectionBusy} title="移除原文标记，保留摘录、卡片和 AI 引用" onClick={() => removeMark(selectedExcerpt.id)}>移除标记</button>}
         </div></details>
         <button className="icon-button" aria-label="取消原文选区" onClick={clearSelection}><X size={14} /></button>
       </div>
       {selectionMode === 'region' && !regionPreview?.quote && <span className="pdf-selection-hint">未提取到区域文字 · 提问和摘要需要图片理解</span>}
-      {selectedExcerpt && (activityByEvidence[selectedExcerpt.id]?.length ?? 0) > 0 && <>
-        <button className="reader-activity-toggle text-button" aria-expanded={historyOpen} onClick={() => setHistoryOpen(value => !value)}>此处记录 <span>{activityByEvidence[selectedExcerpt.id].length}</span></button>
-        {historyOpen && <ReaderActivityList activities={activityByEvidence[selectedExcerpt.id]} onOpen={openReaderActivity} />}
+      {selectedExcerpt && <>
+        <div className="pdf-mark-controls">
+          {(activityByEvidence[selectedExcerpt.id]?.length ?? 0) > 0 && <button className="reader-activity-toggle text-button" aria-expanded={historyOpen} onClick={() => setHistoryOpen(value => !value)}>此处记录 <span>{activityByEvidence[selectedExcerpt.id].length}</span></button>}
+          <button className="text-button pdf-mark-toggle" disabled={selectionBusy} title="仅改变原文标记，保留提问、摘录、卡片与引用" onClick={() => changeMark(selectedExcerpt.id, !!selectedExcerpt.annotationHidden, !selectedExcerpt.annotationHidden)}>{selectedExcerpt.annotationHidden ? '恢复标记' : '移除标记'}</button>
+        </div>
+        {historyOpen && !!activityByEvidence[selectedExcerpt.id]?.length && <ReaderActivityList activities={activityByEvidence[selectedExcerpt.id]} onOpen={openReaderActivity} />}
       </>}
       {researchPicker}
     </>
@@ -863,6 +873,10 @@ export function PdfReader({
       </div>
       {finishPrompt && <div className="pdf-finish-prompt" role="status"><span>要不要用一两句话记下：这篇对你的问题有什么用？</span><button className="button" onClick={() => { const used = new Set((research?.cardIds ?? []).flatMap(id => data.cards[id]?.evidenceIds ?? [])); const id = actions.createCard(documentExcerpts.filter(item => !used.has(item.id)).map(item => item.id), `${doc.title} · 要点`, ''); actions.openResource({ kind: 'card', id }, { scope: data.scope, target: 'inspector' }); setFinishPrompt(false); }}>写一张要点卡片</button><button className="text-button" onClick={() => setFinishPrompt(false)}>不用</button></div>}
       {undoExcerpt && data.evidence[undoExcerpt] && <div className="pdf-excerpt-notice" role="status">已摘录 <button className="text-button" onClick={() => removeExcerpt(undoExcerpt)}>撤销</button></div>}
+      {undoMark?.readerKey === readerKey && undoMark.generation === actions.getGeneration() && data.evidence[undoMark.evidenceId]?.annotationHidden && <div className="pdf-mark-notice" role="status">
+        <span>已移除原文标记，内容与引用保留</span><button className="text-button" onClick={() => changeMark(undoMark.evidenceId, true)}>撤销移除</button>
+        <button className="icon-button" aria-label="关闭标记撤销提示" onClick={() => setUndoMark(undefined)}><X size={13} /></button>
+      </div>}
       <div className={`pdf-status ${pdf && !rendering && textState !== 'pending' ? 'pdf-status-ready' : ''}`}>
         <span>
           {pdf ? (rendering ? '页面渲染中…' : '阅读就绪') : '正在加载原文件…'}
@@ -1025,7 +1039,7 @@ export function PdfReader({
         </div>}
       </div>
       {inlineConversationId && inlinePage !== undefined && <ReaderPopover key={`inline:${inlineConversationId}`} anchor={selectionAnchor} pageElement={pageHandles.current.get(inlinePage)?.layer} boundary={scroll.current} className="inline-ai">
-        <InlineAIPopover conversationId={inlineConversationId} initialAction={inlineInitialAction} onClose={closeInline} onSource={inlineSource} />
+        <InlineAIPopover conversationId={inlineConversationId} initialAction={inlineInitialAction} onClose={closeInline} onSource={inlineSource} onMarkChange={changeMark} />
       </ReaderPopover>}
       {!inlineConversationId && (quote && selectionMode === 'text' || regionPreview && selectionMode === 'region') && <ReaderPopover anchor={selectionAnchor} pageElement={pageHandles.current.get(selectedPageIndex)?.layer} boundary={scroll.current} className="pdf-selection-menu" label="原文选区操作">
         <div className="pdf-selection-meta"><span>PDF 第 {selectedPageIndex + 1} 页{quote ? ` · ${quote.length} 字符` : ' · 所选区域'}</span>

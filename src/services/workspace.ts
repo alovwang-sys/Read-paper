@@ -177,8 +177,8 @@ function validRegion(region?: RegionSource) {
 export function getActiveConversation(data: WorkspaceData, researchId: string): Conversation | undefined {
   const id = data.sessions[researchId]?.activeConversationId;
   const active = id ? data.conversations[id] : undefined;
-  return active && !active.archived && active.researchId === researchId ? active :
-    Object.values(data.conversations).find(c => c.researchId === researchId && !c.archived && (!c.inlineSource || c.inlineSource.promoted));
+  return active && !active.archived && !active.deletedAt && active.researchId === researchId ? active :
+    Object.values(data.conversations).find(c => c.researchId === researchId && !c.archived && !c.deletedAt && (!c.inlineSource || c.inlineSource.promoted));
 }
 export function linkCard(
   data: WorkspaceData,
@@ -536,7 +536,7 @@ export const workspace = {
     workspace.updateData(data => {
       const evidence = data.evidence[evidenceId];
       if (!evidence) throw new Error('摘录不存在，请重新打开原文。');
-      if (marked) { delete evidence.annotationHidden; delete evidence.contextOnly; }
+      if (marked) delete evidence.annotationHidden;
       else { evidence.annotationHidden = true; clearEvidenceAnchors(data, evidenceId); }
     });
   },
@@ -836,6 +836,7 @@ export const workspace = {
     workspace.updateData(data => {
       const conversation = data.conversations[conversationId];
       if (!conversation || conversation.researchId !== researchId) throw new Error('会话不属于该研究。');
+      if (conversation.deletedAt) throw new Error('此会话已删除，请先从“已删除会话”恢复。');
       const last = conversation.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1);
       conversation.connectionId ??= last?.connectionId ?? (last?.mode === 'demo' ? 'demo' : options?.surface === 'workbench' && !last ? 'codex' : 'model');
       data.sessions[researchId].activeConversationId = conversationId;
@@ -850,12 +851,44 @@ export const workspace = {
   archiveConversation(conversationId: string, archived: boolean) {
     const conversation = state.data.conversations[conversationId];
     if (!conversation) throw new Error('会话不存在。');
+    if (conversation.deletedAt) throw new Error('此会话已删除，请先从“已删除会话”恢复。');
     workspace.updateData(data => {
       data.conversations[conversationId].archived = archived;
       if (archived && data.sessions[conversation.researchId].activeConversationId === conversationId)
         data.sessions[conversation.researchId].activeConversationId = Object.values(data.conversations).find(c => c.researchId === conversation.researchId && !c.archived && (!c.inlineSource || c.inlineSource.promoted))?.id;
     });
     if (archived && !getActiveConversation(state.data, conversation.researchId)) workspace.createConversation(conversation.researchId);
+  },
+  deleteConversation(conversationId: string) {
+    const conversation = state.data.conversations[conversationId];
+    if (!conversation) throw new Error('会话不存在。');
+    if (conversation.deletedAt) return;
+    if (conversation.nativeState === 'busy' || conversation.requestIds.some(id => {
+      const request = state.data.requests[id];
+      return request?.status === 'generating' || request?.nativeRun?.managed && !['completed', 'failed', 'interrupted'].includes(request.nativeRun.state);
+    }) || Object.values(state.data.cardDrafts).some(draft => draft.conversationId === conversationId && draft.status === 'generating'))
+      throw new Error('此会话仍有任务进行中，请先停止并确认结束后再删除。');
+    workspace.updateData(data => {
+      const current = data.conversations[conversationId];
+      current.deletedAt = new Date().toISOString();
+      current.archived = true;
+      const session = data.sessions[current.researchId];
+      if (session.activeConversationId === conversationId) session.activeConversationId = undefined;
+      session.activeConversationId ??= getActiveConversation(data, current.researchId)?.id;
+    });
+    if (!getActiveConversation(state.data, conversation.researchId)) {
+      const id = workspace.createConversation(conversation.researchId);
+      workspace.updateData(data => { data.conversations[id].connectionId = conversation.connectionId; });
+    }
+  },
+  restoreDeletedConversation(conversationId: string) {
+    workspace.updateData(data => {
+      const conversation = data.conversations[conversationId];
+      if (!conversation) throw new Error('会话不存在。');
+      if (!conversation.deletedAt) return;
+      delete conversation.deletedAt;
+      conversation.archived = false;
+    });
   },
   openConversationSource(source: CardProvenance, returnRef?: ResourceRef) {
     workspace.updateData(data => {

@@ -3,6 +3,7 @@ import { ArrowLeft, History, Plus, RefreshCw, Search } from 'lucide-react';
 import type { AIConnectionId, NativeSessionSummary } from '../../domain/types';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
 import { connectionLabel, conversationConnection, listProjectSessions, openProjectSession, refreshProjectConversation } from '../../services/agents';
+import { DeleteConversationButton, DeletedConversations } from './ConversationManagement';
 
 export type ConversationHistoryState = { query: string; archived: boolean; filter: AIConnectionId | 'all'; scrollTop: number };
 export const initialHistoryState: ConversationHistoryState = { query: '', archived: false, filter: 'all', scrollTop: 0 };
@@ -74,7 +75,7 @@ export function ConversationHistory({ onBack, state, onState }: { onBack: () => 
   const local = Object.values(data.conversations).filter(item => item.researchId === research.id && (!item.inlineSource || item.inlineSource.promoted));
   const matchingSession = (entry: typeof local[number]) => sessions.find(item => item.agentId === conversationConnection(entry) && (item.id === entry.nativeSessionRef || (!!item.nativeSessionId && item.nativeSessionId === entry.nativeSessionId)));
   const entries = [
-    ...local.filter(item => !!item.archived === archived).map(item => ({ id: item.id, local: item, native: matchingSession(item), title: item.title || '新的阅读对话', connectionId: conversationConnection(item), updatedAt: item.updatedAt ?? item.createdAt ?? '' })),
+    ...local.filter(item => !item.deletedAt && !!item.archived === archived).map(item => ({ id: item.id, local: item, native: matchingSession(item), title: item.title || '新的阅读对话', connectionId: conversationConnection(item), updatedAt: item.updatedAt ?? item.createdAt ?? '' })),
     ...(!archived ? sessions.filter(item => !local.some(entry => item.agentId === conversationConnection(entry) && (entry.nativeSessionRef === item.id || (!!item.nativeSessionId && entry.nativeSessionId === item.nativeSessionId)))).map(item => ({ id: item.id, local: undefined, native: item, title: item.title || '未命名原生对话', connectionId: item.agentId, updatedAt: item.updatedAt })) : []),
   ].filter(entry => (filter === 'all' || entry.connectionId === filter) && `${connectionLabel(entry.connectionId)} ${entry.title} ${entry.local?.requestIds.map(id => `${data.requests[id]?.prompt ?? ''} ${data.requests[id]?.body ?? ''}`).join(' ') ?? ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -106,7 +107,7 @@ export function ConversationHistory({ onBack, state, onState }: { onBack: () => 
         <div className="ai-history-filters" aria-label="按助手筛选">
           {(['all', 'codex', 'opencode', 'claude'] as const).map(id => <button key={id} aria-pressed={filter === id} onClick={() => update({ filter: id, scrollTop: 0 })}>{id === 'all' ? '全部' : connectionLabel(id)}</button>)}
         </div>
-        <div className="ai-history-tabs"><button aria-pressed={!archived} onClick={() => update({ archived: false, scrollTop: 0 })}>最近对话</button><button aria-pressed={archived} onClick={() => update({ archived: true, scrollTop: 0 })}>已归档</button><button className="text-button ai-history-refresh" disabled={loading || !directoryId} onClick={() => void refresh()}><RefreshCw size={14} />{loading ? '读取中…' : '刷新'}</button></div>
+        <div className="ai-history-tabs"><button aria-pressed={!archived} onClick={() => update({ archived: false, scrollTop: 0 })}>最近对话</button><button aria-pressed={archived} onClick={() => update({ archived: true, scrollTop: 0 })}>已归档</button><DeletedConversations researchId={research.id}/><button className="text-button ai-history-refresh" disabled={loading || !directoryId} onClick={() => void refresh()}><RefreshCw size={14} />{loading ? '读取中…' : '刷新'}</button></div>
       </div>
       <div className="ai-content-scroll" ref={scroll} onScroll={event => update({ scrollTop: event.currentTarget.scrollTop })}>
         {(error || !!errors.length) && <div className="ai-history-error" role="status">{error || '部分助手暂时无法更新，其余记录仍可打开。'}{!!errors.length && <details><summary>查看连接原因</summary>{errors.map(item => <p key={item.agentId}>{connectionLabel(item.agentId as AIConnectionId)}：{item.error}</p>)}</details>}<button className="text-button" disabled={loading || !directoryId} onClick={() => void refresh()}>重新读取记录</button></div>}
@@ -125,7 +126,7 @@ export function ConversationHistory({ onBack, state, onState }: { onBack: () => 
                 <p>{turns.at(-1)?.prompt || (entry.native ? '点击读取原生对话历史' : '尚未发送问题')}</p>
                 <small>{opening === entry.id ? '正在读取…' : entry.native?.origin === 'native' || entry.local?.nativeImported ? '来自原生客户端' : entry.local?.nativeSessionId && !entry.local.nativeSessionRef ? '旧版阅读对话' : `${turns.length} 条问答`}{drafts.length ? ` · ${drafts.length} 份草稿` : ''}{entry.local?.input ? ' · 有未发送输入' : ''}</small>
               </button>
-              <div className="ai-actions"><small>{entry.updatedAt && new Date(entry.updatedAt).getTime() > 0 ? new Date(entry.updatedAt).toLocaleDateString('zh-CN') : '旧会话'}</small>{entry.local && <><button className="text-button" onClick={() => { setTitle(entry.title); setRenaming(entry.id); }}>重命名</button><button className="text-button" onClick={() => actions.archiveConversation(entry.id, !entry.local!.archived)}>{entry.local.archived ? '恢复' : '归档'}</button></>}</div>
+              <div className="ai-actions"><small>{entry.updatedAt && new Date(entry.updatedAt).getTime() > 0 ? new Date(entry.updatedAt).toLocaleDateString('zh-CN') : '旧会话'}</small>{entry.local && <><button className="text-button" onClick={() => { setTitle(entry.title); setRenaming(entry.id); }}>重命名</button><button className="text-button" onClick={() => actions.archiveConversation(entry.id, !entry.local!.archived)}>{entry.local.archived ? '恢复' : '归档'}</button><DeleteConversationButton conversationId={entry.id} text/></>}</div>
             </>}
           </article>;
         })}

@@ -123,6 +123,10 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       || ![undefined, 'read-only', 'workspace-write', 'full-access'].includes(settings.access))) throw new Error('Codex 设置损坏，未覆盖现有数据。');
   }
   for (const conversation of Object.values(data.conversations)) {
+    if (conversation.deletedAt !== undefined) {
+      if (typeof conversation.deletedAt !== 'string' || !Number.isFinite(Date.parse(conversation.deletedAt))) throw new Error('会话删除记录损坏，未覆盖现有资料。');
+      conversation.archived = true;
+    }
     if (conversation.chatImages !== undefined) validateChatImages(conversation.chatImages);
     if (conversation.drawingQuestion !== undefined) validateDrawingQuestion(conversation.drawingQuestion);
     if (conversation.researchFocus !== undefined && !validAgentFocus(conversation.researchFocus)
