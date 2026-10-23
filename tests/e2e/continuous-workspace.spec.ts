@@ -44,6 +44,23 @@ test('资源中发送即清空并直接显示回答；紧凑会话切换保留 P
   fixture.assertClean();
 });
 
+test('侧边聊天可拖动分隔条调宽，宽度刷新后保留，主区不被挤没', async ({ page }) => {
+  await installControlledServices(page);
+  await page.goto('/'); await openSeedPaper(page);
+  const handle = chat(page).getByRole('separator', { name: '调整聊天宽度', exact: true });
+  const before = (await chat(page).boundingBox())!, grip = (await handle.boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + 200); await page.mouse.down();
+  await page.mouse.move(grip.x - 150, grip.y + 200, { steps: 8 }); await page.mouse.up();
+  await expect.poll(async () => Math.round((await chat(page).boundingBox())!.width)).toBeGreaterThan(before.width + 120);
+  await page.mouse.move(grip.x - 150, grip.y + 200); await page.mouse.down();
+  await page.mouse.move(5, grip.y + 200, { steps: 8 }); await page.mouse.up();
+  expect((await main(page).boundingBox())!.width).toBeGreaterThanOrEqual(355);
+  await saved(page); const width = (await readData(page)).panelWidth;
+  await page.reload(); await expect(composer(page)).toBeVisible();
+  expect(Math.round((await chat(page).boundingBox())!.width)).toBe(width);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('同一会话侧边、浮窗、完整显示连续移动；资源分屏、请求和草稿不复制', async ({ page }) => {
   const fixture = await installControlledServices(page);
   await page.goto('/'); await openSeedPaper(page);
