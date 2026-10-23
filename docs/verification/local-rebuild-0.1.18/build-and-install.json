@@ -1,0 +1,37 @@
+{
+  "version": "0.1.18",
+  "arch": "arm64",
+  "sourceCommit": "6c9b0284f2f7504d69cea0fcae6a5164351f4476",
+  "bundleId": "io.github.alovwang-sys.papertrail",
+  "installedPath": "/Applications/Papertrail.app",
+  "appAsarSha256": "1d36d9b369027f0a945fca2c7475f61f4ae8a47336536a7799a14282388ffb6d",
+  "oldAppMovedToTrash": true,
+  "oldInstallersMovedToTrash": 2,
+  "normalOldQuitConfirmed": true,
+  "userDataFilesPreserved": 106,
+  "userDataUnchangedBeforeLaunch": true,
+  "artifacts": {
+    "out/make/dmg/arm64/Papertrail-0.1.18-macos-arm64.dmg": "1bcc7e69398bb599b443f39921a5fac05f86315da676bdafd017caabd132bb04",
+    "out/make/zip/darwin/arm64/Papertrail-darwin-arm64-0.1.18.zip": "2b8b2d1c8ca3406ff6d1b58314ccd87503b6fc07a5af36fb9af7b3f5e1c104a6"
+  },
+  "launched": true,
+  "runningProcessId": 50774,
+  "originalResourcesRestored": true,
+  "newRenameControlsVisible": true,
+  "saveStatus": "saved",
+  "directoryFilesUpdated": true,
+  "encryptedModelSettingsUnchanged": true,
+  "leftRunning": true,
+  "verification": {
+    "sourceCommit": "6c9b028",
+    "unit": 801,
+    "newRenameBrowserPaths": 4,
+    "relatedBrowserRegressions": 16,
+    "packagedDesktop": {
+      "passed": 3,
+      "total": 3,
+      "exitCode": 0
+    },
+    "controlledResponsesOnly": true
+  }
+}

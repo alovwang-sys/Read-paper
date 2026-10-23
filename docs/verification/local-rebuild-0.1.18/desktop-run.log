@@ -1,0 +1,12 @@
+PAPERTRAIL_EXECUTABLE=/Users/amos/project/Read-paper/out/Papertrail-darwin-arm64/Papertrail.app/Contents/MacOS/Papertrail
+npx playwright test --config playwright.desktop.config.ts tests/desktop/continuous-workspace.spec.ts --reporter=list,json --output=docs/verification/local-rebuild-0.1.18/test-results
+
+Running 3 tests using 1 worker
+
+(node:50332) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/desktop/continuous-workspace.spec.ts:54:1 › 打包桌面：原文旁直接收到回答，同一会话换位置与草稿正常退出后恢复 (8.6s)
+  ✓  2 tests/desktop/continuous-workspace.spec.ts:89:1 › 打包桌面：真实原文字形选区翻译、摘要存卡与原位活动记录跨重启保留 (4.9s)
+  ✓  3 tests/desktop/continuous-workspace.spec.ts:124:1 › 打包桌面：手动命名不被首问覆盖，取消改名与正常退出后保留会话和草稿 (4.9s)
+
+  3 passed (18.7s)
