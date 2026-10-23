@@ -14,14 +14,17 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const validId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 const validHash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+// Drawings arrive base64-encoded like other assets because scenes may embed images.
+const binaryPath = path => /\.(pdf|png|jpg|jpeg|webp|gif|excalidraw)$/.test(path);
 const fail = (code, message, status = 409) => Object.assign(new Error(message), { code, status });
 const conflict = path => fail('project_files_conflict', `研究目录中的 ${path} 已被修改或占用，未覆盖现有内容。请恢复原导出内容，或将整个 Papertrail 文件夹另存并移走后重试。`);
 
 function validPath(path) {
   if (typeof path !== 'string' || path.length > 240) return false;
   if (['README.md', 'research.json', 'research.md'].includes(path)) return true;
-  const match = /^(library|assets|images|cards|excerpts|drafts|sessions|boards)\/([A-Za-z0-9][A-Za-z0-9._-]{0,159})\.(md|json|pdf|png|jpg|jpeg|webp|gif)$/.exec(path);
+  const match = /^(library|assets|images|drawings|cards|excerpts|drafts|sessions|boards)\/([A-Za-z0-9][A-Za-z0-9._-]{0,159})\.(md|json|pdf|png|jpg|jpeg|webp|gif|excalidraw)$/.exec(path);
   if (!match || match[2].includes('..')) return false;
+  if (match[1] === 'drawings' || match[3] === 'excalidraw') return match[1] === 'drawings' && match[3] === 'excalidraw';
   return ['library', 'assets', 'images'].includes(match[1]) || ['md', 'json'].includes(match[3]);
 }
 
@@ -31,7 +34,7 @@ function payloadFiles(payload) {
   let total = 0;
   for (const file of payload.files) {
     if (!object(file) || !validPath(file.path) || files.has(file.path) || !validHash(file.hash)) throw fail('invalid_project_files', '研究文件路径、内容或 SHA-256 无效。', 400);
-    const binary = /\.(pdf|png|jpg|jpeg|webp|gif)$/.test(file.path);
+    const binary = binaryPath(file.path);
     if (file.encoding !== (binary ? 'base64' : 'utf8')) throw fail('invalid_project_files', '研究文件编码不正确。', 400);
     if (file.reuse === true) {
       if (file.content !== undefined) throw fail('invalid_project_files', '复用研究文件不能同时携带新内容。', 400);
@@ -101,7 +104,7 @@ function validManifest(value, project) {
   if (!object(value) || value.version !== 1 || value.projectId !== project.projectId || !object(value.files) || value.researchId !== (project.researchId || null) || Object.keys(value.files).length > 10_000 || value.updatedAt !== null && (typeof value.updatedAt !== 'string' || !Number.isFinite(Date.parse(value.updatedAt)))) return false;
   let total = 0;
   return Object.entries(value.files).every(([path, file]) => {
-    const binary = /\.(pdf|png|jpg|jpeg|webp|gif)$/.test(path);
+    const binary = binaryPath(path);
     return validPath(path) && object(file) && validHash(file.hash) && Number.isSafeInteger(file.size) && file.size >= 0 && file.size <= (binary ? MAX_ASSET : MAX_TEXT) && (total += file.size) <= MAX_TOTAL && file.encoding === (binary ? 'base64' : 'utf8');
   });
 }

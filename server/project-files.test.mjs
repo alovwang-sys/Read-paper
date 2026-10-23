@@ -147,6 +147,14 @@ test('traversal, absolute, hidden, nested and executable paths are rejected befo
   assert.deepEqual(await readdir(f.root), []);
 });
 
+test('drawing scenes the app exports save under drawings/ as base64 and nowhere else', async t => {
+  const f = await fixture(t);
+  const scene = Buffer.from('{"type":"excalidraw","version":2,"elements":[]}');
+  await f.sync(payload(file('drawings/drawing-a.excalidraw', scene.toString('base64'), 'base64')));
+  assert.deepEqual(await readFile(join(f.output, 'drawings/drawing-a.excalidraw')), scene);
+  for (const path of ['images/a.excalidraw', 'drawings/a.md', 'drawings/a.png']) await assert.rejects(f.sync(payload(file(path, scene.toString('base64'), 'base64'))), { code: 'invalid_project_files' }, path);
+});
+
 test('missing required entry files, duplicate paths, invalid hashes and wrong encodings do not touch the directory', async t => {
   const f = await fixture(t);
   const base = payload();
