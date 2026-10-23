@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { chat, composer, inline, installControlledServices, main, ndjson, openSeedPaper, primaryId, readData, readDrawing, saved, screenshot, secondaryId, selectPassage, selectionMenu } from '../../docs/verification/continuous-workspace/harness';
+import { chat, composer, inline, installControlledServices, main, ndjson, openSeedPaper, paperTitle, primaryId, readData, readDrawing, saved, screenshot, secondaryId, selectPassage, selectionMenu } from '../../docs/verification/continuous-workspace/harness';
 import { openResearchNavigation } from './knowledge-helpers';
 import { groups, layout, pane, panes, split } from './workspace-split-helpers';
 
@@ -266,6 +266,21 @@ test('两个原文位置独立问答，共用本篇文章简要；简要与原�
   expect(restored.documents['paper-a'].paperBrief).toEqual(brief);
   for (const conversation of conversations) expect(restored.conversations[conversation.id]).toEqual(conversation);
   await expect(composer(page)).toHaveValue('主会话秘密草稿，不可混入文章简要或局部问题');
+
+  // Passage discussions sit under "讨论"; an answer carries into a research conversation with its page and quote.
+  const list = (await openResearchNavigation(page)).getByRole('region', { name: '研究会话列表', exact: true });
+  await expect(list.getByRole('button', { name: /^打开会话：原文旁提问/ })).toHaveCount(0);
+  await list.getByText('讨论（2）', { exact: true }).click();
+  await list.getByRole('button', { name: /^打开讨论：第 \d+ 页 · This self-authored fixture describes/ }).click();
+  await chat(page).getByRole('button', { name: '带入会话：把这条回答作为参考材料带到研究会话', exact: true }).click();
+  await page.getByRole('menu', { name: '带入到', exact: true }).getByRole('menuitem', { name: '条件比较 A', exact: true }).click();
+  await expect(chat(page).getByLabel('带入的讨论结论', { exact: true })).toBeVisible();
+  await expect(composer(page)).toHaveValue('主会话秘密草稿，不可混入文章简要或局部问题');
+  const carried = (await readData(page)).conversations[primaryId].carried!, source = conversations.find(item => item.inlineSource!.evidenceId === carried[0].derivedFrom!.sourceIds[0].slice('evidence:'.length))!;
+  expect(carried).toHaveLength(1);
+  expect(carried[0]).toMatchObject({ kind: 'discussion', resourceRef: { kind: 'document', id: 'paper-a' }, title: `《${paperTitle}》第 ${source.inlineSource!.pageIndex + 1} 页的讨论 · 第 1 轮` });
+  expect(carried[0].text).toContain('问：第一处问题'); expect(carried[0].text).toContain('讨论所针对的原文：');
+  await screenshot(page, 'passage-answer-carried-1440.png');
   fixture.assertClean();
 });
 

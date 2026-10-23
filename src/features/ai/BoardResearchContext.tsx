@@ -7,7 +7,7 @@ import { useWorkspace } from '../../services/workspace';
 import { ContextDetails } from './SourceDetails';
 import './board-research-context.css';
 
-const kindLabel = { background: '研究背景', card_note: '卡片正文', abstract: '题录与来源摘要' };
+const kindLabel = { background: '研究背景', card_note: '卡片正文', abstract: '题录与来源摘要', discussion: '其他讨论的结论' };
 export function ResearchMaterialDetails({ items }: { items: ResearchMaterial[] }) {
   return <>{items.map(item => <details className="ai-details" key={item.id}>
     <summary>{item.title} · {kindLabel[item.kind]}</summary>

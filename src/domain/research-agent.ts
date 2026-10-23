@@ -1,4 +1,4 @@
-import type { AIConnectionId, ChatImageAttachment, DrawingQuestion, LiteratureSearch, ResourceRef } from './types';
+import type { AIConnectionId, ChatImageAttachment, DrawingQuestion, LiteratureSearch, ResearchMaterial, ResourceRef } from './types';
 import { validateLiteratureCandidate } from './research';
 
 export type ResearchLiteratureSearch = Pick<LiteratureSearch, 'id' | 'query' | 'yearFrom' | 'yearTo' | 'createdAt' | 'status' | 'candidates' | 'error' | 'errorCode' | 'warnings' | 'partial'>;
@@ -38,6 +38,7 @@ export type ResearchAgentInput = {
   focus?: { ref: ResourceRef; title: string; body: string };
   drawing?: DrawingQuestion & { imageDataUrl?: string };
   images?: (ChatImageAttachment & { dataUrl: string })[];
+  materials?: ResearchMaterial[];
 };
 export type ResearchAgentEvent =
   | { type: 'literature'; search: ResearchLiteratureSearch }

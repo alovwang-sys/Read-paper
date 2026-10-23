@@ -110,6 +110,24 @@ async function selectAndAttach(page: Page) {
   await expect(attachment(page).getByRole('img', { name: '所选绘图的实际快照', exact: true })).toBeVisible();
   return (await data(page)).conversations[A].drawingQuestion!;
 }
+// Leaves only the card on the board (ungrouped) and selects it; A becomes an imported native thread that cannot take board questions.
+async function cardOnlyBoard(page: Page) {
+  await page.evaluate(async () => {
+    const paths = performance.getEntriesByType('resource').map(entry => entry.name), loaded = (path: string) => paths.find(name => new URL(name).pathname === path) ?? path;
+    const { workspace } = await import(loaded('/src/services/workspace.ts')), { getAsset, putAsset, contentHash } = await import(loaded('/src/data/storage.ts'));
+    const ref = workspace.getState().data.boards['board-a'].drawing!;
+    const scene: DrawingScene = JSON.parse(await (await getAsset(ref.assetId))!.text());
+    scene.elements = scene.elements.filter(element => element.id === 'resource-placement-a').map(element => ({ ...element, groupIds: [] }));
+    const blob = new Blob([JSON.stringify(scene)], { type: 'application/json' }), hash = await contentHash(await blob.arrayBuffer()), assetId = `drawing-${hash}`;
+    await putAsset(assetId, blob);
+    workspace.updateData((next: WorkspaceData) => { next.boards['board-a'].drawing = { assetId, hash }; next.conversations['conversation-research-a'].nativeImported = true; });
+  });
+  await expect(drawing(page).getByRole('article', { name: '白板资料：相关性是检索收益的前提', exact: true })).toBeVisible();
+  await drawing(page).getByTestId('toolbar-selection').locator('..').click();
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.move(box.x + 60 * .65, box.y + 175 * .65); await page.mouse.down(); await page.mouse.move(box.x + 365 * .65, box.y + 445 * .65, { steps: 12 }); await page.mouse.up();
+  return box;
+}
 const response = () => [{ type: 'delta', text: '受控绘图回答：条件检查应先核对输入，所画箭头不是已证实因果。' }, { type: 'done', model: 'controlled-drawing-e2e', nativeSessionId: 'controlled-drawing-session', readPages: [] }].map(event => JSON.stringify(event)).join('\n') + '\n';
 // The conversation list lives in the left sidebar; board and card threads sit under its "讨论" group.
 async function openConversation(page: Page, name: string) {
@@ -175,22 +193,7 @@ test('真实框选与 PNG 导出进入当前会话，范围隔离、卡片正文
 
 test('单张卡片一键进入该卡片讨论：当前会话不可用也不报错，再问同卡片回到同一讨论', async ({ page }) => {
   await page.route('**/api/ai/research/run', route => route.fulfill({ contentType: 'application/x-ndjson', body: response() }));
-  await start(page);
-  await page.evaluate(async () => {
-    const paths = performance.getEntriesByType('resource').map(entry => entry.name), loaded = (path: string) => paths.find(name => new URL(name).pathname === path) ?? path;
-    const { workspace } = await import(loaded('/src/services/workspace.ts')), { getAsset, putAsset, contentHash } = await import(loaded('/src/data/storage.ts'));
-    const ref = workspace.getState().data.boards['board-a'].drawing!;
-    const scene: DrawingScene = JSON.parse(await (await getAsset(ref.assetId))!.text());
-    scene.elements = scene.elements.filter(element => element.id === 'resource-placement-a').map(element => ({ ...element, groupIds: [] }));
-    const blob = new Blob([JSON.stringify(scene)], { type: 'application/json' }), hash = await contentHash(await blob.arrayBuffer()), assetId = `drawing-${hash}`;
-    await putAsset(assetId, blob);
-    // An imported native thread cannot take board questions; this used to stop with an error.
-    workspace.updateData((next: WorkspaceData) => { next.boards['board-a'].drawing = { assetId, hash }; next.conversations['conversation-research-a'].nativeImported = true; });
-  });
-  await expect(drawing(page).getByRole('article', { name: '白板资料：相关性是检索收益的前提', exact: true })).toBeVisible();
-  await drawing(page).getByTestId('toolbar-selection').locator('..').click();
-  const box = (await canvas(page).boundingBox())!;
-  await page.mouse.move(box.x + 60 * .65, box.y + 175 * .65); await page.mouse.down(); await page.mouse.move(box.x + 365 * .65, box.y + 445 * .65, { steps: 12 }); await page.mouse.up();
+  await start(page); await cardOnlyBoard(page);
   await expect(drawing(page)).toContainText('进入这张卡片的讨论');
   await drawing(page).getByRole('button', { name: '问 Agent', exact: true }).click();
   await expect(attachment(page)).toBeVisible();
@@ -347,4 +350,50 @@ test('看图迟到答复仍归原会话，停止及刷新保留图片和输入',
   expect((await data(page)).conversations[A].drawingQuestion).toEqual(second);
   await flush(page); await page.reload(); await expect(attachment(page)).toBeVisible(); await expect(input(page)).toHaveValue('停止后这个问题和图片都要保留。');
   await page.screenshot({ path: `${shots}/stopped-attachment-restored-1440.png` });
+});
+
+test('卡片讨论的回答可带入研究会话随下一问发送，讨论可升为研究会话', async ({ page }) => {
+  const sent: ResearchAgentInput[] = [];
+  await page.route('**/api/ai/research/run', async route => { sent.push(route.request().postDataJSON()); await route.fulfill({ contentType: 'application/x-ndjson', body: response() }); });
+  await start(page); await cardOnlyBoard(page);
+  await drawing(page).getByRole('button', { name: '问 Agent', exact: true }).click();
+  await input(page).fill('这张卡片的前提成立吗？'); await page.getByRole('button', { name: '开始研究', exact: true }).click();
+  await expect.poll(() => sent.length).toBe(1);
+  const thread = sent[0].requestId && (await data(page)).requests[sent[0].requestId].conversationId;
+  await expect.poll(async () => (await data(page)).requests[sent[0].requestId].status).toBe('done');
+  const chat = page.getByRole('region', { name: '当前会话', exact: true });
+
+  // Carry: the answer becomes material for conversation B; histories stay apart.
+  await chat.getByRole('button', { name: '带入会话：把这条回答作为参考材料带到研究会话', exact: true }).click();
+  await page.screenshot({ path: `${shots}/carry-menu-1440.png` });
+  await page.getByRole('menu', { name: '带入到', exact: true }).getByRole('menuitem', { name: '另一会话 B', exact: true }).click();
+  const carriedLabel = '带入：卡片「相关性是检索收益的前提」的讨论 · 第 1 轮';
+  await expect(page.getByLabel('带入的讨论结论', { exact: true })).toContainText(carriedLabel);
+  await expect(page.getByRole('button', { name: '将发到：会话「另一会话 B」。改发到别处', exact: true })).toBeVisible();
+  expect((await data(page)).sessions['research-a'].activeConversationId).toBe(B);
+  await page.screenshot({ path: `${shots}/carried-into-conversation-1440.png` });
+  await input(page).fill('结合带入的结论，下一步该核对什么？'); await page.getByRole('button', { name: '开始研究', exact: true }).click();
+  await expect.poll(() => sent.length).toBe(2);
+  await expect.poll(async () => (await data(page)).requests[sent[1].requestId].status).toBe('done');
+  expect(sent[1].materials).toHaveLength(1);
+  expect(sent[1].materials![0]).toMatchObject({ kind: 'discussion', derivedFrom: { requestIds: [sent[0].requestId] } });
+  expect(sent[1].materials![0].text).toContain('问：这张卡片的前提成立吗？'); expect(sent[1].materials![0].text).toContain('受控绘图回答');
+  expect(sent[1].history).toEqual([{ prompt: 'OTHER_SESSION_SECRET_QUESTION', body: 'OTHER_SESSION_SECRET_ANSWER' }]);
+  const after = await data(page);
+  expect(after.requests[sent[1].requestId].materials).toEqual(sent[1].materials);
+  expect(after.conversations[B].carried).toBeUndefined();
+  await expect(page.getByLabel('带入的讨论结论', { exact: true })).toHaveCount(0);
+  await chat.getByText('本次资料与执行记录').last().click();
+  await expect(chat).toContainText('卡片「相关性是检索收益的前提」的讨论 · 第 1 轮');
+
+  // Promote: the card thread moves into the main list and stays linked to the card.
+  await openConversation(page, '打开讨论：相关性是检索收益的前提');
+  await chat.getByRole('button', { name: '升为研究会话', exact: true }).click();
+  const list = page.getByRole('region', { name: '研究会话列表', exact: true });
+  await expect(list.getByRole('button', { name: '打开会话：卡片：相关性是检索收益的前提', exact: true })).toBeVisible();
+  await expect(list.getByRole('button', { name: '打开讨论：相关性是检索收益的前提', exact: true })).toHaveCount(0);
+  await expect(chat.getByRole('button', { name: '升为研究会话', exact: true })).toHaveCount(0);
+  expect((await data(page)).conversations[thread!]).toMatchObject({ promoted: true, anchor: { kind: 'card', id: 'card-a' } });
+  await expect(drawing(page).locator('.drawing-statusbar').getByRole('button', { name: '进入这张卡片的讨论（1 轮）', exact: true })).toBeVisible();
+  await page.screenshot({ path: `${shots}/promoted-discussion-1440.png` });
 });

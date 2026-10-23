@@ -1,6 +1,6 @@
 import { ChatImagePreview } from '../workbench/ChatImagePreview';
 import { DrawingQuestionPreview } from '../workbench/DrawingQuestionPreview';
-import { clearResearchFocus } from '../../services/research-agent';
+import { clearResearchFocus, discussionAnchor } from '../../services/research-agent';
 import { removeChatImage } from '../../services/chat-images';
 import { removeDrawingQuestion } from '../../services/drawing-question';
 import { ResearchAgentTurn } from '../workbench/ResearchAgentWorkbench';
@@ -66,6 +66,7 @@ import { BoardProposal } from './BoardProposal';
 import { BoardLiterature } from './BoardLiterature';
 import { BoardResearchControls, BoardResearchHeading, ResearchMaterialDetails, ResearchRequestDetails } from './BoardResearchContext';
 import { boardSuggestion } from '../../services/board-intent';
+import { CarryToConversation } from '../workbench/DraftRoute';
 import { reparseBoardProposal } from '../../services/board-skill';
 import {
   ContextDetails,
@@ -884,6 +885,7 @@ export function AIPanel() {
                         </button>
                       </>
                     ))}
+                  {research && conversation && request.status === 'done' && data.agentWorkbench !== false && discussionAnchor(conversation) && <CarryToConversation researchId={research.id} requestId={request.id} conversationId={conversation.id} />}
                 </div>
               )}
               {!blocked && selectedFragment?.requestId === request.id && (

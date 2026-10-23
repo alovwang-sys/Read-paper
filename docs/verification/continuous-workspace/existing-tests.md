@@ -22,3 +22,5 @@
 2026-10-23 讨论分组（会话归属第 2 步）：`drawing-question.spec.ts` 6/6 通过，单卡片用例增加主列表隐藏、"讨论"分组、卡片与白板讨论数进入的断言；`continuous-workspace`、`board-tree`、`human-board-editing`、`drawing` 及 `board-research` 其余用例同轮通过。`agent-workbench.spec.ts` 第 45、124 行和 `board-research.spec.ts` BV08 失败；在不含本次改动的上一提交上单独重跑，同样失败，属于既有问题，未在本次处理。
 
 2026-10-23 草稿改道（会话归属第 3 步）：单元测试覆盖新开讨论继承归属、合并到已有会话、绘图选区冲突与图片超限时完全不改动；`drawing-question.spec.ts` 单卡片用例增加"将发到"菜单、新开讨论编号与改发到会话 B 的断言。`drawing-question`、`continuous-workspace`、`agent-regressions` 共 25 项通过。首版把"将发到"常驻在输入框上方，使 `agent-regressions` 第 59 行的对话区高度低于 68% 而失败，已改为仅在有待发送内容时显示后通过。`chat-inputs.spec.ts` 第 121、148 行和 `research-switcher.spec.ts` 8 项在不含本次改动的上一提交上同样失败，属于既有问题，未在本次处理。
+
+2026-10-23 升为研究会话与带入会话（会话归属第 4 步）：单元测试覆盖升级后进入主列表、仍与卡片关联；带入材料的问题、引用、出处与去重；失败恢复、成功随问发送并记录在本轮、不并入历史；改道时随草稿移动；只能带入已完成的回答。服务端测试覆盖材料格式、数量、输入上限和"不是原文证据"的提示。`drawing-question.spec.ts` 新增卡片讨论带入会话 B 并升级的用例，`continuous-workspace.spec.ts` 原文两处问答用例增加"讨论"分组与原文回答带入的断言。同轮单元 767 项、服务端 357 项通过；e2e 56 项通过。`ai-reading.spec.ts` 第 58 行、`inline-ai.spec.ts` 7 项与 `board-research.spec.ts` BV08 在上一提交上单独重跑同样失败，属于既有问题，未在本次处理。

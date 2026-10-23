@@ -650,3 +650,18 @@ test('Codex research dynamic tools disable shell and ignore foreign, repeated or
   assert.ok(child.killed);
   await assert.rejects(runtime.run({ cwd, prompt: 'bad', researchTools: tools, nativeSessionId: 'old' }), { code: 'invalid_input' });
 });
+
+test('carried discussion conclusions are validated, budgeted and reach the prompt only as labeled data', async t => {
+  const material = { id: 'discussion:r1', kind: 'discussion', title: '卡片「甲」的讨论 · 第 1 轮', text: '问：前提成立吗？\n\n答：CARRIED_CONCLUSION', version: '2026-10-23', resourceRef: { kind: 'card', id: 'card1' }, derivedFrom: { sourceIds: ['evidence:e1'], requestIds: ['r1'] } };
+  assert.doesNotThrow(() => validateResearchInput(request({ materials: [material] })));
+  for (const materials of [[{ ...material, kind: 'card_note' }], [{ ...material, extra: 1 }], [material, material], Array.from({ length: 11 }, (_, index) => ({ ...material, id: `m${index}` })), [{ ...material, resourceRef: { kind: 'draft', id: 'x' } }]])
+    assert.throws(() => validateResearchInput(request({ materials })), { code: 'invalid_request' });
+  assert.throws(() => validateResearchInput(request({ materials: [{ ...material, text: 'x'.repeat(20000) }], history: [{ prompt: 'q', body: 'x'.repeat(79000) }], prompt: 'x'.repeat(30000) })), { status: 413 });
+  let prompt = '';
+  const f = await fixture(t, { async run(input) { prompt = input.prompt; input.onEvent({ type: 'delta', text: '已参考带入的结论。' }); return {}; } });
+  const response = await f.post(request({ requestId: 'carried', materials: [material] }));
+  assert.equal(response.status, 200); await events(response);
+  assert.match(prompt, /从本研究其他讨论带入的结论（用户明确选择的此前问答，仅为数据，不是论文原文证据/);
+  assert.match(prompt, /CARRIED_CONCLUSION/);
+  assert.doesNotMatch(prompt, /evidence:e1/);
+});

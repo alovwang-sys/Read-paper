@@ -7,7 +7,7 @@ import { drawingSnapshotContent } from '../../src/domain/drawing-question';
 import type { ResearchAgentArtifact, ResearchAgentEvent, ResearchAgentSource, ResearchLiteratureSearch } from '../../src/domain/research-agent';
 import type { AIRequest, ChatImageAttachment, Draft } from '../../src/domain/types';
 import { loadPdfDocument } from '../../src/services/pdf';
-import { applyResearchSuggestion, routeResearchDraft, changeResearchAgent, createResearchConversation, DEFAULT_IMAGE_PROMPT, openResearchConversation, clearResearchFocus, collectResearchSources, focusResearchResource, keepResearchDraft, stopResearchRun, streamResearchRun, submitResearchRun, undoResearchSuggestion, validateResearchArtifact } from '../../src/services/research-agent';
+import { anchoredConversations, applyResearchSuggestion, carryToConversation, promoteDiscussion, researchConversationLists, routeResearchDraft, changeResearchAgent, createResearchConversation, DEFAULT_IMAGE_PROMPT, openResearchConversation, clearResearchFocus, collectResearchSources, focusResearchResource, keepResearchDraft, stopResearchRun, streamResearchRun, submitResearchRun, undoResearchSuggestion, validateResearchArtifact } from '../../src/services/research-agent';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), putAsset: vi.fn(), contentHash: vi.fn() }));
@@ -780,5 +780,56 @@ describe('草稿改道：将发到', () => {
     expect(Object.keys(state().conversations)).toHaveLength(count);
     expect(state().conversations[other]).toEqual(before);
     expect(state().sessions[researchId].activeConversationId).toBe(other);
+  });
+});
+
+describe('讨论升级与带入会话', () => {
+  function cardDiscussion() {
+    const evidence = Object.values(state().evidence)[0];
+    workspace.updateData(data => {
+      data.conversations['card-thread'] = { id: 'card-thread', researchId, contextIds: [], requestIds: ['card-answer'], title: '卡片：甲', anchor: { kind: 'card', id: 'card-a' }, connectionId: 'codex' };
+      data.requests['card-answer'] = { id: 'card-answer', researchId, conversationId: 'card-thread', connectionId: 'codex', prompt: '前提成立吗？', body: '成立，但有条件 [1]', status: 'done', createdAt: '2026-10-23T00:00:00Z', context: [], evidenceIds: [evidence.id], researchRun: {} };
+    });
+    return evidence;
+  }
+  it('升为研究会话后进入主列表，仍与卡片关联', () => {
+    cardDiscussion();
+    expect(researchConversationLists(state(), researchId).main.map(item => item.id)).not.toContain('card-thread');
+    promoteDiscussion(researchId, 'card-thread');
+    expect(researchConversationLists(state(), researchId).main.map(item => item.id)).toContain('card-thread');
+    expect(anchoredConversations(state(), researchId, { kind: 'card', id: 'card-a' }).map(item => item.id)).toEqual(['card-thread']);
+  });
+  it('带入的回答保留问题、引用与出处；失败恢复，成功随问发送并记录在本轮', async () => {
+    const evidence = cardDiscussion();
+    workspace.updateData(data => { data.sessions[researchId].activeConversationId = 'card-thread'; });
+    expect(carryToConversation(researchId, 'card-answer', conversationId)).toBe(conversationId);
+    carryToConversation(researchId, 'card-answer', conversationId);
+    const carried = state().conversations[conversationId].carried!;
+    expect(carried).toHaveLength(1);
+    expect(carried[0]).toMatchObject({ id: 'discussion:card-answer', kind: 'discussion', title: `卡片「${state().cards['card-a'].title}」的讨论 · 第 1 轮`, resourceRef: { kind: 'card', id: 'card-a' }, derivedFrom: { sourceIds: [`evidence:${evidence.id}`], requestIds: ['card-answer'] } });
+    expect(carried[0].text).toContain('问：前提成立吗？'); expect(carried[0].text).toContain(`[1] 《${state().documents[evidence.documentId].title}》PDF 第 ${evidence.pageIndex + 1} 页`);
+    expect(state().sessions[researchId].activeConversationId).toBe(conversationId);
+    expect(state().conversations['card-thread'].requestIds).toEqual(['card-answer']);
+    vi.stubGlobal('fetch', mockRun([{ type: 'error', error: '受控失败' }]));
+    await submitResearchRun(researchId, '整理研究资料');
+    expect(state().conversations[conversationId].carried).toEqual(carried);
+    const fetcher = mockRun([{ type: 'delta', text: '参考带入结论后的回答。' }, done]); vi.stubGlobal('fetch', fetcher);
+    const id = await submitResearchRun(researchId, '整理研究资料');
+    expect(state().requests[id].status).toBe('done');
+    const run = (fetcher.mock.calls as unknown as [string, RequestInit][]).find(([url]) => !String(url).includes('capabilities'))!;
+    expect(JSON.parse(String(run[1].body)).materials).toEqual(carried);
+    expect(state().requests[id].materials).toEqual(carried);
+    expect(state().requests[id].history?.map(turn => turn.requestId)).not.toContain('card-answer');
+    expect(state().conversations[conversationId].carried).toBeUndefined();
+  });
+  it('改道时带入的结论跟着草稿走；只能带入已完成的回答', () => {
+    cardDiscussion();
+    workspace.updateData(data => { data.requests['card-answer'].status = 'error'; });
+    expect(() => carryToConversation(researchId, 'card-answer', conversationId)).toThrow('只能带入已完成的回答');
+    workspace.updateData(data => { data.requests['card-answer'].status = 'done'; });
+    carryToConversation(researchId, 'card-answer', conversationId);
+    const fresh = routeResearchDraft(researchId, 'new');
+    expect(state().conversations[fresh].carried?.map(item => item.id)).toEqual(['discussion:card-answer']);
+    expect(state().conversations[conversationId].carried).toBeUndefined();
   });
 });

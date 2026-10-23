@@ -1,4 +1,5 @@
-import type { AIConnectionId, AIRequest, Conversation, Draft, ResourceRef, WorkspaceData } from '../domain/types';
+import type { AIConnectionId, AIRequest, Conversation, Draft, ResearchMaterial, ResourceRef, WorkspaceData } from '../domain/types';
+import { validateResearchMaterials } from '../domain/research';
 import type { ResearchAgentArtifact, ResearchAgentCapability, ResearchAgentEvent, ResearchAgentInput, ResearchAgentSource } from '../domain/research-agent';
 import { validateResearchLiteratureSearch } from '../domain/research-agent';
 import { mapCitationNumbers } from '../domain/citations';
@@ -97,7 +98,7 @@ export function isResearchConversation(data: WorkspaceData, conversation: Conver
 export type DiscussionAnchor = NonNullable<Conversation['anchor']> | { kind: 'document'; id: string };
 /** A discussion hangs on a card, board or PDF passage; anything else is a research conversation. */
 export function discussionAnchor(conversation: Conversation): DiscussionAnchor | undefined {
-  if (conversation.anchor) return conversation.anchor;
+  if (conversation.anchor && !conversation.promoted) return conversation.anchor;
   if (conversation.inlineSource && !conversation.inlineSource.promoted) return { kind: 'document', id: conversation.inlineSource.documentId };
 }
 const activityAt = (data: WorkspaceData, item: Conversation) => item.updatedAt ?? item.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1)?.createdAt ?? item.createdAt ?? '';
@@ -160,21 +161,79 @@ export function routeResearchDraft(researchId: string, target: 'new' | string) {
   const images = [...(destination?.chatImages ?? []), ...(source.chatImages ?? [])];
   if (source.drawingQuestion && destination?.drawingQuestion) throw new Error('目标会话已有待发送的绘图选区，请先在那里发送或移除，草稿未移动。');
   if (images.length + (source.drawingQuestion || destination?.drawingQuestion ? 1 : 0) > CHAT_IMAGE_LIMITS.maxImages) throw new Error('合并后超过每条消息 4 张图片（绘图选区占一张），草稿未移动。');
+  const carried = [...new Map([...(destination?.carried ?? []), ...(source.carried ?? [])].map(item => [item.id, item])).values()];
+  if (carried.length > CARRIED_LIMIT) throw new Error(`合并后带入的讨论结论超过 ${CARRIED_LIMIT} 条，草稿未移动。`);
   const id = destination?.id ?? createResearchConversation(researchId, source.connectionId, { navigate: false });
   workspace.updateData(next => {
     const from = next.conversations[source.id], to = next.conversations[id];
     if (!destination && from.anchor) Object.assign(to, { anchor: { ...from.anchor }, title: from.title });
     to.input = [to.input?.trim(), from.input?.trim()].filter(Boolean).join('\n\n');
     if (images.length) to.chatImages = images;
+    if (carried.length) to.carried = carried;
     if (from.drawingQuestion) { to.drawingQuestion = from.drawingQuestion; delete to.researchFocus; }
     else if (from.researchFocus && !to.drawingQuestion) to.researchFocus = from.researchFocus;
-    from.input = ''; delete from.chatImages; delete from.drawingQuestion; delete from.researchFocus;
+    from.input = ''; delete from.chatImages; delete from.drawingQuestion; delete from.researchFocus; delete from.carried;
     // A thread that only carried this draft would linger empty in the list; archive keeps it recoverable.
     if (!from.requestIds.length) from.archived = true;
   });
   workspace.selectConversation(researchId, id, { surface: 'workbench' });
   workspace.updateData(next => { next.sessions[researchId].panel.aiView = 'chat'; });
   return id;
+}
+
+/** Move a discussion into the main conversation list; it keeps its link to the card, board or passage. */
+export function promoteDiscussion(researchId: string, conversationId: string) {
+  workspace.updateData(data => {
+    const conversation = data.conversations[conversationId];
+    if (!conversation || conversation.researchId !== researchId || conversation.archived) throw new Error('这条讨论已不可用。');
+    if (conversation.inlineSource) conversation.inlineSource.promoted = true;
+    else if (conversation.anchor) conversation.promoted = true;
+  });
+}
+
+export const CARRIED_LIMIT = 10;
+/** A finished discussion answer as a carried material: question, answer and cited passages, traceable to its request. */
+export function discussionMaterial(data: WorkspaceData, requestId: string): ResearchMaterial {
+  const request = data.requests[requestId], conversation = request && data.conversations[request.conversationId];
+  if (!request || !conversation || request.status !== 'done') throw new Error('只能带入已完成的回答。');
+  const anchor = conversation.anchor, source = conversation.inlineSource, document = source && data.documents[source.documentId];
+  const where = anchor?.kind === 'card' ? `卡片「${data.cards[anchor.id]?.title ?? '已移除的卡片'}」` : anchor?.kind === 'board' ? `白板「${data.boards[anchor.id]?.title ?? '已移除的白板'}」`
+    : source ? `《${document?.title ?? '已移除的资料'}》第 ${source.pageIndex + 1} 页` : `会话「${conversation.title?.trim() || '新会话'}」`;
+  const passage = (evidenceId: string) => { const item = data.evidence[evidenceId], doc = item && data.documents[item.documentId]; return item && doc ? `《${doc.title}》PDF 第 ${item.pageIndex + 1} 页：“${item.quote}”` : undefined; };
+  const asked = [...new Set(request.context.map(item => item.evidenceId))].map(passage).filter(Boolean);
+  const cited = request.evidenceIds.map((id, index) => passage(id) && `[${index + 1}] ${passage(id)}`).filter(Boolean);
+  const text = [`问：${request.prompt}`, `答：${request.result?.body ?? request.body}`, asked.length ? `讨论所针对的原文：\n${asked.join('\n')}` : '', cited.length ? `回答中的引用：\n${cited.join('\n')}` : ''].filter(Boolean).join('\n\n');
+  return { id: `discussion:${request.id}`, kind: 'discussion', title: `${where}的讨论 · 第 ${conversation.requestIds.indexOf(request.id) + 1} 轮`, text: text.slice(0, 20000), version: request.createdAt,
+    ...(anchor ? { resourceRef: { ...anchor } } : source ? { resourceRef: { kind: 'document' as const, id: source.documentId } } : {}),
+    derivedFrom: { sourceIds: [...new Set([...request.context.map(item => item.evidenceId), ...request.evidenceIds])].map(id => `evidence:${id}`), requestIds: [request.id] } };
+}
+/** Carry a discussion answer into a research conversation as material for its next question; histories stay separate. */
+export function carryToConversation(researchId: string, requestId: string, target: 'new' | string) {
+  const data = workspace.getState().data, material = discussionMaterial(data, requestId), source = data.conversations[data.requests[requestId].conversationId];
+  if (source.researchId !== researchId) throw new Error('只能带入本研究的讨论。');
+  const destination = target === 'new' ? undefined : data.conversations[target];
+  if (target !== 'new' && (!destination || destination.id === source.id || destination.researchId !== researchId || destination.archived || !isResearchConversation(data, destination))) throw new Error('目标会话不可用，未带入。');
+  if (destination && !destination.carried?.some(item => item.id === material.id) && (destination.carried?.length ?? 0) >= CARRIED_LIMIT) throw new Error(`每条消息最多带入 ${CARRIED_LIMIT} 条讨论结论，请先移除一条。`);
+  const id = destination?.id ?? createResearchConversation(researchId, isResearchConversation(data, source) ? source.connectionId : 'codex', { navigate: false });
+  workspace.updateData(next => {
+    const to = next.conversations[id];
+    to.carried = [...(to.carried ?? []).filter(item => item.id !== material.id), material];
+  });
+  workspace.selectConversation(researchId, id, { surface: 'workbench' });
+  workspace.updateData(next => {
+    const session = next.sessions[researchId];
+    session.panel.aiView = 'chat';
+    if (!session.agentChat || session.agentChat.mode === 'closed') session.agentChat = { ...session.agentChat, mode: 'side' };
+  });
+  return id;
+}
+export function removeCarried(researchId: string, materialId: string) {
+  const conversation = getActiveConversation(workspace.getState().data, researchId);
+  if (conversation) workspace.updateData(data => {
+    const owner = data.conversations[conversation.id];
+    owner.carried = owner.carried?.filter(item => item.id !== materialId);
+    if (!owner.carried?.length) delete owner.carried;
+  });
 }
 
 export function openResearchConversation(researchId: string, conversationId: string, options: { navigate?: boolean } = {}) {
@@ -300,6 +359,8 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
   const chatImages = structuredClone((retryId ? previous?.researchRun?.chatImages : snapshot.conversations[conversation.id].chatImages) ?? []);
   validateChatImages(chatImages);
   if (chatImages.length + (drawingQuestion?.mode === 'image' ? 1 : 0) > CHAT_IMAGE_LIMITS.maxImages) throw new Error('每条消息最多附 4 张图片，包含所选绘图。');
+  const carried = structuredClone((retryId ? previous?.materials?.filter(item => item.kind === 'discussion') : snapshot.conversations[conversation.id].carried) ?? []);
+  validateResearchMaterials(carried);
   const requestPrompt = prompt.trim() || (chatImages.length || drawingQuestion?.mode === 'image' ? DEFAULT_IMAGE_PROMPT : '');
   if (!requestPrompt) throw new Error('请输入研究目标或添加图片。');
   const selectedFocus = drawingQuestion ? undefined : retryId ? previous?.researchRun?.focus : snapshot.conversations[conversation.id].researchFocus;
@@ -312,11 +373,11 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
   if (history.length > 4096) throw new Error('本会话超过 4,096 轮的传输上限，未删除历史或发送。请保留草稿后新建会话。');
   if (history.reduce((sum, turn) => sum + turn.prompt.length + turn.body.length, 0) > RESEARCH_HISTORY_CHAR_LIMIT) throw new Error('前序对话超过 80,000 字符，未截断或发送。请新建会话，并明确附上需要继续讨论的内容。');
   const imageMetadata = chatImages.map(({ assetId, hash, name, mimeType, size }) => ({ assetId, hash, name, mimeType, size }));
-  const inputChars = JSON.stringify({ prompt: requestPrompt, history, ...(focus ? { focus } : {}), ...(drawingQuestion ? { drawing: drawingQuestion.snapshot } : {}), ...(imageMetadata.length ? { images: imageMetadata } : {}) }).length + 2048;
+  const inputChars = JSON.stringify({ prompt: requestPrompt, history, ...(focus ? { focus } : {}), ...(drawingQuestion ? { drawing: drawingQuestion.snapshot } : {}), ...(imageMetadata.length ? { images: imageMetadata } : {}), ...(carried.length ? { materials: carried } : {}) }).length + 2048;
   if (inputChars > RESEARCH_INPUT_CHAR_LIMIT) throw new Error('问题、历史、局部目标与绘图结构超过 120,000 字符，未发送。请减少本轮内容或新建会话。字符上限不是模型 token 预算。');
-  const request: AIRequest = { id, researchId, conversationId: conversation.id, connectionId, prompt: requestPrompt, context: [], history: historyTurns, createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [], purpose: 'chat', mode: 'live', ...(retryId ? { retryOf: retryId } : {}), researchRun: { ...(focus ? { focus: structuredClone(focus) } : {}), ...(drawingQuestion ? { drawingQuestion: structuredClone(drawingQuestion) } : {}), ...(chatImages.length ? { chatImages } : {}) } };
+  const request: AIRequest = { id, researchId, conversationId: conversation.id, connectionId, prompt: requestPrompt, context: [], history: historyTurns, createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [], purpose: 'chat', mode: 'live', ...(retryId ? { retryOf: retryId } : {}), ...(carried.length ? { materials: carried } : {}), researchRun: { ...(focus ? { focus: structuredClone(focus) } : {}), ...(drawingQuestion ? { drawingQuestion: structuredClone(drawingQuestion) } : {}), ...(chatImages.length ? { chatImages } : {}) } };
   running.set(id, controller);
-  let consumedInput = false, consumedDrawing = false, consumedImages = false;
+  let consumedInput = false, consumedDrawing = false, consumedImages = false, consumedCarried = false;
   workspace.updateData(data => {
     data.requests[id] = request; data.conversations[conversation.id].requestIds.push(id); data.conversations[conversation.id].connectionId = connectionId;
     data.sessions[researchId].agentWorkbenchStarted = true;
@@ -328,6 +389,11 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
       owner.chatImages = owner.chatImages.filter(image => !chatImages.some(sent => sent.assetId === image.assetId && sent.hash === image.hash));
       if (!owner.chatImages.length) delete owner.chatImages;
       consumedImages = true;
+    }
+    if (carried.length && owner.carried?.some(item => carried.some(sent => sent.id === item.id))) {
+      owner.carried = owner.carried.filter(item => !carried.some(sent => sent.id === item.id));
+      if (!owner.carried.length) delete owner.carried;
+      consumedCarried = true;
     }
     owner.updatedAt = request.createdAt;
     if (!owner.title || ['新会话', '新的阅读对话', '阅读对话'].includes(owner.title)) owner.title = request.prompt.slice(0, 36);
@@ -365,7 +431,7 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
       : await collectResearchSources(snapshot, researchId, signal, progress, focus?.ref.kind === 'document' ? focus.ref.id : undefined);
     aborted(signal); if (!current()) return id;
     workspace.updateData(data => {
-      data.requests[id].researchRun!.sourceSummary = `${summary}${chatImages.length ? `另附 ${chatImages.length} 张原始图片，图片内容不作为论文原文证据。` : ''}附送当前会话全部 ${history.length} 轮已完成研究对话（历史最多 80,000 字符；单次输入合计最多 120,000 字符，超限会明确提示，不静默截断）。${focus ? '局部对象正文最多发送前 12,000 字符。' : ''}`;
+      data.requests[id].researchRun!.sourceSummary = `${summary}${chatImages.length ? `另附 ${chatImages.length} 张原始图片，图片内容不作为论文原文证据。` : ''}${carried.length ? `另附 ${carried.length} 条从其他讨论带入的结论，仅作参考材料，不作为论文原文证据。` : ''}附送当前会话全部 ${history.length} 轮已完成研究对话（历史最多 80,000 字符；单次输入合计最多 120,000 字符，超限会明确提示，不静默截断）。${focus ? '局部对象正文最多发送前 12,000 字符。' : ''}`;
       for (const source of sources.filter(source => source.pages.length)) {
         const doc = data.documents[source.id], original = snapshot.documents[source.id];
         if (!data.researches[researchId].documentIds.includes(source.id) || !doc || doc.assetId !== original.assetId || doc.hash !== original.hash) throw new Error('研究资料在准备中发生变化，请重新提交。');
@@ -373,7 +439,7 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
       }
     });
     let artifact: ResearchAgentArtifact | undefined, completed: Extract<ResearchAgentEvent, { type: 'done' }> | undefined;
-    await streamResearchRun({ requestId: id, researchId, connectionId, prompt: request.prompt, sources, history, ...(focus ? { focus } : {}), ...(drawing ? { drawing } : {}), ...(images.length ? { images } : {}) }, signal, event => {
+    await streamResearchRun({ requestId: id, researchId, connectionId, prompt: request.prompt, sources, history, ...(focus ? { focus } : {}), ...(drawing ? { drawing } : {}), ...(images.length ? { images } : {}), ...(carried.length ? { materials: carried } : {}) }, signal, event => {
       if (!current() || signal.aborted) return;
       if (event.type === 'error') throw new Error(event.error);
       if (event.type === 'literature') {
@@ -447,12 +513,13 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
         }
       });
       const saved = workspace.getState().data.requests[id];
-      if (saved && ['error', 'stopped'].includes(saved.status) && !saved.body.trim() && !saved.result && (consumedInput || consumedDrawing || consumedImages)) workspace.updateData(data => {
+      if (saved && ['error', 'stopped'].includes(saved.status) && !saved.body.trim() && !saved.result && (consumedInput || consumedDrawing || consumedImages || consumedCarried)) workspace.updateData(data => {
         const owner = data.conversations[conversation.id];
-        if (!owner || owner.requestIds.at(-1) !== id || (owner.input ?? '') !== '' || owner.drawingQuestion || owner.researchFocus || owner.chatImages?.length) return;
+        if (!owner || owner.requestIds.at(-1) !== id || (owner.input ?? '') !== '' || owner.drawingQuestion || owner.researchFocus || owner.chatImages?.length || owner.carried?.length) return;
         if (consumedInput) owner.input = prompt;
         if (consumedDrawing) owner.drawingQuestion = structuredClone(drawingQuestion);
         if (consumedImages) owner.chatImages = structuredClone(chatImages);
+        if (consumedCarried) owner.carried = structuredClone(carried);
       });
       workspace.retrySave();
       try { await workspace.flushSave(); } catch { /* The shared save indicator retains the failure and retry action. */ }

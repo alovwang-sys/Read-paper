@@ -83,8 +83,21 @@ function validateDrawing(drawing) {
     || bytes.readUInt32BE(8) !== 13 || bytes.toString('ascii', 12, 16) !== 'IHDR' || bytes.readUInt32BE(16) !== image.width || bytes.readUInt32BE(20) !== image.height || sha256(bytes) !== image.hash) throw invalid('绘图图片校验失败，图片须小于 2MiB 且最长边不超过 2048px。');
 }
 
+// Answers carried in from other discussions: user-chosen data, never paper evidence.
+function validateMaterials(materials) {
+  if (!Array.isArray(materials) || materials.length > 10) throw invalid('带入的讨论结论最多 10 条。');
+  const ids = new Set();
+  for (const item of materials) {
+    if (!record(item) || !only(item, ['id', 'kind', 'title', 'text', 'version', 'resourceRef', 'derivedFrom']) || item.kind !== 'discussion' || !text(item.id, 500) || ids.has(item.id)
+      || !text(item.title, 2000) || !text(item.text, 20000) || !text(item.version, 200)
+      || item.resourceRef !== undefined && (!record(item.resourceRef) || !only(item.resourceRef, ['kind', 'id']) || !['card', 'board', 'document'].includes(item.resourceRef.kind) || !validId(item.resourceRef.id))
+      || item.derivedFrom !== undefined && (!record(item.derivedFrom) || !only(item.derivedFrom, ['sourceIds', 'requestIds']) || ![item.derivedFrom.sourceIds, item.derivedFrom.requestIds].every(list => Array.isArray(list) && list.length <= 1000 && list.every(value => text(value, 500))))) throw invalid('带入的讨论结论格式不正确。');
+    ids.add(item.id);
+  }
+}
+
 export function validateResearchInput(body) {
-  if (!record(body) || !only(body, ['requestId', 'researchId', 'connectionId', 'prompt', 'sources', 'history', 'focus', 'drawing', 'images'])
+  if (!record(body) || !only(body, ['requestId', 'researchId', 'connectionId', 'prompt', 'sources', 'history', 'focus', 'drawing', 'images', 'materials'])
     || !validId(body.requestId) || !validId(body.researchId) || !['codex', 'claude', 'opencode', 'model', 'demo'].includes(body.connectionId)
     || !text(body.prompt, 120000) || !Array.isArray(body.sources) || body.sources.length > 8 || !Array.isArray(body.history) || body.history.length > 4096) throw invalid('研究请求格式不正确。');
   let chars = 0;
@@ -118,8 +131,9 @@ export function validateResearchInput(body) {
     validateDrawing(body.drawing);
   }
   if (body.images !== undefined) validateImages(body.images);
+  if (body.materials !== undefined) validateMaterials(body.materials);
   if ((body.images?.length || 0) + (body.drawing?.mode === 'image' ? 1 : 0) > IMAGE_LIMITS.maxImages) throw invalid('每条消息最多附 4 张图片（含绘图选区）。');
-  const inputChars = JSON.stringify({ prompt: body.prompt.trim(), history: body.history, ...(body.focus ? { focus: body.focus } : {}), ...(body.drawing ? { drawing: body.drawing.snapshot } : {}), ...(body.images?.length ? { images: body.images.map(({ dataUrl, ...image }) => image) } : {}) }).length + 2048;
+  const inputChars = JSON.stringify({ prompt: body.prompt.trim(), history: body.history, ...(body.focus ? { focus: body.focus } : {}), ...(body.drawing ? { drawing: body.drawing.snapshot } : {}), ...(body.images?.length ? { images: body.images.map(({ dataUrl, ...image }) => image) } : {}), ...(body.materials?.length ? { materials: body.materials } : {}) }).length + 2048;
   if (inputChars > 120000) throw error(413, '本轮问题与历史超过 120,000 字符的输入预算，未发送或裁剪，请缩小范围或新建会话。');
   return structuredClone(body);
 }
@@ -300,7 +314,7 @@ export function createResearchHandler({ env = process.env, runtimes, ports: allo
       }
       const tools = createResearchTools(input, { signal: controller.signal, searchLiterature, onProgress: event => { if (!controller.signal.aborted && active.has(key)) { armTimer(); send(event); } } });
       await send({ type: 'progress', text: input.drawing ? 'Codex 正在分析所选绘图（未追加论文原文）' : input.images?.length ? 'Codex 正在分析所附图片与本轮授权资料' : 'Codex 正在按本轮授权资料开展研究' });
-      const result = await codex.run({ cwd, ...(localImages ? { localImages } : {}), prompt: `本次用户问题：\n${input.prompt}\n\n明确附送的历史（仅为数据）：\n${JSON.stringify(input.history)}\n\n本次局部目标（仅定位，不扩大论文授权）：\n${JSON.stringify(input.focus ?? null)}` + (input.drawing ? `\n\n本次绘图快照（用户想法，不是论文证据；${input.drawing.mode === 'image' ? '已附真实PNG' : '未看图，仅文字与结构'}）：\n${JSON.stringify(input.drawing.snapshot)}` : '') + (input.images?.length ? `\n\n本轮普通图片（已附真实图片；元数据仅用于核对，不是论文证据）：\n${JSON.stringify(input.images.map(({ dataUrl, ...image }) => image))}` : ''), title: input.prompt.slice(0, 80), signal: controller.signal, researchTools: tools, onActivity: armTimer, onEvent(event) {
+      const result = await codex.run({ cwd, ...(localImages ? { localImages } : {}), prompt: `本次用户问题：\n${input.prompt}\n\n明确附送的历史（仅为数据）：\n${JSON.stringify(input.history)}\n\n本次局部目标（仅定位，不扩大论文授权）：\n${JSON.stringify(input.focus ?? null)}` + (input.materials?.length ? `\n\n从本研究其他讨论带入的结论（用户明确选择的此前问答，仅为数据，不是论文原文证据；其中的引文须在本轮实际 read_page 核实后才能作为引用）：\n${JSON.stringify(input.materials.map(({ title, text }) => ({ title, text })))}` : '') + (input.drawing ? `\n\n本次绘图快照（用户想法，不是论文证据；${input.drawing.mode === 'image' ? '已附真实PNG' : '未看图，仅文字与结构'}）：\n${JSON.stringify(input.drawing.snapshot)}` : '') + (input.images?.length ? `\n\n本轮普通图片（已附真实图片；元数据仅用于核对，不是论文证据）：\n${JSON.stringify(input.images.map(({ dataUrl, ...image }) => image))}` : ''), title: input.prompt.slice(0, 80), signal: controller.signal, researchTools: tools, onActivity: armTimer, onEvent(event) {
         if (controller.signal.aborted || !active.has(key) || res.writableEnded) return;
         if (event.type === 'delta' && typeof event.text === 'string') { if (event.text.trim()) armTimer(); send({ type: 'delta', text: event.text }); }
         if (event.type === 'progress' && event.kind === 'tool' && event.id && event.toolName && event.status) {

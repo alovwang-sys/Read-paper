@@ -10,7 +10,7 @@ export function requestProvenance(data: WorkspaceData, request: AIRequest, selec
 }
 
 export function researchMaterialsMarkdown(items: ResearchMaterial[] = []) {
-  const labels = { background: '研究背景', card_note: '卡片正文', abstract: '题录与来源摘要' };
+  const labels = { background: '研究背景', card_note: '卡片正文', abstract: '题录与来源摘要', discussion: '其他讨论的结论' };
   return items.map(item => `### ${item.title} · ${labels[item.kind]}\n\n来源 ID：${item.id}  \n版本：${item.version}${item.retrievedAt ? `  \n获取时间：${item.retrievedAt}` : ''}\n\n${item.url ? `[来源链接](${item.url})\n\n` : ''}${item.text.split('\n').map(line => `> ${line}`).join('\n')}\n\n非 PDF 原文证据。${item.derivedFrom ? `派生来源：${item.derivedFrom.sourceIds.join('、')}；问答轮次：${item.derivedFrom.requestIds.join('、')}。` : ''}\n`).join('\n');
 }
 
@@ -18,14 +18,14 @@ const object = (value: unknown): value is Record<string, unknown> => !!value && 
 const text = (value: unknown, max: number): value is string => typeof value === 'string' && value.length <= max;
 const strings = (value: unknown, max = 1000): value is string[] => Array.isArray(value) && value.length <= max && value.every(item => text(item, 500));
 const yearRange = (from: unknown, to: unknown) => [from, to].every(year => year === undefined || Number.isInteger(year) && Number(year) >= 1 && Number(year) <= 9999) && (from === undefined || to === undefined || Number(from) <= Number(to));
-const ref = (value: unknown) => object(value) && ['card', 'document'].includes(String(value.kind)) && text(value.id, 500) && !!value.id;
+const ref = (value: unknown) => object(value) && ['card', 'document', 'board'].includes(String(value.kind)) && text(value.id, 500) && !!value.id;
 const url = (value: unknown) => { try { const parsed = typeof value === 'string' ? new URL(value) : undefined; return !!parsed && String(value).length <= 4000 && ['https:', 'http:'].includes(parsed.protocol) && !parsed.username && !parsed.password; } catch { return false; } };
 function requireValue(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
 export function validateResearchMaterials(value: unknown): asserts value is ResearchMaterial[] {
   requireValue(Array.isArray(value) && value.length <= 100, '研究材料清单无效。');
   const ids = new Set<string>();
   for (const item of value) {
-    requireValue(object(item) && text(item.id, 500) && !!item.id && !ids.has(item.id) && ['background', 'card_note', 'abstract'].includes(String(item.kind)) && text(item.title, 2000) && text(item.text, 120000) && text(item.version, 200), '研究材料内容或版本无效。');
+    requireValue(object(item) && text(item.id, 500) && !!item.id && !ids.has(item.id) && ['background', 'card_note', 'abstract', 'discussion'].includes(String(item.kind)) && text(item.title, 2000) && text(item.text, 120000) && text(item.version, 200), '研究材料内容或版本无效。');
     ids.add(item.id);
     requireValue(item.resourceRef === undefined || ref(item.resourceRef), '研究材料引用无效。');
     requireValue(item.url === undefined || url(item.url), '研究材料链接无效。');

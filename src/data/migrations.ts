@@ -4,7 +4,7 @@ import { ensurePaneLayout, validatePaneLayout, syncPaneSession } from '../servic
 import { boardSnapshot, parseBoardPlan, validateBoardContext, validateBoardHistory, validateBoardSnapshot } from '../domain/board-history';
 import { validateDrawingRef } from '../domain/drawing';
 import { validateDrawingQuestion } from '../domain/drawing-question';
-import { validateResearchData } from '../domain/research';
+import { validateResearchData, validateResearchMaterials } from '../domain/research';
 import { validateResearchLiteratureSearch } from '../domain/research-agent';
 import { validateChatImages } from '../domain/chat-images';
 import type { ResearchViewId, Session, WorkspaceData } from '../domain/types';
@@ -130,7 +130,9 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     for (const search of conversation.literatureSearches ?? []) if (search.status === 'searching') { search.status = 'interrupted'; search.error = '检索因页面重新加载而中断，可按原查询重试。'; }
     if (conversation.boardSuggestionRequestId !== undefined && typeof conversation.boardSuggestionRequestId !== 'string' || conversation.boardSuggestionDismissed !== undefined && typeof conversation.boardSuggestionDismissed !== 'boolean') throw new Error('白板建议状态损坏。');
     if (conversation.boardSkill !== undefined && (!record(conversation.boardSkill) || typeof conversation.boardSkill.boardId !== 'string' || !['board', 'research'].includes(conversation.boardSkill.scope) || conversation.boardSkill.allowNewCards !== undefined && typeof conversation.boardSkill.allowNewCards !== 'boolean')) throw new Error('白板技能选择损坏，未覆盖现有数据。');
-    if (conversation.anchor !== undefined && (!record(conversation.anchor) || !['card', 'board'].includes(conversation.anchor.kind) || typeof conversation.anchor.id !== 'string')) throw new Error('会话所属卡片或白板损坏，未覆盖现有数据。');
+    if (conversation.anchor !== undefined && (!record(conversation.anchor) || !['card', 'board'].includes(conversation.anchor.kind) || typeof conversation.anchor.id !== 'string')
+      || conversation.promoted !== undefined && typeof conversation.promoted !== 'boolean') throw new Error('会话所属卡片或白板损坏，未覆盖现有数据。');
+    if (conversation.carried !== undefined) validateResearchMaterials(conversation.carried);
     if (!Array.isArray(conversation.contextIds) || !Array.isArray(conversation.requestIds))
       throw new Error('对话数据不完整，未覆盖现有数据。');
     conversation.title ??= '阅读对话';

@@ -333,7 +333,7 @@ export type ContextSnapshot = {
 };
 export type ResearchMaterial = {
   id: string;
-  kind: 'background' | 'card_note' | 'abstract';
+  kind: 'background' | 'card_note' | 'abstract' | 'discussion';
   title: string;
   text: string;
   version: string;
@@ -593,6 +593,10 @@ export type Conversation = {
   boardSkill?: { boardId: string; scope: 'board' | 'research'; allowNewCards?: boolean };
   /** The card or board this thread discusses; asking from it again continues here. */
   anchor?: { kind: 'card' | 'board'; id: string };
+  /** An anchored thread lifted into the main list; it stays linked to its card or board. */
+  promoted?: boolean;
+  /** Answers carried in from other discussions, sent with the next question as data, not evidence. */
+  carried?: ResearchMaterial[];
   boardSuggestionRequestId?: string;
   boardSuggestionDismissed?: boolean;
 };
