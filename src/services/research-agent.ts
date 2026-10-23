@@ -113,6 +113,8 @@ export function researchConversationLists(data: WorkspaceData, researchId: strin
   const listed = Object.values(data.conversations)
     .filter(item => item.researchId === researchId && !item.archived && (item.inlineSource?.operation ?? 'question') === 'question')
     .sort((a, b) => activityAt(data, b).localeCompare(activityAt(data, a)));
+  const anchorKey = (item: Conversation) => item.anchor && `${item.anchor.kind}:${item.anchor.id}`, totals = new Map<string, number>(), seen = new Map<string, number>();
+  for (const item of listed) { const key = anchorKey(item); if (key) totals.set(key, (totals.get(key) ?? 0) + 1); }
   for (const conversation of listed) {
     const anchor = discussionAnchor(conversation), title = conversation.title?.trim() || '新会话';
     if (!anchor) { if (matches(title)) main.push(conversation); continue; }
@@ -120,11 +122,15 @@ export function researchConversationLists(data: WorkspaceData, researchId: strin
     const label = anchor.kind === 'card' ? data.cards[anchor.id]?.title ?? '已移除的卡片'
       : anchor.kind === 'board' ? data.boards[anchor.id]?.title ?? '已移除的白板'
       : `第 ${conversation.inlineSource!.pageIndex + 1} 页 · ${quote ? quote.slice(0, 40) : '区域'}`;
+    // Newest first; when one card or board has several threads, number them oldest = 1.
+    const key = anchorKey(conversation), total = key ? totals.get(key)! : 1, index = key ? seen.get(key) ?? 0 : 0;
+    if (key) seen.set(key, index + 1);
+    const numbered = total > 1 ? `${label} · ${total - index}` : label;
     const group = anchor.kind === 'card' ? '卡片' : anchor.kind === 'board' ? '白板' : data.documents[anchor.id]?.title ?? '已移除的资料';
     if (!matches(label, title, group)) continue;
-    const key = anchor.kind === 'document' ? `document:${anchor.id}` : anchor.kind;
-    if (!groups.has(key)) groups.set(key, { label: group, items: [] });
-    groups.get(key)!.items.push({ conversation, label });
+    const groupKey = anchor.kind === 'document' ? `document:${anchor.id}` : anchor.kind;
+    if (!groups.has(groupKey)) groups.set(groupKey, { label: group, items: [] });
+    groups.get(groupKey)!.items.push({ conversation, label: numbered });
   }
   return { main, discussions: [...groups.values()] };
 }
@@ -136,6 +142,39 @@ export function openDiscussion(researchId: string, conversationId: string) {
     session.panel.aiView = 'chat';
     if (session.agentChat?.mode !== 'float') session.agentChat = { ...session.agentChat, mode: 'side' };
   });
+}
+
+export function destinationLabel(data: WorkspaceData, conversation: Conversation) {
+  const anchor = conversation.anchor;
+  if (anchor?.kind === 'card') return `卡片「${data.cards[anchor.id]?.title ?? '已移除的卡片'}」的讨论`;
+  if (anchor?.kind === 'board') return `白板「${data.boards[anchor.id]?.title ?? '已移除的白板'}」的讨论`;
+  return `会话「${conversation.title?.trim() || '新会话'}」`;
+}
+/** Send the unsent message somewhere else: text, attachments and focus move together; histories stay where they are. */
+export function routeResearchDraft(researchId: string, target: 'new' | string) {
+  const data = workspace.getState().data, source = getActiveConversation(data, researchId);
+  if (!source || !isResearchConversation(data, source)) throw new Error('当前会话不能改道，请新建会话后再试。');
+  const destination = target === 'new' ? undefined : data.conversations[target];
+  if (target !== 'new' && (!destination || destination.id === source.id || destination.researchId !== researchId || destination.archived || !isResearchConversation(data, destination))) throw new Error('目标会话不可用，未移动草稿。');
+  // Check before creating anything so a refused move leaves no empty conversation behind.
+  const images = [...(destination?.chatImages ?? []), ...(source.chatImages ?? [])];
+  if (source.drawingQuestion && destination?.drawingQuestion) throw new Error('目标会话已有待发送的绘图选区，请先在那里发送或移除，草稿未移动。');
+  if (images.length + (source.drawingQuestion || destination?.drawingQuestion ? 1 : 0) > CHAT_IMAGE_LIMITS.maxImages) throw new Error('合并后超过每条消息 4 张图片（绘图选区占一张），草稿未移动。');
+  const id = destination?.id ?? createResearchConversation(researchId, source.connectionId, { navigate: false });
+  workspace.updateData(next => {
+    const from = next.conversations[source.id], to = next.conversations[id];
+    if (!destination && from.anchor) Object.assign(to, { anchor: { ...from.anchor }, title: from.title });
+    to.input = [to.input?.trim(), from.input?.trim()].filter(Boolean).join('\n\n');
+    if (images.length) to.chatImages = images;
+    if (from.drawingQuestion) { to.drawingQuestion = from.drawingQuestion; delete to.researchFocus; }
+    else if (from.researchFocus && !to.drawingQuestion) to.researchFocus = from.researchFocus;
+    from.input = ''; delete from.chatImages; delete from.drawingQuestion; delete from.researchFocus;
+    // A thread that only carried this draft would linger empty in the list; archive keeps it recoverable.
+    if (!from.requestIds.length) from.archived = true;
+  });
+  workspace.selectConversation(researchId, id, { surface: 'workbench' });
+  workspace.updateData(next => { next.sessions[researchId].panel.aiView = 'chat'; });
+  return id;
 }
 
 export function openResearchConversation(researchId: string, conversationId: string, options: { navigate?: boolean } = {}) {

@@ -2,7 +2,7 @@
 
 白板新增“绘图”模式，使用开源 Excalidraw 直接画笔、形状、文字、箭头和图片，卡片与原文入口继续复用工作区实体。字体随应用本地打包。右侧 AI 的标题、材料和输入工具已压缩，腾出更多对话高度。实现范围与验证见[绘图](docs/verification/drawing/README.md)、[AI 空间](docs/verification/ai-space-expanded/README.md)及[最新 main 集成](docs/verification/main-integration/README.md)。
 
-**自绘图也可以继续问 Agent：** 在 Agent 工作台的白板“绘图”中框选内容，点击“问 Agent”即进入对应讨论并聚焦输入框：只选一张卡片时进入这张卡片的讨论（已有则继续），其他选择进入本白板的讨论；选区预览附在输入框上，核对后输入问题发送。这类讨论和原文旁问答不挤占左栏会话列表，收在下方"讨论"分组里，卡片和白板也会显示讨论轮数，点一下就能回到讨论。规则见[会话归属](docs/agent-native-evolution/conversation-redesign/conversation-model.md)；不强制建卡片，不追加研究 PDF。当前图片链已实测本机 Codex，其他连接按实际能力提示。历史保存当轮图片与所选卡片正文，修改画布后仍可重试。[实际能力与验收](docs/agent-native-evolution/implementation/drawing-agent/README.md)
+**自绘图也可以继续问 Agent：** 在 Agent 工作台的白板“绘图”中框选内容，点击“问 Agent”即进入对应讨论并聚焦输入框：只选一张卡片时进入这张卡片的讨论（已有则继续），其他选择进入本白板的讨论；选区预览附在输入框上，核对后输入问题发送。这类讨论和原文旁问答不挤占左栏会话列表，收在下方"讨论"分组里，卡片和白板也会显示讨论轮数，点一下就能回到讨论。输入框上方标明"将发到"哪里，可一次改成新开讨论或发到某个研究会话，只移动未发送内容。规则见[会话归属](docs/agent-native-evolution/conversation-redesign/conversation-model.md)；不强制建卡片，不追加研究 PDF。当前图片链已实测本机 Codex，其他连接按实际能力提示。历史保存当轮图片与所选卡片正文，修改画布后仍可重试。[实际能力与验收](docs/agent-native-evolution/implementation/drawing-agent/README.md)
 
 默认提供 **连续研究工作区**：左侧紧凑会话列表，同一段问答可在完整视图、资源侧边和浮窗之间移动，草稿与历史保持；阅读时选中文字或区域，可就地提问、翻译或整理摘要卡片，原处回查记录。固定顶栏“卡片与摘录”打开独立笔记浮窗，不必滚到论文底部。已连接的本机 Codex 可查阅本研究 PDF 并形成带引用草稿，原标签分屏、Excalidraw 与经典工作台保留。其他连接沿用实际能力，不宣称具有 Codex 的研究工具。[本轮实现与验证边界](docs/verification/continuous-workspace/README.md)。
 

@@ -7,7 +7,7 @@ import { drawingSnapshotContent } from '../../src/domain/drawing-question';
 import type { ResearchAgentArtifact, ResearchAgentEvent, ResearchAgentSource, ResearchLiteratureSearch } from '../../src/domain/research-agent';
 import type { AIRequest, ChatImageAttachment, Draft } from '../../src/domain/types';
 import { loadPdfDocument } from '../../src/services/pdf';
-import { applyResearchSuggestion, changeResearchAgent, createResearchConversation, DEFAULT_IMAGE_PROMPT, openResearchConversation, clearResearchFocus, collectResearchSources, focusResearchResource, keepResearchDraft, stopResearchRun, streamResearchRun, submitResearchRun, undoResearchSuggestion, validateResearchArtifact } from '../../src/services/research-agent';
+import { applyResearchSuggestion, routeResearchDraft, changeResearchAgent, createResearchConversation, DEFAULT_IMAGE_PROMPT, openResearchConversation, clearResearchFocus, collectResearchSources, focusResearchResource, keepResearchDraft, stopResearchRun, streamResearchRun, submitResearchRun, undoResearchSuggestion, validateResearchArtifact } from '../../src/services/research-agent';
 import { workspace } from '../../src/services/workspace';
 
 vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace: vi.fn(), saveMigrationBackup: vi.fn(), getAsset: vi.fn(), putAsset: vi.fn(), contentHash: vi.fn() }));
@@ -747,5 +747,38 @@ describe('会话字段持久恢复', () => {
     expect(state().sessions[researchId].agentFocus).toBeUndefined();
     expect(state().conversations[conversationId].researchFocus?.title).toBe('旧会话目标');
     expect(vi.mocked(saveWorkspace).mock.calls.at(-1)?.[0].conversations[conversationId].researchFocus?.title).toBe('旧会话目标');
+  });
+});
+
+describe('草稿改道：将发到', () => {
+  const image = (n: number): ChatImageAttachment => ({ assetId: `chat-image-${n}`, hash: String(n).repeat(64).slice(0, 64), name: `${n}.png`, mimeType: 'image/png', size: 10 });
+  it('新开讨论继承卡片归属并带走文字、图片和绘图选区，原会话只留历史', async () => {
+    const question = await drawingQuestionFixture();
+    workspace.updateData(data => Object.assign(data.conversations[conversationId], { anchor: { kind: 'card', id: 'card-a' }, title: '卡片：甲', chatImages: [image(1)], drawingQuestion: question, requestIds: [] }));
+    const id = routeResearchDraft(researchId, 'new');
+    expect(id).not.toBe(conversationId);
+    expect(state().sessions[researchId].activeConversationId).toBe(id);
+    expect(state().conversations[id]).toMatchObject({ anchor: { kind: 'card', id: 'card-a' }, title: '卡片：甲', input: '整理研究资料', chatImages: [image(1)], drawingQuestion: question });
+    expect(state().conversations[conversationId]).toMatchObject({ input: '' });
+    expect(state().conversations[conversationId].chatImages).toBeUndefined(); expect(state().conversations[conversationId].drawingQuestion).toBeUndefined();
+    expect(state().conversations[conversationId].archived).toBe(true);
+  });
+  it('发到已有研究会话时合并文字与图片；冲突或超限时不移动、不新建', async () => {
+    const other = createResearchConversation(researchId, 'codex', { navigate: false });
+    workspace.updateData(data => { data.conversations[other].input = '那边的草稿'; data.conversations[other].chatImages = [image(2), image(3)]; data.conversations[conversationId].chatImages = [image(1)]; data.sessions[researchId].activeConversationId = conversationId; });
+    expect(routeResearchDraft(researchId, other)).toBe(other);
+    expect(state().conversations[other].input).toBe('那边的草稿\n\n整理研究资料');
+    expect(state().conversations[other].chatImages!.map(item => item.assetId)).toEqual(['chat-image-2', 'chat-image-3', 'chat-image-1']);
+    expect(state().conversations[conversationId].archived).toBe(true);
+    // Conflicts are refused before anything is created or moved.
+    const third = createResearchConversation(researchId, 'codex', { navigate: false }), question = await drawingQuestionFixture();
+    workspace.updateData(data => { data.conversations[third].drawingQuestion = question; data.conversations[other].drawingQuestion = question; data.sessions[researchId].activeConversationId = other; });
+    const count = Object.keys(state().conversations).length, before = state().conversations[other];
+    expect(() => routeResearchDraft(researchId, third)).toThrow('已有待发送的绘图选区');
+    workspace.updateData(data => { delete data.conversations[third].drawingQuestion; data.conversations[third].chatImages = [image(4), image(5)]; });
+    expect(() => routeResearchDraft(researchId, third)).toThrow('超过每条消息 4 张图片');
+    expect(Object.keys(state().conversations)).toHaveLength(count);
+    expect(state().conversations[other]).toEqual(before);
+    expect(state().sessions[researchId].activeConversationId).toBe(other);
   });
 });

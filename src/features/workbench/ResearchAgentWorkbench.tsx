@@ -10,6 +10,7 @@ import { hasDrawingText, removeDrawingQuestion, setDrawingQuestionMode } from '.
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { SourceRecommendations } from '../ai/SourceRecommendations';
 import { DrawingQuestionPreview } from './DrawingQuestionPreview';
+import { DraftRoute } from './DraftRoute';
 import { ResearchLiteratureResults } from './ResearchLiteratureResults';
 import { VoiceInput } from '../ai/VoiceInput';
 import { ChatImagePreview } from './ChatImagePreview';
@@ -149,6 +150,8 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
   return <section className="research-agent-dock" aria-label="研究 Agent">
     {error && <p className="research-agent-error" role="alert">{error}</p>}
     {focus && !drawingQuestion && <div className="research-agent-focus"><span>围绕：{focus.title}</span><button aria-label="清除追问对象" onClick={() => clearResearchFocus(researchId)}><X size={14}/></button></div>}
+    {/* Only while something is ready to send, so an idle chat keeps its full height. */}
+    {conversation && !nativeReadOnly && (!!text.trim() || chatImages.length > 0 || !!drawingQuestion) && <DraftRoute researchId={researchId} onError={setError}/>}
     <form className={`research-agent-composer${draggingImages ? ' is-dragging-images' : ''}`} aria-busy={!!running || pendingImages > 0} onDragEnter={event => { if (Array.from(event.dataTransfer.items).some(item => item.kind === 'file' && item.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); setDraggingImages(true); } }} onDragOver={event => { if (Array.from(event.dataTransfer.items).some(item => item.kind === 'file' && item.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); setDraggingImages(true); } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDraggingImages(false); }} onDrop={event => { setDraggingImages(false); const files = Array.from(event.dataTransfer.files); if (files.some(file => file.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); if (!nativeReadOnly) void addImages(files); } }} onSubmit={event => { event.preventDefault(); if (!running && !nativeReadOnly && !attachmentBlocked) void send(); }}>
       <input ref={imagePicker} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden aria-label="选择图片文件" onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void addImages(files); }}/>
       {!!chatImages.length && <ChatImagePreview images={chatImages} onRemove={assetId => removeChatImage(researchId, assetId)}/>}

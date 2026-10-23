@@ -233,6 +233,31 @@ test('单张卡片一键进入该卡片讨论：当前会话不可用也不报�
   await main(page).getByRole('button', { name: '进入这张卡片的讨论（1 轮）', exact: true }).click();
   await expect.poll(async () => (await data(page)).sessions['research-a'].activeConversationId).toBe(id);
   await page.screenshot({ path: `${shots}/card-layout-discussion-badge-1440.png` });
+
+  // "将发到" names the destination; one choice moves the unsent text to a new thread on the card or to another conversation.
+  await input(page).fill('换个地方问');
+  const route = page.getByRole('button', { name: '将发到：卡片「相关性是检索收益的前提」的讨论。改发到别处', exact: true });
+  await route.click();
+  const menu = page.getByRole('menu', { name: '改发到', exact: true });
+  await expect(menu.getByRole('menuitem', { name: '另一会话 B', exact: true })).toBeVisible();
+  await page.screenshot({ path: `${shots}/draft-route-menu-1440.png` });
+  await menu.getByRole('menuitem', { name: '新开讨论（这张卡片）', exact: true }).click();
+  await expect(input(page)).toHaveValue('换个地方问'); await expect(input(page)).toBeFocused();
+  const routed = await data(page), fresh = routed.sessions['research-a'].activeConversationId!;
+  expect(fresh).not.toBe(id); expect(routed.conversations[fresh].anchor).toEqual({ kind: 'card', id: 'card-a' });
+  expect(routed.conversations[id].input).toBe(''); expect(routed.conversations[id].requestIds).toHaveLength(1);
+  await expect(list.getByRole('button', { name: '打开讨论：相关性是检索收益的前提 · 2', exact: true })).toBeVisible();
+  await expect(list.getByRole('button', { name: '打开讨论：相关性是检索收益的前提 · 1', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /^将发到：卡片「相关性是检索收益的前提」的讨论/ }).click();
+  await menu.getByRole('menuitem', { name: '另一会话 B', exact: true }).click();
+  await expect(page.getByRole('button', { name: '将发到：会话「另一会话 B」。改发到别处', exact: true })).toBeVisible();
+  await expect(input(page)).toHaveValue('OTHER_SESSION_SECRET_INPUT\n\n换个地方问');
+  const moved = await data(page);
+  expect(moved.sessions['research-a'].activeConversationId).toBe(B); expect(moved.conversations[fresh]).toMatchObject({ input: '', archived: true });
+  // The thread that only carried the draft is archived instead of lingering empty.
+  await expect(list.getByRole('button', { name: '打开讨论：相关性是检索收益的前提', exact: true })).toBeVisible();
+  await expect(list.getByRole('button', { name: '打开讨论：相关性是检索收益的前提 · 2', exact: true })).toHaveCount(0);
+  await page.screenshot({ path: `${shots}/draft-routed-to-conversation-1440.png` });
 });
 
 test('失败与重试继续使用原图快照，即使白板后来改变', async ({ page }) => {
