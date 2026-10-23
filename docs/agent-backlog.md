@@ -307,6 +307,8 @@ T4 和 T5 可先基于 T0 的同一组样例做隔离视图，真实数据集成
 
 ## T7 全链路验收
 
+2026-10-23 选区研究增量仍处于[方案与隔离原型](agent-native-evolution/conversation-redesign/selection-context.md)阶段。正式接入待办：复用 ReaderPopover 的提问/翻译/选区摘要入口；稳定 SourceAnchor 与可回查 Activity；共享 PaperBrief 的覆盖范围、单次生成、版本与请求快照；分别验证真实裁图、失败重试和刷新恢复。不要以原型测试将 T6 或这些正式接入项标为完成。
+
 负责人：主 agent 与独立验收 agent。依赖：T2–T6。
 
 固定场景：一个研究、三篇合法样例 PDF、若干证据与观点，完成“导入 → 阅读 → 证据 → 卡片 → 白板 → 结论 → 导出”。随后切换研究、刷新并恢复，检查所有引用。

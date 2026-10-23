@@ -73,6 +73,19 @@ body { margin: 0; overflow: hidden; font-size: 14px; line-height: 1.65; -webkit-
 .sent-material { display: inline-block; margin: 7px 4px 0 0; padding: 2px 5px; border-radius: 4px; background: #e5eddd; color: #81946f; font-size: 10px; }
 .composer { flex: none; min-width: 0; margin: 0 13px 18px; padding: 10px 11px 9px; border: 1px solid #dde6d2; border-radius: 14px; background: #fff; box-shadow: 0 2px 10px rgb(53 76 33 / 3%); }
 .composer:focus-within { border-color: #b4cba4; box-shadow: 0 0 0 2px rgb(79 127 54 / 4%); }
+.reader-context-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-bottom: 8px; }
+.reader-context-line button { min-height: 23px; padding: 2px 7px; border: 0; background: #f2f5ee; color: #75866b; font-size: 10px; }
+.reader-context-line .brief-chip { background: #edf4e7; color: #5a7848; }
+.reader-context-line .brief-chip[aria-expanded=true] { background: #e5eedc; color: #4c7043; }
+.inline-paper-brief { margin-top: 16px; padding: 12px; border: 1px solid #e1e8da; border-radius: 9px; background: #f8faf5; }
+.inline-paper-brief > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.inline-paper-brief > header .icon { min-height: 23px; width: 23px; padding: 0; border: 0; background: transparent; }
+.inline-paper-brief p { margin: 10px 0; white-space: pre-wrap; font-size: 12px; line-height: 1.9; }
+.inline-paper-brief small { color: #8c9a80; font-size: 10px; line-height: 1.8; }
+.brief-wait { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 9px; color: #84917b; font-size: 10px; }
+.brief-wait button { min-height: 23px; padding: 2px 5px; border: 0; font-size: 10px; }
+.message .request-context { display: block; min-height: 0; margin-top: 8px; padding: 0; border: 0; background: none; color: #8c9c80; font-size: 10px; text-align: left; }
+.inspector.context-inspector { width: min(410px, calc(100vw - 32px)); max-height: calc(100dvh - 96px); overflow: auto; overflow-wrap: anywhere; }
 .composer textarea { display: block; width: 100%; height: 63px; min-height: 44px; max-height: 150px; padding: 0; border: 0; outline: 0; resize: vertical; background: transparent; color: #4b5d40; font-size: 13px; line-height: 1.75; }
 .composer textarea:focus-visible { outline: 0; }
 .composer-tools { display: flex; align-items: center; gap: 4px; margin-top: 7px; }

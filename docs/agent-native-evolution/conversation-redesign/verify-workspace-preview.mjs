@@ -89,8 +89,24 @@ const pickConversation = async (id, carry) => {
 };
 const localPDF = async () => {
   await tab('样例论文A');
-  await page.getByRole('button', { name: '问这段', exact: true }).click();
-  await expect(page.locator('.chat-float')).toBeVisible();
+  const text = '样例结果：B的召回更高，但同义词扩展也是变化因素，不能只据此推断证据更可靠。';
+  const mark = page.locator('.paper-copy mark');
+  await mark.scrollIntoViewIfNeeded();
+  const points = await mark.evaluate(element => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT), nodes=[];
+    let node; while ((node=walker.nextNode())) nodes.push(node);
+    const a=document.createRange(),b=document.createRange(),first=nodes[0],last=nodes.at(-1);
+    a.setStart(first,0);a.setEnd(first,1);b.setStart(last,last.length-1);b.setEnd(last,last.length);
+    const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();
+    return {x1:ar.left+.2,y1:ar.top+ar.height/2,x2:br.right-.2,y2:br.top+br.height/2};
+  });
+  await page.mouse.move(points.x1,points.y1); await page.mouse.down();
+  await page.mouse.move(points.x2,points.y2,{steps:14}); await page.mouse.up();
+  await expect.poll(()=>page.evaluate(()=>getSelection().toString().trim())).toBe(text);
+  const source = await page.evaluate(()=>{const r=getSelection().getRangeAt(0).getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}});
+  await page.getByRole('dialog',{name:'选区操作',exact:true}).getByRole('button',{name:'提问',exact:true}).click();
+  await expect(page.locator('.chat')).toBeVisible();
+  return source;
 };
 const drawRectangle = async (x, y, width, height) => {
   await page.getByRole('radio', { name: '矩形', exact: true }).locator('..').click();
@@ -235,16 +251,16 @@ try {
     await shot('pdf-side-answer');
   });
 
-  await check('PDF问这段建立具名局部会话，侧边继续保持同会话', async () => {
+  await check('PDF真实选文提问建立具名局部会话，侧边继续保持同会话', async () => {
     await reset();
     const count = await page.locator('.sidebar nav button').count();
-    await localPDF();
-    const title = '关于样例论文A · 第12页';
+    const sourceMark = await localPDF();
+    const title = '样例结果：B的召回更高，但同义词… · p12';
     await expect(page.locator('.chat-head strong')).toHaveText(title);
     await expect(page.locator('.sidebar nav button')).toHaveCount(count + 1);
     await expect(page.locator('.sidebar nav button.selected')).toHaveText(title);
     await expect(page.locator('.material')).toHaveCount(1);
-    const sourceMark = await page.locator('.paper mark').boundingBox(), float = await page.locator('.chat-float').boundingBox();
+    const float = await page.locator('.chat-float').boundingBox();
     expect(float.x + float.width <= sourceMark.x || float.x >= sourceMark.x + sourceMark.width || float.y + float.height <= sourceMark.y || float.y >= sourceMark.y + sourceMark.height, 'floating chat does not cover the selected original text').toBe(true);
     await input().fill('围绕这段继续问');
     await shot('pdf-local-float');
@@ -262,7 +278,7 @@ try {
     await send('关闭窗口后继续处理');
     await page.getByRole('button', { name: '关闭聊天', exact: true }).click();
     await expect(page.locator('.chat')).toHaveCount(0);
-    await page.waitForTimeout(1600);
+    await expect(page.locator('.sidebar nav button.selected i')).toHaveCount(1, { timeout: 6000 });
     await expect(page.locator('.resource-tabs .active')).toHaveText('样例论文A');
     await expect(page.locator('.sidebar nav button.selected i')).toHaveCount(1);
     await shot('closed-float-unread');

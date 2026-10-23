@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {briefIdentity,briefKey,createBriefCache,sampleBrief,requestSnapshot} from './workspace-paper-brief.js';
+
+let calls=0,release;
+const cache=createBriefCache(async()=>{calls++;await new Promise(resolve=>release=resolve);return sampleBrief()});
+const a=cache.prepare(briefIdentity),b=cache.prepare(briefIdentity);
+await Promise.resolve();assert.equal(calls,1);release();
+const [one,two]=await Promise.all([a,b]);
+assert.deepEqual(one,two);one.body='changed';assert.notEqual(cache.get(briefIdentity).body,'changed');
+await cache.prepare(briefIdentity);assert.equal(calls,1);
+assert.notEqual(briefKey(briefIdentity),briefKey({...briefIdentity,assetHash:'new-file'}));
+assert.notEqual(briefKey(briefIdentity),briefKey({...briefIdentity,extractionRevision:'new-text'}));
+assert.notEqual(briefKey(briefIdentity),briefKey({...briefIdentity,promptRevision:'new-prompt'}));
+let attempts=0;
+const retry=createBriefCache(async()=>{if(++attempts===1)throw new Error('模拟生成失败');return sampleBrief()});
+await assert.rejects(retry.prepare(briefIdentity),/模拟生成失败/);
+assert.equal((await retry.prepare(briefIdentity)).version,1);assert.equal(attempts,2);
+await assert.rejects(createBriefCache(async()=>({body:'',coverage:[]})).prepare(briefIdentity),/覆盖范围/);
+const source={anchorId:'a',quote:'original'},history=[{text:'own history'}],brief=sampleBrief();
+const frozen=requestSnapshot({source,history,brief});source.quote='other';history[0].text='other';brief.body='other';
+assert.equal(frozen.source.quote,'original');assert.equal(frozen.history[0].text,'own history');assert.notEqual(frozen.brief.body,'other');
+assert.equal(requestSnapshot({source,history:[],brief:null}).brief,null);
+console.log('PASS shared brief singleflight, cache isolation, retry/validation and immutable request snapshots');

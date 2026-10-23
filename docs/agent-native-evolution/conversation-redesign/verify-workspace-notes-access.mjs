@@ -73,6 +73,7 @@ const selectText = async (scope, text = '比较两种检索策略时') => {
   await page.mouse.move(points.x2, points.y2, { steps: 12 });
   await page.mouse.up();
   await expect.poll(() => page.evaluate(() => getSelection().toString().trim())).toBe(text);
+  await expect(page.getByRole('dialog', { name: '选区操作', exact: true })).toBeVisible();
 };
 const openNotes = async () => {
   if (!await panel().count()) await entry().click();
@@ -94,8 +95,8 @@ const geometry = async stage => {
 };
 const saveExcerpt = async (scope = first()) => {
   await selectText(scope);
-  const button = scope.getByRole('button', { name: '保存摘录', exact: true });
-  await button.scrollIntoViewIfNeeded();
+  await page.getByRole('dialog', { name: '选区操作', exact: true }).getByRole('button', { name: '更多选区操作', exact: true }).click();
+  const button = page.getByRole('menuitem', { name: '保存摘录', exact: true });
   const scroll = await scope.locator('.paper-scroll').evaluate(node => node.scrollTop);
   await button.click();
   expect(await scope.locator('.paper-scroll').evaluate(node => node.scrollTop)).toBe(scroll);
@@ -103,7 +104,8 @@ const saveExcerpt = async (scope = first()) => {
 };
 const viewSaved = () => page.getByRole('status').getByRole('button', { name: '查看', exact: true }).click();
 const createCard = async (title, body) => {
-  await first().getByRole('button', { name: '制作卡片', exact: true }).click();
+  await page.getByRole('dialog', { name: '选区操作', exact: true }).getByRole('button', { name: '更多选区操作', exact: true }).click();
+  await page.getByRole('menuitem', { name: '制作卡片', exact: true }).click();
   await editor().getByRole('textbox', { name: '卡片标题', exact: true }).fill(title);
   await editor().getByRole('textbox', { name: '卡片正文', exact: true }).fill(body);
   await editor().getByRole('button', { name: '保存卡片', exact: true }).click();

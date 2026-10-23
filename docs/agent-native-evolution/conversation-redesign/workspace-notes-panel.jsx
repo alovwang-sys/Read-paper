@@ -62,7 +62,8 @@ export default function NotesPanel({open,editorOpen,draft,drafts,excerpts,cards,
    <div className="notes-panel-list" ref={list}>
     {!rows.length&&(query?<div className="notes-empty"><p>没有找到匹配的笔记</p><button onClick={()=>setQuery('')}>清空搜索</button></div>:<p className="notes-empty">选中原文，保存摘录或制作卡片</p>)}
     {rows.map(row=>{
-     const key=row.kind==='card'?row.id:'new:'+row.id,hasDraft=!!drafts[key];
+     const entry=row.kind==='card'?[row.id,drafts[row.id]]:Object.entries(drafts).findLast(([,value])=>!value.id&&value.source?.id===row.id);
+     const key=entry?.[0],hasDraft=!!entry?.[1];
      return <article key={row.id} className={'reader-note '+(highlight===row.id?'note-focused':'')} data-note-kind={row.kind} data-note-id={row.id} data-document-id={row.source?.documentId} data-page-index={row.source?.pageIndex} data-evidence-id={row.card?.evidenceId||row.source?.id}>
       <div className="note-kind">{row.kind==='card'?<NotebookText size={12}/>:<FileText size={12}/>}<span>{row.kind==='card'?'卡片':'摘录'}</span>{hasDraft&&<span className="notes-draft-dot" title="未保存草稿" aria-label="未保存草稿"/>}</div>
       {row.kind==='card'?<button className="note-card-body" onClick={()=>row.source?edit(row.source,row.card):setUnavailable(row.id)}><b>{row.title}</b><span>{row.text}</span></button>:<button className={'note-quote '+(expanded[row.id]?'expanded':'')} aria-expanded={!!expanded[row.id]} onClick={()=>setExpanded(old=>({...old,[row.id]:!old[row.id]}))}>{row.text}</button>}

@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-23T09:01:04.872225+00:00",
+  "command": "node docs/agent-native-evolution/conversation-redesign/verify-paper-brief.mjs",
+  "exitCode": 0,
+  "stdout": "PASS shared brief singleflight, cache isolation, retry/validation and immutable request snapshots\n",
+  "stderr": "",
+  "sourceHashes": {
+    "workspace-paper-brief.js": "2f88f4d40fd57c020cbbcc0548ab9bf525e956e0008ecf507ad6b957b87cf830",
+    "verify-paper-brief.mjs": "f6fe7d7c7cdcebf531a458c571002f140aca9634e539cf1ac7223a26bc355700"
+  },
+  "scope": "Synthetic cache/snapshot logic, no real AI, document files or persistence"
+}

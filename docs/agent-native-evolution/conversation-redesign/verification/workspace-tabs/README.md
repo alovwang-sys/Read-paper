@@ -2,7 +2,7 @@
 
 2026-10-23。运行 `node docs/agent-native-evolution/conversation-redesign/verify-workspace-tabs.mjs`，实际 Chromium 鼠标按下、移动、松开，没有合成 drop 事件。
 
-六项通过，运行时错误为0，细节见 [results.json](results.json)：
+选区浮窗与聊天内简要最终版本上原脚本再次复跑，六项通过，运行时错误为0，细节见 [results.json](results.json)：
 
 - 组内拖拽排序，保持打开页。
 - 拖到资源主体右边缘出现半屏落点提示，放开创建对照组；标签栏靠左的落点按排序处理。
@@ -11,6 +11,8 @@
 - 普通打开只改变当前组；聊天侧边、浮窗和主区之间保留同一会话和草稿。
 - 1440×900、1280×800、1024×800下两组标签和聊天可见，无文档级横向溢出。
 
-[05-local-ask-anchor.png](05-local-ask-anchor.png)与[anchor-geometry.json](anchor-geometry.json)另验证“初始侧聊→PDF问这段”的真实状态：侧栏收起导致正文重排后重新取得高亮位置，最终浮窗和选区不相交；无可用空间则在侧边继续。白板从初始侧聊发起时保留侧栏，避免画布重排后遮盖选区。
+[05-local-ask-anchor.png](05-local-ask-anchor.png)与[anchor-geometry.json](anchor-geometry.json)保留为此前静态入口版本的独立证据，曾另验证“初始侧聊→PDF问这段”的真实状态：侧栏收起导致正文重排后重新取得高亮位置，最终浮窗和选区不相交；无可用空间则在侧边继续。白板从初始侧聊发起时保留侧栏，避免画布重排后遮盖选区。
 
 这是两组布局交互预览。正式应用应复用已有递归窗格宿主；预览不增加生产布局、真实PDF读取、模型调用或持久化。PDF/文稿拖到自己组边缘会复制视图，正文实体共享、阅读位置独立；白板会移动编辑视图，不挂两份可写 Excalidraw。关闭标签不删除资料。
+
+当前真实选文→提问的锚点回归见工作区17项；当前选区/操作历史和上下文见 [选区专项](../workspace-selection-context/README.md)。这6项脚本不含静态“问这段”入口，本轮未改脚本。

@@ -1,0 +1,158 @@
+{
+  "date": "2026-10-23T08:57:36.869Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/workspace-preview.html",
+  "scope": "隔离内存原型，真实鼠标选文/框选；译文、摘要、文章简要和回答均为合成示例。未验证真实模型、全文、OCR、真实图像裁切或刷新持久化。",
+  "checks": [
+    {
+      "name": "三尺寸真实选文浮窗就近且不出主区，五个工具可点，单纯选中/关闭不留标记",
+      "pass": true
+    },
+    {
+      "name": "翻译只作用选文，不发送/新建会话/改原文；确认后保存有原文引用的翻译笔记",
+      "pass": true
+    },
+    {
+      "name": "摘要卡片先为可编辑草稿；关闭可从原文记录续写，确认保存后不自动发送",
+      "pass": true
+    },
+    {
+      "name": "同位置复用独立会话、异位置分开；文章简要v1共用，本轮上下文只含当前位置历史",
+      "pass": true
+    },
+    {
+      "name": "文章简要在当前聊天消息流内展开；范围明确、聊天头可点，收起保草稿与原文",
+      "pass": true
+    },
+    {
+      "name": "局部A在途切到位置B，迟到只归A，保留B草稿/原文并可从A记录找回",
+      "pass": true
+    },
+    {
+      "name": "停止的提问保留原文历史入口，打开恢复原会话且不新建或重发",
+      "pass": true
+    },
+    {
+      "name": "真实纯图形区域无文字翻译禁用；文字连接禁止区域提问/摘要且不创建会话",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "blockedRequests": [],
+  "screenshots": [
+    "selection-1440.png",
+    "selection-1280.png",
+    "selection-1024.png",
+    "translation-inline.png",
+    "summary-draft.png",
+    "isolated-request-context.png",
+    "inline-brief-1440.png",
+    "inline-brief-1024.png",
+    "stopped-source-history.png",
+    "region-capability.png"
+  ],
+  "measurements": {
+    "selection-1440": {
+      "box": {
+        "x": 351,
+        "y": 306.390625,
+        "width": 320,
+        "height": 42
+      },
+      "reader": {
+        "x": 224,
+        "y": 96,
+        "width": 856,
+        "height": 804
+      },
+      "side": {
+        "x": 1080,
+        "y": 0,
+        "width": 360,
+        "height": 900
+      }
+    },
+    "selection-1280": {
+      "box": {
+        "x": 263,
+        "y": 306.390625,
+        "width": 320,
+        "height": 42
+      },
+      "reader": {
+        "x": 208,
+        "y": 96,
+        "width": 712,
+        "height": 704
+      },
+      "side": {
+        "x": 920,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "selection-1024": {
+      "box": {
+        "x": 43,
+        "y": 306.390625,
+        "width": 320,
+        "height": 42
+      },
+      "reader": {
+        "x": 0,
+        "y": 96,
+        "width": 664,
+        "height": 704
+      },
+      "side": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800
+      }
+    },
+    "sessions": {
+      "a": {
+        "anchor": "sample-paper-a|sample-paper-a-v1|11|text:9:18",
+        "id": "3"
+      },
+      "b": {
+        "anchor": "sample-paper-a|sample-paper-a-v1|11|text:75:87",
+        "id": "4"
+      },
+      "briefKey": "sample-paper-a:sample-paper-a-v1:preview-text-1:paper-brief-1:preview-1"
+    }
+  },
+  "sourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "e6b1d09a6e2ea312583e5c86889deab0e6cd1945008707c3ab48c68e8a2d5974",
+    "workspace-preview.css": "522a2733a85c8b304eb8114832fbe7bb626093e76fa5e6f43cb527e1c037ecbf",
+    "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
+    "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41",
+    "workspace-paper-notes.jsx": "4ce85bace6ad1230686c0e16e8ebe943f43f9ff90e30be609e92a051911a927d",
+    "workspace-notes-panel.jsx": "189ab43ac45f3a86b587552d0fa1d8c710c91b6d6000542437e70030355622e1",
+    "workspace-notes-panel.css": "ce63a595b49e7497e5a5fb51e38b720c06323459d73843aedf803d8c9c89a555",
+    "workspace-selection-reader.css": "ac7b738302bf2802d381ea9979f1512096a698ebcfaeb518cec037a7d6aa0979",
+    "workspace-paper-brief.js": "2f88f4d40fd57c020cbbcc0548ab9bf525e956e0008ecf507ad6b957b87cf830"
+  },
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0
+  },
+  "endSourceHashes": {
+    "workspace-preview.html": "c5f09085e93e1733b3e33f142e7861aa049d43f5b21ddc21300b5b9615128cdc",
+    "workspace-preview.jsx": "e6b1d09a6e2ea312583e5c86889deab0e6cd1945008707c3ab48c68e8a2d5974",
+    "workspace-preview.css": "522a2733a85c8b304eb8114832fbe7bb626093e76fa5e6f43cb527e1c037ecbf",
+    "workspace-preview-board.jsx": "1f95dbd2849abd6e3024691d3529325e601e052942f717c41d397f0d1f751745",
+    "workspace-preview-board.css": "5de32316d3aa1d35391754f9289869c17fdf022d564087de451e0a99893c0f2c",
+    "workspace-conversation-picker.jsx": "c086bb302222d42bfcd81525a257c984f5e12fafb73580084e85e1a31a0a2e41",
+    "workspace-paper-notes.jsx": "4ce85bace6ad1230686c0e16e8ebe943f43f9ff90e30be609e92a051911a927d",
+    "workspace-notes-panel.jsx": "189ab43ac45f3a86b587552d0fa1d8c710c91b6d6000542437e70030355622e1",
+    "workspace-notes-panel.css": "ce63a595b49e7497e5a5fb51e38b720c06323459d73843aedf803d8c9c89a555",
+    "workspace-selection-reader.css": "ac7b738302bf2802d381ea9979f1512096a698ebcfaeb518cec037a7d6aa0979",
+    "workspace-paper-brief.js": "2f88f4d40fd57c020cbbcc0548ab9bf525e956e0008ecf507ad6b957b87cf830"
+  },
+  "sourceStable": true
+}

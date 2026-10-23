@@ -404,5 +404,7 @@ declare function addContext(input: {
 
 agent 任务、模块所有权与逐项验收见 [开发任务清单](agent-backlog.md)。首版实现与测试的实际证据见 [验证记录](verification/README.md)；真实模型调用、OCR、完整撤销历史及附带原 PDF 的导出包仍为后续工作。
 
+2026-10-23 用户追加设计：选中文字或框选区域后就近提问、翻译、生成选区摘要卡片；以原文锚点聚合可找回的操作，不同位置独立会话，共用首次提问准备的文章简要。简要与官方 abstract 分开，只作有覆盖范围的背景，逐轮保存快照。当前仅更新[隔离交互原型与方案](agent-native-evolution/conversation-redesign/selection-context.md)，正式数据模型、持久化与真实模型接入未实现，不能视为正式功能完成。
+
 
 2026-10-17 知识链路实现说明：工作区升级为 schema 3；研究内入口、无全文条目、摘录整理、找依据与出处链共用现有服务。文稿 `cardRefs` 记录卡片及插入时证据，正文 `[n]` 继续指向证据。“预览引用”提供正文编号点击；“补引用”只在光标处插入编号。标识冲突的合并拒绝执行以保留来源。实际命令、三尺寸截图及验证边界见[知识链路验收](verification/knowledge-flow/README.md)。
