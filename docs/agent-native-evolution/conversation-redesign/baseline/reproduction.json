@@ -1,0 +1,69 @@
+{
+  "appVersion": "0.1.14",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sampleOnly": true,
+  "isolation": "Fresh browser context; createSeed sample PDF; five synthetic conversations; mocked project service, capabilities and run. All other /api requests intercepted. No real model or native configuration accessed.",
+  "steps": [
+    "Open synthetic research with PDF in main and conversation history at right.",
+    "Enter and send a question from the bottom composer.",
+    "Wait for mocked completed reply.",
+    "Capture PDF and history.",
+    "Open assistant selector and capture expanded configuration."
+  ],
+  "observations": {
+    "mainBefore": {
+      "kind": "document",
+      "id": "paper-a"
+    },
+    "mainAfter": {
+      "kind": "document",
+      "id": "paper-a"
+    },
+    "mockedRuns": 1,
+    "resourceStatus": "会话已有回复，可返回继续。",
+    "completedAnswerVisibleInMain": false,
+    "historyRows": [
+      {
+        "title": "下一步需要补充的证据",
+        "height": 127.875,
+        "width": 323,
+        "text": "下一步需要补充的证据需要补充对照条件、失败案例和明确的评价方法，再讨论进一步的结论。Codex10/23 12:00"
+      },
+      {
+        "title": "不同基准的性能边界",
+        "height": 127.875,
+        "width": 323,
+        "text": "不同基准的性能边界不同基准的任务和语料设置并不一致，因此不能直接把数字合并排名。Codex10/23 11:00"
+      },
+      {
+        "title": "整理可追踪的研究结论",
+        "height": 127.875,
+        "width": 323,
+        "text": "整理可追踪的研究结论每个判断保留对应原文和适用范围，尚未核查的内容继续作为研究草稿。Codex10/23 10:00"
+      },
+      {
+        "title": "比较论文中的检索条件",
+        "height": 127.875,
+        "width": 323,
+        "text": "比较论文中的检索条件当前会话受控返回：相关语料是检索收益的前提。先检查证据覆盖和评价条件，再判断是否改善可靠性。Codex10/23 09:40"
+      },
+      {
+        "title": "检索失败的主要原因",
+        "height": 127.875,
+        "width": 323,
+        "text": "检索失败的主要原因检索失败和生成失败需要分别检查，先核对检索材料与研究问题是否相关。Codex10/23 09:00"
+      }
+    ],
+    "configText": "研究 Agent\n连接\nCodex\nClaude Code\nOpenCode\n模型直连\n演示模式\n\n更换助手会开始独立话题，原会话和输入保留；不会跳到另一段旧话题。\n\nCodex 研究工具已连接。\n\n研究运行通过应用中明确保存的历史延续上下文，暂不继承原生线程、Skills 或 Plan 配置。\n\n重新检测连接",
+    "configHeight": 216,
+    "unexpectedApiPathsIntercepted": [],
+    "pageErrors": []
+  },
+  "screenshots": [
+    "01-pdf-sent-history-1440.png",
+    "02-assistant-menu-1440.png"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "sourceResponse": "docs/agent-native-evolution/conversation-redesign/review/round-03-retry-01-response.md",
+  "sourceRound": "round-03-retry-01",
+  "sourceResponseSha256": "c7f0b8326774d8b754de14f33fe69f7bf11e0826966eb09e899691f9d3ca6fc2",
+  "artifact": "docs/agent-native-evolution/conversation-redesign/claude-design-v1.html",
+  "htmlSha256": "15e1bbf49628feb9f1079459cc0404e4c71b7d89d7ad69e8460c85aa32250aba",
+  "characters": 14080,
+  "extraction": "Exact html fenced-block contents, excluding fence lines and one delimiter newline; no manual HTML edits.",
+  "actualModel": "claude-opus-5-5",
+  "createdAt": "2026-10-23T01:53:17.745040+00:00"
+}

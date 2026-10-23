@@ -1,0 +1,415 @@
+{
+  "referenceLayouts": [
+    {
+      "name": "1440x900 reference",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "overflow": false,
+      "main": {
+        "x": 224,
+        "y": 0,
+        "width": 856,
+        "height": 900,
+        "top": 0,
+        "right": 1080,
+        "bottom": 900,
+        "left": 224
+      },
+      "reference": {
+        "x": 1080,
+        "y": 0,
+        "width": 360,
+        "height": 900,
+        "top": 0,
+        "right": 1440,
+        "bottom": 900,
+        "left": 1080
+      },
+      "nonOverlapping": true,
+      "input": {
+        "x": 304,
+        "y": 778,
+        "width": 696,
+        "height": 51,
+        "top": 778,
+        "right": 1000,
+        "bottom": 829,
+        "left": 304
+      },
+      "inputReachable": true,
+      "sendReachable": true,
+      "closeReachable": true,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 900,
+        "top": 0,
+        "right": 224,
+        "bottom": 900,
+        "left": 0
+      },
+      "rows": [
+        36,
+        36,
+        36
+      ],
+      "endGap": 32.09375
+    },
+    {
+      "name": "1280x800 reference",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "overflow": false,
+      "main": {
+        "x": 224,
+        "y": 0,
+        "width": 696,
+        "height": 800,
+        "top": 0,
+        "right": 920,
+        "bottom": 800,
+        "left": 224
+      },
+      "reference": {
+        "x": 920,
+        "y": 0,
+        "width": 360,
+        "height": 800,
+        "top": 0,
+        "right": 1280,
+        "bottom": 800,
+        "left": 920
+      },
+      "nonOverlapping": true,
+      "input": {
+        "x": 272,
+        "y": 678,
+        "width": 600,
+        "height": 51,
+        "top": 678,
+        "right": 872,
+        "bottom": 729,
+        "left": 272
+      },
+      "inputReachable": true,
+      "sendReachable": true,
+      "closeReachable": true,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 800,
+        "top": 0,
+        "right": 224,
+        "bottom": 800,
+        "left": 0
+      },
+      "rows": [
+        36,
+        36,
+        36
+      ],
+      "endGap": 32.09375
+    },
+    {
+      "name": "1024x800 parallel reference",
+      "viewport": {
+        "width": 1024,
+        "height": 800
+      },
+      "overflow": false,
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 664,
+        "height": 800,
+        "top": 0,
+        "right": 664,
+        "bottom": 800,
+        "left": 0
+      },
+      "reference": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800,
+        "top": 0,
+        "right": 1024,
+        "bottom": 800,
+        "left": 664
+      },
+      "nonOverlapping": true,
+      "input": {
+        "x": 44,
+        "y": 678,
+        "width": 576,
+        "height": 51,
+        "top": 678,
+        "right": 620,
+        "bottom": 729,
+        "left": 44
+      },
+      "inputReachable": true,
+      "sendReachable": true,
+      "closeReachable": true,
+      "sidebar": {
+        "x": -252.9600067138672,
+        "y": 0,
+        "width": 248,
+        "height": 800,
+        "top": 0,
+        "right": -4.9600067138671875,
+        "bottom": 800,
+        "left": -252.9600067138672
+      },
+      "rows": [
+        36,
+        36,
+        36
+      ],
+      "endGap": 32.09375
+    },
+    {
+      "name": "1024x800 answer with parallel reference",
+      "viewport": {
+        "width": 1024,
+        "height": 800
+      },
+      "overflow": false,
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 664,
+        "height": 800,
+        "top": 0,
+        "right": 664,
+        "bottom": 800,
+        "left": 0
+      },
+      "reference": {
+        "x": 664,
+        "y": 0,
+        "width": 360,
+        "height": 800,
+        "top": 0,
+        "right": 1024,
+        "bottom": 800,
+        "left": 664
+      },
+      "nonOverlapping": true,
+      "input": {
+        "x": 44,
+        "y": 678,
+        "width": 576,
+        "height": 51,
+        "top": 678,
+        "right": 620,
+        "bottom": 729,
+        "left": 44
+      },
+      "inputReachable": true,
+      "sendReachable": true,
+      "closeReachable": true,
+      "sidebar": {
+        "x": -252.9600067138672,
+        "y": 0,
+        "width": 248,
+        "height": 800,
+        "top": 0,
+        "right": -4.9600067138671875,
+        "bottom": 800,
+        "left": -252.9600067138672
+      },
+      "rows": [
+        36,
+        36,
+        36
+      ],
+      "endGap": 31.640625
+    },
+    {
+      "name": "900x800 overlay reference",
+      "viewport": {
+        "width": 900,
+        "height": 800
+      },
+      "overflow": false,
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 900,
+        "height": 800,
+        "top": 0,
+        "right": 900,
+        "bottom": 800,
+        "left": 0
+      },
+      "reference": {
+        "x": 540,
+        "y": 58,
+        "width": 360,
+        "height": 742,
+        "top": 58,
+        "right": 900,
+        "bottom": 800,
+        "left": 540
+      },
+      "nonOverlapping": false,
+      "input": {
+        "x": 102,
+        "y": 678,
+        "width": 696,
+        "height": 51,
+        "top": 678,
+        "right": 798,
+        "bottom": 729,
+        "left": 102
+      },
+      "inputReachable": true,
+      "sendReachable": true,
+      "closeReachable": true,
+      "sidebar": {
+        "x": -252.9600067138672,
+        "y": 0,
+        "width": 248,
+        "height": 800,
+        "top": 0,
+        "right": -4.9600067138671875,
+        "bottom": 800,
+        "left": -252.9600067138672
+      },
+      "rows": [
+        36,
+        36,
+        36
+      ],
+      "endGap": 31.640625
+    },
+    {
+      "name": "1101x800 folded-sidebar parallel reference",
+      "viewport": {
+        "width": 1101,
+        "height": 800
+      },
+      "overflow": false,
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 741,
+        "height": 800,
+        "top": 0,
+        "right": 741,
+        "bottom": 800,
+        "left": 0
+      },
+      "reference": {
+        "x": 741,
+        "y": 0,
+        "width": 360,
+        "height": 800,
+        "top": 0,
+        "right": 1101,
+        "bottom": 800,
+        "left": 741
+      },
+      "nonOverlapping": true,
+      "input": {
+        "x": 44,
+        "y": 678,
+        "width": 653,
+        "height": 51,
+        "top": 678,
+        "right": 697,
+        "bottom": 729,
+        "left": 44
+      },
+      "inputReachable": true,
+      "sendReachable": true,
+      "closeReachable": true,
+      "sidebar": {
+        "x": -252.9600067138672,
+        "y": 0,
+        "width": 248,
+        "height": 800,
+        "top": 0,
+        "right": -4.9600067138671875,
+        "bottom": 800,
+        "left": -252.9600067138672
+      },
+      "rows": [
+        36,
+        36,
+        36
+      ],
+      "endGap": 32.1875
+    },
+    {
+      "name": "1248x800 visible-sidebar parallel reference",
+      "viewport": {
+        "width": 1248,
+        "height": 800
+      },
+      "overflow": false,
+      "main": {
+        "x": 224,
+        "y": 0,
+        "width": 664,
+        "height": 800,
+        "top": 0,
+        "right": 888,
+        "bottom": 800,
+        "left": 224
+      },
+      "reference": {
+        "x": 888,
+        "y": 0,
+        "width": 360,
+        "height": 800,
+        "top": 0,
+        "right": 1248,
+        "bottom": 800,
+        "left": 888
+      },
+      "nonOverlapping": true,
+      "input": {
+        "x": 272,
+        "y": 678,
+        "width": 568,
+        "height": 51,
+        "top": 678,
+        "right": 840,
+        "bottom": 729,
+        "left": 272
+      },
+      "inputReachable": true,
+      "sendReachable": true,
+      "closeReachable": true,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 800,
+        "top": 0,
+        "right": 224,
+        "bottom": 800,
+        "left": 0
+      },
+      "rows": [
+        36,
+        36,
+        36
+      ],
+      "endGap": 32.1875
+    }
+  ],
+  "normal1200Sidebar": {
+    "position": "static",
+    "x": 0,
+    "width": 224
+  }
+}

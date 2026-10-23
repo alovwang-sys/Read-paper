@@ -1,0 +1,96 @@
+{
+  "date": "2026-10-23T02:17:08.481Z",
+  "url": "http://127.0.0.1:5173/docs/agent-native-evolution/conversation-redesign/prototype.html",
+  "scope": "本地静态交互原型；合成回答，不调用真实模型",
+  "checks": [
+    {
+      "name": "1440×900：无横向溢出、输入/切换/发送可见、会话36px单行",
+      "pass": true
+    },
+    {
+      "name": "1280×800：无横向溢出、输入/切换/发送可见、会话36px单行",
+      "pass": true
+    },
+    {
+      "name": "1024×800：无横向溢出、输入/切换/发送可见、会话36px单行",
+      "pass": true
+    },
+    {
+      "name": "发送即时进中央，输入清空，示例回答留在本会话",
+      "pass": true
+    },
+    {
+      "name": "普通换助手保留会话/草稿，旧回答仍标原助手",
+      "pass": true
+    },
+    {
+      "name": "不同会话独立输入，往返恢复草稿",
+      "pass": true
+    },
+    {
+      "name": "引用右侧打开，全文同页，加入材料发送回会话并可返回全文",
+      "pass": true
+    },
+    {
+      "name": "白板加入材料发送后可回原白板，文稿编辑后往返保留",
+      "pass": true
+    },
+    {
+      "name": "发出后切换会话，迟到回复不抢当前会话且有未读标记",
+      "pass": true
+    },
+    {
+      "name": "发出后停留同会话白板，迟到回复不抢主区，查看新回复可返回",
+      "pass": true
+    },
+    {
+      "name": "模拟失败一轮重试，不重复用户问题，不覆盖后续草稿",
+      "pass": true
+    },
+    {
+      "name": "助手菜单Esc/外部点击关闭，OpenCode模拟连接后可选择",
+      "pass": true
+    },
+    {
+      "name": "旧原生记录换助手建立新会话，复制原稿，原会话仍保留",
+      "pass": true
+    },
+    {
+      "name": "收录文献入资料库且去重，白板卡片不增加",
+      "pass": true
+    },
+    {
+      "name": "1024px引用与回答并列，输入/发送命中且发送后保留参考",
+      "pass": true
+    },
+    {
+      "name": "900/901/1100/1101/1247/1248px引用布局边界与实际发送",
+      "pass": true
+    }
+  ],
+  "screenshots": [
+    "chat-1440x900.png",
+    "reference-1440x900.png",
+    "chat-1280x800.png",
+    "reference-1280x800.png",
+    "chat-1024x800.png",
+    "reference-1024x800.png",
+    "sent-and-answered.png",
+    "late-reply-on-board.png",
+    "collected-library-not-board.png",
+    "sent-1024x800.png",
+    "reference-boundary-900x800.png",
+    "reference-boundary-901x800.png",
+    "reference-boundary-1100x800.png",
+    "reference-boundary-1101x800.png",
+    "reference-boundary-1247x800.png",
+    "reference-boundary-1248x800.png"
+  ],
+  "errors": [],
+  "blockedRequests": [],
+  "summary": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0
+  }
+}

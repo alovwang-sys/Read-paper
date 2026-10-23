@@ -1,0 +1,280 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01VAQLvUGcD6BQ6VTQAZaYyg",
+        "fileName": "screenshot-01.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01VAQLvUGcD6BQ6VTQAZaYyg",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01SKeG6pgcCpyP99w1gKokR4",
+        "fileName": "screenshot-02.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01SKeG6pgcCpyP99w1gKokR4",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_0178KafjHHiMqZH4KcfyWPAd",
+        "fileName": "screenshot-03.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_0178KafjHHiMqZH4KcfyWPAd",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_016SXdSxRGQ1onaHX3i4n8B4",
+        "fileName": "screenshot-04.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_016SXdSxRGQ1onaHX3i4n8B4",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01CMUuTYeksozrZD5XuYwfte",
+        "fileName": "screenshot-05.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01CMUuTYeksozrZD5XuYwfte",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01USynHkrveTaR5aLeVFbJyy",
+        "fileName": "screenshot-06.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01USynHkrveTaR5aLeVFbJyy",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "tool_use"
+    ],
+    "toolUses": [
+      {
+        "name": "Read",
+        "id": "toolu_01K2ztJoTG7rzafdfybmq6dT",
+        "fileName": "screenshot-07.png"
+      }
+    ]
+  },
+  {
+    "type": "user",
+    "blockTypes": [
+      "tool_result"
+    ],
+    "toolResults": [
+      {
+        "toolUseId": "toolu_01K2ztJoTG7rzafdfybmq6dT",
+        "isError": false,
+        "imageBlocks": 1
+      }
+    ]
+  },
+  {
+    "type": "rate_limit_event",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "claude-opus-5-5",
+    "blockTypes": [
+      "text"
+    ]
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "blockTypes": [],
+    "is_error": false,
+    "num_turns": 8,
+    "duration_ms": 38955
+  }
+]

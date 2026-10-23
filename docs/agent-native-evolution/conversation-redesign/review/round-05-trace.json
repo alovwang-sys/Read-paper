@@ -1,0 +1,22 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "blockTypes": []
+  },
+  {
+    "type": "assistant",
+    "model": "<synthetic>",
+    "blockTypes": [
+      "text"
+    ]
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "blockTypes": [],
+    "is_error": true,
+    "num_turns": 1,
+    "duration_ms": 1095
+  }
+]
