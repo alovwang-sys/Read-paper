@@ -1,0 +1,265 @@
+
+Running 4 tests using 1 worker
+
+(node:49104) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/4] tests/e2e/conversation-renaming.spec.ts:20:1 › 侧栏改名支持取消、空名、中文组合输入与Enter，首轮回答和刷新不覆盖“新会话”
+[2/4] tests/e2e/conversation-renaming.spec.ts:69:1 › 卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持
+[3/4] tests/e2e/conversation-renaming.spec.ts:101:1 › 原文旁问答可就地改名，原文位置、回答与未发草稿刷新后保持
+[4/4] tests/e2e/conversation-renaming.spec.ts:129:1 › 经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿
+  4 passed (18.1s)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/conversation-renaming.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "conversation-renaming.spec.ts",
+      "file": "conversation-renaming.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "侧栏改名支持取消、空名、中文组合输入与Enter，首轮回答和刷新不覆盖“新会话”",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6769,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:33:22.185Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-0057d8cd3846ab496522",
+          "file": "conversation-renaming.spec.ts",
+          "line": 20,
+          "column": 1
+        },
+        {
+          "title": "卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4768,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:33:29.175Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-bab72fce7da2a443574b",
+          "file": "conversation-renaming.spec.ts",
+          "line": 69,
+          "column": 1
+        },
+        {
+          "title": "原文旁问答可就地改名，原文位置、回答与未发草稿刷新后保持",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4234,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:33:33.950Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-7f39fba6a094fae4eade",
+          "file": "conversation-renaming.spec.ts",
+          "line": 101,
+          "column": 1
+        },
+        {
+          "title": "经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1830,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:33:38.190Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-66444ea154af5c035967",
+          "file": "conversation-renaming.spec.ts",
+          "line": 129,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T14:33:21.930Z",
+    "duration": 18135.126,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

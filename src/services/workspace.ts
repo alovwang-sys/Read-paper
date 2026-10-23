@@ -846,7 +846,10 @@ export const workspace = {
   },
   renameConversation(conversationId: string, title: string) {
     if (!title.trim()) throw new Error('会话名称不能为空。');
-    workspace.updateData(data => { data.conversations[conversationId].title = title.trim().slice(0, 120); });
+    const conversation = state.data.conversations[conversationId];
+    if (!conversation) throw new Error('会话不存在。');
+    if (conversation.deletedAt) throw new Error('此会话已删除，请先恢复后重命名。');
+    workspace.updateData(data => { Object.assign(data.conversations[conversationId], { title: title.trim().slice(0, 120), titleEdited: true }); });
   },
   archiveConversation(conversationId: string, archived: boolean) {
     const conversation = state.data.conversations[conversationId];

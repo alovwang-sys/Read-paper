@@ -195,10 +195,11 @@ test('干净新会话、历史搜索重命名、归档恢复及刷新持久化',
   await panel(page).getByRole('button', { name: '查看会话历史', exact: true }).click();
   await panel(page).getByLabel('搜索会话').fill(question);
   await expect(panel(page).locator('.ai-history-item')).toHaveCount(1);
-  await panel(page).getByRole('button', { name: '重命名', exact: true }).click();
+  await panel(page).getByRole('button', { name: /^重命名会话：/ }).click();
   const title = 'E2E 保留的论文阅读讨论';
-  await panel(page).getByLabel('对话名称').fill(title);
-  await panel(page).getByRole('button', { name: '保存名称', exact: true }).click();
+  const rename = page.getByRole('dialog', { name: '重命名会话', exact: true });
+  await rename.getByLabel('会话名称', { exact: true }).fill(title);
+  await rename.getByRole('button', { name: '保存名称', exact: true }).click();
   await panel(page).getByLabel('搜索会话').fill(title);
   await expect(panel(page).locator('.ai-history-item')).toHaveCount(1);
   await panel(page).getByRole('button', { name: '归档', exact: true }).click();

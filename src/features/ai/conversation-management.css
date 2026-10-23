@@ -1,6 +1,7 @@
-.conversation-delete-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; width: 26px; min-width: 26px; height: 27px; padding: 4px; color: #99a392; border: 0; border-radius: 5px; background: transparent; font-size: 11px; cursor: pointer; }
+.conversation-delete-button, .conversation-rename-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; width: 26px; min-width: 26px; height: 27px; padding: 4px; color: #99a392; border: 0; border-radius: 5px; background: transparent; font-size: 11px; cursor: pointer; }
 .conversation-delete-button:hover, .conversation-delete-button:focus-visible { color: #a66250; background: #f8eee9; }
-.conversation-delete-button:has(> span) { width: auto; padding-inline: 7px; }
+.conversation-rename-button:hover, .conversation-rename-button:focus-visible { color: #59774b; background: #edf3e7; }
+.conversation-delete-button:has(> span), .conversation-rename-button:has(> span) { width: auto; padding-inline: 7px; }
 .deleted-conversations-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 7px; border: 0; border-radius: 5px; background: transparent; color: #8d9c82; font-size: 11px; cursor: pointer; }
 .deleted-conversations-trigger:hover, .deleted-conversations-trigger:focus-visible { color: #59774b; background: #edf3e7; }
 .deleted-conversations-trigger.is-compact { width: 26px; height: 27px; padding: 4px; }
@@ -13,9 +14,15 @@
 .conversation-delete-copy { padding: 19px 20px 8px; }
 .conversation-delete-copy > strong { display: block; font-size: 13px; font-weight: 550; line-height: 1.7; overflow-wrap: anywhere; }
 .conversation-delete-copy > p { margin: 10px 0; color: #8c9784; font-size: 12px; line-height: 1.8; }
-.conversation-management-dialog > footer { display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 10px 20px 20px; }
-.conversation-management-dialog > footer button { min-height: 32px; padding: 6px 14px; border-radius: 6px; font-size: 12px; }
+.conversation-management-dialog > footer, .conversation-rename-form > footer { display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 10px 20px 20px; }
+.conversation-management-dialog > footer button, .conversation-rename-form > footer button { min-height: 32px; padding: 6px 14px; border-radius: 6px; font-size: 12px; }
 .conversation-management-cancel { color: #75836c; border: 1px solid #e0e6d9; background: transparent; }
+.conversation-management-save { color: #fff; border: 1px solid #608153; background: #608153; }
+.conversation-management-save:hover:not(:disabled) { background: #506e44; }
+.conversation-management-save:disabled { opacity: .45; cursor: default; }
+.conversation-rename-form > label { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px 15px; color: #75836c; font-size: 12px; }
+.conversation-rename-form input { width: 100%; min-height: 37px; padding: 8px 10px; color: #45573f; border: 1px solid #d9e2d3; border-radius: 6px; background: #fff; font-size: 13px; }
+.conversation-rename-form input:focus { outline: 2px solid #789365; outline-offset: 1px; }
 .conversation-management-danger { color: #fff; border: 1px solid #a96e58; background: #a96e58; }
 .conversation-management-danger:hover { background: #955e49; }
 .conversation-management-dialog button:focus-visible { outline: 2px solid #789365; outline-offset: 2px; }

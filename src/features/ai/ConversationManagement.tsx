@@ -1,17 +1,19 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { MessageSquare, RotateCcw, Trash2, X } from 'lucide-react';
+import { MessageSquare, Pencil, RotateCcw, Trash2, X } from 'lucide-react';
 import { useWorkspace } from '../../services/workspace';
 import './conversation-management.css';
 
-function ManagementDialog({ title, alert = false, onClose, children }: { title: string; alert?: boolean; onClose: () => void; children: ReactNode }) {
+function ManagementDialog({ title, alert = false, closeLabel, onClose, children }: { title: string; alert?: boolean; closeLabel?: string; onClose: () => void; children: ReactNode }) {
   const dialog = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    dialog.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const initial = dialog.current?.querySelector<HTMLElement>('[data-dialog-autofocus]') ?? dialog.current?.querySelector<HTMLButtonElement>('button');
+    initial?.focus();
+    if (initial instanceof HTMLInputElement) initial.select();
     return () => {
       if (previous?.isConnected) previous.focus();
       else document.querySelector<HTMLButtonElement>('.conversation-host-title')?.focus();
@@ -19,16 +21,36 @@ function ManagementDialog({ title, alert = false, onClose, children }: { title: 
   }, []);
   return createPortal(<div className="conversation-management-backdrop" onPointerDown={event => { event.stopPropagation(); if (event.target === event.currentTarget) onClose(); }} onKeyDown={event => {
     event.stopPropagation();
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close.current(); }
+    if (event.key === 'Escape' && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); close.current(); }
     if (event.key !== 'Tab') return;
     const controls = [...(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),[tabindex="0"]') ?? [])];
     const first = controls[0], last = controls.at(-1);
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }}><div ref={dialog} className={`conversation-management-dialog ${alert ? 'is-confirmation' : ''}`} role={alert ? 'alertdialog' : 'dialog'} aria-modal="true" aria-labelledby={titleId}>
-    <header><h2 id={titleId}>{title}</h2><button type="button" className="conversation-management-close" aria-label={alert ? '取消删除会话' : '关闭已删除会话'} onClick={onClose}><X size={17}/></button></header>
+    <header><h2 id={titleId}>{title}</h2><button type="button" className="conversation-management-close" aria-label={closeLabel ?? (alert ? '取消删除会话' : '关闭已删除会话')} onClick={onClose}><X size={17}/></button></header>
     {children}
   </div></div>, document.body);
+}
+
+export function RenameConversationButton({ conversationId, label, className = '', text = false }: { conversationId: string; label?: string; className?: string; text?: boolean }) {
+  const { data, actions } = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const composing = useRef(false);
+  useEffect(() => { setOpen(false); setError(''); }, [conversationId]);
+  const conversation = data.conversations[conversationId];
+  if (!conversation || conversation.deletedAt) return null;
+  const title = label ?? conversation.title?.trim() ?? '新会话';
+  function save() {
+    if (composing.current || !name.trim()) return;
+    try { actions.renameConversation(conversationId, name); setOpen(false); }
+    catch (problem) { setError(problem instanceof Error ? problem.message : '暂时无法保存名称，请重试。'); }
+  }
+  return <><button type="button" className={`conversation-rename-button ${className}`} aria-label={`重命名会话：${title}`} title={`重命名：${title}`} onClick={event => { event.stopPropagation(); composing.current = false; setName(conversation.title?.trim() || title); setError(''); setOpen(true); }}><Pencil size={14}/>{text && <span>重命名</span>}</button>
+    {open && <ManagementDialog title="重命名会话" closeLabel="取消重命名会话" onClose={() => setOpen(false)}><form className="conversation-rename-form" onSubmit={event => { event.preventDefault(); save(); }}><label>会话名称<input data-dialog-autofocus value={name} maxLength={120} onChange={event => setName(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }} onKeyDown={event => { if (event.key === 'Enter' && (composing.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault(); }}/></label>{error && <p className="conversation-management-error" role="alert">{error}</p>}<footer><button type="button" className="conversation-management-cancel" onClick={() => setOpen(false)}>取消</button><button type="submit" className="conversation-management-save" disabled={!name.trim()}>保存名称</button></footer></form></ManagementDialog>}
+  </>;
 }
 
 export function DeleteConversationButton({ conversationId, label, className = '', text = false }: { conversationId: string; label?: string; className?: string; text?: boolean }) {

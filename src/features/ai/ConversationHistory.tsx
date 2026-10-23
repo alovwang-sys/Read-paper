@@ -3,7 +3,7 @@ import { ArrowLeft, History, Plus, RefreshCw, Search } from 'lucide-react';
 import type { AIConnectionId, NativeSessionSummary } from '../../domain/types';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
 import { connectionLabel, conversationConnection, listProjectSessions, openProjectSession, refreshProjectConversation } from '../../services/agents';
-import { DeleteConversationButton, DeletedConversations } from './ConversationManagement';
+import { DeleteConversationButton, DeletedConversations, RenameConversationButton } from './ConversationManagement';
 
 export type ConversationHistoryState = { query: string; archived: boolean; filter: AIConnectionId | 'all'; scrollTop: number };
 export const initialHistoryState: ConversationHistoryState = { query: '', archived: false, filter: 'all', scrollTop: 0 };
@@ -16,8 +16,6 @@ export function ConversationHistory({ onBack, state, onState }: { onBack: () => 
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [opening, setOpening] = useState('');
-  const [renaming, setRenaming] = useState('');
-  const [title, setTitle] = useState('');
   const scroll = useRef<HTMLDivElement>(null);
   const version = useRef(0);
   const refreshing = useRef(false);
@@ -119,15 +117,13 @@ export function ConversationHistory({ onBack, state, onState }: { onBack: () => 
           const running = turns.some(item => item.status === 'generating') || entry.native?.state === 'busy' || entry.local?.nativeState === 'busy';
           const isCurrent = entry.local?.id === current?.id;
           return <article className={`ai-history-item ${isCurrent ? 'is-current' : ''}`} key={entry.id}>
-            {renaming === entry.id && entry.local ? <form className="ai-history-rename" onSubmit={event => { event.preventDefault(); if (!title.trim()) return; actions.renameConversation(entry.id, title); setRenaming(''); }}><label className="ai-field">对话名称<input autoFocus value={title} maxLength={120} onChange={event => setTitle(event.target.value)} /></label><div className="ai-actions"><button className="button" type="submit" disabled={!title.trim()}>保存名称</button><button className="text-button" type="button" onClick={() => setRenaming('')}>取消</button></div></form> : <>
               <button className="ai-history-open" disabled={!!opening} onClick={() => void open(entry)} aria-current={isCurrent ? 'true' : undefined}>
                 <span className="ai-history-connection"><span className="ai-badge">{connectionLabel(entry.connectionId)}</span>{isCurrent && <small>当前对话</small>}{running && <span className="ai-running-badge"><span />运行中</span>}</span>
                 <h4 title={entry.title}>{entry.title}</h4>
                 <p>{turns.at(-1)?.prompt || (entry.native ? '点击读取原生对话历史' : '尚未发送问题')}</p>
                 <small>{opening === entry.id ? '正在读取…' : entry.native?.origin === 'native' || entry.local?.nativeImported ? '来自原生客户端' : entry.local?.nativeSessionId && !entry.local.nativeSessionRef ? '旧版阅读对话' : `${turns.length} 条问答`}{drafts.length ? ` · ${drafts.length} 份草稿` : ''}{entry.local?.input ? ' · 有未发送输入' : ''}</small>
               </button>
-              <div className="ai-actions"><small>{entry.updatedAt && new Date(entry.updatedAt).getTime() > 0 ? new Date(entry.updatedAt).toLocaleDateString('zh-CN') : '旧会话'}</small>{entry.local && <><button className="text-button" onClick={() => { setTitle(entry.title); setRenaming(entry.id); }}>重命名</button><button className="text-button" onClick={() => actions.archiveConversation(entry.id, !entry.local!.archived)}>{entry.local.archived ? '恢复' : '归档'}</button><DeleteConversationButton conversationId={entry.id} text/></>}</div>
-            </>}
+              <div className="ai-actions"><small>{entry.updatedAt && new Date(entry.updatedAt).getTime() > 0 ? new Date(entry.updatedAt).toLocaleDateString('zh-CN') : '旧会话'}</small>{entry.local && <><RenameConversationButton conversationId={entry.id} label={entry.title} text/><button className="text-button" onClick={() => actions.archiveConversation(entry.id, !entry.local!.archived)}>{entry.local.archived ? '恢复' : '归档'}</button><DeleteConversationButton conversationId={entry.id} text/></>}</div>
           </article>;
         })}
       </div>

@@ -199,10 +199,12 @@
 .research-conversation-row.is-active { background: #e6eee1; }
 .research-conversation-row:hover, .research-conversation-row:focus-within { background: #edf3e8; }
 .research-agent-history .research-conversation-row > .research-agent-conversation-item { flex: 1; width: 0; background: transparent; }
-.research-conversation-row > .conversation-delete-button { margin-right: 3px; opacity: 0; transition: opacity 100ms; }
-.research-conversation-row:hover > .conversation-delete-button, .research-conversation-row:focus-within > .conversation-delete-button, .research-conversation-row.is-active > .conversation-delete-button { opacity: 1; }
+.research-conversation-row > .conversation-delete-button, .research-conversation-row > .conversation-rename-button { opacity: 0; transition: opacity 100ms; }
+.research-conversation-row > .conversation-delete-button { margin-right: 3px; }
+.research-conversation-row:hover > .conversation-delete-button, .research-conversation-row:focus-within > .conversation-delete-button, .research-conversation-row.is-active > .conversation-delete-button,
+.research-conversation-row:hover > .conversation-rename-button, .research-conversation-row:focus-within > .conversation-rename-button, .research-conversation-row.is-active > .conversation-rename-button { opacity: 1; }
 .conversation-picker-management { display: flex; justify-content: flex-end; padding-top: 6px; margin-top: 7px; border-top: 1px solid #edf0e7; }
-@media (hover: none), (pointer: coarse) { .research-conversation-row > .conversation-delete-button { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .research-conversation-row > .conversation-delete-button { transition: none; } }
+@media (hover: none), (pointer: coarse) { .research-conversation-row > .conversation-delete-button, .research-conversation-row > .conversation-rename-button { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .research-conversation-row > .conversation-delete-button, .research-conversation-row > .conversation-rename-button { transition: none; } }
 .conversation-host-controls .conversation-delete-button:hover, .conversation-host-controls .conversation-delete-button:focus-visible { background: #f8eee9; color: #a66250; }
 .conversation-host-picker > .conversation-picker-management { flex-direction: row; justify-content: flex-end; }

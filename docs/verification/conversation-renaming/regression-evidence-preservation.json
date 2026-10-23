@@ -1,0 +1,487 @@
+{
+  "command": [
+    "npx",
+    "playwright",
+    "test",
+    "tests/e2e/conversation-deletion.spec.ts",
+    "tests/e2e/reader-mark-removal.spec.ts",
+    "tests/e2e/continuous-workspace.spec.ts",
+    "--reporter=line,json",
+    "--output=docs/verification/conversation-renaming/regression-artifacts"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 64.94,
+  "exception": null,
+  "allOldEvidenceRestored": true,
+  "backupDirectory": "/var/folders/4h/v1n8jbvn71l4g_lqch26qcm40000gn/T/papertrail-rename-regression-evidence-gwnov659",
+  "backupDirectoryRemoved": true,
+  "archivedScreenshotCount": 26,
+  "records": [
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/mark-hidden-text-1024.png",
+      "relative": "conversation-deletion/screenshots/mark-hidden-text-1024.png",
+      "originalSha256": "f0f8ee23ff1b81d8b8e3e911cbac553843b431aaa0cf5e0c0493b05909c9409d",
+      "originalMtime": 1792763882373153257,
+      "existed": true,
+      "newSha256": "11aa14bf67c505f17317bb6d5a6952a5ac26f8c221ba59887950780f67a03a87",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/mark-hidden-text-1024.png",
+      "restoredSha256": "f0f8ee23ff1b81d8b8e3e911cbac553843b431aaa0cf5e0c0493b05909c9409d",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/deleted-list-1024.png",
+      "relative": "conversation-deletion/screenshots/deleted-list-1024.png",
+      "originalSha256": "f7990c5880eccf3df3da0467183b2b882addd8bcc4b74aa3dd16ae6b20cbc2bd",
+      "originalMtime": 1792763872187718809,
+      "existed": true,
+      "newSha256": "14de46b88d5c469d1876e376fafd09178cea973b6387267cd8055087a61da6e5",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/deleted-list-1024.png",
+      "restoredSha256": "f7990c5880eccf3df3da0467183b2b882addd8bcc4b74aa3dd16ae6b20cbc2bd",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/delete-confirm-1024.png",
+      "relative": "conversation-deletion/screenshots/delete-confirm-1024.png",
+      "originalSha256": "8ebb3b58b179cae5e7d34d104906920999f26fb3cb3d91d8267022caa07b6404",
+      "originalMtime": 1792763870955718184,
+      "existed": true,
+      "newSha256": "16ec775e84def037732ab8c521f9c8a0453ba807f6490aa4f04ecbcf16751600",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/delete-confirm-1024.png",
+      "restoredSha256": "8ebb3b58b179cae5e7d34d104906920999f26fb3cb3d91d8267022caa07b6404",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/mark-hidden-text-1440.png",
+      "relative": "conversation-deletion/screenshots/mark-hidden-text-1440.png",
+      "originalSha256": "ad0bd139d30a3f5de790f43dce4ece5ca62674fb35562bbee7381fb3f3007a05",
+      "originalMtime": 1792763882181971330,
+      "existed": true,
+      "newSha256": "18a8b10d014471fc239319b443b123bae53bb07c70f23487e5645d63a4f4b981",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/mark-hidden-text-1440.png",
+      "restoredSha256": "ad0bd139d30a3f5de790f43dce4ece5ca62674fb35562bbee7381fb3f3007a05",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/delete-confirm-1280.png",
+      "relative": "conversation-deletion/screenshots/delete-confirm-1280.png",
+      "originalSha256": "956e271e426b82385daac0b77cbe15d2fccbf67d5c06c92e236d7d15b335c828",
+      "originalMtime": 1792763870842237847,
+      "existed": true,
+      "newSha256": "d54ca64fbb1fc6f7ccfd2019d71e8b70e8a662a1ea9826a522635b6e42b1f3df",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/delete-confirm-1280.png",
+      "restoredSha256": "956e271e426b82385daac0b77cbe15d2fccbf67d5c06c92e236d7d15b335c828",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/deleted-list-1440.png",
+      "relative": "conversation-deletion/screenshots/deleted-list-1440.png",
+      "originalSha256": "44819dea4196bf1435be33eeea9f6aec7bbf3b75efd2e7addb405bb1ea948f8d",
+      "originalMtime": 1792763871975101362,
+      "existed": true,
+      "newSha256": "1d1a4658dfd41cb26e52fbc2ac02cb2860eed0141707017f52d4d8f42da7f01f",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/deleted-list-1440.png",
+      "restoredSha256": "44819dea4196bf1435be33eeea9f6aec7bbf3b75efd2e7addb405bb1ea948f8d",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/delete-busy-rejected.png",
+      "relative": "conversation-deletion/screenshots/delete-busy-rejected.png",
+      "originalSha256": "8164df2f2949daf0c82be350d2ae6ad1ba1a1d2729a3cf527e68ed4df2fb9ad7",
+      "originalMtime": 1792763878933559624,
+      "existed": true,
+      "newSha256": "cd5c5631a6b3a9cda2fcd05d18e60a70892ac68f4f543ffc779b66de686b8fed",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/delete-busy-rejected.png",
+      "restoredSha256": "8164df2f2949daf0c82be350d2ae6ad1ba1a1d2729a3cf527e68ed4df2fb9ad7",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/deleted-inline-readonly-1440.png",
+      "relative": "conversation-deletion/screenshots/deleted-inline-readonly-1440.png",
+      "originalSha256": "5945b4b2c5d2b5032181e613460b3de9b1e96b4519e81c3fa9266f5e737442fb",
+      "originalMtime": 1792763885246189342,
+      "existed": true,
+      "newSha256": "62237b390f36456d3ec28b49db7393109a368bf456d287c95cc3bed3a2611719",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/deleted-inline-readonly-1440.png",
+      "restoredSha256": "5945b4b2c5d2b5032181e613460b3de9b1e96b4519e81c3fa9266f5e737442fb",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/delete-confirm-1440.png",
+      "relative": "conversation-deletion/screenshots/delete-confirm-1440.png",
+      "originalSha256": "ae6a9a207e9ab782f2c20b6881d9124648dad7867e592e2dfb1c204ad9b969ec",
+      "originalMtime": 1792763870710449194,
+      "existed": true,
+      "newSha256": "bb1517879dc975dc1ab3abc0c979eee91f364a801210e10ee06fa1c30c971843",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/delete-confirm-1440.png",
+      "restoredSha256": "ae6a9a207e9ab782f2c20b6881d9124648dad7867e592e2dfb1c204ad9b969ec",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/mark-hidden-text-1280.png",
+      "relative": "conversation-deletion/screenshots/mark-hidden-text-1280.png",
+      "originalSha256": "7b93c3bf09a1145bb51bce508e39eb3e602ccc078e53a97a368c892a59035a32",
+      "originalMtime": 1792763882259157184,
+      "existed": true,
+      "newSha256": "53ed2d861930a7f32ebebed061a083ff4a9ba2aa0b0d36d0621b0f974bc1ce83",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/mark-hidden-text-1280.png",
+      "restoredSha256": "7b93c3bf09a1145bb51bce508e39eb3e602ccc078e53a97a368c892a59035a32",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/deleted-list-1280.png",
+      "relative": "conversation-deletion/screenshots/deleted-list-1280.png",
+      "originalSha256": "9b0b4e729ac414a11282bcce79d868ec31b6e5ddd6d4b711d58bda5af383428f",
+      "originalMtime": 1792763872080979914,
+      "existed": true,
+      "newSha256": "03a56dc41ae83ced84db81dcddafac3054721b71590029f95faab0954e474939",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/deleted-list-1280.png",
+      "restoredSha256": "9b0b4e729ac414a11282bcce79d868ec31b6e5ddd6d4b711d58bda5af383428f",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/screenshots/mark-hidden-region-1440.png",
+      "relative": "conversation-deletion/screenshots/mark-hidden-region-1440.png",
+      "originalSha256": "8a14c1843f46c7034e101527b7705cb73635508bc2aa9b378d930dca51666b35",
+      "originalMtime": 1792763889319070699,
+      "existed": true,
+      "newSha256": "13c0b4fe74a28b163b2c4ee73a62f1cf4b08d987e083f90990572cdb47f1c9af",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/conversation-deletion/screenshots/mark-hidden-region-1440.png",
+      "restoredSha256": "8a14c1843f46c7034e101527b7705cb73635508bc2aa9b378d930dca51666b35",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/card-editor-over-source-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/card-editor-over-source-1440.png",
+      "originalSha256": "cb49bd8fd2863e7d2288fd81bb82d5838d236deed821f45eb4422287d8c0e074",
+      "originalMtime": 1792764449556847945,
+      "existed": true,
+      "restoredSha256": "cb49bd8fd2863e7d2288fd81bb82d5838d236deed821f45eb4422287d8c0e074",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/resource-chat-1024.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/resource-chat-1024.png",
+      "originalSha256": "4113eae9b234ab2d17724a67cb9d303efd9ceaab6e2d9d4dd7a72e09621d7b10",
+      "originalMtime": 1792764449567228259,
+      "existed": true,
+      "restoredSha256": "4113eae9b234ab2d17724a67cb9d303efd9ceaab6e2d9d4dd7a72e09621d7b10",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/region-question-1024.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/region-question-1024.png",
+      "originalSha256": "a9fc1a8d1d24687af0036a18ec2dcba07463f2cf83fac1bcc218be23a9d179d6",
+      "originalMtime": 1792764449564770837,
+      "existed": true,
+      "restoredSha256": "a9fc1a8d1d24687af0036a18ec2dcba07463f2cf83fac1bcc218be23a9d179d6",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/same-conversation-floating-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/same-conversation-floating-1440.png",
+      "originalSha256": "742962d6dfa94aee4c63dca719630390502fbb18ac92731f670518d2b8ff00d8",
+      "originalMtime": 1792764449570700766,
+      "existed": true,
+      "restoredSha256": "742962d6dfa94aee4c63dca719630390502fbb18ac92731f670518d2b8ff00d8",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/region-question-1280.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/region-question-1280.png",
+      "originalSha256": "9729674b710d96d92dea839f979f2d089608c7895770ec8a76a7e2b6c734fd26",
+      "originalMtime": 1792764449565387838,
+      "existed": true,
+      "restoredSha256": "9729674b710d96d92dea839f979f2d089608c7895770ec8a76a7e2b6c734fd26",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/resource-chat-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/resource-chat-1440.png",
+      "originalSha256": "b0119ba8fee6ed522f2ffc35943c300574d531edbbc6eafd1b8ec787658973d5",
+      "originalMtime": 1792764449569728472,
+      "existed": true,
+      "restoredSha256": "b0119ba8fee6ed522f2ffc35943c300574d531edbbc6eafd1b8ec787658973d5",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/region-question-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/region-question-1440.png",
+      "originalSha256": "db87fc68746aa331143ac6ab4a55748af7e1954bd135d3622aaba82447a978ad",
+      "originalMtime": 1792764449566638591,
+      "existed": true,
+      "restoredSha256": "db87fc68746aa331143ac6ab4a55748af7e1954bd135d3622aaba82447a978ad",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/translation-on-source-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/translation-on-source-1440.png",
+      "originalSha256": "7beccfd5e94766749acf51259cd28ee144dbee6378e760792979f56d779d3b9b",
+      "originalMtime": 1792764449573018021,
+      "existed": true,
+      "restoredSha256": "7beccfd5e94766749acf51259cd28ee144dbee6378e760792979f56d779d3b9b",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/resource-chat-1280.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/resource-chat-1280.png",
+      "originalSha256": "84423b739058404e155c61298ed421b5af5d55fc1f75328ac7499e9425c80e73",
+      "originalMtime": 1792764449568100052,
+      "existed": true,
+      "restoredSha256": "84423b739058404e155c61298ed421b5af5d55fc1f75328ac7499e9425c80e73",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/passage-answer-carried-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/passage-answer-carried-1440.png",
+      "originalSha256": "6f404bc76d038a33c2f2189b7e36acd3bf1476b91563386f37495d027f7a1906",
+      "originalMtime": 1792764449564245586,
+      "existed": true,
+      "restoredSha256": "6f404bc76d038a33c2f2189b7e36acd3bf1476b91563386f37495d027f7a1906",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/existing-drawing-and-chat-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/existing-drawing-and-chat-1440.png",
+      "originalSha256": "01cc0a3e394315d975072e2db346d44e55bbbc3d74d3fba83c8d6236af36ccf6",
+      "originalMtime": 1792764449562862833,
+      "existed": true,
+      "restoredSha256": "01cc0a3e394315d975072e2db346d44e55bbbc3d74d3fba83c8d6236af36ccf6",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/assistant-switch-retains-image-and-history.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/assistant-switch-retains-image-and-history.png",
+      "originalSha256": "6879417a25799fd14c042cd6db96bfa3c2e5648dc5baafe0671aae5b9512ef6a",
+      "originalMtime": 1792764449555950693,
+      "existed": true,
+      "restoredSha256": "6879417a25799fd14c042cd6db96bfa3c2e5648dc5baafe0671aae5b9512ef6a",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/earlier-folded-1440.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/earlier-folded-1440.png",
+      "originalSha256": "5d4601b9458053d90484cc402cad0af02cdcd156e06a53c2b7e7826a0a728b63",
+      "originalMtime": 1792764449562176414,
+      "existed": true,
+      "restoredSha256": "5d4601b9458053d90484cc402cad0af02cdcd156e06a53c2b7e7826a0a728b63",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/conversation-deletion/regression-screenshots/continuous-workspace/screenshots/shared-brief-independent-source-questions.png",
+      "relative": "conversation-deletion/regression-screenshots/continuous-workspace/screenshots/shared-brief-independent-source-questions.png",
+      "originalSha256": "82263192a8ff452e16b388ac9edf290821cdeb61c5f1f160348f265275b5ae82",
+      "originalMtime": 1792764449571758018,
+      "existed": true,
+      "restoredSha256": "82263192a8ff452e16b388ac9edf290821cdeb61c5f1f160348f265275b5ae82",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-source-activity-before-restart.png",
+      "relative": "continuous-workspace/screenshots/desktop-source-activity-before-restart.png",
+      "originalSha256": "3200a169497224e6344e6e3deaf67af2b95a2ea43426e420c7ec1fd3428951ed",
+      "originalMtime": 1792764449589850890,
+      "existed": true,
+      "restoredSha256": "3200a169497224e6344e6e3deaf67af2b95a2ea43426e420c7ec1fd3428951ed",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/card-editor-over-source-1440.png",
+      "relative": "continuous-workspace/screenshots/card-editor-over-source-1440.png",
+      "originalSha256": "6b0f4a4cf5c04d4e58da4ee35380b4537ec5285d16f4891000e985397c43edd1",
+      "originalMtime": 1792764449580371911,
+      "existed": true,
+      "newSha256": "4fda505454c28a11d5d71df767349ba5beefd71cdde2fdaae66f92bb0da6f07c",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/card-editor-over-source-1440.png",
+      "restoredSha256": "6b0f4a4cf5c04d4e58da4ee35380b4537ec5285d16f4891000e985397c43edd1",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/resource-chat-1024.png",
+      "relative": "continuous-workspace/screenshots/resource-chat-1024.png",
+      "originalSha256": "4b85e463c9f084ae421fea36fbceb180a60b692fac9978c40d89dfb4f070bac3",
+      "originalMtime": 1792764449604085212,
+      "existed": true,
+      "newSha256": "0c3f1ed5078f1b767cfe4e02f9406fde0db093658ccbdf98a12bd078d469a717",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/resource-chat-1024.png",
+      "restoredSha256": "4b85e463c9f084ae421fea36fbceb180a60b692fac9978c40d89dfb4f070bac3",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-resource-chat-1024.png",
+      "relative": "continuous-workspace/screenshots/desktop-resource-chat-1024.png",
+      "originalSha256": "3c2107b2e000771961c5299bc7a242f43964c66b27e8504d975ccab80e93695d",
+      "originalMtime": 1792764449583328584,
+      "existed": true,
+      "restoredSha256": "3c2107b2e000771961c5299bc7a242f43964c66b27e8504d975ccab80e93695d",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/region-question-1024.png",
+      "relative": "continuous-workspace/screenshots/region-question-1024.png",
+      "originalSha256": "16d051d6c47dbc4220403ba0c9d583307b4da3c03e430fa2158248fccd2e3552",
+      "originalMtime": 1792764449597357364,
+      "existed": true,
+      "newSha256": "df7b3155e0f019a0b94745e1941a81684f480b46c6840276d054107c01fe8327",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/region-question-1024.png",
+      "restoredSha256": "16d051d6c47dbc4220403ba0c9d583307b4da3c03e430fa2158248fccd2e3552",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-source-activity-after-restart.png",
+      "relative": "continuous-workspace/screenshots/desktop-source-activity-after-restart.png",
+      "originalSha256": "dade2f43d84191f514b72ba1e190dfefcdc1d8fafddab7d27469b12d5b579d26",
+      "originalMtime": 1792764449588399095,
+      "existed": true,
+      "restoredSha256": "dade2f43d84191f514b72ba1e190dfefcdc1d8fafddab7d27469b12d5b579d26",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/same-conversation-floating-1440.png",
+      "relative": "continuous-workspace/screenshots/same-conversation-floating-1440.png",
+      "originalSha256": "8916e678d2ba47849257b076098280150e5166b52341cb15e0a03468c9a22e8f",
+      "originalMtime": 1792764449610028183,
+      "existed": true,
+      "newSha256": "f5e03f13b05b2e7e3c5c2674b3c6187ad05525a448cd0cc2dd78b56ad8beccdc",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/same-conversation-floating-1440.png",
+      "restoredSha256": "8916e678d2ba47849257b076098280150e5166b52341cb15e0a03468c9a22e8f",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-resource-chat-1280.png",
+      "relative": "continuous-workspace/screenshots/desktop-resource-chat-1280.png",
+      "originalSha256": "847f81681afeeb66995a9d8b41d8e7f5fc78f3ccbdaab866e95b7b552e8bee1a",
+      "originalMtime": 1792764449584336837,
+      "existed": true,
+      "restoredSha256": "847f81681afeeb66995a9d8b41d8e7f5fc78f3ccbdaab866e95b7b552e8bee1a",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/region-question-1280.png",
+      "relative": "continuous-workspace/screenshots/region-question-1280.png",
+      "originalSha256": "9c6b7d1086be45ebf1824eb30cbfc2c64a9e7c59c90dae3e2e23adf90875f1d1",
+      "originalMtime": 1792764449600468037,
+      "existed": true,
+      "newSha256": "103fdf60a77ddc4af15fab2ad4a5ba8acd40bf3c31b3e3fea8b7517d9829f173",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/region-question-1280.png",
+      "restoredSha256": "9c6b7d1086be45ebf1824eb30cbfc2c64a9e7c59c90dae3e2e23adf90875f1d1",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/resource-chat-1440.png",
+      "relative": "continuous-workspace/screenshots/resource-chat-1440.png",
+      "originalSha256": "a990e61435ac4b818a691e77253a78ba6bec395599c2bb9a8fc1018c1abef81b",
+      "originalMtime": 1792764449607770761,
+      "existed": true,
+      "newSha256": "62905ed2319964be87460bd3df4cc23f21298d7e079b714222bd927592d9f7c2",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/resource-chat-1440.png",
+      "restoredSha256": "a990e61435ac4b818a691e77253a78ba6bec395599c2bb9a8fc1018c1abef81b",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/region-question-1440.png",
+      "relative": "continuous-workspace/screenshots/region-question-1440.png",
+      "originalSha256": "be392d23b0f949edb303b90de7bd6150def1c352450ad25c1edf44481a8217f9",
+      "originalMtime": 1792764449602429250,
+      "existed": true,
+      "newSha256": "b1231c3f22c99af5f7f12a0464cd7a8263ccedb0823a0ae833f2411d34822919",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/region-question-1440.png",
+      "restoredSha256": "be392d23b0f949edb303b90de7bd6150def1c352450ad25c1edf44481a8217f9",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-resource-chat-1440.png",
+      "relative": "continuous-workspace/screenshots/desktop-resource-chat-1440.png",
+      "originalSha256": "528ff791b37b47fdf6b4d2ef6d0396939e86b01a2323e586a2412a04fb9a63cf",
+      "originalMtime": 1792764449585355005,
+      "existed": true,
+      "restoredSha256": "528ff791b37b47fdf6b4d2ef6d0396939e86b01a2323e586a2412a04fb9a63cf",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/desktop-restarted-conversation.png",
+      "relative": "continuous-workspace/screenshots/desktop-restarted-conversation.png",
+      "originalSha256": "7ac4839b32e63d3d766cc5b8be6514286b54afa716f1347661753a27d94bfba1",
+      "originalMtime": 1792764449586578508,
+      "existed": true,
+      "restoredSha256": "7ac4839b32e63d3d766cc5b8be6514286b54afa716f1347661753a27d94bfba1",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/translation-on-source-1440.png",
+      "relative": "continuous-workspace/screenshots/translation-on-source-1440.png",
+      "originalSha256": "7aaf1c5b49bd16b1d41e4f57b25ce469c155bc23614b67db2e2bfa108fe60fd9",
+      "originalMtime": 1792764449615512069,
+      "existed": true,
+      "newSha256": "9a2c35a5e06cbc802e48b210da0c2766481925c5d42069e9f4cfe2f9259e1c22",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/translation-on-source-1440.png",
+      "restoredSha256": "7aaf1c5b49bd16b1d41e4f57b25ce469c155bc23614b67db2e2bfa108fe60fd9",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/resource-chat-1280.png",
+      "relative": "continuous-workspace/screenshots/resource-chat-1280.png",
+      "originalSha256": "8757c33fa5ced548670d5e3a52bb4192f6625a86e04e618fd4e2a6936d402604",
+      "originalMtime": 1792764449605233673,
+      "existed": true,
+      "newSha256": "411154473b05b98e30b0a4e2704050dfb7c735959856a671c790bf7a791fc9d7",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/resource-chat-1280.png",
+      "restoredSha256": "8757c33fa5ced548670d5e3a52bb4192f6625a86e04e618fd4e2a6936d402604",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/passage-answer-carried-1440.png",
+      "relative": "continuous-workspace/screenshots/passage-answer-carried-1440.png",
+      "originalSha256": "8277204d549fd753d15657397c8bd0469180cbe0ad420bffe26d5fbca011fe11",
+      "originalMtime": 1792764449595992736,
+      "existed": true,
+      "newSha256": "4fae9ebf3cdc7c3e5e11407a8bfb6606556b669089d0a8f08e93d9e19045c867",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/passage-answer-carried-1440.png",
+      "restoredSha256": "8277204d549fd753d15657397c8bd0469180cbe0ad420bffe26d5fbca011fe11",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/existing-drawing-and-chat-1440.png",
+      "relative": "continuous-workspace/screenshots/existing-drawing-and-chat-1440.png",
+      "originalSha256": "a370d0ba188f44fd3a600bc76502114f0dea751d76e27cf1318a08d00090ec70",
+      "originalMtime": 1792764449594371816,
+      "existed": true,
+      "newSha256": "7493ed38ef7a7324a155bc168babd2092827c2fa9c44a70903094243f9c41c9a",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/existing-drawing-and-chat-1440.png",
+      "restoredSha256": "a370d0ba188f44fd3a600bc76502114f0dea751d76e27cf1318a08d00090ec70",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/assistant-switch-retains-image-and-history.png",
+      "relative": "continuous-workspace/screenshots/assistant-switch-retains-image-and-history.png",
+      "originalSha256": "5eceed4d2b4ecc45bc82ca330a7358d0079d51d97c275431706af72e858aefa4",
+      "originalMtime": 1792764449578488532,
+      "existed": true,
+      "newSha256": "7e944cb3047aa88cedc3c6584bec0b2c96f88c0a6a738ea04388ae0d0d98d905",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/assistant-switch-retains-image-and-history.png",
+      "restoredSha256": "5eceed4d2b4ecc45bc82ca330a7358d0079d51d97c275431706af72e858aefa4",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/earlier-folded-1440.png",
+      "relative": "continuous-workspace/screenshots/earlier-folded-1440.png",
+      "originalSha256": "7231df319cd49532dc3fb312fc5d76f62cb9f926757b5d339762f3e4b87dccec",
+      "originalMtime": 1792764449591654435,
+      "existed": true,
+      "newSha256": "3764d2a2c4e653d562e798e664cf7a4908b38a5e499662675504a4026f167206",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/earlier-folded-1440.png",
+      "restoredSha256": "7231df319cd49532dc3fb312fc5d76f62cb9f926757b5d339762f3e4b87dccec",
+      "restoredExactly": true
+    },
+    {
+      "path": "/Users/amos/project/Read-paper/docs/verification/continuous-workspace/screenshots/shared-brief-independent-source-questions.png",
+      "relative": "continuous-workspace/screenshots/shared-brief-independent-source-questions.png",
+      "originalSha256": "5780b079b766e464edc59efac26918f733bb055aeb9ae9691a2512e1f4ab8529",
+      "originalMtime": 1792764449613495940,
+      "existed": true,
+      "newSha256": "f098dc8654e78f9c7b9a90eb82d04d8763dcbf27ef262bcdb7ca26c01ec82eab",
+      "newEvidence": "docs/verification/conversation-renaming/regression-screenshots/continuous-workspace/screenshots/shared-brief-independent-source-questions.png",
+      "restoredSha256": "5780b079b766e464edc59efac26918f733bb055aeb9ae9691a2512e1f4ab8529",
+      "restoredExactly": true
+    }
+  ]
+}

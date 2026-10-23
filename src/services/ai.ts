@@ -718,7 +718,7 @@ async function runRequest(request: AIRequest, responder: AIResponder, submittedI
     if ((!request.purpose || request.purpose === 'chat') && !request.retryOf && selectedBoard
       && conversation.boardSkill?.boardId === selectedBoard.boardId && conversation.boardSkill.scope === selectedBoard.scope
       && (!request.regeneratedFrom || request.boardContext?.intent !== 'create')) delete conversation.boardSkill;
-    if ((!request.purpose || request.purpose === 'chat') && !conversation.requestIds.some(id => id !== request.id && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) conversation.title = request.prompt.slice(0, 36);
+    if (!conversation.titleEdited && (!request.purpose || request.purpose === 'chat') && !conversation.requestIds.some(id => id !== request.id && (!data.requests[id].purpose || data.requests[id].purpose === 'chat'))) conversation.title = request.prompt.slice(0, 36);
   });
   const timer = managed ? undefined : setInterval(flush, 180);
   const checkpoint = setInterval(() => workspace.retrySave(), 1200);

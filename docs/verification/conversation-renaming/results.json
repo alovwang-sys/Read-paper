@@ -1,0 +1,102 @@
+{
+  "verifiedAt": "2026-10-23T14:35:04.404Z",
+  "unit": {
+    "passed": 11,
+    "total": 11,
+    "exitCode": 0,
+    "log": "logs/unit.log",
+    "connectionIdsCovered": [
+      "codex",
+      "claude",
+      "opencode",
+      "model",
+      "demo"
+    ]
+  },
+  "browser": {
+    "startTime": "2026-10-23T14:33:21.930Z",
+    "duration": 18135.126,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0,
+    "exitCode": 0,
+    "cases": [
+      {
+        "title": "侧栏改名支持取消、空名、中文组合输入与Enter，首轮回答和刷新不覆盖“新会话”",
+        "status": "expected",
+        "durationMs": 6769
+      },
+      {
+        "title": "卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持",
+        "status": "expected",
+        "durationMs": 4768
+      },
+      {
+        "title": "原文旁问答可就地改名，原文位置、回答与未发草稿刷新后保持",
+        "status": "expected",
+        "durationMs": 4234
+      },
+      {
+        "title": "经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿",
+        "status": "expected",
+        "durationMs": 1830
+      }
+    ],
+    "log": "logs/browser.log"
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "log": "logs/check.log"
+  },
+  "scope": "Synthetic materials, isolated browser storage and controlled responses. No real user data, installed app, native client title changes or paid model runs.",
+  "ime": "Browser composition events plus Enter; OS input method not exercised.",
+  "firstAttempts": {
+    "unit": {
+      "passed": 10,
+      "failed": 1,
+      "log": "logs/unit-first.log",
+      "cause": "Destination label decorative formatting expectation"
+    },
+    "browser": {
+      "passed": 2,
+      "failed": 2,
+      "log": "logs/browser-first.log",
+      "cause": "Already-open discussion group toggled closed; searchbox mistaken for textbox"
+    }
+  },
+  "screenshots": [
+    {
+      "file": "screenshots/rename-dialog-1024.png",
+      "sha256": "ac1c11910ee9404f4cbc671ea00da3d6367a0d252e04b9c1819cdaab114938bb"
+    },
+    {
+      "file": "screenshots/rename-dialog-1280.png",
+      "sha256": "7fe390a229853e6e8a92b02e0466c830b3b90b6c24124233adf765425719633a"
+    },
+    {
+      "file": "screenshots/rename-dialog-1440.png",
+      "sha256": "55ca6c6e1fc548cd783684a2c21bb103dd4d850f33a5e8a0c3c0ae0a6ef3e297"
+    },
+    {
+      "file": "screenshots/renamed-classic-history-1440.png",
+      "sha256": "5e7899ddcc07958d4c2df0c779acc6793ab08e720c88a95b3452dddfdff23aab"
+    },
+    {
+      "file": "screenshots/renamed-discussion-float-1440.png",
+      "sha256": "aca94d6ffd3d0e981eaec9963ecdf16ebf3d65f603e4ab86439a86129f6ba1f0"
+    },
+    {
+      "file": "screenshots/renamed-discussion-main-1440.png",
+      "sha256": "c637d6d1a9e3cdae080b1b84037f6a834f6a48fd01a15531ddd2602732c823af"
+    },
+    {
+      "file": "screenshots/renamed-discussion-side-1440.png",
+      "sha256": "5427ad3ed3b797acd824cc7e35e4fbdde88ee7f2a0bf1f3ce9ac4547e6732600"
+    },
+    {
+      "file": "screenshots/renamed-inline-1440.png",
+      "sha256": "2833be96f0c05c468d5be849ed483410c278750def27cf0bb6068c87b677b089"
+    }
+  ]
+}

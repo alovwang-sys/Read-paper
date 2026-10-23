@@ -1,0 +1,19 @@
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 所有助手及原生关联的会话均可改名，不切会话、不改输入或原生关联 12ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 原文讨论改名仅更新会话名称，问答、草稿、卡片provenance和锚点保持原快照 5ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 名称去首尾空白并限制120字符，空名、缺失和已删除会话拒绝且不污染数据 6ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 普通AI首条提问不会覆盖用户手动填写的“新会话” 2ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 研究Agent首条提问也保留手动“新会话”，仍正常登记回答 12ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 卡片讨论显示自定义名、可按名搜索，转到新锚定讨论继续保留名称编辑状态 1ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 保存重新加载、迁移和真实ZIP往返保留手动标题及标记，旧记录保持兼容 4ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 "true" 1ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 1 0ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 null 0ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 {} 0ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  22:30:24
+   Duration  307ms (transform 155ms, setup 0ms, import 192ms, tests 45ms, environment 0ms)

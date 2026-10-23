@@ -56,6 +56,7 @@ export function validateResearchData(data: WorkspaceData) {
     requireValue(text(placement.researchConversationId, 500) && conversation && conversation.researchId === data.boards[placement.boardId]?.researchId, '白板讨论归属无效。');
   }
   for (const conversation of Object.values(data.conversations)) {
+    requireValue(conversation.titleEdited === undefined || typeof conversation.titleEdited === 'boolean', '会话名称编辑状态无效。');
     requireValue(conversation.deletedAt === undefined || typeof conversation.deletedAt === 'string' && Number.isFinite(Date.parse(conversation.deletedAt)), '会话删除时间无效。');
     requireValue(conversation.historyRange === undefined || ['all', 'latest', 'none', 'guided', 'selected'].includes(conversation.historyRange), '会话历史范围无效。');
     requireValue(conversation.historyRequestIds === undefined || strings(conversation.historyRequestIds), '会话历史轮次无效。');

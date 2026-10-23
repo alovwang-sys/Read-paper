@@ -1,0 +1,39 @@
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 所有助手及原生关联的会话均可改名，不切会话、不改输入或原生关联 10ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 原文讨论改名仅更新会话名称，问答、草稿、卡片provenance和锚点保持原快照 5ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 名称去首尾空白并限制120字符，空名、缺失和已删除会话拒绝且不污染数据 5ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 普通AI首条提问不会覆盖用户手动填写的“新会话” 2ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 研究Agent首条提问也保留手动“新会话”，仍正常登记回答 12ms
+ × tests/unit/conversation-renaming.test.ts > 会话手动命名 > 卡片讨论显示自定义名、可按名搜索，转到新锚定讨论继续保留名称编辑状态 2ms
+   → expected '会话「需要核对的适用条件」' to be '需要核对的适用条件' // Object.is equality
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 保存重新加载、迁移和真实ZIP往返保留手动标题及标记，旧记录保持兼容 3ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 "true" 0ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 1 0ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 null 0ms
+ ✓ tests/unit/conversation-renaming.test.ts > 会话手动命名 > 迁移拒绝损坏的titleEdited字段 {} 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/conversation-renaming.test.ts > 会话手动命名 > 卡片讨论显示自定义名、可按名搜索，转到新锚定讨论继续保留名称编辑状态
+AssertionError: expected '会话「需要核对的适用条件」' to be '需要核对的适用条件' // Object.is equality
+
+Expected: "需要核对的适用条件"
+Received: "会话「需要核对的适用条件」"
+
+ ❯ tests/unit/conversation-renaming.test.ts:106:71
+    104|     const groups = researchConversationLists(state(), researchId, '需要核…
+    105|     expect(groups.flatMap(group => group.items).map(item => item.label…
+    106|     expect(destinationLabel(state(), state().conversations[primary])).…
+       |                                                                       ^
+    107|     const nextId = routeResearchDraft(researchId, 'new');
+    108|     expect(state().conversations[nextId]).toMatchObject({ title: '需要核对…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  22:27:27
+   Duration  323ms (transform 175ms, setup 0ms, import 217ms, tests 40ms, environment 0ms)

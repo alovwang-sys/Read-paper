@@ -1,0 +1,384 @@
+
+Running 4 tests using 1 worker
+
+(node:48636) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/4] tests/e2e/conversation-renaming.spec.ts:20:1 › 侧栏改名支持取消、空名、中文组合输入与Enter，首轮回答和刷新不覆盖“新会话”
+[2/4] tests/e2e/conversation-renaming.spec.ts:69:1 › 卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持
+  1) tests/e2e/conversation-renaming.spec.ts:69:1 › 卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持 ─────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for locator('.sidebar').getByRole('region', { name: '研究会话列表', exact: true }).getByRole('button', { name: '重命名会话：相关性是检索收益的前提', exact: true })
+
+
+      75 |   const list = (await openResearchNavigation(page)).getByRole('region', { name: '研究会话列表', exact: true });
+      76 |   await list.getByText('讨论（1）', { exact: true }).click();
+    > 77 |   await list.getByRole('button', { name: `重命名会话：${seed.cards['card-a'].title}`, exact: true }).click();
+         |                                                                                                ^
+      78 |   await saveName(page, '需要核对的适用条件');
+      79 |   await expect(list.getByRole('button', { name: '打开讨论：需要核对的适用条件', exact: true })).toBeVisible();
+      80 |   let previous = '需要核对的适用条件';
+        at /Users/amos/project/Read-paper/tests/e2e/conversation-renaming.spec.ts:77:96
+
+    Error Context: test-results/conversation-renaming-卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/conversation-renaming-卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/conversation-renaming-卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:48831) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[3/4] tests/e2e/conversation-renaming.spec.ts:100:1 › 原文旁问答可就地改名，原文位置、回答与未发草稿刷新后保持
+[4/4] tests/e2e/conversation-renaming.spec.ts:128:1 › 经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿
+  2) tests/e2e/conversation-renaming.spec.ts:128:1 › 经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿 ───────────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.fill: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByRole('complementary', { name: '参考面板', exact: true }).getByRole('textbox', { name: '搜索会话', exact: true })
+
+
+      137 |   await panel.getByRole('button', { name: '重命名会话：条件比较 A', exact: true }).click();
+      138 |   const before = await readData(page);
+    > 139 |   await saveName(page, '经典阅读讨论');
+          |                                  ^
+      140 |   await panel.getByRole('textbox', { name: '搜索会话', exact: true }).fill('经典阅读讨论');
+      141 |   await expect(panel.locator('.ai-history-item')).toHaveCount(1);
+      142 |   await expect(panel.locator('.ai-history-item')).toContainText('经典阅读讨论');
+        at /Users/amos/project/Read-paper/tests/e2e/conversation-renaming.spec.ts:139:67
+
+    Error Context: test-results/conversation-renaming-经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/conversation-renaming-经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/conversation-renaming-经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  2 failed
+    tests/e2e/conversation-renaming.spec.ts:69:1 › 卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持 ──────────────
+    tests/e2e/conversation-renaming.spec.ts:128:1 › 经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿 ────────────────────
+  2 passed (2.2m)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/conversation-renaming.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "conversation-renaming.spec.ts",
+      "file": "conversation-renaming.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "侧栏改名支持取消、空名、中文组合输入与Enter，首轮回答和刷新不覆盖“新会话”",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6767,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:30:25.118Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-0057d8cd3846ab496522",
+          "file": "conversation-renaming.spec.ts",
+          "line": 20,
+          "column": 1
+        },
+        {
+          "title": "卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60108,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/conversation-renaming.spec.ts",
+                        "column": 96,
+                        "line": 77
+                      },
+                      "message": "Error: locator.click: Test timeout of 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.sidebar').getByRole('region', { name: '研究会话列表', exact: true }).getByRole('button', { name: '重命名会话：相关性是检索收益的前提', exact: true })\u001b[22m\n\n\n  75 |   const list = (await openResearchNavigation(page)).getByRole('region', { name: '研究会话列表', exact: true });\n  76 |   await list.getByText('讨论（1）', { exact: true }).click();\n> 77 |   await list.getByRole('button', { name: `重命名会话：${seed.cards['card-a'].title}`, exact: true }).click();\n     |                                                                                                ^\n  78 |   await saveName(page, '需要核对的适用条件');\n  79 |   await expect(list.getByRole('button', { name: '打开讨论：需要核对的适用条件', exact: true })).toBeVisible();\n  80 |   let previous = '需要核对的适用条件';\n    at /Users/amos/project/Read-paper/tests/e2e/conversation-renaming.spec.ts:77:96"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:30:32.134Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/conversation-renaming-卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/conversation-renaming-卡片讨论自定义名在侧栏与侧边、浮窗、完整聊天同步显示，来源和草稿保持/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-bab72fce7da2a443574b",
+          "file": "conversation-renaming.spec.ts",
+          "line": 69,
+          "column": 1
+        },
+        {
+          "title": "原文旁问答可就地改名，原文位置、回答与未发草稿刷新后保持",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5109,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:31:32.531Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-7f39fba6a094fae4eade",
+          "file": "conversation-renaming.spec.ts",
+          "line": 100,
+          "column": 1
+        },
+        {
+          "title": "经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60102,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/conversation-renaming.spec.ts",
+                        "column": 67,
+                        "line": 139
+                      },
+                      "message": "Error: locator.fill: Test timeout of 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('complementary', { name: '参考面板', exact: true }).getByRole('textbox', { name: '搜索会话', exact: true })\u001b[22m\n\n\n  137 |   await panel.getByRole('button', { name: '重命名会话：条件比较 A', exact: true }).click();\n  138 |   const before = await readData(page);\n> 139 |   await saveName(page, '经典阅读讨论');\n      |                                  ^\n  140 |   await panel.getByRole('textbox', { name: '搜索会话', exact: true }).fill('经典阅读讨论');\n  141 |   await expect(panel.locator('.ai-history-item')).toHaveCount(1);\n  142 |   await expect(panel.locator('.ai-history-item')).toContainText('经典阅读讨论');\n    at /Users/amos/project/Read-paper/tests/e2e/conversation-renaming.spec.ts:139:67"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T14:31:37.750Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/conversation-renaming-经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/conversation-renaming-经典历史中的会话使用相同改名弹窗，不切换会话或消费草稿/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "08b6a4ade67fbea5f599-66444ea154af5c035967",
+          "file": "conversation-renaming.spec.ts",
+          "line": 128,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T14:30:24.837Z",
+    "duration": 133095.89599999998,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

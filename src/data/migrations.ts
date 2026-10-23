@@ -123,6 +123,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
       || ![undefined, 'read-only', 'workspace-write', 'full-access'].includes(settings.access))) throw new Error('Codex 设置损坏，未覆盖现有数据。');
   }
   for (const conversation of Object.values(data.conversations)) {
+    if (conversation.titleEdited !== undefined && typeof conversation.titleEdited !== 'boolean') throw new Error('会话名称编辑状态损坏，未覆盖现有资料。');
     if (conversation.deletedAt !== undefined) {
       if (typeof conversation.deletedAt !== 'string' || !Number.isFinite(Date.parse(conversation.deletedAt))) throw new Error('会话删除记录损坏，未覆盖现有资料。');
       conversation.archived = true;

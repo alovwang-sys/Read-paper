@@ -7,6 +7,7 @@ import { useWorkspace } from '../../services/workspace';
 import { readerActivities } from '../../services/reader-actions';
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { NativeRunTimeline } from '../ai/NativeRunTimeline';
+import { RenameConversationButton } from '../ai/ConversationManagement';
 import { constrainPopover, type PopoverRect } from './popover-layout';
 import './inline-ai.css';
 
@@ -206,8 +207,9 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
   }}>
     <header className="inline-ai-header" data-popover-drag>
       {draftOpen && <button className="icon-button" aria-label="返回就地问答并保留卡片草稿" onClick={() => setDraftOpen(false)}><ArrowLeft size={15} /></button>}
-      <button type="button" className="inline-ai-move" data-popover-move aria-label="移动原文旁问答" title="拖动标题栏移动 · 方向键移动，Shift 加速" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><GripHorizontal size={14} /><strong>{draftOpen ? draft?.status === 'saved' ? '卡片已保存' : operation === 'summary' ? '摘要卡片' : '整理为卡片' : operationLabel}</strong></button>
+      <button type="button" className="inline-ai-move" data-popover-move aria-label="移动原文旁问答" title={`${operationLabel} · ${conversation.title?.trim() || '原文旁提问'} · 拖动标题栏移动`} aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><GripHorizontal size={14} /><strong>{draftOpen ? draft?.status === 'saved' ? '卡片已保存' : operation === 'summary' ? '摘要卡片' : '整理为卡片' : conversation.titleEdited && conversation.title?.trim() || operationLabel}</strong></button>
       <span>PDF 第 {source.pageIndex + 1} 页</span>
+      <RenameConversationButton conversationId={conversationId}/>
       <button className="icon-button" aria-label="关闭就地问答并保留内容" title="收起，内容会保留 · Esc" onClick={close}><X size={15} /></button>
     </header>
     {deleted && <div className="inline-ai-deleted" role="status"><span>会话已删除，此处记录仅供查看。提问与草稿仍保留。</span><button className="text-button" onClick={() => run(() => actions.restoreDeletedConversation(conversationId))}>恢复会话</button></div>}

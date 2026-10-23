@@ -120,3 +120,60 @@ test('打包桌面：真实原文字形选区翻译、摘要存卡与原位活�
     await screenshot(page, 'desktop-source-activity-after-restart.png');
   } finally { await f.dispose(); }
 });
+
+test('打包桌面：手动命名不被首问覆盖，取消改名与正常退出后保留会话和草稿', async () => {
+  const f = await fixture();
+  const evidence = 'docs/verification/conversation-renaming/screenshots';
+  try {
+    let { page, controlled } = await f.launch();
+    const before = await readData(page), id = before.sessions['research-a'].activeConversationId!;
+    const draft = '桌面改名后仍保留的未发送草稿';
+    await composer(page).fill(draft);
+    await chat(page).getByRole('button', { name: `重命名会话：${before.conversations[id].title}`, exact: true }).click();
+    const rename = () => page.getByRole('dialog', { name: '重命名会话', exact: true });
+    await rename().getByLabel('会话名称', { exact: true }).fill('新会话');
+    await rename().getByLabel('会话名称', { exact: true }).press('Enter');
+    await expect(rename()).toHaveCount(0);
+    await expect(chat(page).getByRole('button', { name: '选择会话', exact: true })).toContainText('新会话');
+    await expect(composer(page)).toHaveValue(draft);
+    await saved(page);
+    const renamed = await readData(page);
+    expect(renamed.sessions['research-a'].activeConversationId).toBe(id);
+    expect(renamed.conversations[id]).toEqual({ ...before.conversations[id], input: draft, title: '新会话', titleEdited: true });
+
+    await chat(page).getByRole('button', { name: '重命名会话：新会话', exact: true }).click();
+    await rename().getByLabel('会话名称', { exact: true }).fill('不应保存的名称');
+    await rename().getByLabel('会话名称', { exact: true }).press('Escape');
+    await expect(rename()).toHaveCount(0);
+    await expect(chat(page).getByRole('button', { name: '重命名会话：新会话', exact: true })).toBeFocused();
+    await expect(composer(page)).toHaveValue(draft);
+    expect((await readData(page)).conversations[id]).toEqual(renamed.conversations[id]);
+
+    await composer(page).fill('首次提问不应覆盖手动设置的新会话名称。');
+    await chat(page).getByRole('button', { name: '开始研究', exact: true }).click();
+    await expect(chat(page)).toContainText('受控研究回答 1');
+    await expect(composer(page)).toHaveValue('');
+    expect(controlled.researchCalls).toHaveLength(1);
+    await composer(page).fill(draft);
+    await saved(page);
+    const answered = await readData(page);
+    expect(answered.sessions['research-a'].activeConversationId).toBe(id);
+    expect(answered.conversations[id]).toMatchObject({ title: '新会话', titleEdited: true, input: draft });
+    expect(answered.conversations[id].requestIds).toHaveLength(1);
+    await expect(main(page).locator('.pdf-reader')).toBeVisible();
+    await mkdir(evidence, { recursive: true });
+    await page.screenshot({ path: `${evidence}/desktop-rename-before-restart.png` });
+
+    await f.close();
+    ({ page } = await f.launch(false));
+    await expect(chat(page).getByRole('button', { name: '选择会话', exact: true })).toContainText('新会话');
+    await expect(chat(page)).toContainText('受控研究回答 1');
+    await expect(composer(page)).toHaveValue(draft);
+    await expect(main(page).locator('.pdf-reader')).toBeVisible();
+    const restored = await readData(page);
+    expect(restored.sessions['research-a'].activeConversationId).toBe(id);
+    expect(restored.conversations[id]).toEqual(answered.conversations[id]);
+    expect(restored.requests[answered.conversations[id].requestIds[0]]).toEqual(answered.requests[answered.conversations[id].requestIds[0]]);
+    await page.screenshot({ path: `${evidence}/desktop-rename-after-restart.png` });
+  } finally { await f.dispose(); }
+});

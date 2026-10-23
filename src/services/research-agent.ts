@@ -131,7 +131,7 @@ export function researchConversationLists(data: WorkspaceData, researchId: strin
     if (!matches(label, title, group)) continue;
     const groupKey = anchor.kind === 'document' ? `document:${anchor.id}` : anchor.kind;
     if (!groups.has(groupKey)) groups.set(groupKey, { label: group, items: [] });
-    groups.get(groupKey)!.items.push({ conversation, label: numbered });
+    groups.get(groupKey)!.items.push({ conversation, label: conversation.titleEdited ? title : numbered });
   }
   return { main, discussions: [...groups.values()] };
 }
@@ -153,6 +153,7 @@ export function openDiscussion(researchId: string, conversationId: string) {
 }
 
 export function destinationLabel(data: WorkspaceData, conversation: Conversation) {
+  if (conversation.titleEdited) return `会话「${conversation.title?.trim() || '新会话'}」`;
   const anchor = conversation.anchor;
   if (anchor?.kind === 'card') return `卡片「${data.cards[anchor.id]?.title ?? '已移除的卡片'}」的讨论`;
   if (anchor?.kind === 'board') return `白板「${data.boards[anchor.id]?.title ?? '已移除的白板'}」的讨论`;
@@ -173,7 +174,7 @@ export function routeResearchDraft(researchId: string, target: 'new' | string) {
   const id = destination?.id ?? createResearchConversation(researchId, source.connectionId, { navigate: false });
   workspace.updateData(next => {
     const from = next.conversations[source.id], to = next.conversations[id];
-    if (!destination && from.anchor) Object.assign(to, { anchor: { ...from.anchor }, title: from.title });
+    if (!destination && from.anchor) Object.assign(to, { anchor: { ...from.anchor }, title: from.title, titleEdited: from.titleEdited });
     to.input = [to.input?.trim(), from.input?.trim()].filter(Boolean).join('\n\n');
     if (images.length) to.chatImages = images;
     if (carried.length) to.carried = carried;
@@ -403,7 +404,7 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
       consumedCarried = true;
     }
     owner.updatedAt = request.createdAt;
-    if (!owner.title || ['新会话', '新的阅读对话', '阅读对话'].includes(owner.title)) owner.title = request.prompt.slice(0, 36);
+    if (!owner.titleEdited && (!owner.title || ['新会话', '新的阅读对话', '阅读对话'].includes(owner.title))) owner.title = request.prompt.slice(0, 36);
   });
   const current = () => workspace.getGeneration() === generation && workspace.getState().data.requests[id]?.status === 'generating';
   const progress = (text: string) => { if (current()) workspace.updateData(data => { data.requests[id].events = [{ id: uid('event'), kind: 'status', text }]; }); };

@@ -568,6 +568,7 @@ export type Conversation = {
   chatImages?: ChatImageAttachment[];
   researchScrollTop?: number;
   title?: string;
+  titleEdited?: boolean;
   createdAt?: string;
   updatedAt?: string;
   archived?: boolean;
