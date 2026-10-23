@@ -2,7 +2,7 @@ import type { DrawingSnapshot } from '../domain/types';
 import { drawingSnapshotContent, hasDrawingText, validateDrawingPng, validateDrawingQuestion } from '../domain/drawing-question';
 import { contentHash, getAsset, putAsset } from '../data/storage';
 import { getActiveConversation, uid, workspace } from './workspace';
-import { createResearchConversation, isResearchConversation } from './research-agent';
+import { anchoredConversations, createResearchConversation, isResearchConversation, openDiscussion } from './research-agent';
 
 export { hasDrawingText };
 
@@ -26,16 +26,10 @@ export function openDrawingConversation(researchId: string, boardId: string, sel
   const data = workspace.getState().data;
   const ref = selection.elementIds.length === 1 && selection.placementIds.length === 1 ? data.placements[selection.placementIds[0]]?.resourceRef : undefined;
   const anchor = ref?.kind === 'card' && data.cards[ref.id] ? { kind: 'card' as const, id: ref.id } : { kind: 'board' as const, id: boardId };
-  const existing = Object.values(data.conversations)
-    .filter(item => item.researchId === researchId && !item.archived && item.anchor?.kind === anchor.kind && item.anchor.id === anchor.id && isResearchConversation(data, item))
-    .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))[0];
+  const existing = anchoredConversations(data, researchId, anchor).find(item => isResearchConversation(data, item));
   const id = existing?.id ?? createResearchConversation(researchId, undefined, { navigate: false });
-  if (existing) workspace.selectConversation(researchId, id, { surface: 'workbench' });
-  workspace.updateData(next => {
-    if (!existing) Object.assign(next.conversations[id], { anchor, title: anchor.kind === 'card' ? `卡片：${next.cards[anchor.id].title}` : `白板：${next.boards[boardId].title}` });
-    const session = next.sessions[researchId];
-    if (session.agentChat?.mode !== 'float') session.agentChat = { ...session.agentChat, mode: 'side' };
-  });
+  if (!existing) workspace.updateData(next => { Object.assign(next.conversations[id], { anchor, title: anchor.kind === 'card' ? `卡片：${next.cards[anchor.id].title}` : `白板：${next.boards[boardId].title}` }); });
+  openDiscussion(researchId, id);
   return id;
 }
 

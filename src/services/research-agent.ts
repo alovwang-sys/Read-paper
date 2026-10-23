@@ -94,6 +94,50 @@ export function isResearchConversation(data: WorkspaceData, conversation: Conver
     && !conversation.requestIds.some(id => data.requests[id] && !data.requests[id].researchRun);
 }
 
+export type DiscussionAnchor = NonNullable<Conversation['anchor']> | { kind: 'document'; id: string };
+/** A discussion hangs on a card, board or PDF passage; anything else is a research conversation. */
+export function discussionAnchor(conversation: Conversation): DiscussionAnchor | undefined {
+  if (conversation.anchor) return conversation.anchor;
+  if (conversation.inlineSource && !conversation.inlineSource.promoted) return { kind: 'document', id: conversation.inlineSource.documentId };
+}
+const activityAt = (data: WorkspaceData, item: Conversation) => item.updatedAt ?? item.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1)?.createdAt ?? item.createdAt ?? '';
+export function anchoredConversations(data: WorkspaceData, researchId: string, anchor: NonNullable<Conversation['anchor']>) {
+  return Object.values(data.conversations)
+    .filter(item => item.researchId === researchId && !item.archived && item.anchor?.kind === anchor.kind && item.anchor.id === anchor.id)
+    .sort((a, b) => activityAt(data, b).localeCompare(activityAt(data, a)));
+}
+/** Research conversations stay in the main list; discussions are grouped by the object they hang on. */
+export function researchConversationLists(data: WorkspaceData, researchId: string, query = '') {
+  const needle = query.trim().toLocaleLowerCase(), matches = (...texts: string[]) => !needle || texts.some(text => text.toLocaleLowerCase().includes(needle));
+  const main: Conversation[] = [], groups = new Map<string, { label: string; items: { conversation: Conversation; label: string }[] }>();
+  const listed = Object.values(data.conversations)
+    .filter(item => item.researchId === researchId && !item.archived && (item.inlineSource?.operation ?? 'question') === 'question')
+    .sort((a, b) => activityAt(data, b).localeCompare(activityAt(data, a)));
+  for (const conversation of listed) {
+    const anchor = discussionAnchor(conversation), title = conversation.title?.trim() || '新会话';
+    if (!anchor) { if (matches(title)) main.push(conversation); continue; }
+    const quote = conversation.inlineSource && data.evidence[conversation.inlineSource.evidenceId]?.quote.trim();
+    const label = anchor.kind === 'card' ? data.cards[anchor.id]?.title ?? '已移除的卡片'
+      : anchor.kind === 'board' ? data.boards[anchor.id]?.title ?? '已移除的白板'
+      : `第 ${conversation.inlineSource!.pageIndex + 1} 页 · ${quote ? quote.slice(0, 40) : '区域'}`;
+    const group = anchor.kind === 'card' ? '卡片' : anchor.kind === 'board' ? '白板' : data.documents[anchor.id]?.title ?? '已移除的资料';
+    if (!matches(label, title, group)) continue;
+    const key = anchor.kind === 'document' ? `document:${anchor.id}` : anchor.kind;
+    if (!groups.has(key)) groups.set(key, { label: group, items: [] });
+    groups.get(key)!.items.push({ conversation, label });
+  }
+  return { main, discussions: [...groups.values()] };
+}
+/** Show a conversation in the chat host without moving the main area. */
+export function openDiscussion(researchId: string, conversationId: string) {
+  workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });
+  workspace.updateData(next => {
+    const session = next.sessions[researchId];
+    session.panel.aiView = 'chat';
+    if (session.agentChat?.mode !== 'float') session.agentChat = { ...session.agentChat, mode: 'side' };
+  });
+}
+
 export function openResearchConversation(researchId: string, conversationId: string, options: { navigate?: boolean } = {}) {
   workspace.selectConversation(researchId, conversationId, { surface: 'workbench' });
   if (options.navigate !== false) workspace.openResearchView(researchId, 'home');

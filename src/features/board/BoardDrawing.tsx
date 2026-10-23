@@ -24,6 +24,7 @@ import {
 } from '../../services/drawing-storage';
 import { resourceExists, resourceTitle, uid, useWorkspace } from '../../services/workspace';
 import { attachDrawingQuestion, openDrawingConversation } from '../../services/drawing-question';
+import { DiscussionBadge } from './DiscussionBadge';
 import { BoardQuestionDialog, type DrawingQuestionSource } from './BoardQuestionDialog';
 import { BoardResearchActions } from './BoardResearchActions';
 import { drawingResearchSelection } from './board-research-selection';
@@ -453,7 +454,7 @@ export default function BoardDrawing({ boardId, onViewport }: { boardId: string;
       <div className="drawing-resource-kind">{document ? <FileText size={14} /> : <StickyNote size={14} />}{document ? hasFullText(document) ? 'PDF 论文' : '文献条目' : '观点卡片'}{item.group && <span>{item.group}</span>}</div>
       <h3>{resourceTitle(data, item.resourceRef)}</h3>
       {exists ? <p>{card?.body || (document ? `${document.authors}${document.year ? ` · ${document.year}` : ''}\n${hasFullText(document) ? `${document.pageCount} 页` : '全文未导入'}` : '')}</p> : <p className="drawing-resource-missing">资料已缺失，请移出此摆放或修复来源。</p>}
-      <footer><span>{card ? `${card.evidenceIds.length} 条原文依据` : hasFullText(document) ? '原文与引用保留在资料库' : '题录与摘要 · 全文未导入'}</span><button onClick={() => open(item)} aria-label={`在右侧打开：${resourceTitle(data, item.resourceRef)}`}>打开 <ArrowUpRight size={13} /></button></footer>
+      <footer><span>{card ? `${card.evidenceIds.length} 条原文依据` : hasFullText(document) ? '原文与引用保留在资料库' : '题录与摘要 · 全文未导入'}</span>{card && <DiscussionBadge researchId={board!.researchId} anchor={{ kind: 'card', id: card.id }} />}<button onClick={() => open(item)} aria-label={`在右侧打开：${resourceTitle(data, item.resourceRef)}`}>打开 <ArrowUpRight size={13} /></button></footer>
     </article>;
   }
 
@@ -532,7 +533,7 @@ export default function BoardDrawing({ boardId, onViewport }: { boardId: string;
     {drawingQuestionError && <div className="board-message has-error drawing-question-message" role="alert"><span>{drawingQuestionError}</span><button className="button" onClick={() => setDrawingQuestionError('')}>关闭</button></div>}
     {(error || save.status === 'error') && <div className="board-message has-error" role="alert"><span>{error || save.error}</span><button className="button" onClick={() => { setError(''); void flushBoardDrawings(boardId).then(() => releaseClosedEditor(boardId)).catch(problem => setError(problem instanceof Error ? problem.message : '保存失败，请重试。')); }}>重试保存</button></div>}
     <div className="drawing-statusbar">
-      {active ? <div className="drawing-resource-actions"><span>{resourceTitle(data, active.resourceRef)}</span><button className="button" onClick={() => open(active)}>右侧打开</button><button className="button" onClick={() => open(active, 'main')}>主区打开</button>{active.resourceRef.kind === 'card' && <button className="button" onClick={() => open(active, 'inspector', true)}>查看原文</button>}</div> : <span>{data.agentWorkbench !== false ? '框选图形、文字、笔迹、图片或资料，问 Agent 继续研究。' : researchSelection.unsupportedCount > 0 ? '图形、图片和笔迹不自动识别为问题；可用上方“写问题”补充。' : researchSelection.placementIds.length > 1 ? `已选 ${researchSelection.placementIds.length} 项资料，可核对后继续研究。` : '画笔、形状、文字和箭头可直接绘制；选择资料后可继续研究。'}</span>}
+      {active ? <div className="drawing-resource-actions"><span>{resourceTitle(data, active.resourceRef)}</span><button className="button" onClick={() => open(active)}>右侧打开</button><button className="button" onClick={() => open(active, 'main')}>主区打开</button>{active.resourceRef.kind === 'card' && <button className="button" onClick={() => open(active, 'inspector', true)}>查看原文</button>}{active.resourceRef.kind === 'card' && <DiscussionBadge researchId={board.researchId} anchor={{ kind: 'card', id: active.resourceRef.id }} className="button" label="讨论 · " />}</div> : <span>{data.agentWorkbench !== false ? '框选图形、文字、笔迹、图片或资料，问 Agent 继续研究。' : researchSelection.unsupportedCount > 0 ? '图形、图片和笔迹不自动识别为问题；可用上方“写问题”补充。' : researchSelection.placementIds.length > 1 ? `已选 ${researchSelection.placementIds.length} 项资料，可核对后继续研究。` : '画笔、形状、文字和箭头可直接绘制；选择资料后可继续研究。'}</span>}
       <span className={`drawing-save-status is-${save.status}`} role="status">{({ dirty: '绘图待保存', saving: '正在保存绘图…', saved: '绘图已保存', error: '绘图保存失败' })[save.status]}</span>
     </div>
     <BoardQuestionDialog boardId={boardId} open={questionOpen} onClose={() => setQuestionOpen(false)} drawingOrigin={questionSource} position={questionPosition.current} onCreated={id => {

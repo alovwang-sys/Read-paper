@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUp, ArrowUpRight, BookOpen, ChevronDown, ImagePlus, Plus, Search, Square, X } from 'lucide-react';
-import type { AIConnectionId, AIRequest } from '../../domain/types';
+import type { AIConnectionId, AIRequest, Conversation } from '../../domain/types';
 import type { ResearchAgentCapability } from '../../domain/research-agent';
 import { connectionLabel } from '../../services/agents';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
 import { stopAI } from '../../services/ai';
-import { applyResearchSuggestion, changeResearchAgent, clearResearchFocus, createResearchConversation, getResearchAgentCapabilities, isResearchConversation, keepResearchDraft, openResearchConversation, stopResearchRun, submitResearchRun, undoResearchSuggestion } from '../../services/research-agent';
+import { applyResearchSuggestion, changeResearchAgent, clearResearchFocus, createResearchConversation, discussionAnchor, getResearchAgentCapabilities, isResearchConversation, keepResearchDraft, openResearchConversation, researchConversationLists, stopResearchRun, submitResearchRun, undoResearchSuggestion } from '../../services/research-agent';
 import { hasDrawingText, removeDrawingQuestion, setDrawingQuestionMode } from '../../services/drawing-question';
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { SourceRecommendations } from '../ai/SourceRecommendations';
@@ -170,17 +170,23 @@ export function ResearchAgentHistory({ researchId, compact = false, onSelected }
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const current = getActiveConversation(data, researchId);
-  const activityAt = (id: string) => { const item = data.conversations[id]; return item.updatedAt ?? item.requestIds.map(requestId => data.requests[requestId]).filter(Boolean).at(-1)?.createdAt ?? item.createdAt ?? ''; };
-  const conversations = Object.values(data.conversations).filter(item => item.researchId === researchId && !item.archived && (!item.inlineSource?.operation || item.inlineSource.operation === 'question') && (!query || titleOf(item.title).toLocaleLowerCase().includes(query.toLocaleLowerCase()))).sort((a, b) => activityAt(b.id).localeCompare(activityAt(a.id)));
+  const { main: conversations, discussions } = researchConversationLists(data, researchId, query);
+  const discussionCount = discussions.reduce((sum, group) => sum + group.items.length, 0);
+  const currentIsDiscussion = !!current && !!discussionAnchor(current);
+  const [showDiscussions, setShowDiscussions] = useState(currentIsDiscussion);
+  useEffect(() => { if (query || currentIsDiscussion) setShowDiscussions(true); }, [query, currentIsDiscussion]);
   function act(operation: () => void) { try { operation(); setError(''); onSelected?.(); } catch (problem) { setError((problem as Error).message); } }
   function select(id: string) {
     if (!compact) { openResearchConversation(researchId, id); return; }
     actions.selectConversation(researchId, id, { surface: 'workbench' });
     actions.updateData(next => { next.sessions[researchId].panel.aiView = 'chat'; });
   }
-  return <section className={`research-agent-history ${compact ? 'is-compact' : ''}`} aria-label="研究会话列表"><div className="research-agent-history-heading"><h2>会话</h2><button aria-label="新建会话" title="新建会话" onClick={() => act(() => { createResearchConversation(researchId, current?.connectionId ?? 'codex', { navigate: !compact }); if (compact) actions.updateData(next => { next.sessions[researchId].panel.aiView = 'chat'; }); })}><Plus size={15}/>{!compact && '新建会话'}</button></div><label className="conversation-search"><Search size={13}/><input aria-label="搜索会话" value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索会话"/></label>{error && <p className="research-agent-error" role="alert">{error}</p>}{!conversations.length && <p className="conversation-empty">{query ? '没有匹配的会话' : '新建会话，开始研究'}</p>}<div className="research-agent-conversation-list">{conversations.map(conversation => {
+  const row = (conversation: Conversation, label: string, kind: string) => {
     const running = conversation.requestIds.some(id => data.requests[id]?.status === 'generating');
     const active = conversation.id === current?.id;
-    return <button key={conversation.id} className={`research-agent-conversation-item ${running ? 'is-running' : ''}`} aria-label={`打开会话：${titleOf(conversation.title)}`} title={titleOf(conversation.title)} aria-current={active ? 'true' : undefined} onClick={() => act(() => select(conversation.id))}><span className="conversation-status-dot" aria-label={running ? '执行中' : active ? '当前会话' : undefined}/><span className="research-agent-conversation-item-title">{titleOf(conversation.title)}</span></button>;
-  })}</div></section>;
+    return <button key={conversation.id} className={`research-agent-conversation-item ${running ? 'is-running' : ''}`} aria-label={`${kind}：${label}`} title={label} aria-current={active ? 'true' : undefined} onClick={() => act(() => select(conversation.id))}><span className="conversation-status-dot" aria-label={running ? '执行中' : active ? '当前会话' : undefined}/><span className="research-agent-conversation-item-title">{label}</span></button>;
+  };
+  return <section className={`research-agent-history ${compact ? 'is-compact' : ''}`} aria-label="研究会话列表"><div className="research-agent-history-heading"><h2>会话</h2><button aria-label="新建会话" title="新建会话" onClick={() => act(() => { createResearchConversation(researchId, current?.connectionId ?? 'codex', { navigate: !compact }); if (compact) actions.updateData(next => { next.sessions[researchId].panel.aiView = 'chat'; }); })}><Plus size={15}/>{!compact && '新建会话'}</button></div><label className="conversation-search"><Search size={13}/><input aria-label="搜索会话" value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索会话"/></label>{error && <p className="research-agent-error" role="alert">{error}</p>}{!conversations.length && !discussionCount && <p className="conversation-empty">{query ? '没有匹配的会话' : '新建会话，开始研究'}</p>}<div className="research-agent-conversation-list">{conversations.map(conversation => row(conversation, titleOf(conversation.title), '打开会话'))}</div>
+    {discussionCount > 0 && <details className="research-discussions" open={showDiscussions} onToggle={event => setShowDiscussions(event.currentTarget.open)}><summary>讨论（{discussionCount}）</summary><div className="research-agent-conversation-list" aria-label="卡片、白板与原文讨论">{discussions.map(group => <div key={group.label + group.items[0].conversation.id} role="group" aria-label={group.label}><div className="research-discussion-group" title={group.label}>{group.label}</div>{group.items.map(item => row(item.conversation, item.label, '打开讨论'))}</div>)}</div></details>}
+  </section>;
 }

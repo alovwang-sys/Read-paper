@@ -18,3 +18,5 @@
 除明确记载已迁移和执行的项目外，以上为静态入口审计，未声称所有旧脚本已经重跑通过。新增独立验收已经走真实新界面。
 
 2026-10-23 补记：`drawing-question.spec.ts` 已按上表迁移（左侧列表选会话，不再关闭右面板），原断言全部保留；会话 A 预置为白板讨论（`anchor`），以配合新的问 Agent 归属规则（见[会话归属](../../agent-native-evolution/conversation-redesign/conversation-model.md)）。新增单卡片一键进入用例，实际运行 6/6 通过。`continuous-workspace.spec.ts` 新增侧边聊天拖宽用例，10/10 通过。
+
+2026-10-23 讨论分组（会话归属第 2 步）：`drawing-question.spec.ts` 6/6 通过，单卡片用例增加主列表隐藏、"讨论"分组、卡片与白板讨论数进入的断言；`continuous-workspace`、`board-tree`、`human-board-editing`、`drawing` 及 `board-research` 其余用例同轮通过。`agent-workbench.spec.ts` 第 45、124 行和 `board-research.spec.ts` BV08 失败；在不含本次改动的上一提交上单独重跑，同样失败，属于既有问题，未在本次处理。

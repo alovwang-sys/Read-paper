@@ -43,6 +43,7 @@ import { layoutBoardTree } from '../../domain/board-layout';
 import { addBoardCard, moveBoardBranch, removeBoardPlacements, reorderBoardPlacement, setBoardLayout } from '../../services/board-structure';
 import { BoardQuestionDialog } from './BoardQuestionDialog';
 import { BoardResearchActions } from './BoardResearchActions';
+import { DiscussionBadge } from './DiscussionBadge';
 import './board.css';
 
 const BoardDrawing = lazy(() => import('./BoardDrawing'));
@@ -591,6 +592,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           });
           actions.setPanel('ai');
         }}><Sparkles size={14} />{drawingMode ? '整理资料关系' : '让 Agent 整理'}</button>
+        <DiscussionBadge researchId={board.researchId} anchor={{ kind: 'board', id: boardId }} className="button" label="白板讨论 · " />
         <button className="button" aria-label="白板版本历史" title="查看历史并恢复布局，保留共享卡片正文" aria-expanded={historyOpen} onClick={() => setHistoryOpen(!historyOpen)}><History size={16} />历史与恢复</button>
         {!drawingMode && <><button
           className="icon-button"
@@ -934,6 +936,7 @@ export function BoardView({ boardId }: { boardId: string }) {
                     <div className="board-tree-footer"><span className={card?.needsReview ? 'needs-review' : ''}>{card?.needsReview ? '待核查' : document ? '原始文献' : card?.evidenceIds.length ? `${card.evidenceIds.length} 条来源` : '未关联原文'}</span><div className="board-node-actions">
                       <button className="board-source-button" aria-label={`编辑内容：${resourceTitle(data, ref)}`} onClick={event => { event.stopPropagation(); choose(item); inspect(item); }}>{document ? '详情' : '编辑'}</button>
                       <button className="board-source-button" aria-label={`查看卡片原文：${resourceTitle(data, ref)}`} disabled={!document && !card?.evidenceIds.length} title={!document && !card?.evidenceIds.length ? '未关联原文，可在卡片中补充依据' : '在右侧查看原文'} onClick={event => { event.stopPropagation(); document ? inspect(item) : source(item); }}>原文{(card?.evidenceIds.length ?? 0) > 1 ? ` · ${card!.evidenceIds.length}` : ''}</button>
+                      {card && <DiscussionBadge researchId={board.researchId} anchor={{ kind: 'card', id: card.id }} />}
                     </div></div>
                   </> : <>
                   <div className="board-node-header" title="拖动移动；Shift / Ctrl / ⌘ 点击多选后可整体拖动">
@@ -1007,6 +1010,7 @@ export function BoardView({ boardId }: { boardId: string }) {
                           <ArrowUpRight size={13} />
                           原文
                         </button>
+                        <DiscussionBadge researchId={board.researchId} anchor={{ kind: 'card', id: card.id }} />
                       </div>
                     )}
                     {document && (

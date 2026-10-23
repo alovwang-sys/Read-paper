@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ChevronDown, Maximize2, MessageSquare, PanelRight, PanelsTopLeft, Plus, Search, X } from 'lucide-react';
 import type { Session } from '../../domain/types';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
-import { createResearchConversation, isResearchConversation } from '../../services/research-agent';
+import { createResearchConversation, isResearchConversation, researchConversationLists } from '../../services/research-agent';
 import { AIPanel } from '../ai/AIPanel';
 import { ResearchAgentDock, ResearchAgentHome } from './ResearchAgentWorkbench';
 
@@ -59,7 +59,7 @@ export function ResearchConversationHost({ researchId, mode, onMode }: { researc
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
   }, [mode, researchId]);
-  const conversations = Object.values(data.conversations).filter(item => item.researchId === researchId && !item.archived && (!item.inlineSource?.operation || item.inlineSource.operation === 'question') && (!query || (item.title ?? '新会话').toLocaleLowerCase().includes(query.toLocaleLowerCase()))).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''));
+  const { main: conversations, discussions } = researchConversationLists(data, researchId, query);
   return <section ref={host} className={`research-conversation-host chat-${mode}`} role="region" aria-label="当前会话" data-chat-mode={mode} hidden={mode === 'closed'} style={mode === 'float' && rectangle ? constrain(rectangle) as CSSProperties : undefined}
     onKeyDown={event => { if (event.key !== 'Escape') return; if (picker) { event.preventDefault(); event.stopPropagation(); setPicker(false); } else if (mode === 'float') { event.preventDefault(); event.stopPropagation(); onMode('closed'); } }}
     onPointerMove={event => {
@@ -86,7 +86,7 @@ export function ResearchConversationHost({ researchId, mode, onMode }: { researc
     }}>
       <button className="conversation-host-title" data-conversation-picker aria-label="选择会话" aria-expanded={picker} onClick={() => setPicker(!picker)}><MessageSquare size={15}/><span>{current?.title?.trim() || '新会话'}</span><ChevronDown size={13}/></button>
       <div className="conversation-host-controls"><button aria-label="侧边聊天" title="侧边聊天" aria-pressed={mode === 'side'} onClick={() => onMode('side')}><PanelRight size={15}/></button><button aria-label="浮窗聊天" title="浮窗聊天" aria-pressed={mode === 'float'} onClick={() => onMode('float')}><PanelsTopLeft size={15}/></button><button aria-label="展开聊天" title="展开聊天" aria-pressed={mode === 'main'} onClick={() => onMode('main')}><Maximize2 size={15}/></button><button aria-label="关闭聊天" title="关闭聊天" onClick={() => onMode('closed')}><X size={16}/></button></div>
-      {picker && <div className="conversation-host-picker" role="dialog" aria-label="选择会话"><label className="conversation-search"><Search size={14}/><input aria-label="查找会话" value={query} onChange={event => setQuery(event.target.value)} autoFocus placeholder="搜索会话"/></label><button className="conversation-new" onClick={create}><Plus size={15}/>开始新会话</button><div>{conversations.map(item => <button key={item.id} className="conversation-picker-row" aria-current={item.id === current?.id ? 'true' : undefined} onClick={() => select(item.id)}>{item.title?.trim() || '新会话'}</button>)}{!conversations.length && <p className="conversation-empty">没有匹配的会话</p>}</div></div>}
+      {picker && <div className="conversation-host-picker" role="dialog" aria-label="选择会话"><label className="conversation-search"><Search size={14}/><input aria-label="查找会话" value={query} onChange={event => setQuery(event.target.value)} autoFocus placeholder="搜索会话"/></label><button className="conversation-new" onClick={create}><Plus size={15}/>开始新会话</button><div>{conversations.map(item => <button key={item.id} className="conversation-picker-row" aria-current={item.id === current?.id ? 'true' : undefined} onClick={() => select(item.id)}>{item.title?.trim() || '新会话'}</button>)}{discussions.length > 0 && <p className="conversation-picker-section">讨论</p>}{discussions.flatMap(group => group.items.map(({ conversation, label }) => <button key={conversation.id} className="conversation-picker-row" title={`${group.label} · ${label}`} aria-current={conversation.id === current?.id ? 'true' : undefined} onClick={() => select(conversation.id)}>{group.label} · {label}</button>))}{!conversations.length && !discussions.length && <p className="conversation-empty">没有匹配的会话</p>}</div></div>}
     </header>
     {mode === 'side' && <div className="resize-handle" role="separator" aria-label="调整聊天宽度" aria-orientation="vertical" aria-valuemin={320} aria-valuenow={data.panelWidth} title="拖动调整宽度，双击恢复默认宽度" tabIndex={0}
       onDoubleClick={() => resizeSide(360)}

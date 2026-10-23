@@ -507,3 +507,5 @@
 .is-tree .board-node.is-tree-root { border-left:4px solid #698d55; background:#eef4e7; }
 .is-tree .board-node.is-tree-root h3 { font-size:15px; font-weight:700; color:#345329; }
 .board-source-button:disabled { color:#a9b1a2; cursor:default; }
+.board-discussion-badge { display: inline-flex; align-items: center; gap: 3px; border: 0; border-radius: 10px; padding: 1px 7px; background: #eaf2e4; color: #52724b; font-size: 11px; line-height: 1.6; cursor: pointer; }
+.board-discussion-badge:hover { background: #dce9d3; }
