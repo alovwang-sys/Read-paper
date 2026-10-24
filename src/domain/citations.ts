@@ -1,5 +1,5 @@
 export function mapCitationNumbers(body: string, transform: (number: number) => string): string {
-  return body.replace(/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`+[^`\n]*`+|\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\[-?\d+\]\([^\n]*?\)|\[-?\d+\]\[[^\]\n]*\])|\[(-?\d+)\](?!:)/g, (match, literal: string | undefined, number: string) => literal ?? transform(Number(number)));
+  return body.replace(/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`+[^`\n]*`+|\\\\|\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\[-?\d+\]\([^\n]*?\)|\[-?\d+\]\[[^\]\n]*\])|\[(-?\d+)\](?!:)/g, (match, literal: string | undefined, number: string) => literal ?? transform(Number(number)));
 }
 
 export function remapCitationNumbers(

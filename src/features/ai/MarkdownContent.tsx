@@ -4,9 +4,11 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { normalizeMathDelimiters } from './math-markdown';
 
 /** Model output remains text; raw HTML is never executed. */
 export function MarkdownContent({ text, onCitation }: { text: string; onCitation?: (number: number) => void }) {
+  const markdown = normalizeMathDelimiters(onCitation ? mapCitationNumbers(text, number => `[${number}](#papertrail-citation-${number})`) : text);
   return (
     <div className="ai-markdown">
       <ReactMarkdown
@@ -26,7 +28,7 @@ export function MarkdownContent({ text, onCitation }: { text: string; onCitation
           ),
         }}
       >
-        {onCitation ? mapCitationNumbers(text, number => `[${number}](#papertrail-citation-${number})`) : text}
+        {markdown}
       </ReactMarkdown>
     </div>
   );

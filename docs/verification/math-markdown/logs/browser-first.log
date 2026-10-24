@@ -1,0 +1,220 @@
+[WebServer] (node:10466) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 1 test using 1 worker
+
+(node:10479) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] tests/e2e/math-markdown.spec.ts:45:1 › 原文旁与侧边会话渲染两类TeX括号和美元公式，代码/引用/原始正文均保持
+  1) tests/e2e/math-markdown.spec.ts:45:1 › 原文旁与侧边会话渲染两类TeX括号和美元公式，代码/引用/原始正文均保持 ───────────────────
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.scrollIntoViewIfNeeded: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByRole('dialog', { name: '原文旁提问', exact: true }).locator('.inline-ai-turn .ai-markdown').first().locator('.katex-display').first()
+
+
+      68 |     await page.setViewportSize({ width, height });
+      69 |     const block = localAnswer.locator('.katex-display').first();
+    > 70 |     await block.scrollIntoViewIfNeeded();
+         |                 ^
+      71 |     const overflow = await block.evaluate(element => { const node = element as HTMLElement; return { scroll: node.scrollWidth, client: node.clientWidth, mode: getComputedStyle(node).overflowX }; });
+      72 |     expect(overflow.scroll).toBeGreaterThan(overflow.client); expect(overflow.mode).toBe('auto');
+      73 |     await block.evaluate(element => { element.scrollLeft = element.scrollWidth; });
+        at /Users/amos/project/Read-paper/tests/e2e/math-markdown.spec.ts:70:17
+
+    Error Context: test-results/math-markdown-原文旁与侧边会话渲染两类TeX括号和美元公式，代码-引用-原始正文均保持/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/math-markdown-原文旁与侧边会话渲染两类TeX括号和美元公式，代码-引用-原始正文均保持/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/math-markdown-原文旁与侧边会话渲染两类TeX括号和美元公式，代码-引用-原始正文均保持/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  1 failed
+    tests/e2e/math-markdown.spec.ts:45:1 › 原文旁与侧边会话渲染两类TeX括号和美元公式，代码/引用/原始正文均保持 ────────────────────
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/math-markdown.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "math-markdown.spec.ts",
+      "file": "math-markdown.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "原文旁与侧边会话渲染两类TeX括号和美元公式，代码/引用/原始正文均保持",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 61100,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/amos/project/Read-paper/tests/e2e/math-markdown.spec.ts",
+                        "column": 17,
+                        "line": 70
+                      },
+                      "message": "Error: locator.scrollIntoViewIfNeeded: Test timeout of 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: '原文旁提问', exact: true }).locator('.inline-ai-turn .ai-markdown').first().locator('.katex-display').first()\u001b[22m\n\n\n  68 |     await page.setViewportSize({ width, height });\n  69 |     const block = localAnswer.locator('.katex-display').first();\n> 70 |     await block.scrollIntoViewIfNeeded();\n     |                 ^\n  71 |     const overflow = await block.evaluate(element => { const node = element as HTMLElement; return { scroll: node.scrollWidth, client: node.clientWidth, mode: getComputedStyle(node).overflowX }; });\n  72 |     expect(overflow.scroll).toBeGreaterThan(overflow.client); expect(overflow.mode).toBe('auto');\n  73 |     await block.evaluate(element => { element.scrollLeft = element.scrollWidth; });\n    at /Users/amos/project/Read-paper/tests/e2e/math-markdown.spec.ts:70:17"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-24T04:53:03.384Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/amos/project/Read-paper/test-results/math-markdown-原文旁与侧边会话渲染两类TeX括号和美元公式，代码-引用-原始正文均保持/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/amos/project/Read-paper/test-results/math-markdown-原文旁与侧边会话渲染两类TeX括号和美元公式，代码-引用-原始正文均保持/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "9de95f7abca8d6703484-71f1dfe0ecf2b547de65",
+          "file": "math-markdown.spec.ts",
+          "line": 45,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-24T04:53:02.229Z",
+    "duration": 62937.429000000004,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

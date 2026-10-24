@@ -1,0 +1,12 @@
+
+> read-paper@0.1.18 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+
+ Test Files  52 passed (52)
+      Tests  835 passed (835)
+   Start at  13:00:03
+   Duration  1.76s (transform 3.78s, setup 0ms, import 6.87s, tests 6.07s, environment 3ms)

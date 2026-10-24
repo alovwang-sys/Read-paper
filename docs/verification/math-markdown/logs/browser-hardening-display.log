@@ -1,0 +1,163 @@
+[WebServer] (node:11729) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 1 test using 1 worker
+
+(node:11738) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] tests/e2e/math-markdown.spec.ts:45:1 › 原文旁与侧边会话渲染两类TeX括号和美元公式，代码/引用/原始正文均保持
+  1 passed (9.8s)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/math-markdown.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "math-markdown.spec.ts",
+      "file": "math-markdown.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "原文旁与侧边会话渲染两类TeX括号和美元公式，代码/引用/原始正文均保持",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7635,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-24T04:59:04.461Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9de95f7abca8d6703484-71f1dfe0ecf2b547de65",
+          "file": "math-markdown.spec.ts",
+          "line": 45,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-24T04:59:03.305Z",
+    "duration": 9817.872000000001,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

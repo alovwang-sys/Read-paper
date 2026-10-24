@@ -1,0 +1,108 @@
+{
+  "verifiedAt": "2026-10-24T05:02:29.857Z",
+  "browser": {
+    "startTime": "2026-10-24T05:01:24.268Z",
+    "duration": 7604.031,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0,
+    "exitCode": 0,
+    "log": "logs/browser.log"
+  },
+  "integration": {
+    "typecheck": {
+      "status": "passed",
+      "log": "logs/build.log",
+      "note": "Final production build includes tsc --noEmit"
+    },
+    "unit": {
+      "passed": 835,
+      "total": 835,
+      "files": 52,
+      "log": "logs/full-unit.log"
+    },
+    "sharedUnit": {
+      "passed": 25,
+      "total": 25,
+      "includedInFullUnit": true,
+      "log": "logs/shared-unit.log"
+    },
+    "build": {
+      "status": "passed",
+      "log": "logs/build.log"
+    }
+  },
+  "coverage": {
+    "katexCount": 5,
+    "displayCount": 2,
+    "katexErrors": 0,
+    "delimiters": [
+      "\\(...\\)",
+      "\\[...\\]",
+      "$...$",
+      "$$...$$"
+    ],
+    "mathBracketCitationsProtected": [
+      0,
+      99
+    ],
+    "codeAndPlainParenthesesPreserved": true,
+    "remoteImageOrHTMLLoads": 0,
+    "sourceCitationLocatesPDF": true,
+    "sameConversationInSidePanel": true,
+    "rawBodyPreservedOnReload": true,
+    "viewportSizes": [
+      [
+        1440,
+        900
+      ],
+      [
+        1280,
+        800
+      ],
+      [
+        1024,
+        800
+      ]
+    ],
+    "longDisplayScrollsWithoutPageOverflow": true
+  },
+  "firstAttempt": {
+    "passed": 0,
+    "failed": 1,
+    "log": "logs/browser-first.log",
+    "cause": "PDF citation navigation closes the inline popup; the test now reopens the same saved thread before checking formulas."
+  },
+  "scope": "Synthetic PDF and controlled model routes; no real model, installed app or user data access.",
+  "screenshots": [
+    {
+      "file": "screenshots/inline-formulas-1024.png",
+      "sha256": "7ba87bdac823fa4a0299617263bf86d006a8f707f50b1738010f6fcc987f475c"
+    },
+    {
+      "file": "screenshots/inline-formulas-1280.png",
+      "sha256": "794d9b618f52a5b78cee0880a6619ffe57ca6974a5690af023aa40d732b7d3bb"
+    },
+    {
+      "file": "screenshots/inline-formulas-1440.png",
+      "sha256": "9d8bfdfeda6119388cd6d08c98b953d40daac10c8ad05a387fc5a07bdf8333e4"
+    },
+    {
+      "file": "screenshots/side-formulas-1440.png",
+      "sha256": "0e6518c868c0587fec557230b44e245f3e9b5489cad61e0dea641ea933b84e03"
+    }
+  ],
+  "hardening": {
+    "finalSourceBrowserPassed": true,
+    "intermediateSuccessLogs": [
+      "logs/browser-before-hardening.log",
+      "logs/browser-hardening-display.log"
+    ],
+    "limits": [
+      "Ordinary parentheses are not inferred as math",
+      "Lines beginning with four spaces or a tab preserve new TeX parentheses; deep lists can use existing dollar delimiters",
+      "Server research tools and material-number scanning were not changed"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+   Start at  13:00:03
+   Duration  304ms (transform 46ms, setup 0ms, import 214ms, tests 40ms, environment 0ms)
