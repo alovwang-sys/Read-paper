@@ -1,0 +1,268 @@
+[WebServer] (node:511) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 4 tests using 1 worker
+
+(node:525) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/4] tests/e2e/reader-brief-failure.spec.ts:37:49 › text真实选区简要报旧卡片格式错误后可见降级，问题只发一次且来源保持
+[2/4] tests/e2e/reader-brief-failure.spec.ts:37:49 › region真实选区简要报旧卡片格式错误后可见降级，问题只发一次且来源保持
+[3/4] tests/e2e/reader-brief-failure.spec.ts:75:1 › 简要与真正问题均失败时输入保留，连续点击重试也只增加一轮真正问题
+[4/4] tests/e2e/reader-brief-failure.spec.ts:97:1 › 等待简要时停止，迟到失败不能继续发送问题，原输入保留
+  4 passed (10.8s)
+{
+  "config": {
+    "argv": [
+      "/Users/amos/.local/node-v24.21.0/bin/node",
+      "/Users/amos/project/Read-paper/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/reader-brief-failure.spec.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "/Users/amos/project/Read-paper/playwright.config.ts",
+    "rootDir": "/Users/amos/project/Read-paper/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/amos/project/Read-paper/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "snapshotDir": "/Users/amos/project/Read-paper/tests/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "baseURL": "http://127.0.0.1:5173",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "storageState": "tests/fixtures/classic-storage-state.json",
+          "trace": "retain-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://127.0.0.1:5173",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "reader-brief-failure.spec.ts",
+      "file": "reader-brief-failure.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "text真实选区简要报旧卡片格式错误后可见降级，问题只发一次且来源保持",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3042,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-24T02:50:23.967Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7cd44f23af186f159a8f-da05cba10ac6ec7c6301",
+          "file": "reader-brief-failure.spec.ts",
+          "line": 37,
+          "column": 49
+        },
+        {
+          "title": "region真实选区简要报旧卡片格式错误后可见降级，问题只发一次且来源保持",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2568,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-24T02:50:27.266Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7cd44f23af186f159a8f-e312563f6acc47c6c957",
+          "file": "reader-brief-failure.spec.ts",
+          "line": 37,
+          "column": 49
+        },
+        {
+          "title": "简要与真正问题均失败时输入保留，连续点击重试也只增加一轮真正问题",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1531,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-24T02:50:29.839Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7cd44f23af186f159a8f-8fded96be40678cf877e",
+          "file": "reader-brief-failure.spec.ts",
+          "line": 75,
+          "column": 1
+        },
+        {
+          "title": "等待简要时停止，迟到失败不能继续发送问题，原输入保留",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2212,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-24T02:50:31.374Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7cd44f23af186f159a8f-cb916ad0b9edb45fbdb3",
+          "file": "reader-brief-failure.spec.ts",
+          "line": 97,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-24T02:50:22.867Z",
+    "duration": 10777.18,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

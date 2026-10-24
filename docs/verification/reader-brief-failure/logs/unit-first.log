@@ -1,0 +1,83 @@
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 实际模型解析使用独立brief Markdown协议，普通提问不要求卡片JSON 20ms
+ × tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > text选区遇到原卡片格式错误仍只发送一次真正问题，保留显式上下文 6ms
+   → expected { …(6) } to match object { …(4) }
+(3 matching properties omitted from actual)
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > region选区遇到原卡片格式错误仍只发送一次真正问题，保留显式上下文 9ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 真正问题失败后保留输入，按原快照重试只增加一轮实际问题 4ms
+ × tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时停止，迟到的简要失败也不能继续发送普通问题 54ms
+   → expected '' to be '解释选中公式的假设' // Object.is equality
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时原研究目录改变，硬边界错误不得退到选区后投往新目录 53ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 内部简要超时可退到选区，外层问题仍只发送一次 66ms
+ × tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 工作区重新加载后，旧简要失败不能触发迟到问题或改写新草稿 55ms
+   → expected '主会话的独立草稿' to be '重新加载后的草稿' // Object.is equality
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 只切换当前研究仍归原研究完成，不污染新研究或新输入 52ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 卡片与revision仍严格校验JSON，独立brief协议不放宽卡片来源 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > text选区遇到原卡片格式错误仍只发送一次真正问题，保留显式上下文
+AssertionError: expected { …(6) } to match object { …(4) }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "documentId": "paper-a",
+    "evidenceId": "evidence-cd643184-dc57-4d60-bc92-7716819aacf9",
+-   "kind": "text",
+    "pageIndex": 0,
+  }
+
+ ❯ tests/unit/reader-brief-failure.test.ts:75:52
+     73|     expect(state().requests[requestId].materials?.some(item => item.id…
+     74|     expect(state().requests[requestId].context).toHaveLength(1);
+     75|     expect(state().requests[requestId].context[0]).toMatchObject({ evi…
+       |                                                    ^
+     76|     expect(state().evidence[evidenceId]).toEqual(evidence);
+     77|     if (kind === 'region') expect(JSON.stringify(calls[1].messages)).t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时停止，迟到的简要失败也不能继续发送普通问题
+AssertionError: expected '' to be '解释选中公式的假设' // Object.is equality
+
+- Expected
++ Received
+
+- 解释选中公式的假设
+
+ ❯ tests/unit/reader-brief-failure.test.ts:101:45
+     99|     waiting.resolve(failure()); await pending;
+    100|     expect(state().requests[requestId].status).toBe('stopped'); expect…
+    101|     expect(state().conversations[id].input).toBe('解释选中公式的假设');
+       |                                             ^
+    102|   });
+    103|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 工作区重新加载后，旧简要失败不能触发迟到问题或改写新草稿
+AssertionError: expected '主会话的独立草稿' to be '重新加载后的草稿' // Object.is equality
+
+Expected: "重新加载后的草稿"
+Received: "主会话的独立草稿"
+
+ ❯ tests/unit/reader-brief-failure.test.ts:132:68
+    130|     waiting.resolve(failure()); await pending;
+    131|     expect(calls.map(call => call.purpose)).toEqual(['brief']);
+    132|     expect(state().conversations['conversation-research-a'].input).toB…
+       |                                                                    ^
+    133|     expect(state().requests).toEqual({});
+    134|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 7 passed (10)
+   Start at  10:40:08
+   Duration  621ms (transform 177ms, setup 0ms, import 217ms, tests 323ms, environment 0ms)

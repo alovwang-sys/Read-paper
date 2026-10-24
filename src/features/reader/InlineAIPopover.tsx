@@ -220,7 +220,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     {operation === 'question' && <div className="inline-ai-brief-row">
       {brief ? <details className="inline-ai-brief"><summary>文章简要 v{brief.version}<span>覆盖 {brief.pageIndices.length}/{brief.totalPages} 页</span></summary>
         <div><p>仅作背景，引用仍以原文选区为准。已覆盖 PDF 页：{brief.pageIndices.map(index => index + 1).join('、') || '无'}{brief.truncatedPageIndices.length ? `；其中 ${brief.truncatedPageIndices.map(index => index + 1).join('、')} 页文字不完整` : ''}。</p><MarkdownContent text={brief.body} /></div>
-      </details> : <span>{generating?.paperBriefState === 'preparing' || sharedBrief?.status === 'preparing' ? '正在生成本篇文章简要…' : generating?.paperBriefState === 'selection-only' || latest?.paperBriefState === 'selection-only' ? '本轮仅使用选区' : sharedBrief?.status === 'error' ? '文章简要暂不可用' : '首次提问时生成文章简要'}</span>}
+      </details> : <span>{generating?.paperBriefState === 'preparing' || sharedBrief?.status === 'preparing' ? '正在生成本篇文章简要…' : generating?.paperBriefState === 'selection-only' || latest?.paperBriefState === 'selection-only' ? '本轮仅使用选区' : latest?.paperBriefState === 'error' || sharedBrief?.status === 'error' ? '文章简要暂不可用 · 本轮仅使用选区' : '首次提问时生成文章简要'}</span>}
       {!deleted && generating?.paperBriefState === 'preparing' && <button type="button" className="text-button" onClick={() => run(() => skipPaperBrief(generating.id))}>先只问选区</button>}
     </div>}
     {draftOpen && draft ? <>
@@ -268,7 +268,7 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void ask(conversation.input ?? ''); }
         }} />
         {canSupplement && <button className="text-button" type="button" aria-label="补充就地本轮" disabled={supplementing || !conversation.input?.trim()} onClick={() => void supplement()}>补充本轮</button>}
-        {busy ? <button className="inline-ai-send" type="button" aria-label="停止就地回答" disabled={!generating} onClick={() => generating && stopAI(generating.id)}><Square size={13} /></button> : <button className="inline-ai-send" type="submit" aria-label="发送就地问题" disabled={!conversation.input?.trim() || !!scopeProblem}><ArrowUp size={16} /></button>}
+        {busy ? <button className="inline-ai-send" type="button" aria-label="停止就地回答" disabled={!generating} onClick={event => { event.preventDefault(); if (generating) stopAI(generating.id); }}><Square size={13} /></button> : <button className="inline-ai-send" type="submit" aria-label="发送就地问题" disabled={!conversation.input?.trim() || !!scopeProblem}><ArrowUp size={16} /></button>}
       </form>}
     </>}
     {problem && <div className="inline-ai-problem" role="alert">{problem}{!deleted && !requests.length && (initialAction === 'explain' || operation !== 'question') && <button className="text-button" disabled={busy} onClick={() => void ask(autoPrompt)}>重试{operationLabel}</button>}</div>}

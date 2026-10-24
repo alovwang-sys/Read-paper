@@ -6,7 +6,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { mkdtemp, readFile, readdir, rm, stat, chmod, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAgentHandler } from './agents.mjs';
+import { createAgentHandler, compileAgentPrompt } from './agents.mjs';
 import { createCodexRuntime } from './codex-runtime.mjs';
 import { createHash } from 'node:crypto';
 import { IMAGE_LIMITS, MAX_IMAGE_BODY_BYTES } from './images.mjs';
@@ -182,14 +182,74 @@ test('changed evidence fingerprints and explicit reset cannot reuse a native con
   assert.equal(calls[2].nativeSessionId, undefined);
 });
 
-test('card/revision requests use separate native sessions and preserve the chat session', async (t) => {
+test('card, revision and brief requests use separate native sessions and preserve the chat mapping', async (t) => {
   const calls = []; const f = await fixture(t, simpleRuntime(calls));
   await events(await f.post(request()));
-  await events(await f.post(request({ requestId: 'card1', purpose: 'card' })));
-  await events(await f.post(request({ requestId: 'revision1', purpose: 'revision' })));
+  const mappings = (await readdir(f.stateDir)).filter(name => /^[a-f0-9]{64}\.json$/.test(name));
+  const original = await readFile(join(f.stateDir, mappings[0]), 'utf8');
+  for (const purpose of ['card', 'revision', 'brief']) {
+    assert.equal((await events(await f.post(request({ requestId: `${purpose}1`, purpose })))).at(-1).type, 'done');
+  }
+  for (const call of calls.slice(1)) assert.equal(call.nativeSessionId, undefined);
+  assert.deepEqual((await readdir(f.stateDir)).filter(name => /^[a-f0-9]{64}\.json$/.test(name)), mappings);
+  assert.equal(await readFile(join(f.stateDir, mappings[0]), 'utf8'), original);
+  assert.equal(JSON.parse(await readFile(join(calls[3].cwd, 'manifest.json'), 'utf8')).purpose, 'brief');
+  f.restart();
   await events(await f.post(request({ requestId: 'chat2', history: [history()] })));
-  assert.equal(calls[1].nativeSessionId, undefined); assert.equal(calls[2].nativeSessionId, undefined); assert.equal(calls[3].nativeSessionId, 'native-1');
-  assert.match(calls[1].prompt, /只输出 JSON 对象/);
+  assert.equal(calls[4].nativeSessionId, 'native-1');
+  for (const call of calls.slice(1, 3)) {
+    assert.match(call.prompt, /只输出 JSON 对象/);
+    assert.match(call.prompt, /"title":"标题","body":"独立可读的 Markdown 正文","evidenceIds"/);
+    assert.match(call.prompt, /body 中 \[n\] 必须对应返回 evidenceIds 的顺序/);
+  }
+  assert.doesNotMatch(calls[3].prompt, /只输出 JSON 对象/);
+});
+
+test('brief prompt is independent Markdown background without card or citation protocol', () => {
+  const material = { id: 'brief-source:doc1', kind: 'background', title: '本篇提取文字', text: 'The method has a boundary condition [7].', version: 'hash1' };
+  const prompt = compileAgentPrompt(request({ purpose: 'brief', context: [], materials: [material], history: [history()], continuesNativeHistory: true, materialCwd: '/private/chat-materials' }));
+  assert.match(prompt, /Markdown 正文，目标约 1500 个汉字/);
+  assert.match(prompt, /研究问题、方法、主要发现、局限与必要术语/);
+  assert.match(prompt, /不使用工具、网络、研究目录或其他未附送材料/);
+  assert.match(prompt, /简要不能作为原文引文/);
+  assert.match(prompt, /The method has a boundary condition/);
+  assert.doesNotMatch(prompt, /只输出 JSON 对象|"body":|evidenceIds|本次允许引用的材料|\[n\]|\[7\]/);
+  assert.doesNotMatch(prompt, /Previous question|Renumbered answer|由 Codex 管理|只读材料文件|\/private\/chat-materials/);
+});
+
+test('brief cannot inherit a bound chat directory, native session, skills or permission settings', async t => {
+  const calls = [], runtime = { ...simpleRuntime(calls), readSession: async ({ sessionId }) => ({ id: sessionId, messages: [], state: 'idle', canResume: true }) };
+  const f = await fixture(t, runtime);
+  const projectDir = await mkdtemp(join(tmpdir(), 'read-paper-brief-project-'));
+  try {
+    const binding = await (await f.post({ workspaceId: 'workspace1', researchId: 'research1', path: projectDir }, '/api/ai/agents/projects/bind')).json();
+    const settings = { bindingId: binding.id, skillIds: ['reading'], codex: { mode: 'plan', access: 'full-access' } };
+    const chat = await events(await f.post(request(settings)));
+    assert.equal(chat.at(-1).type, 'done');
+    const registry = await readFile(join(f.stateDir, 'projects.json'), 'utf8');
+    const result = await events(await f.post(request({ requestId: 'brief-bound', purpose: 'brief', bindingId: binding.id, sessionRef: chat.at(-1).nativeSessionRef, codex: { model: 'brief-model' } })));
+    assert.equal(result.at(-1).type, 'done');
+    assert.equal(calls[0].cwd, binding.path);
+    assert.equal(calls[1].cwd, calls[1].materialCwd);
+    assert.notEqual(calls[1].cwd, binding.path);
+    assert.equal(calls[1].nativeSessionId, undefined);
+    assert.equal(calls[1].nativeModel, undefined);
+    assert.deepEqual(calls[1].codex, { model: 'brief-model' });
+    assert.equal(calls[1].skillIds, undefined);
+    assert.equal(calls[1].onInteraction, undefined);
+    assert.equal(result.at(-1).nativeSessionRef, undefined);
+    assert.equal(await readFile(join(f.stateDir, 'projects.json'), 'utf8'), registry);
+    f.restart();
+    assert.equal((await events(await f.post(request({ ...settings, requestId: 'chat-again', history: [history()] })))).at(-1).type, 'done');
+    assert.equal(calls[2].nativeSessionId, 'native-1');
+    for (const [index, values] of [{ skillIds: [] }, { codex: { mode: 'plan' } }, { codex: { effort: 'high' } }, { codex: { access: 'full-access' } }, { managed: true }].entries()) {
+      assert.equal((await f.post(request({ requestId: `brief-blocked-${index}`, purpose: 'brief', ...values }))).status, 400);
+    }
+    assert.equal(calls.length, 3);
+  } finally {
+    for (const call of calls) if (call.materialCwd) await chmod(call.materialCwd, 0o700);
+    await rm(projectDir, { recursive: true, force: true });
+  }
 });
 
 test('image card model is retained without inheriting skills, planning or write access', async (t) => {
@@ -238,6 +298,7 @@ test('timeout and browser disconnection cancel the underlying runtime', { timeou
 
 test('rejects untrusted native IDs, images, bad content types and excessive context before runtime', async (t) => {
   const calls = []; const f = await fixture(t, simpleRuntime(calls));
+  assert.equal((await f.post(request({ purpose: 'summary' }))).status, 400);
   assert.equal((await f.post(request({ nativeSessionId: 'attacker-chosen' }))).status, 400);
   assert.equal((await f.post(request({ context: [{ ...evidence(), kind: 'region' }] }))).status, 400);
   assert.equal((await f.post(request({ prompt: 'x'.repeat(120001) }))).status, 413);

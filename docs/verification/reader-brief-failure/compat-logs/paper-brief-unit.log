@@ -1,0 +1,23 @@
+npx vitest run tests/unit/paper-brief.test.ts --reporter=verbose
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 精确位置区分同页重复句，翻译任务不复用提问历史 8ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 两处首问共用一个生成任务，记录真实覆盖和截断，快照互不改变 52ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 失败可重试，简要与官方摘要分别保存 2ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 实际问答冻结共享简要但只带本位置历史，手动操作与请求可回查 8ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 停止一处不取消另一处等待的简要任务 52ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 只按选区回答不被稍后简要改写，翻译也不读取整篇 103ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > PDF load 阶段挂起时停止立即返回，迟到抽取不写入简要 2ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > PDF page 阶段挂起时停止立即返回，迟到抽取不写入简要 54ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > PDF text 阶段挂起时停止立即返回，迟到抽取不写入简要 54ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 抽取等待时改研究目录，不向模型发送背景或原问题 57ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 等待其他研究共享的简要时改自己的目录，不把问题投到新目录 108ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 首次问答重新生成时，实际发送和持久记录保留同一份文章简要材料 12ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 未知总页数时准备与失败记录可保存验证，超长错误截断到4000字符 1ms
+ ✓ tests/unit/paper-brief.test.ts > 文章简要与原文操作 > 演示首问不读PDF或污染文章简要，另一位置真实连接仍会首次生成 2ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  10:42:04
+   Duration  738ms (transform 136ms, setup 0ms, import 166ms, tests 517ms, environment 0ms)

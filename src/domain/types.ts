@@ -512,7 +512,7 @@ export type AIRequest = {
   body: string;
   evidenceIds: string[];
   error?: string;
-  purpose?: 'chat' | 'card' | 'revision';
+  purpose?: 'chat' | 'card' | 'revision' | 'brief';
   history?: AIHistoryTurn[];
   historyRequestIds?: string[];
   model?: string;

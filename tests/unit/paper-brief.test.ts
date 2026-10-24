@@ -14,8 +14,8 @@ vi.mock('../../src/data/storage', () => ({ loadWorkspace: vi.fn(), saveWorkspace
 vi.mock('../../src/services/pdf', () => ({ loadPdfDocument: vi.fn() }));
 const data = () => workspace.getState().data;
 const selection = { documentId: 'paper-a', pageIndex: 0, quote: 'same text', textAnchor: { start: 10, end: 19 } };
-const result = { body: 'brief', rawBody: 'brief', evidenceIds: [], model: 'test-model', result: { title: '文章简要', body: '本篇讨论检索条件与证据的相关性；未覆盖部分未知。', evidenceIds: [] } };
-const answer: AIResponder = async request => request.purpose === 'card' ? structuredClone(result) : ({ body: '只回答本处 [1]', evidenceIds: [request.context[0].evidenceId] });
+const result = { body: '本篇讨论检索条件与证据的相关性；未覆盖部分未知。', rawBody: '本篇讨论检索条件与证据的相关性；未覆盖部分未知。', evidenceIds: [], model: 'test-model' };
+const answer: AIResponder = async request => request.purpose === 'brief' ? structuredClone(result) : ({ body: '只回答本处 [1]', evidenceIds: [request.context[0].evidenceId] });
 const question = (conversationId: string): AIRequest => ({ id: 'question', conversationId, researchId: 'research-a', prompt: 'question', context: [], createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [], connectionId: 'model' });
 function deferred<T>() {
   let resolve!: (value: T) => void, reject!: (problem: Error) => void;
@@ -49,11 +49,13 @@ describe('文章简要与原文操作', () => {
   it('两处首问共用一个生成任务，记录真实覆盖和截断，快照互不改变', async () => {
     const a = createInlineConversation('research-a', selection), b = createInlineConversation('research-a', { ...selection, pageIndex: 2 });
     let release!: () => void;
-    const generate = vi.fn(async () => { await new Promise<void>(resolve => release = resolve); return structuredClone(result); });
+    const generate = vi.fn(async (_request: AIRequest) => { await new Promise<void>(resolve => release = resolve); return structuredClone(result); });
     const first = preparePaperBrief(question(a), generate), second = preparePaperBrief(question(b), generate);
     await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(generate.mock.calls[0][0]).toMatchObject({ purpose: 'brief', context: [], history: [] });
     release(); const [one, two] = await Promise.all([first, second]);
     expect(one.pageIndices).toEqual([0, 2]); expect(one.truncatedPageIndices).toEqual([0]); expect(one.totalPages).toBe(3);
+    expect(one.body).toBe(result.body);
     expect(one).toEqual(two); one.body = 'changed'; expect(two.body).not.toBe('changed');
     expect(data().documents['paper-a'].paperBrief?.body).not.toBe('changed');
     await preparePaperBrief(question(a), generate); expect(generate).toHaveBeenCalledTimes(1);
@@ -89,7 +91,7 @@ describe('文章简要与原文操作', () => {
   it('停止一处不取消另一处等待的简要任务', async () => {
     const a = createInlineConversation('research-a', selection), b = createInlineConversation('research-a', { ...selection, pageIndex: 2 });
     let release!: () => void, briefCalls = 0;
-    const responder: AIResponder = async (request, options) => { if (request.purpose === 'card') { briefCalls++; await new Promise<void>(resolve => release = resolve); return result; } return answer(request, options); };
+    const responder: AIResponder = async (request, options) => { if (request.purpose === 'brief') { briefCalls++; await new Promise<void>(resolve => release = resolve); return result; } return answer(request, options); };
     const first = submitAI('research-a', a, 'A', responder), second = submitAI('research-a', b, 'B', responder);
     await vi.waitFor(() => expect(briefCalls).toBe(1));
     const aRequest = data().conversations[a].requestIds[0]; stopAI(aRequest); release();
@@ -100,7 +102,7 @@ describe('文章简要与原文操作', () => {
 
   it('只按选区回答不被稍后简要改写，翻译也不读取整篇', async () => {
     const a = createInlineConversation('research-a', selection); let release!: () => void;
-    const responder: AIResponder = async (request, options) => { if (request.purpose === 'card') { await new Promise<void>(resolve => release = resolve); return result; } return answer(request, options); };
+    const responder: AIResponder = async (request, options) => { if (request.purpose === 'brief') { await new Promise<void>(resolve => release = resolve); return result; } return answer(request, options); };
     const run = submitAI('research-a', a, 'A', responder);
     await vi.waitFor(() => expect(release).toBeDefined());
     const id = data().conversations[a].requestIds[0]; skipPaperBrief(id); await run;
@@ -150,7 +152,7 @@ describe('文章简要与原文操作', () => {
     const owner = createInlineConversation('research-a', selection), waiting = deferred<typeof result>();
     workspace.associateDocument('research-b', 'paper-a');
     workspace.updateData(next => { next.researches['research-b'].directory = { id: 'before', projectId: 'before', path: '/fixture/before' }; });
-    const joiner = createInlineConversation('research-b', selection), responder = vi.fn(async (request: AIRequest) => request.purpose === 'card' ? waiting.promise : answer(request));
+    const joiner = createInlineConversation('research-b', selection), responder = vi.fn(async (request: AIRequest) => request.purpose === 'brief' ? waiting.promise : answer(request));
     const brief = preparePaperBrief(question(owner), responder);
     await vi.waitFor(() => expect(responder).toHaveBeenCalledTimes(1));
     const run = submitAI('research-b', joiner, '等待期间仍属于原目录的问题', responder);
@@ -158,7 +160,7 @@ describe('文章简要与原文操作', () => {
     workspace.updateData(next => { next.researches['research-b'].directory = { id: 'after', projectId: 'after', path: '/fixture/after' }; });
     waiting.resolve(result); await brief;
     const requestId = await run;
-    expect(responder.mock.calls.map(([request]) => request.purpose)).toEqual(['card']);
+    expect(responder.mock.calls.map(([request]) => request.purpose)).toEqual(['brief']);
     expect(data().requests[requestId].status).toBe('error'); expect(data().requests[requestId].error).toContain('目录');
     expect(data().documents['paper-a'].paperBrief?.status).toBe('ready');
   });
@@ -208,7 +210,7 @@ describe('文章简要与原文操作', () => {
     expect(data().requests[demoId].paperBrief).toBeUndefined(); expect(data().conversations[demo].paperBrief).toBeUndefined();
     const live = createInlineConversation('research-a', { ...selection, textAnchor: { start: 50, end: 59 } }), responder = vi.fn(answer);
     const realId = await submitAI('research-a', live, '真实问题', responder);
-    expect(responder.mock.calls.map(([request]) => request.purpose)).toEqual(['card', 'chat']);
+    expect(responder.mock.calls.map(([request]) => request.purpose)).toEqual(['brief', 'chat']);
     expect(loadPdfDocument).toHaveBeenCalledTimes(1);
     expect(data().requests[realId]).toMatchObject({ status: 'done', mode: 'live' });
     expect(data().documents['paper-a'].paperBrief).toMatchObject({ status: 'ready', connectionId: 'model', model: 'test-model' });

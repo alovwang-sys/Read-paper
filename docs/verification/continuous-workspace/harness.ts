@@ -68,8 +68,7 @@ export async function installControlledServices(page: Page, options: { seed?: Wo
   for (const endpoint of ['chat', 'agents/run']) await page.route(`**/api/ai/${endpoint}`, route => {
     const payload = route.request().postDataJSON(); localCalls.push(payload);
     const text = JSON.stringify(payload);
-    const isBrief = payload.purpose === 'card' && text.includes('文章简要');
-    const body = isBrief ? JSON.stringify({ title: '文章简要', body: '受控文章简要：本篇研究证据选择与可靠性，覆盖范围以提取记录为准；这里只是 AI 背景。', evidenceIds: [] })
+    const body = payload.purpose === 'brief' ? '受控文章简要：本篇研究证据选择与可靠性，覆盖范围以提取记录为准；这里只是 AI 背景。'
       : text.includes('翻译') ? '受控翻译：这份样例比较了固定检索与自适应证据选择。[1]'
       : text.includes('摘要') ? '受控摘要：检索收益依赖证据与问题的相关性，需要保留适用条件。[1]'
       : `受控局部回答 ${localCalls.length}：相关证据需要覆盖当前问题，并保留原文条件。[1]`;

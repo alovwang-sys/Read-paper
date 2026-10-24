@@ -1,0 +1,11 @@
+{
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "tests/unit/paper-brief.test.ts",
+    "--reporter=verbose"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 1.2
+}

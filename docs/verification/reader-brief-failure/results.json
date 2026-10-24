@@ -1,0 +1,154 @@
+{
+  "verifiedAt": "2026-10-24T02:52:27.443Z",
+  "unit": {
+    "passed": 16,
+    "total": 16,
+    "exitCode": 0,
+    "log": "logs/unit-source-boundaries.log",
+    "previous": {
+      "passed": 14,
+      "total": 14,
+      "log": "logs/unit.log"
+    },
+    "includedInIntegrationTotal": true
+  },
+  "browser": {
+    "startTime": "2026-10-24T02:50:22.867Z",
+    "duration": 10777.18,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0,
+    "exitCode": 0,
+    "cases": [
+      {
+        "title": "text真实选区简要报旧卡片格式错误后可见降级，问题只发一次且来源保持",
+        "status": "expected",
+        "durationMs": 3042
+      },
+      {
+        "title": "region真实选区简要报旧卡片格式错误后可见降级，问题只发一次且来源保持",
+        "status": "expected",
+        "durationMs": 2568
+      },
+      {
+        "title": "简要与真正问题均失败时输入保留，连续点击重试也只增加一轮真正问题",
+        "status": "expected",
+        "durationMs": 1531
+      },
+      {
+        "title": "等待简要时停止，迟到失败不能继续发送问题，原输入保留",
+        "status": "expected",
+        "durationMs": 2212
+      }
+    ],
+    "log": "logs/browser.log"
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "log": "logs/check-final.log"
+  },
+  "integration": {
+    "unit": {
+      "files": 52,
+      "passed": 818,
+      "total": 818,
+      "log": "logs/full-unit-final.log"
+    },
+    "server": {
+      "passed": 360,
+      "total": 360,
+      "log": "logs/full-server.log"
+    },
+    "build": {
+      "status": "passed",
+      "log": "logs/build-final.log"
+    },
+    "providedBy": "integration owner",
+    "finalSource": "Includes source loader rejection hard-boundary handling and stop click preventDefault"
+  },
+  "firstAttempts": {
+    "unit": {
+      "passed": 7,
+      "failed": 3,
+      "total": 10,
+      "log": "logs/unit-first.log",
+      "causes": [
+        "Text kind omitted by default",
+        "Recovery journal preferred over mock database",
+        "Stopping during brief preparation did not restore the consumed prompt"
+      ]
+    },
+    "browserStartup": {
+      "passed": 0,
+      "failed": 4,
+      "total": 4,
+      "log": "logs/browser-first.log",
+      "cause": "Missing Chromium headless shell cache; business paths did not run"
+    },
+    "browserBusiness": {
+      "passed": 3,
+      "failed": 1,
+      "total": 4,
+      "log": "logs/browser-before-stop-fix.log",
+      "cause": "While validating new stop-input restoration, the reused button became submit during the same click; preventDefault fixes the introduced double-brief submission",
+      "artifact": "artifacts/stop-double-brief/requests.json"
+    }
+  },
+  "scope": "Synthetic PDFs; controlled model and project routes; no real user data, actual model calls, installed app operations or packaging.",
+  "screenshots": [
+    {
+      "file": "screenshots/region-brief-fallback-1024.png",
+      "sha256": "b23c0557b9a8e331ca346f0560972b5882a9613364d6f6ce93a1312260184a78"
+    },
+    {
+      "file": "screenshots/region-brief-fallback-1280.png",
+      "sha256": "df63cd4468ba8d87a0ac01a8741609749f3085df48e1215ccf1fc8b1fdf9e2ee"
+    },
+    {
+      "file": "screenshots/region-brief-fallback-1440.png",
+      "sha256": "6db2d3d3585b020b20f3eac1c1bbb00b366c61c1ba1dfbef1973e87915a45f48"
+    },
+    {
+      "file": "screenshots/retry-retains-original-question.png",
+      "sha256": "8958bd06157274523614720a509521a1ee4f743647e5f526660f739d45f9017d"
+    },
+    {
+      "file": "screenshots/text-brief-fallback-1440.png",
+      "sha256": "a5e9a716e41794a6bac357485081596b409532a33923f86a144e7f1b85700766"
+    }
+  ],
+  "compatibility": {
+    "suite": "continuous-workspace",
+    "passed": 11,
+    "total": 11,
+    "exitCode": 0,
+    "durationMs": 38400,
+    "logDirectory": "compat-logs",
+    "oldEvidencePNGCount": 20,
+    "restoredUnchanged": true,
+    "evidenceManifest": "compat-logs/continuous-evidence-preservation.json",
+    "screenshotDirectory": "compat-screenshots/screenshots",
+    "newScreenshotCount": 14
+  },
+  "totalBrowser": {
+    "passed": 15,
+    "total": 15,
+    "includes": [
+      "specialist 4",
+      "compatibility 11"
+    ]
+  },
+  "sourceBoundaryAudit": {
+    "loaderRejection": "Hard failure, no brief or question sent; original prompt retained",
+    "loadedPdfTextExtractionFailure": "Soft failure, selected-source chat only",
+    "browserRerun": false,
+    "latestIntegrationTotals": {
+      "unit": 818,
+      "server": 360,
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "realPdfHashMismatchTestIncluded": true
+  }
+}

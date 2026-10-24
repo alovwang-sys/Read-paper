@@ -1,0 +1,24 @@
+
+ RUN  v4.1.11 /Users/amos/project/Read-paper
+
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 实际模型解析使用独立brief Markdown协议，普通提问不要求卡片JSON 17ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > text选区遇到原卡片格式错误仍只发送一次真正问题，保留显式上下文 3ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > region选区遇到原卡片格式错误仍只发送一次真正问题，保留显式上下文 2ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 真正问题失败后保留输入，按原快照重试只增加一轮实际问题 4ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时停止，原输入恢复且不覆盖新草稿： 51ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时停止，原输入恢复且不覆盖新草稿：等待时新写的后续草稿 52ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时directory改变，硬边界错误不得退到选区后迟到发送 52ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时connection改变，硬边界错误不得退到选区后迟到发送 52ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 等待简要时document改变，硬边界错误不得退到选区后迟到发送 52ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 内部简要超时可退到选区，外层问题仍只发送一次 66ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 简要模型失败与原文hash变化同时发生仍是硬边界，不能误降级发送 52ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > PDF loader直接拒绝原文件hash校验时不发送简要或问题，保留问题与选区 1ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > PDF已成功加载后普通文字提取失败允许仅选区提问，不误判原文件失效 1ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 工作区重新加载后，旧简要失败不能触发迟到问题或改写新草稿 51ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 只切换当前研究仍归原研究完成，不污染新研究或新输入 53ms
+ ✓ tests/unit/reader-brief-failure.test.ts > 文章简要不能阻断普通选区提问 > 卡片与revision仍严格校验JSON，独立brief协议不放宽卡片来源 2ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  10:56:47
+   Duration  768ms (transform 159ms, setup 0ms, import 192ms, tests 511ms, environment 0ms)

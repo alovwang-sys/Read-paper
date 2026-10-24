@@ -1,0 +1,23 @@
+npx playwright test tests/e2e/continuous-workspace.spec.ts --reporter=line,json --output=docs/verification/reader-brief-failure/compat-logs/browser-artifacts
+[WebServer] (node:1137) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 11 tests using 1 worker
+
+(node:1160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/11] tests/e2e/continuous-workspace.spec.ts:8:1 › 资源中发送即清空并直接显示回答；紧凑会话切换保留 PDF 和独立草稿
+[2/11] tests/e2e/continuous-workspace.spec.ts:47:1 › 侧边聊天可拖动分隔条调宽，宽度刷新后保留，主区不被挤没
+[3/11] tests/e2e/continuous-workspace.spec.ts:64:1 › 14 天没有活动的研究会话收进"更早"；打开后保持展开，搜索时平铺显示
+[4/11] tests/e2e/continuous-workspace.spec.ts:83:1 › 同一会话侧边、浮窗、完整显示连续移动；资源分屏、请求和草稿不复制
+[5/11] tests/e2e/continuous-workspace.spec.ts:115:1 › 完整聊天后重进同一白板列表可见；关闭聊天后围绕白板追问会打开输入
+[6/11] tests/e2e/continuous-workspace.spec.ts:140:1 › 卡片与摘录以浮窗编辑和按本篇筛选，定位原文后保留聊天与修改
+[7/11] tests/e2e/continuous-workspace.spec.ts:172:1 › 切换文字助手保留同会话历史、草稿与图片；不支持的附件阻止提交，语音入口说明范围
+[8/11] tests/e2e/continuous-workspace.spec.ts:211:1 › 真实 PDF 文字选区三动作分开；翻译和摘要卡片可从原位记录找回
+[9/11] tests/e2e/continuous-workspace.spec.ts:250:1 › 两个原文位置独立问答，共用本篇文章简要；简要与原文证据分开并刷新恢复
+[10/11] tests/e2e/continuous-workspace.spec.ts:306:1 › 实际区域框选带局部 PNG 提问，原文和图片范围保持；原位记录可找回
+[11/11] tests/e2e/continuous-workspace.spec.ts:346:1 › 原有 Excalidraw 绘图、人工箭头和资料收录在连续工作区仍可用
+  11 passed (38.4s)

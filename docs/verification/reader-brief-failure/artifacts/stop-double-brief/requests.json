@@ -1,0 +1,25 @@
+[
+  {
+    "url": "http://127.0.0.1:5173/api/ai/agents/run",
+    "startedAt": "2026-10-24T02:47:58.357Z",
+    "requestId": "brief-387632cc-8e51-4867-82d3-5fc23941081c",
+    "purpose": "brief",
+    "conversationId": "conversation-91124006-df35-4e4d-bec8-b9e6ccd61171",
+    "status": 200
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/ai/agents/stop",
+    "startedAt": "2026-10-24T02:47:58.422Z",
+    "requestId": "request-2c5ddd42-d36e-4e86-ad07-a7fb77e1f3a0",
+    "conversationId": "conversation-91124006-df35-4e4d-bec8-b9e6ccd61171",
+    "status": 200
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/ai/agents/run",
+    "startedAt": "2026-10-24T02:47:58.531Z",
+    "requestId": "brief-cc063e87-3e70-4fb3-9944-78a41a011797",
+    "purpose": "brief",
+    "conversationId": "conversation-91124006-df35-4e4d-bec8-b9e6ccd61171",
+    "status": -1
+  }
+]

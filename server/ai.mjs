@@ -122,7 +122,7 @@ function imageURL(part, config) {
 function validateRequest(body, config) {
   if (!isRecord(body) || !hasOnly(body, ['requestId', 'purpose', 'messages'])
     || typeof body.requestId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(body.requestId)
-    || !['chat', 'card', 'revision'].includes(body.purpose)
+    || !['chat', 'card', 'revision', 'brief'].includes(body.purpose)
     || !Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 128) throw invalid();
   let chars = 0;
   let images = 0;

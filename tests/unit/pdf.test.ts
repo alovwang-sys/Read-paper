@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PaperDocument, WorkspaceScope } from '../../src/domain/types';
+import { getAsset } from '../../src/data/storage';
 
 const mocks = vi.hoisted(() => {
   const data: {
@@ -203,5 +204,14 @@ describe('PDF import boundaries', () => {
   it('rejects opening a stub before accessing or parsing assets', async () => {
     await expect(loadPdfDocument({ id: 'stub', title: 'Stub', authors: '', year: '', readingStatus: 'unread', textStatus: 'pending' })).rejects.toThrow('尚无全文');
     expect(mocks.getDocument).not.toHaveBeenCalled();
+  });
+
+  it('rejects actual asset bytes that differ from the saved source before PDF parsing', async () => {
+    vi.mocked(getAsset).mockResolvedValueOnce(new Blob(['%PDF-1.7\nchanged source bytes']));
+    const doc: PaperDocument = { id: 'changed-source', assetId: 'changed-source-asset', filename: 'changed.pdf',
+      hash: 'a'.repeat(64), pageCount: 1, title: 'Saved source', authors: '', year: '', readingStatus: 'unread', textStatus: 'ready' };
+    await expect(loadPdfDocument(doc)).rejects.toThrow('原文件内容与保存的来源不一致');
+    expect(mocks.getDocument).not.toHaveBeenCalled();
+    expect(mocks.putAsset).not.toHaveBeenCalled();
   });
 });

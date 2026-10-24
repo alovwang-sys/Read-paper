@@ -276,7 +276,7 @@ test('两个原文位置独立问答，共用本篇文章简要；简要与原�
   expect(requests.every(request => request.paperBrief?.key === brief.key && request.context.length === 1 && request.evidenceIds.length === 1)).toBe(true);
   expect(requests.every(request => request.materials?.some(material => material.kind === 'background' && material.title === '文章简要（AI 背景）'))).toBe(true);
   expect(requests[0].evidenceIds).not.toEqual(requests[1].evidenceIds);
-  const briefs = fixture.localCalls.filter(call => call.purpose === 'card');
+  const briefs = fixture.localCalls.filter(call => call.purpose === 'brief');
   expect(briefs).toHaveLength(1); expect(briefs[0].context).toEqual([]); expect(briefs[0].history).toEqual([]);
   expect(JSON.stringify(fixture.localCalls)).not.toContain('主会话秘密草稿');
   await screenshot(page, 'shared-brief-independent-source-questions.png');

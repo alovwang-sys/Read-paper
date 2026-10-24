@@ -204,6 +204,27 @@ test('shared Pi endpoint preserves card and revision JSON drafts without tool or
   assert.equal(calls, 2);
 });
 
+test('shared Pi endpoint accepts brief and preserves its Markdown messages and output', async () => {
+  const brief = '## 研究问题\n\n本篇研究方法的适用条件。\n\n## 局限\n\n未覆盖的内容未知。';
+  const messages = [{ role: 'system', content: '仅输出文章背景简要的 Markdown 正文，不使用工具或额外材料。' }, { role: 'user', content: '本篇文字：研究方法在给定条件下成立。' }];
+  let calls = 0;
+  await withServer({ fetchImpl: async (_url, options) => {
+    calls++;
+    const body = JSON.parse(options.body);
+    assert.deepEqual(body.messages, messages);
+    assert.equal('tools' in body, false);
+    assert.equal('tool_choice' in body, false);
+    return response(`${chunk(brief)}${chunk('', 'stop')}`);
+  } }, async port => {
+    const result = await call(port, { body: { requestId: 'brief-1', purpose: 'brief', messages } });
+    assert.equal(result.status, 200);
+    const frames = events(result.body);
+    assert.equal(frames.filter(frame => frame.type === 'delta').map(frame => frame.text).join(''), brief);
+    assert.deepEqual(frames.at(-1), { type: 'done', model: 'glm-5.3-flash' });
+  });
+  assert.equal(calls, 1);
+});
+
 test('host, origin, fetch site, content type, roles and client configuration are checked before billing', async () => {
   let calls = 0;
   await withServer({ fetchImpl: async () => { calls += 1; return response(); } }, async (port) => {
