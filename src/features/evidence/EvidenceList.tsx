@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BookOpen, ExternalLink, Layers, Quote, Sparkles } from 'lucide-react';
 import { getAsset } from '../../data/storage';
 import type { ContextSnapshot, RegionSource } from '../../domain/types';
+import { evidenceGroup, pageRangeLabel } from '../../domain/evidence';
 import { useWorkspace, validateEvidence } from '../../services/workspace';
 import './evidence.css';
 
@@ -118,12 +119,14 @@ export function EvidenceList({
               },
             ),
           );
+        const fragments = evidenceGroup(data, item);
         return (
           <article className="evidence-entry" key={id} data-evidence-id={id}>
             <div className="evidence-source-label">
               <BookOpen size={13} />
               <span>
-                PDF 第 {item.pageIndex + 1} 页
+                {pageRangeLabel(fragments.map(fragment => fragment.pageIndex))}
+                {fragments.length > 1 ? ` · 当前片段第 ${item.pageIndex + 1} 页` : ''}
                 {item.printedPage ? ` · 印刷页 ${item.printedPage}` : ''}
                 {!item.researchId && ' · 来源研究未记录'}
                 {item.researchId && item.researchId !== research?.id && ` · ${data.researches[item.researchId]?.title ?? '其他研究'}`}
@@ -146,6 +149,7 @@ export function EvidenceList({
               <ExternalLink size={12} />
             </button>
             <div className="evidence-actions">
+              {fragments.length > 1 && fragments.map(fragment => <button key={fragment.id} type="button" className="text-button" onClick={() => execute(() => actions.openResource({ kind: 'document', id: doc.id }, { scope: data.scope, target, anchor: { evidenceId: fragment.id, pageIndex: fragment.pageIndex } }))}>回查第 {fragment.pageIndex + 1} 页</button>)}
               <button className="text-button" onClick={() => execute(() => actions.setExcerptMarked(id, !!item.annotationHidden))}>
                 {item.annotationHidden ? '恢复标记' : '移除标记'}
               </button>

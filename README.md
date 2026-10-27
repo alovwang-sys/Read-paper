@@ -6,7 +6,7 @@
 
 默认提供 **连续研究工作区**：左侧紧凑会话列表，同一段问答可在完整视图、资源侧边和浮窗之间移动，草稿与历史保持；阅读时选中文字或区域，可就地提问、翻译或整理摘要卡片，原处回查记录。固定顶栏“卡片与摘录”打开独立笔记浮窗，不必滚到论文底部。已连接的本机 Codex 可查阅本研究 PDF 并形成带引用草稿，原标签分屏、Excalidraw 与经典工作台保留。其他连接沿用实际能力，不宣称具有 Codex 的研究工具。[本轮实现与验证边界](docs/verification/continuous-workspace/README.md)。
 
-2026-10-24 源码修复：原文旁提问的文章简要独立生成，不再误触卡片格式校验；简要暂不可用时自动仅按原选区继续，并明确显示实际范围。停止无回答会恢复空输入，后来草稿保留，停止点击不会误触重新发送。[专项验证](docs/verification/reader-brief-failure/README.md)。此改动尚未编入本机0.1.18或新的安装包。
+2026-10-24 源码修复：原文旁提问的文章简要独立生成，不再误触卡片格式校验；简要暂不可用时自动仅按原选区继续，并明确显示实际范围。停止无回答会恢复空输入，后来草稿保留，停止点击不会误触重新发送。[专项验证](docs/verification/reader-brief-failure/README.md)。此改动已编入本机0.1.19，已安装并验证原资料恢复。
 
 把论文读成自己的理解，再把理解写成有出处的结论。
 
@@ -22,7 +22,7 @@ Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个
 
 ## 下载安装
 
-从 [GitHub Releases](https://github.com/alovwang-sys/Read-paper/releases) 选择已公开的技术预览，在 **Assets** 下载对应安装包。当前源码版本为 **0.1.18**，已将会话改名、可恢复删除与原文标记入口修复重建并安装到本机，详见[v0.1.18说明](docs/releases/v0.1.18.md)；本轮没有公开发布新的 GitHub Release。此前发行见 [v0.1.13 说明](docs/releases/v0.1.13.md)。公开版本与附件以对应 GitHub Release 为准。
+从 [GitHub Releases](https://github.com/alovwang-sys/Read-paper/releases) 选择已公开的技术预览，在 **Assets** 下载对应安装包。当前源码版本为 **0.1.19**，已生成包含跨页选择与三项界面修复的 macOS Apple 芯片本机试用包，详见[打包验证](docs/verification/local-build-0.1.19/README.md)。随后按用户要求已安装到本机并验证正常退出／重启与原资料恢复，见[安装记录](docs/verification/local-build-0.1.19/local-install.md)；未公开发布新的 GitHub Release。此前本机版本见[v0.1.18说明](docs/releases/v0.1.18.md)，公开版本与附件以对应 GitHub Release 为准。
 
 | 你的设备 | 选择的文件 | 安装方式 |
 | --- | --- | --- |
@@ -74,6 +74,8 @@ Papertrail 是面向个人研究者的本地论文研究工作台。围绕一个
 开发分支新增会话／标记删除入口：左栏会话／讨论行及聊天标题可删除会话，再从“已删除会话”恢复；原文选区或就地问答可直接移除／恢复标记，并能撤销，已保存问答、卡片和引用保留。此增量已编入本机0.1.17，验证及实际范围见[删除入口验收](docs/verification/conversation-deletion/README.md)。
 
 会话名称可通过左栏行或当前聊天标题的铅笔修改，原文浮窗与经典历史共用相同入口。手动名称不再被首次提问覆盖；此修复已编入本机0.1.18，见[改名验收](docs/verification/conversation-renaming/README.md)。
+
+最新源码支持 PDF 跨页文字选择与区域框选：一次拖动可自动滚动，按页保留原文／图片与来源，用同一菜单保存摘录、制卡或向 AI 提问；可逐页回查，图片超过单次上限时选区仍保留。白板可从标题铅笔或列表更多菜单改名，列表主区任意留白均可打开；左栏讨论可按论文／白板独立折叠，刷新和研究切换保留开合。实际验证与安装边界见[本轮记录](docs/verification/cross-page-selection/README.md)。
 
 **人工调整白板：** 左栏白板／文稿和研究卡片可拖动排序，也可点击手柄选择上移／下移。在白板选择模式下，Shift / Ctrl / ⌘ 多选后整体拖动；方向键移动 1px，Shift + 方向键移动 10px。卡片“编辑内容”在右侧修改共享正文，“历史与恢复”查看和恢复布局。连线随卡片实际边缘绘制曲线，可点击修改关系。见[本轮验收](docs/verification/human-board-control/README.md)。
 

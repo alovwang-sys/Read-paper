@@ -19,7 +19,8 @@ export function readerActivities(data: WorkspaceData, evidenceId: string): Reade
   const manual: ReaderActivity[] = (evidence.readerActions ?? []).map(action => ({ ...action, status: 'done',
     ...(action.kind === 'card' && action.refId ? { cardId: action.refId, body: data.cards[action.refId]?.body } : {}) }));
   const requests = Object.values(data.requests).filter(request => (!request.purpose || request.purpose === 'chat') && !request.superseded
-    && (request.readerEvidenceId === evidenceId || data.conversations[request.conversationId]?.inlineSource?.evidenceId === evidenceId));
+    && (request.readerEvidenceId === evidenceId || data.conversations[request.conversationId]?.inlineSource?.evidenceId === evidenceId
+      || data.conversations[request.conversationId]?.inlineSource?.evidenceIds?.includes(evidenceId)));
   if (!evidence.contextOnly && !evidence.annotationHidden && !manual.length && !requests.length)
     manual.push({ id: `excerpt:${evidence.id}`, kind: 'excerpt', status: 'done', createdAt: evidence.createdAt ?? '' });
   const generated: ReaderActivity[] = requests.map(request => {

@@ -124,6 +124,7 @@ export type ReaderActivity = {
   error?: string;
 };
 export type Evidence = {
+  selectionGroupId?: string;
   contextOnly?: boolean;
   annotationHidden?: boolean;
   researchId?: string;
@@ -287,6 +288,8 @@ export type ResourceAnchor = {
   citationNumber?: number;
 };
 export type Session = {
+  discussionGroups?: Record<string, boolean>;
+  boardTitleDrafts?: Record<string, string>;
   agentChat?: { mode: 'main' | 'side' | 'float' | 'closed'; rect?: { left: number; top: number; width: number; height: number } };
   documentInfoId?: string;
   sourcePreview?: { candidate: SourceCandidate; discovery?: SourceDiscovery };
@@ -590,7 +593,7 @@ export type Conversation = {
   sentContext?: ContextSnapshot[];
   skills?: AgentSkill[];
   codex?: CodexSettings;
-  inlineSource?: { documentId: string; pageIndex: number; evidenceId: string; draftId?: string; promoted?: boolean; operation?: ReaderOperation };
+  inlineSource?: { documentId: string; pageIndex: number; evidenceId: string; evidenceIds?: string[]; draftId?: string; promoted?: boolean; operation?: ReaderOperation };
   paperBrief?: PaperBriefSnapshot;
   boardSkill?: { boardId: string; scope: 'board' | 'research'; allowNewCards?: boolean };
   /** The card or board this thread discusses; asking from it again continues here. */

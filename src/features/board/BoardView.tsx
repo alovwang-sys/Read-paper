@@ -44,6 +44,7 @@ import { addBoardCard, moveBoardBranch, removeBoardPlacements, reorderBoardPlace
 import { BoardQuestionDialog } from './BoardQuestionDialog';
 import { BoardResearchActions } from './BoardResearchActions';
 import { DiscussionBadge } from './DiscussionBadge';
+import { BoardRenameDialog } from './BoardRenameDialog';
 import './board.css';
 
 const BoardDrawing = lazy(() => import('./BoardDrawing'));
@@ -90,6 +91,7 @@ export function BoardView({ boardId }: { boardId: string }) {
   const [selectedEdge, setSelectedEdge] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [questionOpen, setQuestionOpen] = useState(false);
   const [questionPosition, setQuestionPosition] = useState<{ x: number; y: number }>();
   const drawingPosition = useRef<{ x: number; y: number } | undefined>(undefined);
@@ -178,6 +180,7 @@ export function BoardView({ boardId }: { boardId: string }) {
     setConnectingFrom(undefined);
     setSelectedEdge(undefined);
     setHistoryOpen(false);
+    setRenaming(false);
     setLayoutPreview(undefined);
     setSourcePicker(undefined);
     setRemoveBranch(undefined);
@@ -507,6 +510,7 @@ export function BoardView({ boardId }: { boardId: string }) {
   return (
     <div className={`board-view ${tree ? `is-tree ${summary ? 'show-summary' : 'show-titles'}` : ''}`}>
       <div className="toolbar board-toolbar">
+        <button type="button" className="button board-title-button" aria-label={`重命名白板：${board.title}`} title={board.title} onClick={() => setRenaming(true)}><span>{board.title}</span><Pencil size={14}/></button>
         <button className="button" aria-pressed={drawingMode} onClick={() => {
           const nextMode = drawingMode ? 'organize' : 'draw';
           setCanvasMode(nextMode);
@@ -618,6 +622,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           <ZoomIn size={16} />
         </button></>}
       </div>
+      {renaming && <BoardRenameDialog key={boardId} boardId={boardId} onClose={() => setRenaming(false)}/>}
       {!drawingMode && <div className="board-structure-toolbar" aria-label="白板结构与展示">
         <button className="button" aria-label={tree ? '切换为自由布局' : '预览层级整理'} onClick={() => tree ? structureAction(() => setBoardLayout(boardId, 'free')) : setLayoutPreview(boardRevision)}><GitBranch size={14} />{tree ? '层级整理 · 切换自由布局' : '层级整理'}</button>
         {tree && <>

@@ -1,0 +1,25 @@
+{
+  "version": "0.1.19",
+  "date": "2026-10-26",
+  "platform": "macOS Apple Silicon (arm64)",
+  "artifacts": [
+    {
+      "path": "out/make/dmg/arm64/Papertrail-0.1.19-macos-arm64.dmg",
+      "bytes": 234428813
+    },
+    {
+      "path": "out/make/zip/darwin/arm64/Papertrail-darwin-arm64-0.1.19.zip",
+      "bytes": 236810039
+    }
+  ],
+  "installedVersionUntouched": "0.1.18",
+  "installedByThisTask": false,
+  "published": false,
+  "desktopTests": {
+    "passed": 4,
+    "controlledModelOnly": true,
+    "isolatedUserData": true,
+    "normalExitAndRestart": true
+  },
+  "build": "passed after transient download retry; no dependency/configuration changes"
+}

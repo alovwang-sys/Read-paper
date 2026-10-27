@@ -37,7 +37,16 @@ export function validateReaderContext(data: WorkspaceData, recover = false) {
     }
     if (recover && doc.paperBrief.status === 'preparing') { doc.paperBrief.status = 'error'; doc.paperBrief.error = '上次简要生成已中断，可重新提问。'; }
   }
+  const groups = new Map<string, { documentId: string; researchId?: string; kind: 'text' | 'region'; pages: Set<number> }>();
   for (const evidence of Object.values(data.evidence)) {
+    if (evidence.selectionGroupId !== undefined) {
+      check(text(evidence.selectionGroupId, 200) && !!evidence.selectionGroupId, '跨页选区标识损坏。');
+      const group = groups.get(evidence.selectionGroupId);
+      if (group) {
+        check(group.documentId === evidence.documentId && group.researchId === evidence.researchId && group.kind === (evidence.kind ?? 'text') && !group.pages.has(evidence.pageIndex), '跨页选区包含重复页、不同类型或其他研究的来源。');
+        group.pages.add(evidence.pageIndex);
+      } else groups.set(evidence.selectionGroupId, { documentId: evidence.documentId, researchId: evidence.researchId, kind: evidence.kind ?? 'text', pages: new Set([evidence.pageIndex]) });
+    }
     if (evidence.textAnchor) validateTextAnchor(evidence.textAnchor);
     if (evidence.readerActions !== undefined) {
       check(Array.isArray(evidence.readerActions) && evidence.readerActions.length <= 10000, '原文操作记录损坏。');
@@ -52,13 +61,28 @@ export function validateReaderContext(data: WorkspaceData, recover = false) {
   for (const conversation of Object.values(data.conversations)) {
     if (conversation.paperBrief) { validatePaperBrief(conversation.paperBrief, true); check(conversation.inlineSource?.documentId === conversation.paperBrief.documentId, '局部会话的文章简要归属不正确。'); }
     if (conversation.inlineSource?.operation !== undefined) check(['question', 'translation', 'summary'].includes(conversation.inlineSource.operation), '原文操作类型损坏。');
+    const source = conversation.inlineSource;
+    if (source?.evidenceIds !== undefined) {
+      check(Array.isArray(source.evidenceIds) && source.evidenceIds.length > 0 && source.evidenceIds.length <= 2000 && source.evidenceIds[0] === source.evidenceId
+        && new Set(source.evidenceIds).size === source.evidenceIds.length, '跨页问答来源不完整。');
+      let previousPage = -1;
+      for (const id of source.evidenceIds) {
+        const evidence = data.evidence[id];
+        check(typeof id === 'string' && evidence && evidence.documentId === source.documentId && (!evidence.researchId || evidence.researchId === conversation.researchId)
+          && evidence.pageIndex > previousPage, '跨页问答来源缺失、重复或跨研究。');
+        previousPage = evidence.pageIndex;
+      }
+    }
   }
   for (const request of Object.values(data.requests)) {
     if (request.paperBrief) { validatePaperBrief(request.paperBrief, true); check(request.context.some(source => source.documentId === request.paperBrief!.documentId && source.documentHash === request.paperBrief!.documentHash), '当轮文章简要与原文版本不一致。'); }
     if (request.readerOperation !== undefined) check(['question', 'translation', 'summary'].includes(request.readerOperation) && request.context.some(source => source.evidenceId === request.readerEvidenceId), '当轮原文操作来源不正确。');
     if (request.paperBriefState !== undefined) check(['preparing', 'selection-only', 'error'].includes(request.paperBriefState), '当轮文章简要状态损坏。');
   }
-  for (const session of Object.values(data.sessions)) if (session.agentChat) {
+  for (const session of Object.values(data.sessions)) {
+    if (session.discussionGroups !== undefined) check(record(session.discussionGroups) && Object.entries(session.discussionGroups).every(([key, value]) => key.length <= 220 && /^(card|(?:document|board):.+)$/.test(key) && typeof value === 'boolean'), '讨论分组开合记录损坏。');
+    if (session.boardTitleDrafts !== undefined) check(record(session.boardTitleDrafts) && Object.entries(session.boardTitleDrafts).every(([key, value]) => key.length > 0 && key.length <= 200 && text(value, 160)), '白板标题草稿损坏。');
+    if (!session.agentChat) continue;
     check(record(session.agentChat) && ['main', 'side', 'float', 'closed'].includes(session.agentChat.mode), '聊天位置记录损坏。');
     if (session.agentChat.rect) check(['left', 'top', 'width', 'height'].every(key => Number.isFinite(session.agentChat!.rect![key as 'left'])) && session.agentChat.rect.width > 0 && session.agentChat.rect.height > 0, '聊天浮窗尺寸损坏。');
   }

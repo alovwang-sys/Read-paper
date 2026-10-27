@@ -2,7 +2,7 @@ import { expect, test, _electron, type ElectronApplication, type Page } from '@p
 import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { chat, composer, inline, installControlledServices, main, openSeedPaper, primaryId, readData, saved, screenshot, selectPassage, selectionMenu } from '../../docs/verification/continuous-workspace/harness';
+import { chat, composer, controlledSeed, inline, installControlledServices, main, openSeedPaper, paperTitle, primaryId, readData, saved, screenshot, selectPassage, selectionMenu } from '../../docs/verification/continuous-workspace/harness';
 
 const root = resolve(`out/Papertrail-${process.platform}-${process.arch}`);
 const executablePath = process.env.PAPERTRAIL_EXECUTABLE || (process.platform === 'darwin'
@@ -22,10 +22,10 @@ async function fixture() {
   let app: ElectronApplication | undefined;
   const runs: Awaited<ReturnType<typeof installControlledServices>>[] = [];
   return {
-    async launch(initialize = true) {
+    async launch(initialize = true, seed?: ReturnType<typeof controlledSeed>) {
       app = await _electron.launch({ executablePath, env, timeout: 60_000 });
       const page = await app.firstWindow();
-      const controlled = await installControlledServices(page, { initialize }); runs.push(controlled);
+      const controlled = await installControlledServices(page, { initialize, seed }); runs.push(controlled);
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.reload(); await openSeedPaper(page);
       expect(page.url()).toBe('papertrail://app/');
@@ -175,5 +175,60 @@ test('打包桌面：手动命名不被首问覆盖，取消改名与正常退�
     expect(restored.conversations[id]).toEqual(answered.conversations[id]);
     expect(restored.requests[answered.conversations[id].requestIds[0]]).toEqual(answered.requests[answered.conversations[id].requestIds[0]]);
     await page.screenshot({ path: `${evidence}/desktop-rename-after-restart.png` });
+  } finally { await f.dispose(); }
+});
+
+test('打包桌面：白板列表主体、名称与来源讨论折叠在正常退出重启后保留', async () => {
+  const f = await fixture(), seed = controlledSeed();
+  const title = '本机试用：跨页证据与论证', discussion = '桌面白板试用讨论', draft = '重启后保留的白板讨论草稿';
+  const evidence = 'docs/verification/local-build-0.1.19/screenshots';
+  Object.assign(seed.conversations[primaryId], { anchor: { kind: 'board', id: 'board-a' }, title: discussion, titleEdited: true, input: draft });
+  try {
+    let { page, controlled } = await f.launch(true, seed);
+    const sourceGroup = () => page.locator('[data-discussion-group="board:board-a"]');
+    const sourceToggle = () => sourceGroup().getByRole('button', { name: /^切换来源讨论：/ });
+    await expect(sourceToggle()).toHaveAttribute('aria-expanded', 'true');
+    await sourceToggle().click(); await expect(sourceToggle()).toHaveAttribute('aria-expanded', 'false');
+    const before = await readData(page);
+    await page.locator('.sidebar').getByText('浏览研究内容', { exact: true }).click();
+    await page.locator('.sidebar').getByRole('button', { name: '白板', exact: true }).click();
+    const open = main(page).locator('.resource-list-row').getByRole('button', { name: seed.boards['board-a'].title, exact: true });
+    await expect(open).toBeVisible();
+    const box = (await open.boundingBox())!;
+    await open.click({ position: { x: box.width - 5, y: box.height - 5 } });
+    await main(page).getByRole('button', { name: `重命名白板：${seed.boards['board-a'].title}`, exact: true }).click();
+    const rename = page.getByRole('dialog', { name: '重命名白板', exact: true });
+    await rename.getByLabel('白板名称', { exact: true }).fill(title);
+    await rename.getByLabel('白板名称', { exact: true }).press('Enter');
+    await expect(rename).toHaveCount(0); await saved(page);
+    await expect(main(page).getByRole('tab', { name: title, exact: true })).toBeVisible();
+    await expect(sourceToggle()).toHaveAttribute('aria-label', `切换来源讨论：${title}`);
+    await expect(sourceToggle()).toHaveAttribute('aria-expanded', 'false');
+    await expect(sourceGroup().getByRole('button', { name: `打开讨论：${discussion}`, exact: true })).toHaveCount(0);
+    const renamed = await readData(page);
+    expect(renamed.boards['board-a']).toEqual({ ...before.boards['board-a'], title });
+    expect(renamed.boards['board-b']).toEqual(before.boards['board-b']);
+    expect(renamed.placements).toEqual(before.placements); expect(renamed.edges).toEqual(before.edges);
+    expect(renamed.conversations).toEqual(before.conversations);
+    expect(renamed.sessions['research-b']).toEqual(before.sessions['research-b']);
+    expect(controlled.researchCalls).toHaveLength(0); expect(controlled.localCalls).toHaveLength(0);
+    await mkdir(evidence, { recursive: true });
+    await page.screenshot({ path: `${evidence}/desktop-board-before-restart.png` });
+
+    // The shared launch helper expects the PDF to remain the active main resource.
+    await main(page).getByRole('tab', { name: paperTitle, exact: true }).click(); await saved(page);
+    await f.close();
+    ({ page, controlled } = await f.launch(false));
+    const restored = await readData(page);
+    expect(restored.boards['board-a']).toEqual(renamed.boards['board-a']);
+    expect(restored.sessions['research-a'].discussionGroups?.['board:board-a']).toBe(false);
+    expect(restored.conversations[primaryId]).toEqual(renamed.conversations[primaryId]);
+    await expect(composer(page)).toHaveValue(draft);
+    await expect(sourceToggle()).toHaveAttribute('aria-expanded', 'false');
+    await main(page).getByRole('tab', { name: title, exact: true }).click();
+    await expect(main(page).getByRole('button', { name: `重命名白板：${title}`, exact: true })).toBeVisible();
+    await expect(sourceToggle()).toHaveAttribute('aria-expanded', 'false');
+    await saved(page); await page.screenshot({ path: `${evidence}/desktop-board-after-restart.png` });
+    expect(controlled.researchCalls).toHaveLength(0); expect(controlled.localCalls).toHaveLength(0);
   } finally { await f.dispose(); }
 });

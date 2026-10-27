@@ -1,0 +1,10 @@
+{
+  "zip": {
+    "version": "0.1.19",
+    "asarSha256": "8b2206fa56b8cf3a796dfc43fddcf7d2328f2e2af39e0633f10ab573b5948c77"
+  },
+  "dmg": {
+    "version": "0.1.19",
+    "asarSha256": "8b2206fa56b8cf3a796dfc43fddcf7d2328f2e2af39e0633f10ab573b5948c77"
+  }
+}

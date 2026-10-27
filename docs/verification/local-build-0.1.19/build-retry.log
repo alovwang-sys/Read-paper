@@ -1,0 +1,929 @@
+
+> read-paper@0.1.19 desktop:make
+> npm run build && electron-forge make
+
+
+> read-paper@0.1.19 prebuild
+> node scripts/prepare-drawing-assets.mjs
+
+
+> read-paper@0.1.19 build
+> tsc --noEmit && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 4467 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/pdfjs/wasm/LICENSE_PDFJS_JBIG2                       0.55 kB
+dist/index.html                                           0.63 kB │ gzip:   0.41 kB
+dist/pdfjs/wasm/LICENSE_PDFJS_QCMS                        1.03 kB
+dist/pdfjs/wasm/LICENSE_QCMS                              1.12 kB
+dist/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG                    1.28 kB
+dist/pdfjs/wasm/LICENSE_OPENJPEG                          2.11 kB
+dist/assets/KaTeX_Size3-Regular-CTq5MqoE.woff             4.42 kB
+dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2            4.92 kB
+dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2            5.20 kB
+dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2            5.46 kB
+dist/assets/KaTeX_Size4-Regular-BF-4gkZK.woff             5.98 kB
+dist/assets/KaTeX_Size2-Regular-oD1tc_U0.woff             6.18 kB
+dist/pdfjs/wasm/quickjs-eval.js                           6.23 kB
+dist/assets/KaTeX_Size1-Regular-C195tn64.woff             6.49 kB
+dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2      6.90 kB
+dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2         6.91 kB
+dist/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf              7.58 kB
+dist/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff       7.65 kB
+dist/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff          7.71 kB
+dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2           9.64 kB
+dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2       10.34 kB
+dist/assets/KaTeX_Size4-Regular-DWFBv043.ttf             10.36 kB
+dist/assets/KaTeX_Script-Regular-D5yQViql.woff           10.58 kB
+dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2         11.31 kB
+dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2            11.34 kB
+dist/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf             11.50 kB
+dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2        12.02 kB
+dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2          12.21 kB
+dist/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf             12.22 kB
+dist/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff        12.31 kB
+dist/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf       12.34 kB
+dist/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf          12.36 kB
+dist/pdfjs/wasm/LICENSE_JBIG2                            12.86 kB
+dist/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff          13.20 kB
+dist/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff             13.29 kB
+dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2      13.56 kB
+dist/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff         14.11 kB
+dist/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff           14.40 kB
+dist/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff       16.02 kB
+dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2         16.40 kB
+dist/assets/KaTeX_Math-Italic-t53AETM-.woff2             16.44 kB
+dist/assets/KaTeX_Script-Regular-C5JkGWo-.ttf            16.64 kB
+dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2         16.78 kB
+dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2             16.98 kB
+dist/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff          18.66 kB
+dist/assets/KaTeX_Math-Italic-DA0__PXp.woff              18.74 kB
+dist/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff          19.41 kB
+dist/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf         19.43 kB
+dist/assets/KaTeX_Fraktur-Regular-CB_wures.ttf           19.57 kB
+dist/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf              19.58 kB
+dist/assets/KaTeX_Main-Italic-BMLOBm91.woff              19.67 kB
+dist/assets/Assistant-SemiBold-SCI4bEL9.woff2            20.21 kB
+dist/assets/Assistant-Regular-DVxZuzxb.woff2             20.23 kB
+dist/assets/Assistant-Medium-DrcxCXg3.woff2              20.32 kB
+dist/assets/Assistant-Bold-gm-uSS1B.woff2                20.38 kB
+dist/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf          22.36 kB
+dist/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf            24.50 kB
+dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2               25.32 kB
+dist/assets/KaTeX_Main-Regular-B22Nviop.woff2            26.27 kB
+dist/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf        27.55 kB
+dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2             28.07 kB
+dist/assets/KaTeX_Main-Bold-Jm3AIy58.woff                29.91 kB
+dist/assets/KaTeX_Main-Regular-Dr94JaBh.woff             30.77 kB
+dist/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf           31.19 kB
+dist/assets/KaTeX_Math-Italic-flOr_0UB.ttf               31.30 kB
+dist/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf           32.96 kB
+dist/assets/KaTeX_AMS-Regular-DMm9YOAa.woff              33.51 kB
+dist/assets/KaTeX_Main-Italic-3WenGoN9.ttf               33.58 kB
+dist/assets/KaTeX_Main-Bold-waoOVXN0.ttf                 51.33 kB
+dist/assets/KaTeX_Main-Regular-ypZvNtVU.ttf              53.58 kB
+dist/assets/KaTeX_AMS-Regular-DRggAlZN.ttf               63.63 kB
+dist/pdfjs/wasm/qcms_bg.wasm                             96.58 kB │ gzip:  36.09 kB
+dist/pdfjs/wasm/jbig2.wasm                              103.67 kB │ gzip:  41.64 kB
+dist/pdfjs/wasm/jbig2_nowasm_fallback.js                152.00 kB
+dist/pdfjs/wasm/openjpeg.wasm                           251.13 kB │ gzip:  82.95 kB
+dist/pdfjs/wasm/openjpeg_nowasm_fallback.js             445.78 kB
+dist/pdfjs/wasm/quickjs-eval.wasm                       469.10 kB │ gzip: 220.69 kB
+dist/assets/pdf.worker.min-CjEcRF4W.mjs               1,264.34 kB
+dist/assets/BoardDrawing-D3vsMXxl.css                   144.91 kB │ gzip:  23.11 kB
+dist/assets/index-BZUNOnLl.css                          232.32 kB │ gzip:  47.46 kB
+dist/assets/array-BifhSqXX.js                             0.10 kB │ gzip:   0.11 kB
+dist/assets/pie-WAS4IAKB-4IGk7ElK.js                      0.10 kB │ gzip:   0.12 kB
+dist/assets/info-A6RAGUB7-Cj9hW28O.js                     0.10 kB │ gzip:   0.12 kB
+dist/assets/percentages-BXMCSKIN-D6xy7_hB.js              0.10 kB │ gzip:   0.11 kB
+dist/assets/radar-RG4KPBEZ-Dod3cfTw.js                    0.10 kB │ gzip:   0.12 kB
+dist/assets/packet-AYTQ26CC-DsXtOPzE.js                   0.11 kB │ gzip:   0.12 kB
+dist/assets/cynefin-OW5HDTMX-Dp0dYuuM.js                  0.11 kB │ gzip:   0.12 kB
+dist/assets/treemap-WGGIJYW6-G2nplgeB.js                  0.11 kB │ gzip:   0.12 kB
+dist/assets/wardley-WFR3VGLG-Ow0WXRba.js                  0.11 kB │ gzip:   0.12 kB
+dist/assets/gitGraph-4MIJSDKK-D1-PFWMd.js                 0.11 kB │ gzip:   0.12 kB
+dist/assets/railroad-74A4TZTK-D7QfGhbw.js                 0.11 kB │ gzip:   0.12 kB
+dist/assets/treeView-Q6P3EWNA-DkkEvrz8.js                 0.11 kB │ gzip:   0.12 kB
+dist/assets/channel-C6pj3ALo.js                           0.11 kB │ gzip:   0.12 kB
+dist/assets/railroad-peg-WCYAUIDC-BHsA1svV.js             0.11 kB │ gzip:   0.12 kB
+dist/assets/architecture-7GRP2DOG-DNJjVhUJ.js             0.11 kB │ gzip:   0.12 kB
+dist/assets/railroad-abnf-HS5TGJTU-BlxvRRQv.js            0.11 kB │ gzip:   0.13 kB
+dist/assets/railroad-ebnf-LZEXJU2U-C9-nLSdv.js            0.11 kB │ gzip:   0.13 kB
+dist/assets/eventmodeling-NTZA5JFV-CXq3IdOw.js            0.11 kB │ gzip:   0.13 kB
+dist/assets/image-GAAHSSAO-DMA2SOMs.js                    0.12 kB │ gzip:   0.12 kB
+dist/assets/init-C-OQMol4.js                              0.14 kB │ gzip:   0.12 kB
+dist/assets/subset-shared.chunk-CvNqTk-h.js               0.14 kB │ gzip:   0.13 kB
+dist/assets/chunk-Y2CYZVJY-DsF7k-Jl.js                    0.15 kB │ gzip:   0.14 kB
+dist/assets/prod-Bd97O0W-.js                              0.15 kB │ gzip:   0.14 kB
+dist/assets/chunk-2Q5K7J3B-C1jixKkw.js                    0.19 kB │ gzip:   0.16 kB
+dist/assets/chunk-JWPE2WC7-DVXcaiue.js                    0.22 kB │ gzip:   0.17 kB
+dist/assets/chunk-XXDRQBXY-CnbRkih_.js                    0.26 kB │ gzip:   0.22 kB
+dist/assets/subset-worker.chunk-BiorPu2h.js               0.35 kB │ gzip:   0.27 kB
+dist/assets/chunk-5VM5RSS4-ZNzvKenW.js                    0.36 kB │ gzip:   0.27 kB
+dist/assets/file-open-7c801643-DZtJT5zp.js                0.44 kB │ gzip:   0.31 kB
+dist/assets/file-open-002ab408-BHUWm0Sh.js                0.52 kB │ gzip:   0.32 kB
+dist/assets/flowDiagram-HODETNUW-D4AWCU6j.js              0.55 kB │ gzip:   0.30 kB
+dist/assets/chunk-POPQ4Y6H-Dh0uBT2t.js                    0.57 kB │ gzip:   0.40 kB
+dist/assets/directory-open-01563666-D4xXyWb_.js           0.58 kB │ gzip:   0.36 kB
+dist/assets/chunk-SRAX5OIU-wzfotNc-.js                    0.59 kB │ gzip:   0.39 kB
+dist/assets/chunk-Z3N5DIM6-D9TMVU7m.js                    0.64 kB │ gzip:   0.42 kB
+dist/assets/en-B4ZKOASM-B5DDCs2Z.js                       0.64 kB │ gzip:   0.37 kB
+dist/assets/infoDiagram-27XIBGKW-CljRPqbW.js              0.64 kB │ gzip:   0.42 kB
+dist/assets/file-save-3189631c-CO9S4HFW.js                0.69 kB │ gzip:   0.44 kB
+dist/assets/classDiagram-ZZMXUADV-BKaOfon1.js             0.77 kB │ gzip:   0.44 kB
+dist/assets/classDiagram-v2-VYDZK3BY-BKaOfon1.js          0.77 kB │ gzip:   0.44 kB
+dist/assets/stateDiagram-v2-MP3YSRHH-BajmrIhE.js          0.77 kB │ gzip:   0.44 kB
+dist/assets/swimlanesDiagram-VR7AAH4N-wruX9CrL.js         0.82 kB │ gzip:   0.48 kB
+dist/assets/file-save-745eba88-Bwdfz6OZ.js                0.85 kB │ gzip:   0.49 kB
+dist/assets/sizeCapture-INFHLROL-3uHXrFqA.js              0.87 kB │ gzip:   0.51 kB
+dist/assets/line-CAsCQvi3.js                              0.94 kB │ gzip:   0.47 kB
+dist/assets/rolldown-runtime-COiEfhsA.js                  1.11 kB │ gzip:   0.62 kB
+dist/assets/ordinal-BDEzSJ7C.js                           1.17 kB │ gzip:   0.56 kB
+dist/assets/chunk-GVQU2GXP-DFjyoQTM.js                    1.41 kB │ gzip:   0.79 kB
+dist/assets/directory-open-4ed118d0-1i309Asm.js           1.51 kB │ gzip:   0.76 kB
+dist/assets/railroadDiagram-O6MQD6OU-D3fOa9AK.js          1.65 kB │ gzip:   0.77 kB
+dist/assets/abnfDiagram-VCTEODGH-ByDdWdkT.js              1.83 kB │ gzip:   0.89 kB
+dist/assets/chunk-P2QGCYS3-DnCPysA9.js                    1.94 kB │ gzip:   0.95 kB
+dist/assets/chunk-F27PBJKO-Djpeyneh.js                    1.97 kB │ gzip:   0.88 kB
+dist/assets/pegDiagram-XKGWAZYB-DSK6ZmT8.js               1.99 kB │ gzip:   0.93 kB
+dist/assets/ebnfDiagram-PWID7BFC-HoJMPq4y.js              2.05 kB │ gzip:   0.89 kB
+dist/assets/dist-CumnGVmJ.js                              2.17 kB │ gzip:   0.97 kB
+dist/assets/path-fybaL0A-.js                              2.27 kB │ gzip:   0.98 kB
+dist/assets/roundRect-D01gJrlt.js                         2.87 kB │ gzip:   0.99 kB
+dist/assets/arc-Y1ARJVZ4.js                               3.47 kB │ gzip:   1.46 kB
+dist/assets/diagram-Z3DM3KII-BtmAUTfQ.js                  4.26 kB │ gzip:   1.84 kB
+dist/assets/defaultLocale-BFoDCU3G.js                     4.63 kB │ gzip:   2.12 kB
+dist/assets/linear-C9iwaMOi.js                            5.51 kB │ gzip:   2.25 kB
+dist/assets/chunk-PWAF6VOD-D0_vVcFq.js                    5.83 kB │ gzip:   2.68 kB
+dist/assets/diagram-UQ7AKVKN-C66J-Xrf.js                  6.06 kB │ gzip:   2.56 kB
+dist/assets/pieDiagram-E7YTZNPT-DN3KJIgd.js               6.20 kB │ gzip:   2.59 kB
+dist/assets/diagram-S7CK7UJ4-H5FecQJX.js                  8.11 kB │ gzip:   3.65 kB
+dist/assets/si-LK-N5RQ5JYF-BpI-kBDz.js                    8.58 kB │ gzip:   3.36 kB
+dist/assets/az-AZ-76LH7QW2-ByX_zd4F.js                    8.61 kB │ gzip:   3.59 kB
+dist/assets/zh-HK-E62DVLB3-vaMRVwdL.js                    9.08 kB │ gzip:   4.09 kB
+dist/assets/chunk-L3NEJ4N5-D2oQ_Etm.js                    9.68 kB │ gzip:   2.93 kB
+dist/assets/cynefinDiagram-5FMLGOSQ-DQRJc7iA.js           9.93 kB │ gzip:   3.51 kB
+dist/assets/kk-KZ-P5N5QNE5-xOkOQsTw.js                   10.12 kB │ gzip:   4.19 kB
+dist/assets/kaa-6HZHGXH3-DWQlZzTI.js                     10.17 kB │ gzip:   4.18 kB
+dist/assets/stateDiagram-D77RDMKH-DnldUvt3.js            10.63 kB │ gzip:   3.73 kB
+dist/assets/diagram-VSXAHHWV-C0AmobLk.js                 10.66 kB │ gzip:   4.12 kB
+dist/assets/dagre-GXQ25YYZ-D12baq1X.js                   10.96 kB │ gzip:   4.15 kB
+dist/assets/lt-LT-XHIRWOB4-CZPudjgc.js                   12.50 kB │ gzip:   5.37 kB
+dist/assets/vi-VN-M7AON7JQ-DpgVSDWc.js                   13.86 kB │ gzip:   5.79 kB
+dist/assets/da-DK-5WZEPLOC-B2KbOKlk.js                   14.41 kB │ gzip:   6.07 kB
+dist/assets/th-TH-HPSO5L25-CUOH0u8u.js                   15.52 kB │ gzip:   5.18 kB
+dist/assets/chunk-SVP7TREG-DTxc_9xm.js                   15.63 kB │ gzip:   4.34 kB
+dist/assets/diagram-VX7I27RA-BRza22OQ.js                 15.74 kB │ gzip:   5.52 kB
+dist/assets/nn-NO-6E72VCQL-B_SymEE5.js                   15.95 kB │ gzip:   6.72 kB
+dist/assets/mermaid-parser.core-0dkmQ28s.js              16.57 kB │ gzip:   3.92 kB
+dist/assets/nl-NL-IS3SIHDZ-FtFhrALS.js                   16.73 kB │ gzip:   6.92 kB
+dist/assets/ishikawaDiagram-5VMMS53U-j-E3yj-G.js         17.29 kB │ gzip:   6.52 kB
+dist/assets/my-MM-5M5IBNSE-DDu4zmzX.js                   17.57 kB │ gzip:   5.29 kB
+dist/assets/hu-HU-A5ZG7DT2-B29-4soS.js                   18.08 kB │ gzip:   7.58 kB
+dist/assets/fi-FI-Z5N7JZ37-DEhnpOQb.js                   18.40 kB │ gzip:   7.53 kB
+dist/assets/kab-KAB-ZGHBKWFO-BCP7pvXg.js                 18.78 kB │ gzip:   7.55 kB
+dist/assets/zh-TW-RAJ6MFWO-CNUUB_PG.js                   18.99 kB │ gzip:   8.86 kB
+dist/assets/zh-CN-LNUGB5OW-Cfb6--Ow.js                   19.05 kB │ gzip:   8.87 kB
+dist/assets/lv-LV-5QDEKY6T-BFIvtooB.js                   19.14 kB │ gzip:   7.79 kB
+dist/assets/gl-ES-HMX3MZ6V-CIK6mfAj.js                   19.39 kB │ gzip:   7.73 kB
+dist/assets/tr-TR-DEFEU3FU-CTsS8Qy-.js                   19.51 kB │ gzip:   7.96 kB
+dist/assets/cs-CZ-2BRQDIVT-CHlJO48i.js                   19.52 kB │ gzip:   8.40 kB
+dist/assets/pt-PT-UZXXM6DQ-DKEXacg3.js                   19.65 kB │ gzip:   7.79 kB
+dist/assets/id-ID-SAP4L64H-CyIfHt3t.js                   19.68 kB │ gzip:   7.68 kB
+dist/assets/ca-ES-6MX7JW3Y-CKplVKfE.js                   19.79 kB │ gzip:   7.90 kB
+dist/assets/oc-FR-POXYY2M6-DM9hsX9Q.js                   19.84 kB │ gzip:   7.79 kB
+dist/assets/nb-NO-T6EIAALU-BLzt9sXj.js                   20.10 kB │ gzip:   8.19 kB
+dist/assets/kanban-definition-UXKFOSKX-CVOyT08i.js       20.25 kB │ gzip:   7.14 kB
+dist/assets/he-IL-6SHJWFNN-sIPLWf4m.js                   20.32 kB │ gzip:   7.54 kB
+dist/assets/bg-BG-XCXSNQG7-wxiUF1_6.js                   20.76 kB │ gzip:   7.39 kB
+dist/assets/pt-BR-5N22H2LF-BiLQ-V_W.js                   21.04 kB │ gzip:   8.21 kB
+dist/assets/eu-ES-A7QVB2H4-C6t3pMxo.js                   21.20 kB │ gzip:   8.22 kB
+dist/assets/es-ES-U4NZUMDT-D3W7yrM9.js                   21.35 kB │ gzip:   8.49 kB
+dist/assets/sl-SI-NN7IZMDC-BXKt0fnN.js                   21.36 kB │ gzip:   8.58 kB
+dist/assets/sv-SE-XGPEYMSR-nBH8YjQ4.js                   21.51 kB │ gzip:   8.56 kB
+dist/assets/it-IT-JPQ66NNP-Dq23HshR.js                   22.06 kB │ gzip:   8.58 kB
+dist/assets/sk-SK-C5VTKIMK-BRXRBgRU.js                   22.31 kB │ gzip:   9.11 kB
+dist/assets/chunk-6U3AYISY-C6-Mtja1.js                   22.44 kB │ gzip:   8.62 kB
+dist/assets/pl-PL-T2D74RX3-BLAcchR-.js                   22.50 kB │ gzip:   9.23 kB
+dist/assets/sankeyDiagram-P5KCCOFB-BlP9VfhK.js           22.79 kB │ gzip:   8.25 kB
+dist/assets/ro-RO-JPDTUUEW-DPtQ18Fr.js                   23.15 kB │ gzip:   8.94 kB
+dist/assets/journeyDiagram-3NMN7TZE-B_RKWPRc.js          23.15 kB │ gzip:   8.16 kB
+dist/assets/de-DE-XR44H4JA-CraH52sB.js                   23.34 kB │ gzip:   8.97 kB
+dist/assets/ja-JP-DBVTYXUO-8NNxRVWb.js                   23.40 kB │ gzip:   8.79 kB
+dist/assets/mindmap-definition-YA3MSWOX-CEdHsdE1.js      23.43 kB │ gzip:   8.01 kB
+dist/assets/fr-FR-RHASNOE6-D9pFTuqa.js                   23.45 kB │ gzip:   8.87 kB
+dist/assets/bn-BD-2XOGV67Q-BBIhV1oq.js                   23.60 kB │ gzip:   6.68 kB
+dist/assets/ko-KR-MTYHY66A-E5aEyLj-.js                   23.88 kB │ gzip:   9.18 kB
+dist/assets/graphlib-DS17s2tU.js                         23.90 kB │ gzip:   8.31 kB
+dist/assets/fa-IR-HGAKTJCU-DJOOVnVh.js                   24.24 kB │ gzip:   8.44 kB
+dist/assets/wardleyDiagram-VM6X3IG4-Dmd-KKwe.js          25.19 kB │ gzip:   6.55 kB
+dist/assets/ar-SA-G6X2FPQ2-DZP7qz6u.js                   25.67 kB │ gzip:   9.11 kB
+dist/assets/rough.esm-Dy-Kn_BL.js                        27.10 kB │ gzip:   8.85 kB
+dist/assets/pa-IN-N4M65BXN-CJJQ9oPk.js                   27.98 kB │ gzip:   7.98 kB
+dist/assets/gitGraphDiagram-WWUBYQGX-Bc5Favp1.js         29.01 kB │ gzip:   8.57 kB
+dist/assets/ku-TR-6OUDTVRD-CDQOo-yR.js                   29.32 kB │ gzip:   9.27 kB
+dist/assets/el-GR-BZB4AONW-hWxkjrdo.js                   29.67 kB │ gzip:   9.60 kB
+dist/assets/timeline-definition-24CTP7MA-DPvh5QlC.js     30.36 kB │ gzip:   9.96 kB
+dist/assets/erDiagram-RLTQ6QDP-CjNXdsSE.js               30.68 kB │ gzip:  10.56 kB
+dist/assets/ru-RU-B4JR7IUQ-n-7DhzM7.js                   30.74 kB │ gzip:   9.86 kB
+dist/assets/chunk-75Z2AOVW-IbcsKZsm.js                   30.75 kB │ gzip:   8.50 kB
+dist/assets/requirementDiagram-BXWQKSXE-n7xr8PA7.js      30.99 kB │ gzip:   9.77 kB
+dist/assets/uk-UA-QMV73CPH-BJo17WQM.js                   31.64 kB │ gzip:  10.10 kB
+dist/assets/pica-CXv_OHDX.js                             31.76 kB │ gzip:  12.46 kB
+dist/assets/hi-IN-IWLTKZ5I-BUJucdSj.js                   32.35 kB │ gzip:   9.08 kB
+dist/assets/quadrantDiagram-AXDQQJYC-CfA6aE5M.js         33.51 kB │ gzip:   9.74 kB
+dist/assets/ta-IN-2NMHFXQM-f0oprEqN.js                   35.27 kB │ gzip:   8.50 kB
+dist/assets/chunk-OSK3NFVY-B_vG8uFr.js                   36.47 kB │ gzip:   7.96 kB
+dist/assets/km-KH-HSX4SM5Z-D0xjNROe.js                   36.65 kB │ gzip:   9.21 kB
+dist/assets/dagre-D7JM2Yhv.js                            36.84 kB │ gzip:  13.23 kB
+dist/assets/chunk-IMKFNOWR-Cg1a6iON.js                   37.63 kB │ gzip:  12.26 kB
+dist/assets/vennDiagram-4TSXK5OY-HrDp1YQB.js             41.15 kB │ gzip:  15.10 kB
+dist/assets/blockDiagram-I7D4REHJ-QfwN9ZB-.js            41.42 kB │ gzip:  13.35 kB
+dist/assets/mr-IN-CRQNXWMA-DmnSBhlL.js                   42.25 kB │ gzip:  10.67 kB
+dist/assets/xychartDiagram-S5SC5T6Z-APVD5o6x.js          44.13 kB │ gzip:  12.21 kB
+dist/assets/image-blob-reduce.esm-Fj7y_Tzy.js            45.38 kB │ gzip:  16.30 kB
+dist/assets/src-BWF7jMDv.js                              45.66 kB │ gzip:  16.00 kB
+dist/assets/chunk-TICWLB2K-C1UtXN3t.js                   48.77 kB │ gzip:  15.74 kB
+dist/assets/chunk-GMAD6QVW-DXuwm1z8.js                   51.20 kB │ gzip:  16.68 kB
+dist/assets/chunk-SHT3W25Y-DigDUSaa.js                   61.19 kB │ gzip:  19.81 kB
+dist/assets/c4Diagram-7LVT6UL2-CKuffOn9.js               64.74 kB │ gzip:  18.53 kB
+dist/assets/ganttDiagram-EL5Y4UJY-GQaaT9pf.js            69.36 kB │ gzip:  22.74 kB
+dist/assets/cose-bilkent-JH36ORCC-lWVj4msc.js            81.22 kB │ gzip:  21.52 kB
+dist/assets/chunk-4HAMMTFA-B1exW05E.js                  104.85 kB │ gzip:  25.62 kB
+dist/assets/swimlanes-42K2YHIH-fmVojYaq.js              111.05 kB │ gzip:  38.00 kB
+dist/assets/sequenceDiagram-WJ2MYXX4-Dpoz8msP.js        115.73 kB │ gzip:  30.57 kB
+dist/assets/dist-Di3m7C-O.js                            146.97 kB │ gzip:  49.32 kB
+dist/assets/architectureDiagram-5GKGNRK7-DF8hWx0Q.js    148.87 kB │ gzip:  41.11 kB
+dist/assets/chunk-DU6HZSFF-B4fhu4qt.js                  237.72 kB │ gzip:  38.99 kB
+dist/assets/katex-DJhrJSbw.js                           258.59 kB │ gzip:  77.43 kB
+dist/assets/cytoscape.esm-BegBNzOV.js                   434.75 kB │ gzip: 137.75 kB
+dist/assets/chunk-K2UTITRG-nbAzHG8D.js                  534.17 kB │ gzip: 179.59 kB
+dist/assets/BoardDrawing-BgPYt8Wx.js                    573.84 kB │ gzip: 172.01 kB
+dist/assets/chunk-FOHPRMQF-DD4dKubD.js                  662.08 kB │ gzip: 143.15 kB
+dist/assets/chunk-EIO257PC--4hsUnhv.js                1,821.03 kB │ gzip: 744.22 kB
+dist/assets/index-Cliyw__F.js                         1,887.39 kB │ gzip: 573.50 kB
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/@excalidraw/excalidraw/dist/prod/index.js is dynamically imported by src/features/board/drawing-question-capture.ts but also statically imported by src/features/board/BoardDrawing.tsx, src/features/board/drawing-bindings.ts, dynamic import will not move module into another chunk.
+
+✓ built in 802ms
+❯ Checking your system
+2026-10-25T16:29:02.692Z electron-forge:check-system checking system, create ~/.skip-forge-system-check to stop doing this
+❯ Checking package manager version
+2026-10-25T16:29:02.693Z electron-forge:package-manager Resolved package manager to npm. (Derived from npm_config_user_agent: npm/11.19.0 node/v24.21.0 darwin arm64 workspaces/false, lockfile: npm)
+✔ Found npm@11.19.0
+✔ Checking your system
+❯ Loading configuration
+2026-10-25T16:29:02.834Z electron-forge:project-resolver searching for project in: <project-root>
+2026-10-25T16:29:02.836Z electron-forge:project-resolver package.json with forge dependency found in <project-root>/package.json
+✔ Loading configuration
+❯ Resolving make targets
+2026-10-25T16:29:02.837Z electron-forge:import-search searching [
+  '@electron-forge/maker-dmg',
+  '<project-root>/@electron-forge/maker-dmg',
+  '<project-root>/node_modules/@electron-forge/maker-dmg'
+] relative to <project-root>
+2026-10-25T16:29:02.837Z electron-forge:import-search testing @electron-forge/maker-dmg
+2026-10-25T16:29:02.840Z electron-forge:import-search searching [
+  '@electron-forge/maker-zip',
+  '<project-root>/@electron-forge/maker-zip',
+  '<project-root>/node_modules/@electron-forge/maker-zip'
+] relative to <project-root>
+2026-10-25T16:29:02.840Z electron-forge:import-search testing @electron-forge/maker-zip
+2026-10-25T16:29:02.840Z electron-forge:import-search searching [
+  '@electron-forge/maker-squirrel',
+  '<project-root>/@electron-forge/maker-squirrel',
+  '<project-root>/node_modules/@electron-forge/maker-squirrel'
+] relative to <project-root>
+2026-10-25T16:29:02.841Z electron-forge:import-search testing @electron-forge/maker-squirrel
+› Making for the following targets: ,
+✔ Resolving make targets
+❯ Running package command
+❯ Preparing to package application
+2026-10-25T16:29:02.866Z electron-forge:project-resolver searching for project in: <project-root>
+2026-10-25T16:29:02.866Z electron-forge:project-resolver package.json with forge dependency found in <project-root>/package.json
+✔ Preparing to package application
+❯ Running packaging hooks
+❯ Running generateAssets hook
+✔ Running generateAssets hook
+❯ Running prePackage hook
+✔ Running prePackage hook
+✔ Running packaging hooks
+❯ Packaging application
+› Determining targets...
+2026-10-25T16:29:02.867Z electron-forge:packager packaging with options {
+  asar: true,
+  overwrite: true,
+  ignore: [Function: ignore],
+  quiet: true,
+  name: 'Papertrail',
+  executableName: 'Papertrail',
+  appBundleId: 'io.github.alovwang-sys.papertrail',
+  download: {
+    checksums: {
+      'chromedriver-v44.8.0-darwin-arm64.zip': 'fa87b178fa606bc08d3eb09c76d5214d09c88549a861fbf261a0eb1bc1a486b0',
+      'chromedriver-v44.8.0-darwin-x64.zip': '44c70117f838b5939560e99755c062eadaf4cce420b32e4fae4677c5e4c21846',
+      'chromedriver-v44.8.0-linux-arm64.zip': '260af88b6ccf177f086cf64b72542d578031acc40053847895cb875755bc2b42',
+      'chromedriver-v44.8.0-linux-x64.zip': 'cf183ae9b732821303dba3461e2cd9f172fdb49b03cc3f0fe33f03de570a2a49',
+      'chromedriver-v44.8.0-mas-arm64.zip': '92b84641e89eddfd9f28495c4c5a6315d1336a50eed5a4c01e615085fe32e168',
+      'chromedriver-v44.8.0-mas-x64.zip': '9e43c765b9dc5bd3fb338857e58a8012a34649f95a8dbfdf4948b63f20ec88eb',
+      'chromedriver-v44.8.0-win32-arm64.zip': '625d652e488f01aee6b02b391fe0d5febe5007acf06100fed51dd12790d5171c',
+      'chromedriver-v44.8.0-win32-x64.zip': '0ef97d41b954afbdfa1f2b982c0b4d5a3b05e8e80fadba16a67e7cedc142efa1',
+      'electron-api.json': '7c8283aa22bb05e8e842f42ae005701a234d7431e2650148b09a004a6b4d2849',
+      'electron-v44.8.0-darwin-arm64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-darwin-arm64-dsym.tar.xz': '793c2ee12f91169e3888c497b6133a2e2ab1fe8868866f8531fe5b7a0eaae7c3',
+      'electron-v44.8.0-darwin-arm64-symbols.zip': '609ce4cdcef6158cf1bfc57f2ccd2c3ce7ab9117013653bea3a84ffc6a5b49b5',
+      'electron-v44.8.0-darwin-arm64.zip': 'ccd9ba800d39d403375211d8f8da528469ebae3213cce4ec72b42e4dcc847513',
+      'electron-v44.8.0-darwin-x64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-darwin-x64-dsym.tar.xz': 'c93ae86cde9901eb6266ded1b39fc628d44a1b57733b7c4f61a54024718a32a8',
+      'electron-v44.8.0-darwin-x64-symbols.zip': 'fa72985fb9e960ed2eaaa63ec4056cb2ea755f495352d5c2af709f64217f536f',
+      'electron-v44.8.0-darwin-x64.zip': 'aea5da374201a2ddf97da12baf22d0dda66a5d034dfd38ed1e447250168fa5d3',
+      'electron-v44.8.0-linux-arm64-debug.zip': '3ec1a68b6170fe0201c4e9d6ee853917af50da405121d2e5ffd57dbc335c7744',
+      'electron-v44.8.0-linux-arm64-symbols.zip': '167397cb53b0beb22be227a922dabf0943e633530196a9b22f2264cf25b08053',
+      'electron-v44.8.0-linux-arm64.zip': '502296281cab3c333bd5193e2eaed11c3bb28eabd7a451a49776a3e5a9468f8c',
+      'electron-v44.8.0-linux-x64-debug.zip': '149464313722dc48fef9de22863cfd80932effb235c492ae17109cddaca30fc5',
+      'electron-v44.8.0-linux-x64-symbols.zip': 'd04773dfe5458f08cc24fa100686f57cc530ed319ec2707d69035239a8f31a78',
+      'electron-v44.8.0-linux-x64.zip': '926679355f8bf8d521fc6e1a2dc1c71f11cf176a3a1444f9afbd9e1cdfeddb11',
+      'electron-v44.8.0-mas-arm64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-mas-arm64-dsym.tar.xz': 'a01f914966cea4f0c087a6c8f9d56257b66b01bac167ca7492fc9a5c405add9e',
+      'electron-v44.8.0-mas-arm64-symbols.zip': 'a16b8d3c9f608d033ce9fdd490c25b0ac862190c14f3c68fbef111d874abba38',
+      'electron-v44.8.0-mas-arm64.zip': '72d5b60f9f40ed2277b84a52da504834d1a17aad8be58ff2342bece202c3c0fb',
+      'electron-v44.8.0-mas-x64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-mas-x64-dsym.tar.xz': '42ad3699ce382feea19eacfb7a2b05d44532ceed8ad03b2e36960519950552cc',
+      'electron-v44.8.0-mas-x64-symbols.zip': 'a874e939a95f4ae27fdd44c26611f5059a98381ec1396088647d5abf22bdbfbe',
+      'electron-v44.8.0-mas-x64.zip': 'd292f07bbce48416d2416e19d556710e332643c9813e97f2b931ec946ac347a0',
+      'electron-v44.8.0-win32-arm64-pdb.zip': 'd555d7ed6a1b29838d2eecce87e77f5e06f9dc7ad6bbbc85525f99ae7dffd5a7',
+      'electron-v44.8.0-win32-arm64-symbols.zip': 'ab26bfb1d6f7a100a59a6b052bc81a359bff44de85d337cf6ea5a6d014f68949',
+      'electron-v44.8.0-win32-arm64-toolchain-profile.zip': '90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28',
+      'electron-v44.8.0-win32-arm64.zip': '5b74b0c0a79bcda52fed73a6ded14d8690ba638fb30353ddfe9cb0d71ef2df6f',
+      'electron-v44.8.0-win32-x64-pdb.zip': '739082a396e491b78ec06e0583a6851473729d06f4f3b28f79a486ea0a7c9bc6',
+      'electron-v44.8.0-win32-x64-symbols.zip': '2ff400d195e2cca701005742cf3cb9c2c36fcd7cf816411c90f7100faa1e624d',
+      'electron-v44.8.0-win32-x64-toolchain-profile.zip': '90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28',
+      'electron-v44.8.0-win32-x64.zip': '1c9319bab793492715f7668e0be0e6a30bf2a8577275e40035bd33601bf6f573',
+      'electron.d.ts': '35e468edab10d045a84d1e8dd847c3859551c06e4986bb5709547f1495f55b1d',
+      'ffmpeg-v44.8.0-darwin-arm64.zip': '12cd496e358c08777a348ade585089ad675107011e2dcca6e929af589358ef62',
+      'ffmpeg-v44.8.0-darwin-x64.zip': '6ea847ba4fa89e961b34866fbd7817a673d7d7e8047955631159b225e02d78ec',
+      'ffmpeg-v44.8.0-linux-arm64.zip': 'f52197f6a67914f1c2687c2f025a15e1e6b2ff80013ab07b49f71aac8c71ddad',
+      'ffmpeg-v44.8.0-linux-x64.zip': 'f61c9463f8b3e7f52e9e58c3350e5a11c405be45dfcaf24533e7fc73d78b1de5',
+      'ffmpeg-v44.8.0-mas-arm64.zip': '8f402e8721ebb3af8c150acb26af19b814bc07db5cef62fbd72df1b02e475040',
+      'ffmpeg-v44.8.0-mas-x64.zip': 'a21462f7720dfe610052e0bc1c116b0372f240176458e8bd71349ad2acb455cb',
+      'ffmpeg-v44.8.0-win32-arm64.zip': 'c39b4cb82018a980450defd576db01e58adfab564d904c4da137e3a9a69aa1e0',
+      'ffmpeg-v44.8.0-win32-x64.zip': 'd962a8df104144ce9e2808a4cf67c6ecbfd14f6df1c41a8e083e8a8e799e71b2',
+      'hunspell_dictionaries.zip': 'd9e40a2cb35540aea78333f2d63e7baa5450afe990acdc69ee1ce6811c19905e',
+      'libcxx-objects-v44.8.0-linux-arm64.zip': '2ee9e2d6b9cccd02da1205e4d915eefb841e8443269c5a564ce7465e4d0108f7',
+      'libcxx-objects-v44.8.0-linux-x64.zip': '6b00ec8c1eda61cf2ac3a577fe955ebe6d1e0f43f0375686f062c83038a9e27d',
+      'libcxx_headers.zip': '0bca289f834ecd7d2f274c5768e028137fd7b424a89c6b2883f74d916ce272da',
+      'libcxxabi_headers.zip': 'f189cd54b7428706c11090fee3f1a4335f355790728cdf38995b36af119641b8',
+      'mksnapshot-v44.8.0-darwin-arm64.zip': '58ac7a003cc753126a73ca9cccb799bc31dfe66b9e587146a73bd4f5b68af022',
+      'mksnapshot-v44.8.0-darwin-x64.zip': '2f8ac671e03f30d6003880659959abf2a4d6af3ab16ed3c7b789129e4bc0dcae',
+      'mksnapshot-v44.8.0-linux-arm64-x64.zip': 'd2ac0607a6ea1c04555e0ef4ec25b0ee370b1c2f6ee238477835684b293bb074',
+      'mksnapshot-v44.8.0-linux-x64.zip': 'b0264905da9c787a214d9a803bb73b3015a842b4641c6a082d68f068e2f1f8f0',
+      'mksnapshot-v44.8.0-mas-arm64.zip': 'bb315f43f28118a37ec1e9aae0d373a0d828578becd8d4d23f87a5235ef26b8d',
+      'mksnapshot-v44.8.0-mas-x64.zip': '3e85f93133f3bd043379006d8d1f976f0b6a28328b4b25662b620c61aac1ef67',
+      'mksnapshot-v44.8.0-win32-arm64-x64.zip': 'e6e1b1bf054232d3b0eaff438be53e024b193de0acceb7880a5ecdf4fa0f3bb9',
+      'mksnapshot-v44.8.0-win32-x64.zip': 'ad9beb66394bbe665e81030725c810391a671d0a5139da2db04c1dfa9794e8f6',
+      'xcache-v44.8.0-darwin-arm64.zip': '2e763c0a9bde506a92546525a043770a4f10c2abbbaa4563fcffd1745837facb',
+      'xcache-v44.8.0-darwin-x64.zip': '3af7a603cdcccecee47f0317395e35b10f6239b787be6cf7d2ecf9bb5ef442cf',
+      'xcache-v44.8.0-linux-arm64.zip': 'c61e88ec8961414ca17c2d01746317dd70b27b622da12ba41ba04f1c589547d3',
+      'xcache-v44.8.0-linux-x64.zip': '7148572756d49c1a2ab55a574409742a73a4ed4e5e14e08efa943ad039d878dc',
+      'xcache-v44.8.0-win32-arm64.zip': '867981ad1c48a85e95370d7f9ea40b2dbec51b42b482b1ea3dcc801e0121bada',
+      'xcache-v44.8.0-win32-x64.zip': 'e6053d0f82d1c1987a4b8fd6c91551fe4c4e34377f41bad67bf9e16bb325f672'
+    }
+  },
+  icon: '<project-root>/desktop/assets/icon',
+  dir: '<project-root>',
+  arch: [ 'arm64' ],
+  platform: 'darwin',
+  afterFinalizePackageTargets: [ [AsyncFunction (anonymous)] ],
+  afterComplete: [ [AsyncFunction (anonymous)] ],
+  afterCopy: [ [AsyncFunction (anonymous)] ],
+  afterExtract: [ [AsyncFunction (anonymous)] ],
+  afterPrune: [ [AsyncFunction (anonymous)] ],
+  out: '<project-root>/out',
+  electronVersion: '44.8.0'
+}
+2026-10-25T16:29:02.867Z electron-packager Electron Packager 20.3.0
+Node v24.21.0
+Host Operating system: darwin 27.0.0 (arm64)
+2026-10-25T16:29:02.867Z electron-packager Packager Options: {"asar":true,"overwrite":true,"quiet":true,"name":"Papertrail","executableName":"Papertrail","appBundleId":"io.github.alovwang-sys.papertrail","download":{"checksums":{"chromedriver-v44.8.0-darwin-arm64.zip":"fa87b178fa606bc08d3eb09c76d5214d09c88549a861fbf261a0eb1bc1a486b0","chromedriver-v44.8.0-darwin-x64.zip":"44c70117f838b5939560e99755c062eadaf4cce420b32e4fae4677c5e4c21846","chromedriver-v44.8.0-linux-arm64.zip":"260af88b6ccf177f086cf64b72542d578031acc40053847895cb875755bc2b42","chromedriver-v44.8.0-linux-x64.zip":"cf183ae9b732821303dba3461e2cd9f172fdb49b03cc3f0fe33f03de570a2a49","chromedriver-v44.8.0-mas-arm64.zip":"92b84641e89eddfd9f28495c4c5a6315d1336a50eed5a4c01e615085fe32e168","chromedriver-v44.8.0-mas-x64.zip":"9e43c765b9dc5bd3fb338857e58a8012a34649f95a8dbfdf4948b63f20ec88eb","chromedriver-v44.8.0-win32-arm64.zip":"625d652e488f01aee6b02b391fe0d5febe5007acf06100fed51dd12790d5171c","chromedriver-v44.8.0-win32-x64.zip":"0ef97d41b954afbdfa1f2b982c0b4d5a3b05e8e80fadba16a67e7cedc142efa1","electron-api.json":"7c8283aa22bb05e8e842f42ae005701a234d7431e2650148b09a004a6b4d2849","electron-v44.8.0-darwin-arm64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-darwin-arm64-dsym.tar.xz":"793c2ee12f91169e3888c497b6133a2e2ab1fe8868866f8531fe5b7a0eaae7c3","electron-v44.8.0-darwin-arm64-symbols.zip":"609ce4cdcef6158cf1bfc57f2ccd2c3ce7ab9117013653bea3a84ffc6a5b49b5","electron-v44.8.0-darwin-arm64.zip":"ccd9ba800d39d403375211d8f8da528469ebae3213cce4ec72b42e4dcc847513","electron-v44.8.0-darwin-x64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-darwin-x64-dsym.tar.xz":"c93ae86cde9901eb6266ded1b39fc628d44a1b57733b7c4f61a54024718a32a8","electron-v44.8.0-darwin-x64-symbols.zip":"fa72985fb9e960ed2eaaa63ec4056cb2ea755f495352d5c2af709f64217f536f","electron-v44.8.0-darwin-x64.zip":"aea5da374201a2ddf97da12baf22d0dda66a5d034dfd38ed1e447250168fa5d3","electron-v44.8.0-linux-arm64-debug.zip":"3ec1a68b6170fe0201c4e9d6ee853917af50da405121d2e5ffd57dbc335c7744","electron-v44.8.0-linux-arm64-symbols.zip":"167397cb53b0beb22be227a922dabf0943e633530196a9b22f2264cf25b08053","electron-v44.8.0-linux-arm64.zip":"502296281cab3c333bd5193e2eaed11c3bb28eabd7a451a49776a3e5a9468f8c","electron-v44.8.0-linux-x64-debug.zip":"149464313722dc48fef9de22863cfd80932effb235c492ae17109cddaca30fc5","electron-v44.8.0-linux-x64-symbols.zip":"d04773dfe5458f08cc24fa100686f57cc530ed319ec2707d69035239a8f31a78","electron-v44.8.0-linux-x64.zip":"926679355f8bf8d521fc6e1a2dc1c71f11cf176a3a1444f9afbd9e1cdfeddb11","electron-v44.8.0-mas-arm64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-mas-arm64-dsym.tar.xz":"a01f914966cea4f0c087a6c8f9d56257b66b01bac167ca7492fc9a5c405add9e","electron-v44.8.0-mas-arm64-symbols.zip":"a16b8d3c9f608d033ce9fdd490c25b0ac862190c14f3c68fbef111d874abba38","electron-v44.8.0-mas-arm64.zip":"72d5b60f9f40ed2277b84a52da504834d1a17aad8be58ff2342bece202c3c0fb","electron-v44.8.0-mas-x64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-mas-x64-dsym.tar.xz":"42ad3699ce382feea19eacfb7a2b05d44532ceed8ad03b2e36960519950552cc","electron-v44.8.0-mas-x64-symbols.zip":"a874e939a95f4ae27fdd44c26611f5059a98381ec1396088647d5abf22bdbfbe","electron-v44.8.0-mas-x64.zip":"d292f07bbce48416d2416e19d556710e332643c9813e97f2b931ec946ac347a0","electron-v44.8.0-win32-arm64-pdb.zip":"d555d7ed6a1b29838d2eecce87e77f5e06f9dc7ad6bbbc85525f99ae7dffd5a7","electron-v44.8.0-win32-arm64-symbols.zip":"ab26bfb1d6f7a100a59a6b052bc81a359bff44de85d337cf6ea5a6d014f68949","electron-v44.8.0-win32-arm64-toolchain-profile.zip":"90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28","electron-v44.8.0-win32-arm64.zip":"5b74b0c0a79bcda52fed73a6ded14d8690ba638fb30353ddfe9cb0d71ef2df6f","electron-v44.8.0-win32-x64-pdb.zip":"739082a396e491b78ec06e0583a6851473729d06f4f3b28f79a486ea0a7c9bc6","electron-v44.8.0-win32-x64-symbols.zip":"2ff400d195e2cca701005742cf3cb9c2c36fcd7cf816411c90f7100faa1e624d","electron-v44.8.0-win32-x64-toolchain-profile.zip":"90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28","electron-v44.8.0-win32-x64.zip":"1c9319bab793492715f7668e0be0e6a30bf2a8577275e40035bd33601bf6f573","electron.d.ts":"35e468edab10d045a84d1e8dd847c3859551c06e4986bb5709547f1495f55b1d","ffmpeg-v44.8.0-darwin-arm64.zip":"12cd496e358c08777a348ade585089ad675107011e2dcca6e929af589358ef62","ffmpeg-v44.8.0-darwin-x64.zip":"6ea847ba4fa89e961b34866fbd7817a673d7d7e8047955631159b225e02d78ec","ffmpeg-v44.8.0-linux-arm64.zip":"f52197f6a67914f1c2687c2f025a15e1e6b2ff80013ab07b49f71aac8c71ddad","ffmpeg-v44.8.0-linux-x64.zip":"f61c9463f8b3e7f52e9e58c3350e5a11c405be45dfcaf24533e7fc73d78b1de5","ffmpeg-v44.8.0-mas-arm64.zip":"8f402e8721ebb3af8c150acb26af19b814bc07db5cef62fbd72df1b02e475040","ffmpeg-v44.8.0-mas-x64.zip":"a21462f7720dfe610052e0bc1c116b0372f240176458e8bd71349ad2acb455cb","ffmpeg-v44.8.0-win32-arm64.zip":"c39b4cb82018a980450defd576db01e58adfab564d904c4da137e3a9a69aa1e0","ffmpeg-v44.8.0-win32-x64.zip":"d962a8df104144ce9e2808a4cf67c6ecbfd14f6df1c41a8e083e8a8e799e71b2","hunspell_dictionaries.zip":"d9e40a2cb35540aea78333f2d63e7baa5450afe990acdc69ee1ce6811c19905e","libcxx-objects-v44.8.0-linux-arm64.zip":"2ee9e2d6b9cccd02da1205e4d915eefb841e8443269c5a564ce7465e4d0108f7","libcxx-objects-v44.8.0-linux-x64.zip":"6b00ec8c1eda61cf2ac3a577fe955ebe6d1e0f43f0375686f062c83038a9e27d","libcxx_headers.zip":"0bca289f834ecd7d2f274c5768e028137fd7b424a89c6b2883f74d916ce272da","libcxxabi_headers.zip":"f189cd54b7428706c11090fee3f1a4335f355790728cdf38995b36af119641b8","mksnapshot-v44.8.0-darwin-arm64.zip":"58ac7a003cc753126a73ca9cccb799bc31dfe66b9e587146a73bd4f5b68af022","mksnapshot-v44.8.0-darwin-x64.zip":"2f8ac671e03f30d6003880659959abf2a4d6af3ab16ed3c7b789129e4bc0dcae","mksnapshot-v44.8.0-linux-arm64-x64.zip":"d2ac0607a6ea1c04555e0ef4ec25b0ee370b1c2f6ee238477835684b293bb074","mksnapshot-v44.8.0-linux-x64.zip":"b0264905da9c787a214d9a803bb73b3015a842b4641c6a082d68f068e2f1f8f0","mksnapshot-v44.8.0-mas-arm64.zip":"bb315f43f28118a37ec1e9aae0d373a0d828578becd8d4d23f87a5235ef26b8d","mksnapshot-v44.8.0-mas-x64.zip":"3e85f93133f3bd043379006d8d1f976f0b6a28328b4b25662b620c61aac1ef67","mksnapshot-v44.8.0-win32-arm64-x64.zip":"e6e1b1bf054232d3b0eaff438be53e024b193de0acceb7880a5ecdf4fa0f3bb9","mksnapshot-v44.8.0-win32-x64.zip":"ad9beb66394bbe665e81030725c810391a671d0a5139da2db04c1dfa9794e8f6","xcache-v44.8.0-darwin-arm64.zip":"2e763c0a9bde506a92546525a043770a4f10c2abbbaa4563fcffd1745837facb","xcache-v44.8.0-darwin-x64.zip":"3af7a603cdcccecee47f0317395e35b10f6239b787be6cf7d2ecf9bb5ef442cf","xcache-v44.8.0-linux-arm64.zip":"c61e88ec8961414ca17c2d01746317dd70b27b622da12ba41ba04f1c589547d3","xcache-v44.8.0-linux-x64.zip":"7148572756d49c1a2ab55a574409742a73a4ed4e5e14e08efa943ad039d878dc","xcache-v44.8.0-win32-arm64.zip":"867981ad1c48a85e95370d7f9ea40b2dbec51b42b482b1ea3dcc801e0121bada","xcache-v44.8.0-win32-x64.zip":"e6053d0f82d1c1987a4b8fd6c91551fe4c4e34377f41bad67bf9e16bb325f672"}},"icon":"<project-root>/desktop/assets/icon","dir":"<project-root>","arch":["arm64"],"platform":"darwin","afterFinalizePackageTargets":[null],"afterComplete":[null],"afterCopy":[null],"afterExtract":[null],"afterPrune":[null],"out":"<project-root>/out","electronVersion":"44.8.0"}
+2026-10-25T16:29:02.867Z electron-packager Target Platforms: darwin
+2026-10-25T16:29:02.867Z electron-packager Target Architectures: arm64
+2026-10-25T16:29:02.867Z electron-packager Inferring appVersion from version in <project-root>/package.json
+2026-10-25T16:29:02.867Z electron-packager Application name: Papertrail
+2026-10-25T16:29:02.867Z electron-packager Target Electron version: 44.8.0
+2026-10-25T16:29:02.868Z electron-forge:packager targets: [ { platform: 'darwin', arch: 'arm64' } ]
+❯ Packaging for arm64 on darwin
+❯ Copying files
+2026-10-25T16:29:02.869Z electron-packager Downloading Electron with options {"checksums":{"chromedriver-v44.8.0-darwin-arm64.zip":"fa87b178fa606bc08d3eb09c76d5214d09c88549a861fbf261a0eb1bc1a486b0","chromedriver-v44.8.0-darwin-x64.zip":"44c70117f838b5939560e99755c062eadaf4cce420b32e4fae4677c5e4c21846","chromedriver-v44.8.0-linux-arm64.zip":"260af88b6ccf177f086cf64b72542d578031acc40053847895cb875755bc2b42","chromedriver-v44.8.0-linux-x64.zip":"cf183ae9b732821303dba3461e2cd9f172fdb49b03cc3f0fe33f03de570a2a49","chromedriver-v44.8.0-mas-arm64.zip":"92b84641e89eddfd9f28495c4c5a6315d1336a50eed5a4c01e615085fe32e168","chromedriver-v44.8.0-mas-x64.zip":"9e43c765b9dc5bd3fb338857e58a8012a34649f95a8dbfdf4948b63f20ec88eb","chromedriver-v44.8.0-win32-arm64.zip":"625d652e488f01aee6b02b391fe0d5febe5007acf06100fed51dd12790d5171c","chromedriver-v44.8.0-win32-x64.zip":"0ef97d41b954afbdfa1f2b982c0b4d5a3b05e8e80fadba16a67e7cedc142efa1","electron-api.json":"7c8283aa22bb05e8e842f42ae005701a234d7431e2650148b09a004a6b4d2849","electron-v44.8.0-darwin-arm64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-darwin-arm64-dsym.tar.xz":"793c2ee12f91169e3888c497b6133a2e2ab1fe8868866f8531fe5b7a0eaae7c3","electron-v44.8.0-darwin-arm64-symbols.zip":"609ce4cdcef6158cf1bfc57f2ccd2c3ce7ab9117013653bea3a84ffc6a5b49b5","electron-v44.8.0-darwin-arm64.zip":"ccd9ba800d39d403375211d8f8da528469ebae3213cce4ec72b42e4dcc847513","electron-v44.8.0-darwin-x64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-darwin-x64-dsym.tar.xz":"c93ae86cde9901eb6266ded1b39fc628d44a1b57733b7c4f61a54024718a32a8","electron-v44.8.0-darwin-x64-symbols.zip":"fa72985fb9e960ed2eaaa63ec4056cb2ea755f495352d5c2af709f64217f536f","electron-v44.8.0-darwin-x64.zip":"aea5da374201a2ddf97da12baf22d0dda66a5d034dfd38ed1e447250168fa5d3","electron-v44.8.0-linux-arm64-debug.zip":"3ec1a68b6170fe0201c4e9d6ee853917af50da405121d2e5ffd57dbc335c7744","electron-v44.8.0-linux-arm64-symbols.zip":"167397cb53b0beb22be227a922dabf0943e633530196a9b22f2264cf25b08053","electron-v44.8.0-linux-arm64.zip":"502296281cab3c333bd5193e2eaed11c3bb28eabd7a451a49776a3e5a9468f8c","electron-v44.8.0-linux-x64-debug.zip":"149464313722dc48fef9de22863cfd80932effb235c492ae17109cddaca30fc5","electron-v44.8.0-linux-x64-symbols.zip":"d04773dfe5458f08cc24fa100686f57cc530ed319ec2707d69035239a8f31a78","electron-v44.8.0-linux-x64.zip":"926679355f8bf8d521fc6e1a2dc1c71f11cf176a3a1444f9afbd9e1cdfeddb11","electron-v44.8.0-mas-arm64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-mas-arm64-dsym.tar.xz":"a01f914966cea4f0c087a6c8f9d56257b66b01bac167ca7492fc9a5c405add9e","electron-v44.8.0-mas-arm64-symbols.zip":"a16b8d3c9f608d033ce9fdd490c25b0ac862190c14f3c68fbef111d874abba38","electron-v44.8.0-mas-arm64.zip":"72d5b60f9f40ed2277b84a52da504834d1a17aad8be58ff2342bece202c3c0fb","electron-v44.8.0-mas-x64-dsym-snapshot.zip":"f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97","electron-v44.8.0-mas-x64-dsym.tar.xz":"42ad3699ce382feea19eacfb7a2b05d44532ceed8ad03b2e36960519950552cc","electron-v44.8.0-mas-x64-symbols.zip":"a874e939a95f4ae27fdd44c26611f5059a98381ec1396088647d5abf22bdbfbe","electron-v44.8.0-mas-x64.zip":"d292f07bbce48416d2416e19d556710e332643c9813e97f2b931ec946ac347a0","electron-v44.8.0-win32-arm64-pdb.zip":"d555d7ed6a1b29838d2eecce87e77f5e06f9dc7ad6bbbc85525f99ae7dffd5a7","electron-v44.8.0-win32-arm64-symbols.zip":"ab26bfb1d6f7a100a59a6b052bc81a359bff44de85d337cf6ea5a6d014f68949","electron-v44.8.0-win32-arm64-toolchain-profile.zip":"90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28","electron-v44.8.0-win32-arm64.zip":"5b74b0c0a79bcda52fed73a6ded14d8690ba638fb30353ddfe9cb0d71ef2df6f","electron-v44.8.0-win32-x64-pdb.zip":"739082a396e491b78ec06e0583a6851473729d06f4f3b28f79a486ea0a7c9bc6","electron-v44.8.0-win32-x64-symbols.zip":"2ff400d195e2cca701005742cf3cb9c2c36fcd7cf816411c90f7100faa1e624d","electron-v44.8.0-win32-x64-toolchain-profile.zip":"90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28","electron-v44.8.0-win32-x64.zip":"1c9319bab793492715f7668e0be0e6a30bf2a8577275e40035bd33601bf6f573","electron.d.ts":"35e468edab10d045a84d1e8dd847c3859551c06e4986bb5709547f1495f55b1d","ffmpeg-v44.8.0-darwin-arm64.zip":"12cd496e358c08777a348ade585089ad675107011e2dcca6e929af589358ef62","ffmpeg-v44.8.0-darwin-x64.zip":"6ea847ba4fa89e961b34866fbd7817a673d7d7e8047955631159b225e02d78ec","ffmpeg-v44.8.0-linux-arm64.zip":"f52197f6a67914f1c2687c2f025a15e1e6b2ff80013ab07b49f71aac8c71ddad","ffmpeg-v44.8.0-linux-x64.zip":"f61c9463f8b3e7f52e9e58c3350e5a11c405be45dfcaf24533e7fc73d78b1de5","ffmpeg-v44.8.0-mas-arm64.zip":"8f402e8721ebb3af8c150acb26af19b814bc07db5cef62fbd72df1b02e475040","ffmpeg-v44.8.0-mas-x64.zip":"a21462f7720dfe610052e0bc1c116b0372f240176458e8bd71349ad2acb455cb","ffmpeg-v44.8.0-win32-arm64.zip":"c39b4cb82018a980450defd576db01e58adfab564d904c4da137e3a9a69aa1e0","ffmpeg-v44.8.0-win32-x64.zip":"d962a8df104144ce9e2808a4cf67c6ecbfd14f6df1c41a8e083e8a8e799e71b2","hunspell_dictionaries.zip":"d9e40a2cb35540aea78333f2d63e7baa5450afe990acdc69ee1ce6811c19905e","libcxx-objects-v44.8.0-linux-arm64.zip":"2ee9e2d6b9cccd02da1205e4d915eefb841e8443269c5a564ce7465e4d0108f7","libcxx-objects-v44.8.0-linux-x64.zip":"6b00ec8c1eda61cf2ac3a577fe955ebe6d1e0f43f0375686f062c83038a9e27d","libcxx_headers.zip":"0bca289f834ecd7d2f274c5768e028137fd7b424a89c6b2883f74d916ce272da","libcxxabi_headers.zip":"f189cd54b7428706c11090fee3f1a4335f355790728cdf38995b36af119641b8","mksnapshot-v44.8.0-darwin-arm64.zip":"58ac7a003cc753126a73ca9cccb799bc31dfe66b9e587146a73bd4f5b68af022","mksnapshot-v44.8.0-darwin-x64.zip":"2f8ac671e03f30d6003880659959abf2a4d6af3ab16ed3c7b789129e4bc0dcae","mksnapshot-v44.8.0-linux-arm64-x64.zip":"d2ac0607a6ea1c04555e0ef4ec25b0ee370b1c2f6ee238477835684b293bb074","mksnapshot-v44.8.0-linux-x64.zip":"b0264905da9c787a214d9a803bb73b3015a842b4641c6a082d68f068e2f1f8f0","mksnapshot-v44.8.0-mas-arm64.zip":"bb315f43f28118a37ec1e9aae0d373a0d828578becd8d4d23f87a5235ef26b8d","mksnapshot-v44.8.0-mas-x64.zip":"3e85f93133f3bd043379006d8d1f976f0b6a28328b4b25662b620c61aac1ef67","mksnapshot-v44.8.0-win32-arm64-x64.zip":"e6e1b1bf054232d3b0eaff438be53e024b193de0acceb7880a5ecdf4fa0f3bb9","mksnapshot-v44.8.0-win32-x64.zip":"ad9beb66394bbe665e81030725c810391a671d0a5139da2db04c1dfa9794e8f6","xcache-v44.8.0-darwin-arm64.zip":"2e763c0a9bde506a92546525a043770a4f10c2abbbaa4563fcffd1745837facb","xcache-v44.8.0-darwin-x64.zip":"3af7a603cdcccecee47f0317395e35b10f6239b787be6cf7d2ecf9bb5ef442cf","xcache-v44.8.0-linux-arm64.zip":"c61e88ec8961414ca17c2d01746317dd70b27b622da12ba41ba04f1c589547d3","xcache-v44.8.0-linux-x64.zip":"7148572756d49c1a2ab55a574409742a73a4ed4e5e14e08efa943ad039d878dc","xcache-v44.8.0-win32-arm64.zip":"867981ad1c48a85e95370d7f9ea40b2dbec51b42b482b1ea3dcc801e0121bada","xcache-v44.8.0-win32-x64.zip":"e6053d0f82d1c1987a4b8fd6c91551fe4c4e34377f41bad67bf9e16bb325f672"},"platform":"darwin","arch":"arm64","version":"44.8.0","artifactName":"electron"}
+2026-10-25T16:29:02.869Z @electron/get:index Checking the cache (undefined) for electron-v44.8.0-darwin-arm64.zip (https://github.com/electron/electron/releases/download/v44.8.0/electron-v44.8.0-darwin-arm64.zip)
+2026-10-25T16:29:02.869Z @electron/get:index Cache miss
+2026-10-25T16:29:02.870Z @electron/get:index Downloading https://github.com/electron/electron/releases/download/v44.8.0/electron-v44.8.0-darwin-arm64.zip to <temp-root>/electron-download-cIwLfq/electron-v44.8.0-darwin-arm64.zip with options: undefined
+2026-10-25T16:29:07.113Z @electron/get:index attempting to validate artifact... {
+  details: {
+    checksums: {
+      'chromedriver-v44.8.0-darwin-arm64.zip': 'fa87b178fa606bc08d3eb09c76d5214d09c88549a861fbf261a0eb1bc1a486b0',
+      'chromedriver-v44.8.0-darwin-x64.zip': '44c70117f838b5939560e99755c062eadaf4cce420b32e4fae4677c5e4c21846',
+      'chromedriver-v44.8.0-linux-arm64.zip': '260af88b6ccf177f086cf64b72542d578031acc40053847895cb875755bc2b42',
+      'chromedriver-v44.8.0-linux-x64.zip': 'cf183ae9b732821303dba3461e2cd9f172fdb49b03cc3f0fe33f03de570a2a49',
+      'chromedriver-v44.8.0-mas-arm64.zip': '92b84641e89eddfd9f28495c4c5a6315d1336a50eed5a4c01e615085fe32e168',
+      'chromedriver-v44.8.0-mas-x64.zip': '9e43c765b9dc5bd3fb338857e58a8012a34649f95a8dbfdf4948b63f20ec88eb',
+      'chromedriver-v44.8.0-win32-arm64.zip': '625d652e488f01aee6b02b391fe0d5febe5007acf06100fed51dd12790d5171c',
+      'chromedriver-v44.8.0-win32-x64.zip': '0ef97d41b954afbdfa1f2b982c0b4d5a3b05e8e80fadba16a67e7cedc142efa1',
+      'electron-api.json': '7c8283aa22bb05e8e842f42ae005701a234d7431e2650148b09a004a6b4d2849',
+      'electron-v44.8.0-darwin-arm64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-darwin-arm64-dsym.tar.xz': '793c2ee12f91169e3888c497b6133a2e2ab1fe8868866f8531fe5b7a0eaae7c3',
+      'electron-v44.8.0-darwin-arm64-symbols.zip': '609ce4cdcef6158cf1bfc57f2ccd2c3ce7ab9117013653bea3a84ffc6a5b49b5',
+      'electron-v44.8.0-darwin-arm64.zip': 'ccd9ba800d39d403375211d8f8da528469ebae3213cce4ec72b42e4dcc847513',
+      'electron-v44.8.0-darwin-x64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-darwin-x64-dsym.tar.xz': 'c93ae86cde9901eb6266ded1b39fc628d44a1b57733b7c4f61a54024718a32a8',
+      'electron-v44.8.0-darwin-x64-symbols.zip': 'fa72985fb9e960ed2eaaa63ec4056cb2ea755f495352d5c2af709f64217f536f',
+      'electron-v44.8.0-darwin-x64.zip': 'aea5da374201a2ddf97da12baf22d0dda66a5d034dfd38ed1e447250168fa5d3',
+      'electron-v44.8.0-linux-arm64-debug.zip': '3ec1a68b6170fe0201c4e9d6ee853917af50da405121d2e5ffd57dbc335c7744',
+      'electron-v44.8.0-linux-arm64-symbols.zip': '167397cb53b0beb22be227a922dabf0943e633530196a9b22f2264cf25b08053',
+      'electron-v44.8.0-linux-arm64.zip': '502296281cab3c333bd5193e2eaed11c3bb28eabd7a451a49776a3e5a9468f8c',
+      'electron-v44.8.0-linux-x64-debug.zip': '149464313722dc48fef9de22863cfd80932effb235c492ae17109cddaca30fc5',
+      'electron-v44.8.0-linux-x64-symbols.zip': 'd04773dfe5458f08cc24fa100686f57cc530ed319ec2707d69035239a8f31a78',
+      'electron-v44.8.0-linux-x64.zip': '926679355f8bf8d521fc6e1a2dc1c71f11cf176a3a1444f9afbd9e1cdfeddb11',
+      'electron-v44.8.0-mas-arm64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-mas-arm64-dsym.tar.xz': 'a01f914966cea4f0c087a6c8f9d56257b66b01bac167ca7492fc9a5c405add9e',
+      'electron-v44.8.0-mas-arm64-symbols.zip': 'a16b8d3c9f608d033ce9fdd490c25b0ac862190c14f3c68fbef111d874abba38',
+      'electron-v44.8.0-mas-arm64.zip': '72d5b60f9f40ed2277b84a52da504834d1a17aad8be58ff2342bece202c3c0fb',
+      'electron-v44.8.0-mas-x64-dsym-snapshot.zip': 'f26311b1effbfaccd8b3af7f17323df5ce5a5854a5fc1e0c2b247cc9aecdba97',
+      'electron-v44.8.0-mas-x64-dsym.tar.xz': '42ad3699ce382feea19eacfb7a2b05d44532ceed8ad03b2e36960519950552cc',
+      'electron-v44.8.0-mas-x64-symbols.zip': 'a874e939a95f4ae27fdd44c26611f5059a98381ec1396088647d5abf22bdbfbe',
+      'electron-v44.8.0-mas-x64.zip': 'd292f07bbce48416d2416e19d556710e332643c9813e97f2b931ec946ac347a0',
+      'electron-v44.8.0-win32-arm64-pdb.zip': 'd555d7ed6a1b29838d2eecce87e77f5e06f9dc7ad6bbbc85525f99ae7dffd5a7',
+      'electron-v44.8.0-win32-arm64-symbols.zip': 'ab26bfb1d6f7a100a59a6b052bc81a359bff44de85d337cf6ea5a6d014f68949',
+      'electron-v44.8.0-win32-arm64-toolchain-profile.zip': '90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28',
+      'electron-v44.8.0-win32-arm64.zip': '5b74b0c0a79bcda52fed73a6ded14d8690ba638fb30353ddfe9cb0d71ef2df6f',
+      'electron-v44.8.0-win32-x64-pdb.zip': '739082a396e491b78ec06e0583a6851473729d06f4f3b28f79a486ea0a7c9bc6',
+      'electron-v44.8.0-win32-x64-symbols.zip': '2ff400d195e2cca701005742cf3cb9c2c36fcd7cf816411c90f7100faa1e624d',
+      'electron-v44.8.0-win32-x64-toolchain-profile.zip': '90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28',
+      'electron-v44.8.0-win32-x64.zip': '1c9319bab793492715f7668e0be0e6a30bf2a8577275e40035bd33601bf6f573',
+      'electron.d.ts': '35e468edab10d045a84d1e8dd847c3859551c06e4986bb5709547f1495f55b1d',
+      'ffmpeg-v44.8.0-darwin-arm64.zip': '12cd496e358c08777a348ade585089ad675107011e2dcca6e929af589358ef62',
+      'ffmpeg-v44.8.0-darwin-x64.zip': '6ea847ba4fa89e961b34866fbd7817a673d7d7e8047955631159b225e02d78ec',
+      'ffmpeg-v44.8.0-linux-arm64.zip': 'f52197f6a67914f1c2687c2f025a15e1e6b2ff80013ab07b49f71aac8c71ddad',
+      'ffmpeg-v44.8.0-linux-x64.zip': 'f61c9463f8b3e7f52e9e58c3350e5a11c405be45dfcaf24533e7fc73d78b1de5',
+      'ffmpeg-v44.8.0-mas-arm64.zip': '8f402e8721ebb3af8c150acb26af19b814bc07db5cef62fbd72df1b02e475040',
+      'ffmpeg-v44.8.0-mas-x64.zip': 'a21462f7720dfe610052e0bc1c116b0372f240176458e8bd71349ad2acb455cb',
+      'ffmpeg-v44.8.0-win32-arm64.zip': 'c39b4cb82018a980450defd576db01e58adfab564d904c4da137e3a9a69aa1e0',
+      'ffmpeg-v44.8.0-win32-x64.zip': 'd962a8df104144ce9e2808a4cf67c6ecbfd14f6df1c41a8e083e8a8e799e71b2',
+      'hunspell_dictionaries.zip': 'd9e40a2cb35540aea78333f2d63e7baa5450afe990acdc69ee1ce6811c19905e',
+      'libcxx-objects-v44.8.0-linux-arm64.zip': '2ee9e2d6b9cccd02da1205e4d915eefb841e8443269c5a564ce7465e4d0108f7',
+      'libcxx-objects-v44.8.0-linux-x64.zip': '6b00ec8c1eda61cf2ac3a577fe955ebe6d1e0f43f0375686f062c83038a9e27d',
+      'libcxx_headers.zip': '0bca289f834ecd7d2f274c5768e028137fd7b424a89c6b2883f74d916ce272da',
+      'libcxxabi_headers.zip': 'f189cd54b7428706c11090fee3f1a4335f355790728cdf38995b36af119641b8',
+      'mksnapshot-v44.8.0-darwin-arm64.zip': '58ac7a003cc753126a73ca9cccb799bc31dfe66b9e587146a73bd4f5b68af022',
+      'mksnapshot-v44.8.0-darwin-x64.zip': '2f8ac671e03f30d6003880659959abf2a4d6af3ab16ed3c7b789129e4bc0dcae',
+      'mksnapshot-v44.8.0-linux-arm64-x64.zip': 'd2ac0607a6ea1c04555e0ef4ec25b0ee370b1c2f6ee238477835684b293bb074',
+      'mksnapshot-v44.8.0-linux-x64.zip': 'b0264905da9c787a214d9a803bb73b3015a842b4641c6a082d68f068e2f1f8f0',
+      'mksnapshot-v44.8.0-mas-arm64.zip': 'bb315f43f28118a37ec1e9aae0d373a0d828578becd8d4d23f87a5235ef26b8d',
+      'mksnapshot-v44.8.0-mas-x64.zip': '3e85f93133f3bd043379006d8d1f976f0b6a28328b4b25662b620c61aac1ef67',
+      'mksnapshot-v44.8.0-win32-arm64-x64.zip': 'e6e1b1bf054232d3b0eaff438be53e024b193de0acceb7880a5ecdf4fa0f3bb9',
+      'mksnapshot-v44.8.0-win32-x64.zip': 'ad9beb66394bbe665e81030725c810391a671d0a5139da2db04c1dfa9794e8f6',
+      'xcache-v44.8.0-darwin-arm64.zip': '2e763c0a9bde506a92546525a043770a4f10c2abbbaa4563fcffd1745837facb',
+      'xcache-v44.8.0-darwin-x64.zip': '3af7a603cdcccecee47f0317395e35b10f6239b787be6cf7d2ecf9bb5ef442cf',
+      'xcache-v44.8.0-linux-arm64.zip': 'c61e88ec8961414ca17c2d01746317dd70b27b622da12ba41ba04f1c589547d3',
+      'xcache-v44.8.0-linux-x64.zip': '7148572756d49c1a2ab55a574409742a73a4ed4e5e14e08efa943ad039d878dc',
+      'xcache-v44.8.0-win32-arm64.zip': '867981ad1c48a85e95370d7f9ea40b2dbec51b42b482b1ea3dcc801e0121bada',
+      'xcache-v44.8.0-win32-x64.zip': 'e6053d0f82d1c1987a4b8fd6c91551fe4c4e34377f41bad67bf9e16bb325f672'
+    },
+    platform: 'darwin',
+    arch: 'arm64',
+    version: 'v44.8.0',
+    artifactName: 'electron'
+  }
+}
+2026-10-25T16:29:07.222Z @electron/get:index artifact validated
+2026-10-25T16:29:07.222Z @electron/get:cache Moving <temp-root>/electron-download-cIwLfq/electron-v44.8.0-darwin-arm64.zip to /Users/amos/Library/Caches/electron/0b1dfe8edb6413a5548f3f263a6041b2edbc8a090672c13442a3752ee61a5c26/electron-v44.8.0-darwin-arm64.zip
+2026-10-25T16:29:07.224Z electron-packager Removing <project-root>/out/Papertrail-darwin-arm64 due to setting overwrite: true
+2026-10-25T16:29:07.248Z electron-packager Creating <temp-root>/electron-packager/darwin-arm64-template-G743Ok
+2026-10-25T16:29:07.249Z electron-packager Extracting /Users/amos/Library/Caches/electron/0b1dfe8edb6413a5548f3f263a6041b2edbc8a090672c13442a3752ee61a5c26/electron-v44.8.0-darwin-arm64.zip to <temp-root>/electron-packager/darwin-arm64-template-G743Ok
+2026-10-25T16:29:07.831Z electron-packager Initializing app in <temp-root>/electron-packager/tmp-FXi8Mx from <temp-root>/electron-packager/darwin-arm64-template-G743Ok template
+2026-10-25T16:29:07.832Z electron-packager Ignored paths based on the out param: [ '<project-root>/out' ]
+✔ Copying files
+❯ Preparing native dependencies
+› 2026-10-25T16:29:21.108Z electron-rebuild rebuilding with args: [Arguments] {
+›   '0': {
+›     buildPath: '<temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app',
+›     electronVersion: '44.8.0',
+›     arch: 'arm64'
+›   }
+› }
+
+› 2026-10-25T16:29:21.109Z electron-rebuild ignoreModules []
+› 2026-10-25T16:29:21.109Z electron-rebuild rebuilding with args: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app 44.8.0 darwin arm64 Set(0) {} false https://www.electronjs.org/headers [ 'prod', 'optional' ] false
+
+› 2026-10-25T16:29:21.109Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@earendil-works/pi-agent-core
+
+› 2026-10-25T16:29:21.109Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@earendil-works/pi-ai
+
+› 2026-10-25T16:29:21.109Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/electron-squirrel-startup
+
+› 2026-10-25T16:29:21.109Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/fflate
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/katex
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/lucide-react
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/pdfjs-dist
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/react
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/react-dom
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/react-markdown
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/rehype-katex
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/remark-gfm
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/remark-math
+
+› 2026-10-25T16:29:21.110Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw
+
+› 2026-10-25T16:29:21.111Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs
+
+› 2026-10-25T16:29:21.111Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/pako
+
+› 2026-10-25T16:29:21.111Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/electron-squirrel-startup/node_modules/debug
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-context
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-direction
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-id
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-presence
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-primitive
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-roving-focus
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-use-controllable-state
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-id/node_modules/@radix-ui/react-use-layout-effect
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-use-controllable-state/node_modules/@radix-ui/react-use-callback-ref
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-collection
+
+› 2026-10-25T16:29:21.112Z electron-rebuild exploring <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-compose-refs
+
+› 2026-10-25T16:29:21.112Z electron-rebuild identified prod deps: Set(94) {
+›   '@earendil-works/pi-agent-core',
+›   '@earendil-works/pi-ai',
+›   'electron-squirrel-startup',
+›   'fflate',
+›   'katex',
+›   'lucide-react',
+›   'pdfjs-dist',
+›   'react',
+›   'react-dom',
+›   'react-markdown',
+›   'rehype-katex',
+›   'remark-gfm',
+›   'remark-math',
+›   '@excalidraw/excalidraw',
+›   'typebox',
+›   '@anthropic-ai/sdk',
+›   '@aws-sdk/client-bedrock-runtime',
+›   '@earendil-works/pi-telemetry',
+›   '@google/genai',
+›   '@smithy/node-http-handler',
+›   'http-proxy-agent',
+›   'https-proxy-agent',
+›   'openai',
+›   'partial-json',
+›   'commander',
+›   '@napi-rs/canvas',
+›   'scheduler',
+›   '@types/hast',
+›   '@types/mdast',
+›   'devlop',
+›   'hast-util-to-jsx-runtime',
+›   'html-url-attributes',
+›   'mdast-util-to-hast',
+›   'remark-parse',
+›   'remark-rehype',
+›   'unified',
+›   'unist-util-visit',
+›   'vfile',
+›   '@types/katex',
+›   'hast-util-from-html-isomorphic',
+›   'hast-util-to-text',
+›   'unist-util-visit-parents',
+›   'mdast-util-math',
+›   'micromark-extension-math',
+›   '@braintree/sanitize-url',
+›   '@excalidraw/laser-pointer',
+›   '@excalidraw/mermaid-to-excalidraw',
+›   '@excalidraw/random-username',
+›   '@radix-ui/react-popover',
+›   '@radix-ui/react-tabs',
+›   'browser-fs-access',
+›   'canvas-roundrect-polyfill',
+›   'clsx',
+›   'cross-env',
+›   'es6-promise-pool',
+›   'fractional-indexing',
+›   'fuzzy',
+›   'image-blob-reduce',
+›   'jotai',
+›   'jotai-scope',
+›   'lodash.throttle',
+›   'lodash.debounce',
+›   'nanoid',
+›   'open-color',
+›   'pako',
+›   'perfect-freehand',
+›   'pica',
+›   'png-chunk-text',
+›   'png-chunks-encode',
+›   'png-chunks-extract',
+›   'points-on-curve',
+›   'pwacompat',
+›   'roughjs',
+›   'sass',
+›   'tunnel-rat',
+›   'debug',
+›   'mdast-util-gfm',
+›   'micromark-extension-gfm',
+›   'remark-stringify',
+›   '@babel/runtime',
+›   '@radix-ui/primitive',
+›   '@radix-ui/react-context',
+›   '@radix-ui/react-direction',
+›   '@radix-ui/react-id',
+›   '@radix-ui/react-presence',
+›   '@radix-ui/react-primitive',
+›   '@radix-ui/react-roving-focus',
+›   '@radix-ui/react-use-controllable-state',
+›   'ms',
+›   '@radix-ui/react-slot',
+›   '@radix-ui/react-use-layout-effect',
+›   '@radix-ui/react-use-callback-ref',
+›   '@radix-ui/react-collection',
+›   '@radix-ui/react-compose-refs'
+› }
+
+› 2026-10-25T16:29:21.113Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules
+
+› 2026-10-25T16:29:21.113Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@alcalzone
+
+› 2026-10-25T16:29:21.113Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@antfu
+
+› 2026-10-25T16:29:21.113Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@anthropic-ai
+
+› 2026-10-25T16:29:21.113Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws
+
+› 2026-10-25T16:29:21.113Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk
+
+› 2026-10-25T16:29:21.113Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/client-bedrock-runtime/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/core/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-env/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-http/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-ini/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-login/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-node/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-process/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-sso/node_modules
+
+› 2026-10-25T16:29:21.114Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-sso/node_modules/@aws-sdk
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/credential-provider-web-identity/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/eventstream-handler-node/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/middleware-eventstream/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/middleware-websocket/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/nested-clients/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/signature-v4-multi-region/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/token-providers/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/types/node_modules
+
+› 2026-10-25T16:29:21.115Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@aws-sdk/xml-builder/node_modules
+
+› 2026-10-25T16:29:21.116Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@babel
+
+› 2026-10-25T16:29:21.116Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@braintree
+
+› 2026-10-25T16:29:21.116Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@chevrotain
+
+› 2026-10-25T16:29:21.116Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@earendil-works
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@electron
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@electron-forge
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@electron-internal
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules
+
+› 2026-10-25T16:29:21.117Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.118Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-id/node_modules
+
+› 2026-10-25T16:29:21.118Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-id/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.118Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-presence/node_modules
+
+› 2026-10-25T16:29:21.118Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-presence/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.118Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-primitive/node_modules
+
+› 2026-10-25T16:29:21.118Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-primitive/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot/node_modules
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-roving-focus/node_modules
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-collection/node_modules
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-collection/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-use-controllable-state/node_modules
+
+› 2026-10-25T16:29:21.119Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/excalidraw/node_modules/@radix-ui/react-tabs/node_modules/@radix-ui/react-use-controllable-state/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@excalidraw/mermaid-to-excalidraw/node_modules
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@floating-ui
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@google
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@iconify
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@isaacs
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@jridgewell
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@malept
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@mermaid-js
+
+› 2026-10-25T16:29:21.120Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@napi-rs
+
+› 2026-10-25T16:29:21.121Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@oxc-project
+
+› 2026-10-25T16:29:21.121Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@parcel
+
+› 2026-10-25T16:29:21.121Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@pdf-lib
+
+› 2026-10-25T16:29:21.121Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@playwright
+
+› 2026-10-25T16:29:21.121Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@protobufjs
+
+› 2026-10-25T16:29:21.121Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@radix-ui
+
+› 2026-10-25T16:29:21.122Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@rolldown
+
+› 2026-10-25T16:29:21.122Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@smithy
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@smithy/core/node_modules
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@smithy/credential-provider-imds/node_modules
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@smithy/fetch-http-handler/node_modules
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@smithy/node-http-handler/node_modules
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@smithy/signature-v4/node_modules
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@smithy/types/node_modules
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@stablelib
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@standard-schema
+
+› 2026-10-25T16:29:21.123Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@types
+
+› 2026-10-25T16:29:21.125Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@ungap
+
+› 2026-10-25T16:29:21.125Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@upsetjs
+
+› 2026-10-25T16:29:21.125Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@vitejs
+
+› 2026-10-25T16:29:21.125Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@vitest
+
+› 2026-10-25T16:29:21.125Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/@xmldom
+
+› 2026-10-25T16:29:21.125Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/aria-hidden/node_modules
+
+› 2026-10-25T16:29:21.126Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/cross-spawn/node_modules
+
+› 2026-10-25T16:29:21.126Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/cytoscape-fcose/node_modules
+
+› 2026-10-25T16:29:21.126Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/d3-dsv/node_modules
+
+› 2026-10-25T16:29:21.127Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/d3-sankey/node_modules
+
+› 2026-10-25T16:29:21.128Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/electron-squirrel-startup/node_modules
+
+› 2026-10-25T16:29:21.128Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/gaxios/node_modules
+
+› 2026-10-25T16:29:21.130Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/mermaid/node_modules
+
+› 2026-10-25T16:29:21.131Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/mermaid/node_modules/@braintree
+
+› 2026-10-25T16:29:21.131Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/mermaid/node_modules/@chevrotain
+
+› 2026-10-25T16:29:21.131Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/mermaid/node_modules/@mermaid-js
+
+› 2026-10-25T16:29:21.131Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/micromark-extension-math/node_modules
+
+› 2026-10-25T16:29:21.132Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/p-retry/node_modules
+
+› 2026-10-25T16:29:21.132Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/parse-entities/node_modules
+
+› 2026-10-25T16:29:21.133Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/parse-entities/node_modules/@types
+
+› 2026-10-25T16:29:21.133Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/points-on-path/node_modules
+
+› 2026-10-25T16:29:21.134Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/react-remove-scroll/node_modules
+
+› 2026-10-25T16:29:21.134Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/react-remove-scroll-bar/node_modules
+
+› 2026-10-25T16:29:21.134Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/react-style-singleton/node_modules
+
+› 2026-10-25T16:29:21.134Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/rehype-katex/node_modules
+
+› 2026-10-25T16:29:21.134Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/roughjs/node_modules
+
+› 2026-10-25T16:29:21.135Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/use-callback-ref/node_modules
+
+› 2026-10-25T16:29:21.135Z electron-rebuild scanning: <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Resources/app/node_modules/use-sidecar/node_modules
+
+✔ Preparing native dependencies
+❯ Finalizing package
+2026-10-25T16:29:21.139Z electron-packager Sanitizing bundled package.json
+2026-10-25T16:29:21.139Z electron-packager Ignored paths based on the out param: [ '<project-root>/out' ]
+2026-10-25T16:29:21.139Z electron-packager Validating bundled Electron app
+2026-10-25T16:29:21.139Z electron-packager Checking for a package.json file
+2026-10-25T16:29:21.139Z electron-packager Checking for the main entry point file
+2026-10-25T16:29:21.139Z electron-packager Validation complete
+2026-10-25T16:29:21.139Z electron-packager Running asar with the options {"unpack":"**/{.**,**}/**/*.node"}
+2026-10-25T16:29:26.638Z electron-packager Copying icon "<project-root>/desktop/assets/icon.icns" to app's Resources as "electron.icns"
+2026-10-25T16:29:26.639Z electron-packager Renaming Electron to Papertrail in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/MacOS
+2026-10-25T16:29:26.639Z electron-packager Renaming Electron Helper to Papertrail Helper in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS
+2026-10-25T16:29:26.639Z electron-packager Renaming Electron Helper (Renderer) to Papertrail Helper (Renderer) in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS
+2026-10-25T16:29:26.639Z electron-packager Renaming Electron Helper (Plugin) to Papertrail Helper (Plugin) in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents/MacOS
+2026-10-25T16:29:26.639Z electron-packager Renaming Electron Helper (GPU) to Papertrail Helper (GPU) in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks/Electron Helper (GPU).app/Contents/MacOS
+2026-10-25T16:29:26.640Z electron-packager Renaming Electron Helper.app to Papertrail Helper.app in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks
+2026-10-25T16:29:26.640Z electron-packager Renaming Electron Helper (Plugin).app to Papertrail Helper (Plugin).app in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks
+2026-10-25T16:29:26.640Z electron-packager Renaming Electron Helper (Renderer).app to Papertrail Helper (Renderer).app in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks
+2026-10-25T16:29:26.640Z electron-packager Renaming Electron Helper (GPU).app to Papertrail Helper (GPU).app in <temp-root>/electron-packager/tmp-FXi8Mx/Electron.app/Contents/Frameworks
+2026-10-25T16:29:26.713Z electron-packager Found 1 integrity digest sentinel(s) in Electron Framework binary
+2026-10-25T16:29:26.713Z electron-packager Wrote integrity digest to Electron Framework binary at offset 198326424
+2026-10-25T16:29:26.714Z electron-packager Resetting ad-hoc signature on <temp-root>/electron-packager/tmp-FXi8Mx/Papertrail.app/Contents/Frameworks/Electron Framework.framework
+2026-10-25T16:29:27.286Z electron-packager Moving <temp-root>/electron-packager/tmp-FXi8Mx to <project-root>/out/Papertrail-darwin-arm64
+✔ Finalizing package
+✔ Packaging for arm64 on darwin
+✔ Packaging application
+❯ Running postPackage hook
+2026-10-25T16:29:27.287Z electron-forge:packager outputPaths: [ '<project-root>/out/Papertrail-darwin-arm64' ]
+✔ Running postPackage hook
+✔ Running package command
+❯ Running preMake hook
+✔ Running preMake hook
+❯ Making distributables
+❯ Making a dmg distributable for darwin/arm64
+❯ Making a zip distributable for darwin/arm64
+✔ Making a dmg distributable for darwin/arm64
+✔ Making a zip distributable for darwin/arm64
+✔ Making distributables
+❯ Running postMake hook
+› Artifacts available at: <project-root>/out/make
+✔ Running postMake hook
+❯ Saving make results
+› Make results saved to: <project-root>/out/make-results
+✔ Saving make results

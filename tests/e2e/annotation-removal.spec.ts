@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { createSeed } from '../../src/data/seed';
 import type { WorkspaceData } from '../../src/domain/types';
@@ -52,6 +52,7 @@ async function selectText(page: Page, text = 'When does adding a retrieval stage
     return node.textContent!.replace(/\s+/g, ' ').trim();
   });
   await expect(menu(page)).toBeVisible();
+  if (!await menu(page).getByRole('button', { name: '写成卡片', exact: true }).isVisible()) await menu(page).getByLabel('更多操作', { exact: true }).click();
   return quote;
 }
 
@@ -65,9 +66,14 @@ const mark = (page: Page, id: string) => main(page).locator(`.pdf-excerpt-highli
 
 const inline = (page: Page) => page.getByRole('dialog', { name: '原文旁提问', exact: true });
 const entry = (page: Page, id: string) => panel(page).locator(`.evidence-entry[data-evidence-id="${id}"]`);
+async function clickHighlight(page: Page, locator: Locator) {
+  await locator.scrollIntoViewIfNeeded();
+  const box = (await locator.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
 async function clickMark(page: Page, id: string) {
   await page.evaluate(() => window.getSelection()?.removeAllRanges());
-  await mark(page, id).first().click();
+  await clickHighlight(page, mark(page, id).first());
   await expect(menu(page).getByRole('button', { name: '移除标记', exact: true })).toBeEnabled();
 }
 async function screenshot(page: Page, name: string) {
@@ -88,6 +94,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, 
     await selectText(page);
     await menu(page).getByRole('button', { name: '解释这段', exact: true }).click();
     await expect(inline(page)).toContainText('模拟回答：证据仍可追溯。');
+    await expect.poll(async () => Object.values((await state(page)).requests).some(request => request.status === 'generating')).toBe(false);
     const before = await state(page);
     const conversation = Object.values(before.conversations).find(item => item.inlineSource?.evidenceId === excerpt.id)!;
     const request = before.requests[conversation.requestIds[0]];
@@ -100,7 +107,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, 
     await expect(main(page).locator('.pdf-source-highlight')).toHaveCount(0);
     await expect(mark(page, second.id)).not.toHaveCount(0);
     const removed = await state(page);
-    expect(removed.evidence[excerpt.id]).toMatchObject({ ...excerpt, annotationHidden: true });
+    expect(removed.evidence[excerpt.id]).toMatchObject({ ...before.evidence[excerpt.id], annotationHidden: true });
     expect(removed.cards[card.id]).toEqual(before.cards[card.id]);
     expect(removed.conversations[conversation.id]).toEqual(before.conversations[conversation.id]);
     expect(removed.requests[request.id]).toEqual(request);
@@ -112,6 +119,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, 
     expect((await state(page)).evidence[excerpt.id].annotationHidden).toBe(true);
     await page.getByRole('button', { name: '上次提问', exact: true }).click();
     await expect(inline(page)).toContainText('模拟回答：证据仍可追溯。');
+    await expect.poll(async () => Object.values((await state(page)).requests).some(request => request.status === 'generating')).toBe(false);
     await inline(page).getByRole('button', { name: '[1]', exact: true }).click();
     await expect(main(page).locator('.pdf-source-highlight')).not.toHaveCount(0);
     expect((await state(page)).evidence[excerpt.id].annotationHidden).toBe(true);
@@ -119,7 +127,8 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, 
     await entry(page, excerpt.id).getByRole('button', { name: '定位原文', exact: true }).click();
     await expect(main(page).locator('.pdf-source-highlight')).not.toHaveCount(0);
     await page.evaluate(() => window.getSelection()?.removeAllRanges());
-    await main(page).locator('.pdf-source-highlight').first().click();
+    await clickHighlight(page, main(page).locator('.pdf-source-highlight').first());
+    await menu(page).getByRole('button', { name: '恢复标记', exact: true }).click();
     await menu(page).getByRole('button', { name: '移除标记', exact: true }).click();
     await expect(main(page).locator('.pdf-source-highlight')).toHaveCount(0);
     // 再选同一段按 H，恢复已有证据而非创建重复来源。
@@ -155,6 +164,7 @@ test('已保存区域框可直接点开移除，恢复后仍保留图片、卡�
   await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width * .68, bounds.y + bounds.height * .25, { steps: 10 });
   await page.mouse.up();
+  await menu(page).getByLabel('更多操作', { exact: true }).click();
   await menu(page).getByRole('button', { name: '摘录', exact: true }).click();
   await expect.poll(async () => Object.values((await state(page)).evidence).some(item => item.kind === 'region')).toBe(true);
   const region = Object.values((await state(page)).evidence).find(item => item.kind === 'region')!;
@@ -164,14 +174,14 @@ test('已保存区域框可直接点开移除，恢复后仍保留图片、卡�
   const before = await state(page);
   const card = Object.values(before.cards).find(item => item.title === '区域标记保留图片')!;
   await menu(page).getByRole('button', { name: '取消原文选区', exact: true }).click();
-  const savedRegion = main(page).getByRole('button', { name: '已摘录区域：PDF 第 1 页', exact: true });
+  const savedRegion = main(page).locator('.pdf-sheet[data-page-index="0"] .pdf-region-activity-marker').last();
   await savedRegion.click();
   await expect(menu(page).getByRole('button', { name: '移除标记', exact: true })).toBeEnabled();
   await screenshot(page, 'region-remove-menu-1440');
   await menu(page).getByRole('button', { name: '移除标记', exact: true }).click();
   await expect(savedRegion).toHaveCount(0);
   const removed = await state(page);
-  expect(removed.evidence[region.id]).toMatchObject({ ...region, annotationHidden: true });
+  expect(removed.evidence[region.id]).toMatchObject({ ...before.evidence[region.id], annotationHidden: true });
   expect(removed.cards[card.id]).toEqual(before.cards[card.id]);
   await expect(entry(page, region.id).getByAltText('保存的 PDF 框选区域', { exact: true })).toBeVisible();
   await saved(page); await page.reload();
@@ -201,7 +211,7 @@ test('其他研究同段来源的移除操作只影响被点击的证据', async
   const source = main(page).locator(`.pdf-source-highlight[data-evidence-id="${other.id}"]`);
   await expect(source).not.toHaveCount(0);
   await page.evaluate(() => window.getSelection()?.removeAllRanges());
-  await source.first().click();
+  await clickHighlight(page, source.first());
   await menu(page).getByRole('button', { name: '移除标记', exact: true }).click();
   await expect(source).toHaveCount(0);
   await expect(mark(page, own.id)).not.toHaveCount(0);
@@ -220,6 +230,7 @@ test('问答打开时从右侧移除标记立即清除高亮，问答与显式�
   await selectText(page);
   await menu(page).getByRole('button', { name: '解释这段', exact: true }).click();
   await expect(inline(page)).toContainText('模拟回答：证据仍可追溯。');
+    await expect.poll(async () => Object.values((await state(page)).requests).some(request => request.status === 'generating')).toBe(false);
   await expect(main(page).locator('.pdf-source-highlight')).not.toHaveCount(0);
   const before = await state(page);
   const conversation = Object.values(before.conversations).find(item => item.inlineSource?.evidenceId === excerpt.id)!;
@@ -228,8 +239,9 @@ test('问答打开时从右侧移除标记立即清除高亮，问答与显式�
   await expect(mark(page, excerpt.id)).toHaveCount(0);
   await expect(main(page).locator('.pdf-source-highlight')).toHaveCount(0);
   await expect(inline(page)).toContainText('模拟回答：证据仍可追溯。');
+    await expect.poll(async () => Object.values((await state(page)).requests).some(request => request.status === 'generating')).toBe(false);
   const removed = await state(page);
-  expect(removed.evidence[excerpt.id]).toMatchObject({ ...excerpt, annotationHidden: true });
+  expect(removed.evidence[excerpt.id]).toMatchObject({ ...before.evidence[excerpt.id], annotationHidden: true });
   expect(removed.conversations[conversation.id]).toEqual(conversation);
   expect(removed.requests[request.id]).toEqual(request);
   const tabsBefore = await main(page).locator('.pane-tab-select').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-tab-id')));

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import type { WorkspaceData } from '../../src/domain/types';
+import { openSource } from './knowledge-helpers';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: '参考面板' });
 const dialog = (page: Page) => page.getByRole('dialog', { name: '原文旁提问' });
@@ -12,6 +13,8 @@ async function start(page: Page, failure = false) {
   await page.route('**/api/ai/agents', route => route.fulfill({ json: { agents: [] } }));
   await page.route('**/api/ai/agents/run', route => { nativeCalls++; return route.fulfill({ status: 502, json: { error: '本机 Agent 连接失败，请检查 CLI 配置后重试。' } }); });
   await page.route('**/api/ai/chat', async route => {
+    const payload = route.request().postDataJSON();
+    if (payload.purpose === 'brief') return route.fulfill({ contentType: 'application/x-ndjson', body: '{"type":"delta","text":"受控背景简要，仅作本篇阅读背景。"}\n{"type":"done","model":"glm-5.3-flash"}\n' });
     calls++;
     if (failure && calls === 1) return route.fulfill({ status: 429, contentType: 'application/x-ndjson', body: '{"type":"error","error":"模型额度或并发受限，请稍后手动重试。"}\n' });
     const messages = route.request().postDataJSON().messages;
@@ -23,7 +26,7 @@ async function start(page: Page, failure = false) {
   await page.goto('/');
   await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
   const paper = (await state(page)).documents['paper-a'];
-  await page.getByRole('main', { name: '主工作区' }).getByRole('button', { name: paper.title, exact: true }).first().click();
+  await openSource(page, paper.title);
   await expect(page.locator('.pdf-text-layer span').filter({ hasText: 'This self-authored fixture describes' }).first()).toBeVisible();
   await expect.poll(async () => (await state(page)).documents['paper-a'].hash).toMatch(/^[a-f0-9]{64}$/);
   return { calls: () => calls, nativeCalls: () => nativeCalls };
@@ -37,6 +40,7 @@ async function selectPassage(page: Page) {
   await page.mouse.move(bounds.x + bounds.width - 2, bounds.y + bounds.height / 2, { steps: 12 });
   await page.mouse.up();
   await expect(page.getByLabel('原文选区操作', { exact: true })).toBeVisible();
+  if (!await page.getByLabel('原文选区操作', { exact: true }).getByRole('button', { name: '解释这段', exact: true }).isVisible()) await page.getByLabel('原文选区操作', { exact: true }).getByLabel('更多操作', { exact: true }).click();
 }
 
 for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 800 }]) {
@@ -48,6 +52,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, 
     const before = await state(page), rightId = before.sessions['research-a'].activeConversationId!;
     await selectPassage(page);
     expect(requests.calls()).toBe(0);
+    if (!await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).isVisible()) await page.getByLabel('原文选区操作').getByLabel('更多操作', { exact: true }).click();
     await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).click();
     await expect(dialog(page)).toContainText('这段是在比较固定检索');
     await dialog(page).getByRole('button', { name: '[1]', exact: true }).click();
@@ -131,6 +136,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, 
     await page.setViewportSize(size);
     const requests = await start(page);
     await selectPassage(page);
+    if (!await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).isVisible()) await page.getByLabel('原文选区操作').getByLabel('更多操作', { exact: true }).click();
     await page.getByLabel('原文选区操作').getByRole('button', { name: '解释这段', exact: true }).click();
     await expect(dialog(page)).toContainText('这段是在比较固定检索');
     const floating = page.locator('.reader-popover.inline-ai');

@@ -6,6 +6,7 @@ import { mapCitationNumbers } from '../domain/citations';
 import { hasFullText } from '../domain/knowledge';
 import { drawingTextLength, validateDrawingQuestion } from '../domain/drawing-question';
 import { CHAT_IMAGE_LIMITS, validateChatImages } from '../domain/chat-images';
+import { pageRangeLabel } from '../domain/evidence';
 import { loadDrawingImage } from './drawing-question';
 import { loadChatImage } from './chat-images';
 import { contentHash, getAsset } from '../data/storage';
@@ -101,6 +102,7 @@ export function discussionAnchor(conversation: Conversation): DiscussionAnchor |
   if (conversation.anchor && !conversation.promoted) return conversation.anchor;
   if (conversation.inlineSource && !conversation.inlineSource.promoted) return { kind: 'document', id: conversation.inlineSource.documentId };
 }
+export const discussionGroupKey = (anchor: DiscussionAnchor) => anchor.kind === 'card' ? 'card' : `${anchor.kind}:${anchor.id}`;
 const activityAt = (data: WorkspaceData, item: Conversation) => item.updatedAt ?? item.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1)?.createdAt ?? item.createdAt ?? '';
 export function anchoredConversations(data: WorkspaceData, researchId: string, anchor: NonNullable<Conversation['anchor']>) {
   return Object.values(data.conversations)
@@ -110,7 +112,7 @@ export function anchoredConversations(data: WorkspaceData, researchId: string, a
 /** Research conversations stay in the main list; discussions are grouped by the object they hang on. */
 export function researchConversationLists(data: WorkspaceData, researchId: string, query = '') {
   const needle = query.trim().toLocaleLowerCase(), matches = (...texts: string[]) => !needle || texts.some(text => text.toLocaleLowerCase().includes(needle));
-  const main: Conversation[] = [], groups = new Map<string, { label: string; items: { conversation: Conversation; label: string }[] }>();
+  const main: Conversation[] = [], groups = new Map<string, { key: string; label: string; items: { conversation: Conversation; label: string }[] }>();
   const listed = Object.values(data.conversations)
     .filter(item => item.researchId === researchId && !item.archived && !item.deletedAt && (item.inlineSource?.operation ?? 'question') === 'question')
     .sort((a, b) => activityAt(data, b).localeCompare(activityAt(data, a)));
@@ -120,17 +122,18 @@ export function researchConversationLists(data: WorkspaceData, researchId: strin
     const anchor = discussionAnchor(conversation), title = conversation.title?.trim() || '新会话';
     if (!anchor) { if (matches(title)) main.push(conversation); continue; }
     const quote = conversation.inlineSource && data.evidence[conversation.inlineSource.evidenceId]?.quote.trim();
+    const sourcePages = conversation.inlineSource?.evidenceIds?.flatMap(id => data.evidence[id] ? [data.evidence[id].pageIndex] : []) ?? [];
     const label = anchor.kind === 'card' ? data.cards[anchor.id]?.title ?? '已移除的卡片'
       : anchor.kind === 'board' ? data.boards[anchor.id]?.title ?? '已移除的白板'
-      : `第 ${conversation.inlineSource!.pageIndex + 1} 页 · ${quote ? quote.slice(0, 40) : '区域'}`;
+      : `${sourcePages.length > 1 ? pageRangeLabel(sourcePages) : `第 ${conversation.inlineSource!.pageIndex + 1} 页`} · ${quote ? quote.slice(0, 40) : '区域'}`;
     // Newest first; when one card or board has several threads, number them oldest = 1.
     const key = anchorKey(conversation), total = key ? totals.get(key)! : 1, index = key ? seen.get(key) ?? 0 : 0;
     if (key) seen.set(key, index + 1);
     const numbered = total > 1 ? `${label} · ${total - index}` : label;
-    const group = anchor.kind === 'card' ? '卡片' : anchor.kind === 'board' ? '白板' : data.documents[anchor.id]?.title ?? '已移除的资料';
+    const group = anchor.kind === 'card' ? '卡片' : anchor.kind === 'board' ? data.boards[anchor.id]?.title ?? '已移除的白板' : data.documents[anchor.id]?.title ?? '已移除的资料';
     if (!matches(label, title, group)) continue;
-    const groupKey = anchor.kind === 'document' ? `document:${anchor.id}` : anchor.kind;
-    if (!groups.has(groupKey)) groups.set(groupKey, { label: group, items: [] });
+    const groupKey = discussionGroupKey(anchor);
+    if (!groups.has(groupKey)) groups.set(groupKey, { key: groupKey, label: group, items: [] });
     groups.get(groupKey)!.items.push({ conversation, label: conversation.titleEdited ? title : numbered });
   }
   return { main, discussions: [...groups.values()] };

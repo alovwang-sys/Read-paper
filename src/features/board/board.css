@@ -25,6 +25,9 @@
   padding-right: 8px;
   margin-right: 2px;
 }
+.board-title-button { max-width: min(240px, 100%); min-width: 0; }
+.board-title-button > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.board-title-button > svg { flex-shrink: 0; }
 .board-mode-buttons .is-active {
   background: #e7efe1;
   color: #4c7549;

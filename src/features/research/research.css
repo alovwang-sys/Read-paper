@@ -1,3 +1,8 @@
+.paper-row.resource-list-row, .workspace-pane-group .paper-row.resource-list-row { padding: 0; gap: 0; align-items: stretch; }
+.paper-row.resource-list-row > .resource-list-open { display: flex; align-items: center; flex: 1; min-width: 0; padding: 16px; cursor: pointer; }
+.resource-list-row > .resource-open-menu { align-self: center; margin-right: 12px; }
+.resource-list-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+
 @container workspace-pane (max-width: 480px) {
   .workspace-pane-group .page-content { padding: 24px 16px; }
   .workspace-pane-group .library-heading { align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }

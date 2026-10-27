@@ -16,7 +16,7 @@ export function SplitDirectionItems({ onChoose, onBack }: { onChoose: (side: 'le
   return <>{onBack && <button role="menuitem" onClick={onBack}>返回</button>}{([['left', '向左分屏打开'], ['right', '向右分屏打开'], ['up', '向上分屏打开'], ['down', '向下分屏打开']] as const).map(([side, label]) => <button role="menuitem" key={side} onClick={() => onChoose(side)}>{label}</button>)}</>;
 }
 
-export function ResourceOpenMenu({ resource, scope, onOpened, showPreview = true, anchor, reading }: { resource: ResourceRef; scope: WorkspaceScope; onOpened?: () => void; showPreview?: boolean; anchor?: ResourceAnchor; reading?: ReadingPosition }) {
+export function ResourceOpenMenu({ resource, scope, onOpened, onRename, showPreview = true, anchor, reading }: { resource: ResourceRef; scope: WorkspaceScope; onOpened?: () => void; onRename?: () => void; showPreview?: boolean; anchor?: ResourceAnchor; reading?: ReadingPosition }) {
   const { data, actions } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [directions, setDirections] = useState(false);
@@ -71,6 +71,7 @@ export function ResourceOpenMenu({ resource, scope, onOpened, showPreview = true
         <button role="menuitem" onClick={() => setConfirmRemoval(false)}>取消</button>
         <button className="resource-removal-action" role="menuitem" onClick={remove}>{scope.kind === 'research' ? '确认移出' : '确认删除'}</button>
       </> : directions ? <SplitDirectionItems onChoose={split} onBack={() => setDirections(false)}/> : <>
+        {onRename && <button role="menuitem" onClick={() => { setOpen(false); trigger.current?.focus(); onRename(); }}>重命名</button>}
         <div className="resource-split-option"><button role="menuitem" onClick={() => split('right')}>在新分屏打开</button><button role="menuitem" aria-label="选择分屏方向" title="选择分屏方向" aria-haspopup="menu" onClick={() => setDirections(true)}><ChevronRight size={14}/></button></div>
         {showPreview && (resource.kind === 'document' || resource.kind === 'card') && <button role="menuitem" onClick={() => { setOpen(false); actions.openResource(resource, { scope, target: 'inspector' }); onOpened?.(); }}>在右侧预览</button>}
         {resource.kind === 'document' && <button className="resource-removal-action" role="menuitem" onClick={() => { setRemovalError(''); setConfirmRemoval(true); }}>{removalLabel}</button>}

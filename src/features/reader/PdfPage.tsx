@@ -5,7 +5,8 @@ import type { Evidence } from '../../domain/types';
 import { rangeForTextAnchor } from './text-anchor';
 
 export type PageSize = { width: number; height: number; scale: number; rotation: number };
-export type PageHandle = { canvas: HTMLCanvasElement; layer: HTMLDivElement; size: PageSize; rendering: boolean; textReady: boolean };
+export type PageTextState = 'pending' | 'ready' | 'empty' | 'error';
+export type PageHandle = { canvas: HTMLCanvasElement; layer: HTMLDivElement; size: PageSize; rendering: boolean; textReady: boolean; textState: PageTextState };
 type Mark = { id: string; source: boolean; contextOnly: boolean; rectangles: Array<{ left: number; top: number; width: number; height: number }> };
 
 export function PdfPage({ pdf, documentId, title, pageIndex, size, active, selectionMode, excerpts, source, activityCounts, retry, onUpdate, onTextError, onError, onSelect, onExcerptClick, children }: {
@@ -30,12 +31,13 @@ export function PdfPage({ pdf, documentId, title, pageIndex, size, active, selec
     let task: RenderTask | undefined;
     let textLayer: TextLayer | undefined;
     const node = canvas.current, textContainer = layer.current;
-    const update = (rendering: boolean, textReady: boolean) => {
+    const update = (rendering: boolean, textState: PageTextState) => {
       if (!live) return;
+      const textReady = textState === 'ready';
       setRendering(rendering); setTextReady(textReady);
-      callbacks.current.onUpdate({ canvas: node, layer: textContainer, size, rendering, textReady });
+      callbacks.current.onUpdate({ canvas: node, layer: textContainer, size, rendering, textReady, textState });
     };
-    update(true, false);
+    update(true, 'pending');
     textContainer.replaceChildren();
     (async () => {
       const page = await pdf.getPage(pageIndex + 1);
@@ -48,19 +50,19 @@ export function PdfPage({ pdf, documentId, title, pageIndex, size, active, selec
       task = page.render({ canvas: node, viewport, transform: pixelRatio === 1 ? undefined : [pixelRatio, 0, 0, pixelRatio, 0, 0] });
       await task.promise;
       if (!live) return;
-      update(false, false);
+      update(false, 'pending');
       try {
         const content = await page.getTextContent();
         if (!live) return;
         if (content.items.some(item => 'str' in item && item.str.trim())) {
           textLayer = new TextLayer({ textContentSource: content, container: textContainer, viewport });
           await textLayer.render();
-          update(false, true);
-        }
-      } catch { if (live) callbacks.current.onTextError(); }
+          update(false, 'ready');
+        } else update(false, 'empty');
+      } catch { if (live) { update(false, 'error'); callbacks.current.onTextError(); } }
     })().catch(error => {
       if (!live || error?.name === 'RenderingCancelledException') return;
-      update(false, false);
+      update(false, 'error');
       callbacks.current.onError(`此页无法渲染：${error instanceof Error ? error.message : '请重试'}`);
     });
     return () => {
@@ -91,7 +93,8 @@ export function PdfPage({ pdf, documentId, title, pageIndex, size, active, selec
       <canvas ref={canvas} aria-label={`${title} PDF 第 ${pageIndex + 1} 页`} />
       <div ref={layer} className={`pdf-text-layer ${selectionMode === 'region' ? 'pdf-text-layer-inactive' : ''}`} onMouseUp={onSelect} onKeyUp={onSelect} onClick={event => {
         const bounds = event.currentTarget.getBoundingClientRect(), x = event.clientX - bounds.left, y = event.clientY - bounds.top;
-        const mark = marks.find(item => item.rectangles.some(rect => x >= rect.left && x <= rect.left + rect.width && y >= rect.top && y <= rect.top + rect.height));
+        const hits = marks.filter(item => item.rectangles.some(rect => x >= rect.left && x <= rect.left + rect.width && y >= rect.top && y <= rect.top + rect.height));
+        const mark = hits.find(item => item.source) ?? hits[0];
         const marked = mark && event.currentTarget.parentElement?.querySelector<HTMLElement>(`.pdf-exact-highlight[data-evidence-id="${CSS.escape(mark.id)}"]`);
         onExcerptClick(marked || event.target as HTMLElement);
       }} />

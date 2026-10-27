@@ -15,4 +15,5 @@ playwright-report-desktop/
 
 # Local installation evidence contains private research and backup paths.
 docs/verification/*/installed-upgrade.json
+docs/verification/*/install-result.json
 docs/verification/human-board-control/installed-0.1.10.png

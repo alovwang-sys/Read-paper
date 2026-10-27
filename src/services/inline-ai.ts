@@ -1,11 +1,13 @@
 import { validateTextAnchor } from '../domain/reader-context';
-import type { AIConnectionId, Conversation, Evidence, ReaderOperation, RegionSource, TextSourceAnchor } from '../domain/types';
+import { matchesEvidence, type EvidenceFragment } from '../domain/evidence';
+import type { AIConnectionId, Conversation, ReaderOperation } from '../domain/types';
 import { hasFullText } from '../domain/knowledge';
 import { codexSupportsImages, conversationConnection, getAgents, getCodexCapabilities } from './agents';
 import { createCardDraftFromAnswer, getAIConfig, type AIConfig } from './ai';
 import { getActiveConversation, uid, workspace } from './workspace';
 
-export type InlineAISelection = { documentId: string; pageIndex: number; quote: string; kind?: 'text' | 'region'; region?: RegionSource; textAnchor?: TextSourceAnchor };
+export type InlineAIFragment = EvidenceFragment;
+export type InlineAISelection = InlineAIFragment & { fragments?: InlineAIFragment[] };
 type InlineOptions = { operation?: ReaderOperation; forceNew?: boolean };
 
 function inlineConnection(researchId: string): AIConnectionId {
@@ -35,45 +37,34 @@ export async function inlineAIConfig(researchId: string, conversationId?: string
   return config;
 }
 
-function matchesSelection(evidence: Evidence, selection: InlineAISelection) {
-  return evidence.documentId === selection.documentId && evidence.pageIndex === selection.pageIndex
-    && (selection.kind === 'region' ? evidence.kind === 'region' && evidence.region?.hash === selection.region?.hash
-      && evidence.region?.rotation === selection.region?.rotation && JSON.stringify(evidence.region?.rect) === JSON.stringify(selection.region?.rect)
-      : evidence.kind !== 'region' && evidence.quote === selection.quote.trim()
-        && (selection.textAnchor ? evidence.textAnchor?.start === selection.textAnchor.start && evidence.textAnchor?.end === selection.textAnchor.end : !evidence.textAnchor));
-}
-
 export function findInlineConversation(researchId: string, selection: InlineAISelection, options: InlineOptions = {}): Conversation | undefined {
   const { data } = workspace.getState();
+  const fragments = [...(selection.fragments ?? [selection])].sort((a, b) => a.pageIndex - b.pageIndex);
   return Object.values(data.conversations).filter(conversation => {
-    const source = conversation.inlineSource, evidence = source && data.evidence[source.evidenceId];
-    return !conversation.archived && !conversation.deletedAt && (source?.operation ?? 'question') === (options.operation ?? 'question') && conversation.researchId === researchId && conversationConnection(conversation) === inlineConnection(researchId) && evidence
-      && matchesSelection(evidence, selection);
+    const source = conversation.inlineSource, ids = source && (source.evidenceIds ?? [source.evidenceId]);
+    return !conversation.archived && !conversation.deletedAt && (source?.operation ?? 'question') === (options.operation ?? 'question') && conversation.researchId === researchId && conversationConnection(conversation) === inlineConnection(researchId) && ids
+      && ids.length === fragments.length && ids.every((id, index) => data.evidence[id] && matchesEvidence(data.evidence[id], fragments[index]));
   }).sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''))[0];
 }
 
 export function createInlineConversation(researchId: string, selection: InlineAISelection, options: InlineOptions = {}): string {
   const { data } = workspace.getState(), research = data.researches[researchId], document = data.documents[selection.documentId];
   if (!research?.documentIds.includes(selection.documentId) || !hasFullText(document)) throw new Error('请先把原 PDF 加入当前研究。');
-  if (!Number.isInteger(selection.pageIndex) || selection.pageIndex < 0 || selection.pageIndex >= document.pageCount
-    || (selection.kind === 'region' ? !selection.region : !selection.quote.trim())) throw new Error('请选择有效的原文或区域后再提问。');
-  if (selection.textAnchor) validateTextAnchor(selection.textAnchor);
+  const fragments = [...(selection.fragments ?? [selection])].sort((a, b) => a.pageIndex - b.pageIndex);
+  if (!fragments.length || fragments.some(fragment => fragment.documentId !== selection.documentId || !Number.isInteger(fragment.pageIndex) || fragment.pageIndex < 0 || fragment.pageIndex >= document.pageCount
+    || (fragment.kind === 'region' ? !fragment.region : !fragment.quote.trim()))) throw new Error('请选择有效的原文或区域后再提问。');
+  for (const fragment of fragments) if (fragment.textAnchor) validateTextAnchor(fragment.textAnchor);
   const previous = !options.forceNew && findInlineConversation(researchId, selection, options);
   if (previous) return previous.id;
   const connectionId = inlineConnection(researchId), id = uid('conversation');
   const active = getActiveConversation(data, researchId);
-  const existing = Object.values(data.evidence).find(evidence => (!evidence.researchId || evidence.researchId === researchId)
-    && matchesSelection(evidence, selection));
-  const evidenceId = existing?.id ?? uid('evidence'), now = new Date().toISOString();
+  const evidenceIds = workspace.captureReaderSelection(researchId, fragments, { contextOnly: true });
+  const evidenceId = evidenceIds[0], now = new Date().toISOString();
   workspace.updateData(next => {
-    if (!existing) next.evidence[evidenceId] = { id: evidenceId, researchId, documentId: selection.documentId,
-      pageIndex: selection.pageIndex, quote: selection.quote.trim(), kind: selection.kind ?? 'text',
-      ...(selection.region ? { region: structuredClone(selection.region) } : {}), contextOnly: true, createdAt: now };
-    if (selection.textAnchor) next.evidence[evidenceId].textAnchor = structuredClone(selection.textAnchor);
-    next.conversations[id] = { id, researchId, connectionId, title: '原文旁提问', contextIds: [evidenceId], requestIds: [],
+    next.conversations[id] = { id, researchId, connectionId, title: '原文旁提问', contextIds: evidenceIds, requestIds: [],
       input: '', historyRange: 'all', createdAt: now, updatedAt: now,
       ...(connectionId === 'codex' && active ? { codex: structuredClone(active.codex ?? {}), skills: structuredClone(active.skills ?? []) } : {}),
-      inlineSource: { documentId: selection.documentId, pageIndex: selection.pageIndex, evidenceId, operation: options.operation ?? 'question' } };
+      inlineSource: { documentId: selection.documentId, pageIndex: fragments[0].pageIndex, evidenceId, ...(evidenceIds.length > 1 ? { evidenceIds } : {}), operation: options.operation ?? 'question' } };
   });
   return id;
 }

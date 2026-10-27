@@ -167,7 +167,10 @@
 .research-fold > summary { cursor: pointer; padding: 6px 9px; font-size: 11px; color: #95a08e; }
 .research-fold > summary:hover { color: #6b7d62; }
 .research-fold > .research-agent-conversation-list { max-height: 240px; overflow-y: auto; margin-top: 0; }
-.research-discussion-group { padding: 6px 9px 2px; font-size: 10px; color: #a5ae9c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.research-discussion-group { display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; padding: 6px 9px; border: 0; border-radius: 5px; background: transparent; text-align: left; font-size: 10px; color: #899b7e; cursor: pointer; }
+.research-discussion-group:hover { background: #edf3e8; color: #6b7d62; }
+.research-discussion-group > svg { flex: none; }
+.research-discussion-group > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-status-dot { width: 5px; height: 5px; flex: none; border-radius: 50%; background: #bfcab8; }
 .research-agent-conversation-item[aria-current="true"] .conversation-status-dot { background: #6b8b5d; }
 .research-agent-conversation-item.is-running .conversation-status-dot { background: #7f9f6f; animation: research-agent-pulse 1.4s ease-in-out infinite; }

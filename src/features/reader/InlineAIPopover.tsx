@@ -5,6 +5,7 @@ import { commitCardDraft, resumeNativeRuns, retryAI, skipPaperBrief, snapshotCon
 import { continueInlineInPanel, createInlineCardDraft, inlineAIConfig } from '../../services/inline-ai';
 import { useWorkspace } from '../../services/workspace';
 import { readerActivities } from '../../services/reader-actions';
+import { pageRangeLabel } from '../../domain/evidence';
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { NativeRunTimeline } from '../ai/NativeRunTimeline';
 import { RenameConversationButton } from '../ai/ConversationManagement';
@@ -115,7 +116,9 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     try { materials = snapshotContext(data, conversation.researchId, conversationId); }
     catch (error) { scopeProblem = error instanceof Error ? error.message : '来源暂不可用，请重新选择材料。'; }
   }
-  const onlyOriginal = materials.length === 1 && materials[0].evidenceId === source?.evidenceId;
+  const sourceIds = source?.evidenceIds ?? (source ? [source.evidenceId] : []);
+  const onlyOriginal = materials.length === sourceIds.length && materials.every(item => sourceIds.includes(item.evidenceId));
+  const sourcePages = sourceIds.flatMap(id => data.evidence[id] ? [data.evidence[id].pageIndex] : []);
   const requests = conversation?.requestIds.map(id => data.requests[id]).filter(request => request && !request.superseded && (!request.purpose || request.purpose === 'chat')) ?? [];
   const latest = requests.at(-1);
   const generating = requests.find(request => request.status === 'generating');
@@ -146,8 +149,9 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     try {
       const config = await inlineAIConfig(conversation.researchId, conversationId);
       if (actions.getState().data.conversations[conversationId]?.deletedAt) return;
-      if (operation === 'translation' && !evidence?.quote.trim()) throw new Error('此区域没有可提取的原文，尚未进行 OCR。可以返回选择文字或对区域提问。');
+      if (operation === 'translation' && !materials.some(item => item.quote.trim())) throw new Error('此区域没有可提取的原文，尚未进行 OCR。可以返回选择文字或对区域提问。');
       if (materials.some(item => item.kind === 'region') && !config.images) throw new Error('当前模型未开启图片理解。区域已保留，可改选文字，或在设置中配置支持图片的模型。');
+      if (materials.filter(item => item.kind === 'region').length > config.limits.maxImages) throw new Error(`所选区域超过当前连接每次最多 ${config.limits.maxImages} 张图片的上限。选区已保留，可返回保存摘录或缩小选择。`);
       followOutput.current = true;
       await submitAI(conversation.researchId, conversationId, prompt, undefined,
         { board: 'none', readerOperation: operation, paperBrief: operation === 'question' && !selectionOnly ? 'auto' : 'none' });
@@ -208,13 +212,13 @@ export function InlineAIPopover({ conversationId, initialAction, onClose, onSour
     <header className="inline-ai-header" data-popover-drag>
       {draftOpen && <button className="icon-button" aria-label="返回就地问答并保留卡片草稿" onClick={() => setDraftOpen(false)}><ArrowLeft size={15} /></button>}
       <button type="button" className="inline-ai-move" data-popover-move aria-label="移动原文旁问答" title={`${operationLabel} · ${conversation.title?.trim() || '原文旁提问'} · 拖动标题栏移动`} aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"><GripHorizontal size={14} /><strong>{draftOpen ? draft?.status === 'saved' ? '卡片已保存' : operation === 'summary' ? '摘要卡片' : '整理为卡片' : conversation.titleEdited && conversation.title?.trim() || operationLabel}</strong></button>
-      <span>PDF 第 {source.pageIndex + 1} 页</span>
+      <span>{pageRangeLabel(sourcePages)}</span>
       <RenameConversationButton conversationId={conversationId}/>
       <button className="icon-button" aria-label="关闭就地问答并保留内容" title="收起，内容会保留 · Esc" onClick={close}><X size={15} /></button>
     </header>
     {deleted && <div className="inline-ai-deleted" role="status"><span>会话已删除，此处记录仅供查看。提问与草稿仍保留。</span><button className="text-button" onClick={() => run(() => actions.restoreDeletedConversation(conversationId))}>恢复会话</button></div>}
     <div className="inline-ai-source-row">
-      <details className="inline-ai-source"><summary>{scopeProblem ? '材料暂不可用' : onlyOriginal ? `所选${evidence.kind === 'region' ? '区域' : '原文'}` : `本轮原文 · ${materials.length}`}<span>查看来源</span></summary><div className="inline-ai-materials">{scopeProblem ? <p role="alert">{scopeProblem}</p> : materials.map(item => <div key={item.evidenceId}>{!onlyOriginal && <strong>{item.title} · PDF 第 {item.pageIndex + 1} 页</strong>}<blockquote>{item.quote || `PDF 第 ${item.pageIndex + 1} 页的框选区域`}</blockquote></div>)}</div></details>
+      <details className="inline-ai-source"><summary>{scopeProblem ? '材料暂不可用' : onlyOriginal ? `所选${evidence.kind === 'region' ? '区域' : '原文'}${sourceIds.length > 1 ? ` · ${sourceIds.length} 个片段` : ''}` : `本轮原文 · ${materials.length}`}<span>查看来源</span></summary><div className="inline-ai-materials">{scopeProblem ? <p role="alert">{scopeProblem}</p> : materials.map(item => <div key={item.evidenceId}>{(!onlyOriginal || sourceIds.length > 1) && <button type="button" className="text-button" onClick={() => onSource(item.evidenceId)}>{item.title} · PDF 第 {item.pageIndex + 1} 页 · 定位原文</button>}<blockquote>{item.quote || `PDF 第 ${item.pageIndex + 1} 页的框选区域`}</blockquote></div>)}</div></details>
       {hasAnnotation && <button className="text-button inline-ai-mark-toggle" title="仅改变原文标记，保留提问、摘录、卡片与引用" onClick={() => run(() => onMarkChange(evidence.id, !!evidence.annotationHidden))}>{evidence.annotationHidden ? '恢复标记' : '移除标记'}</button>}
     </div>
     {operation === 'question' && <div className="inline-ai-brief-row">

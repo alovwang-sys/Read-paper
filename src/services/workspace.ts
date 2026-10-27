@@ -1,4 +1,5 @@
 import { validateTextAnchor } from '../domain/reader-context';
+import { evidenceGroup, findEvidenceSelection, type EvidenceFragment } from '../domain/evidence';
 import { useContext, useMemo, useState, useSyncExternalStore, type Dispatch, type SetStateAction } from 'react';
 import { PaneContext } from './pane-context';
 import { createSeed, emptySession } from '../data/seed';
@@ -532,19 +533,45 @@ export const workspace = {
     });
     return id;
   },
+  captureReaderSelection(researchId: string, fragments: EvidenceFragment[], options: { contextOnly?: boolean } = {}): string[] {
+    if (!Array.isArray(fragments) || !fragments.length || fragments.length > 2000) throw new Error('请选择有效的原文或区域。');
+    const ordered = [...fragments].sort((a, b) => a.pageIndex - b.pageIndex);
+    if (new Set(ordered.map(item => item.pageIndex)).size !== ordered.length || ordered.some(item => item.documentId !== ordered[0].documentId
+      || (item.kind ?? 'text') !== (ordered[0].kind ?? 'text') || typeof item.quote !== 'string')) throw new Error('一次选区只能包含同一论文中各页的文字或区域。');
+    for (const item of ordered) if (item.textAnchor) validateTextAnchor(item.textAnchor);
+    const existing = findEvidenceSelection(state.data, researchId, ordered);
+    const ids = existing?.map(item => item.id) ?? ordered.map(() => uid('evidence'));
+    const selectionGroupId = ordered.length > 1 ? uid('selection') : undefined;
+    workspace.updateData(data => {
+      const research = data.researches[researchId];
+      if (!research || !hasFullText(data.documents[ordered[0].documentId])) throw new Error('研究或原 PDF 已不存在。');
+      if (!research.documentIds.includes(ordered[0].documentId)) research.documentIds.push(ordered[0].documentId);
+      ordered.forEach((item, index) => {
+        if (!existing) data.evidence[ids[index]] = { ...structuredClone(item), id: ids[index], researchId, quote: item.quote.trim(), createdAt: new Date().toISOString(),
+          ...(selectionGroupId ? { selectionGroupId } : {}), ...(options.contextOnly ? { contextOnly: true } : {}) };
+        if (!options.contextOnly) { delete data.evidence[ids[index]].contextOnly; delete data.evidence[ids[index]].annotationHidden; }
+      });
+      validateEvidence(data, ids);
+    });
+    return ids;
+  },
   setExcerptMarked(evidenceId: string, marked: boolean) {
     workspace.updateData(data => {
       const evidence = data.evidence[evidenceId];
       if (!evidence) throw new Error('摘录不存在，请重新打开原文。');
-      if (marked) delete evidence.annotationHidden;
-      else { evidence.annotationHidden = true; clearEvidenceAnchors(data, evidenceId); }
+      for (const fragment of evidenceGroup(data, evidence)) {
+        if (marked) delete fragment.annotationHidden;
+        else { fragment.annotationHidden = true; clearEvidenceAnchors(data, fragment.id); }
+      }
     });
   },
   removeExcerpt(evidenceId: string) {
     workspace.updateData(data => {
-      if (Object.values(data.cards).some(c => c.evidenceIds.includes(evidenceId)) || Object.values(data.drafts).some(d => d.evidenceIds.includes(evidenceId) || d.cardRefs?.some(ref => ref.evidenceIds?.includes(evidenceId))) || Object.values(data.conversations).some(c => c.contextIds.includes(evidenceId) || c.inlineSource?.evidenceId === evidenceId) || Object.values(data.requests).some(r => r.context.some(c => c.evidenceId === evidenceId)) || Object.values(data.cardDrafts).some(d => d.evidenceIds.includes(evidenceId))) throw new Error('摘录已被引用，请先移除引用。');
-      clearEvidenceAnchors(data, evidenceId);
-      delete data.evidence[evidenceId];
+      const evidence = data.evidence[evidenceId];
+      if (!evidence) throw new Error('摘录不存在，请重新打开原文。');
+      const ids = evidenceGroup(data, evidence).map(item => item.id);
+      if (Object.values(data.cards).some(c => c.evidenceIds.some(id => ids.includes(id))) || Object.values(data.drafts).some(d => d.evidenceIds.some(id => ids.includes(id)) || d.cardRefs?.some(ref => ref.evidenceIds?.some(id => ids.includes(id)))) || Object.values(data.conversations).some(c => c.contextIds.some(id => ids.includes(id)) || ids.includes(c.inlineSource?.evidenceId ?? '') || c.inlineSource?.evidenceIds?.some(id => ids.includes(id))) || Object.values(data.requests).some(r => r.context.some(c => ids.includes(c.evidenceId))) || Object.values(data.cardDrafts).some(d => d.evidenceIds.some(id => ids.includes(id)))) throw new Error('摘录已被引用，请先移除引用。');
+      for (const id of ids) { clearEvidenceAnchors(data, id); delete data.evidence[id]; }
     });
   },
   attachEvidenceToCard(cardId: string, evidenceId: string) {
@@ -840,6 +867,9 @@ export const workspace = {
       const last = conversation.requestIds.map(id => data.requests[id]).filter(Boolean).at(-1);
       conversation.connectionId ??= last?.connectionId ?? (last?.mode === 'demo' ? 'demo' : options?.surface === 'workbench' && !last ? 'codex' : 'model');
       data.sessions[researchId].activeConversationId = conversationId;
+      const anchor = conversation.anchor && !conversation.promoted ? conversation.anchor
+        : conversation.inlineSource && !conversation.inlineSource.promoted ? { kind: 'document', id: conversation.inlineSource.documentId } : undefined;
+      if (anchor) (data.sessions[researchId].discussionGroups ??= {})[anchor.kind === 'card' ? 'card' : `${anchor.kind}:${anchor.id}`] = true;
       data.sessions[researchId].panel.aiView = options?.surface === 'workbench' ? 'history' : 'chat';
       data.sessions[researchId].panel.aiMode = conversation.connectionId === 'demo' ? 'demo' : 'live';
     });
@@ -850,6 +880,13 @@ export const workspace = {
     if (!conversation) throw new Error('会话不存在。');
     if (conversation.deletedAt) throw new Error('此会话已删除，请先恢复后重命名。');
     workspace.updateData(data => { Object.assign(data.conversations[conversationId], { title: title.trim().slice(0, 120), titleEdited: true }); });
+  },
+  renameBoard(boardId: string, title: string) {
+    const name = title.trim(), board = state.data.boards[boardId];
+    if (!name) throw new Error('白板名称不能为空。');
+    if (name.length > 160) throw new Error('白板名称最多 160 个字符。');
+    if (!board || !state.data.researches[board.researchId]) throw new Error('白板或所属研究不存在。');
+    workspace.updateData(data => { data.boards[boardId].title = name; });
   },
   archiveConversation(conversationId: string, archived: boolean) {
     const conversation = state.data.conversations[conversationId];

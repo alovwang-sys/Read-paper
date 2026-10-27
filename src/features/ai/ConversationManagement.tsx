@@ -4,7 +4,7 @@ import { MessageSquare, Pencil, RotateCcw, Trash2, X } from 'lucide-react';
 import { useWorkspace } from '../../services/workspace';
 import './conversation-management.css';
 
-function ManagementDialog({ title, alert = false, closeLabel, onClose, children }: { title: string; alert?: boolean; closeLabel?: string; onClose: () => void; children: ReactNode }) {
+export function ManagementDialog({ title, alert = false, closeLabel, onClose, children }: { title: string; alert?: boolean; closeLabel?: string; onClose: () => void; children: ReactNode }) {
   const dialog = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const close = useRef(onClose);

@@ -1,0 +1,14 @@
+{
+  "version": "0.1.19",
+  "platform": "darwin",
+  "arch": "arm64",
+  "archive": "out/Papertrail-darwin-arm64/Papertrail.app/Contents/Resources/app.asar",
+  "distFilesVerified": 499,
+  "featureMarkersVerified": [
+    "重命名白板",
+    "逐页查看选区",
+    "切换来源讨论"
+  ],
+  "forbiddenFiles": [],
+  "asarSha256": "8b2206fa56b8cf3a796dfc43fddcf7d2328f2e2af39e0633f10ab573b5948c77"
+}
