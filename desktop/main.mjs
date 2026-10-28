@@ -9,6 +9,7 @@ import { createSettingsStore } from './settings.mjs';
 import { APP_URL, SETTINGS_URL, createAppProtocol, canWriteClipboard } from './protocol.mjs';
 import { startSystemDictation } from './dictation.mjs';
 import { installFullscreenShortcut } from './window-shortcuts.mjs';
+import { importLoginEnvironment, mergeAgentEnvironment } from './shell-env.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 app.setName('Papertrail');
@@ -26,12 +27,18 @@ let closeDialogOpen = false;
 let shutdownStarted = false;
 let settingsChange = Promise.resolve();
 
+// Resolved once per launch so agent CLIs see the same proxies, endpoints and PATH as the user's terminal.
+let loginEnvironment = { source: 'pending', values: {} };
+let agentEnvironment;
 function runtimeEnvironment() {
   const home = app.getPath('home');
+  const { env, added } = mergeAgentEnvironment(process.env, loginEnvironment.values);
   // Finder does not load shell startup files; include common native CLI install locations privately.
-  const paths = [...(process.env.PATH || '').split(delimiter).filter(Boolean), ...(process.platform === 'darwin'
-    ? ['/opt/homebrew/bin', '/usr/local/bin', join(home, '.local/bin'), join(home, '.opencode/bin'), join(home, '.local/node/bin')] : [])];
-  return { ...process.env, ...store.environment(), HOME: process.env.HOME || home, PATH: [...new Set(paths)].join(delimiter), AI_AGENT_STATE_DIR: join(app.getPath('userData'), 'agents') };
+  // Official installers update user-local copies, so they come before system ones that are often stale npm globals.
+  const paths = [...(env.PATH || '').split(delimiter).filter(Boolean), ...(process.platform === 'darwin'
+    ? [join(home, '.local/bin'), join(home, '.opencode/bin'), join(home, '.local/node/bin'), '/opt/homebrew/bin', '/usr/local/bin'] : [])];
+  return { ...env, ...store.environment(), HOME: process.env.HOME || home, PATH: [...new Set(paths)].join(delimiter), AI_AGENT_STATE_DIR: join(app.getPath('userData'), 'agents'),
+    PAPERTRAIL_AGENT_ENV: JSON.stringify({ source: loginEnvironment.source, imported: added }) };
 }
 
 async function unconfirmedClose(detail) {
@@ -129,7 +136,10 @@ else {
   await mkdir(app.getPath('userData'), { recursive: true });
   store = createSettingsStore(app.getPath('userData'), safeStorage);
   try { await store.load(); } catch (error) { dialog.showErrorBox('模型设置需要重新配置', error.message); }
-  ai = await startDesktopAI({ env: runtimeEnvironment() });
+  agentEnvironment = runtimeEnvironment();
+  ai = await startDesktopAI({ env: agentEnvironment });
+  // Resolving a heavy shell profile can take seconds; apply it to later agent launches instead of delaying the window.
+  void importLoginEnvironment().then(result => { loginEnvironment = result; Object.assign(agentEnvironment, runtimeEnvironment(), { AI_PORT: agentEnvironment.AI_PORT }); });
   protocol.handle('papertrail', createAppProtocol({ distDirectory: join(directory, '..', 'dist'), desktopDirectory: directory, getAI: () => ai }));
   ipcMain.handle('papertrail:start-dictation', event => startSystemDictation({ event, window: mainWindow, url: APP_URL, platform: process.platform, sendAction: action => Menu.sendActionToFirstResponder(action) }));
   ipcMain.handle('papertrail:get-fullscreen', event => {
@@ -147,7 +157,8 @@ else {
   ipcMain.handle('papertrail:choose-directory', async (event, defaultPath) => {
     if (!trusted(event, mainWindow, APP_URL)) throw new Error('不允许此页面选择研究目录。');
     if (defaultPath !== undefined && (typeof defaultPath !== 'string' || defaultPath.length > 4096 || defaultPath.includes('\0'))) throw new Error('目录路径无效。');
-    const result = await dialog.showOpenDialog(mainWindow, { title: '选择研究位置', properties: ['openDirectory'], ...(defaultPath ? { defaultPath } : {}) });
+    // createDirectory adds macOS "New Folder"; a folder made there can be chosen directly as the research directory.
+    const result = await dialog.showOpenDialog(mainWindow, { title: '选择研究目录', buttonLabel: '使用此文件夹', message: '选择一个文件夹，或点“新建文件夹”后直接使用', properties: ['openDirectory', 'createDirectory'], ...(defaultPath ? { defaultPath } : {}) });
     return result.canceled ? undefined : result.filePaths[0];
   });
   ipcMain.handle('papertrail:open-ai-settings', event => {
@@ -163,9 +174,11 @@ else {
     if (shutdownStarted) throw new Error('应用正在退出，请重新打开后修改设置。');
     const change = settingsChange.then(async () => {
       const summary = await store.save(input);
-      const next = await startDesktopAI({ env: runtimeEnvironment() });
+      const environment = runtimeEnvironment();
+      const next = await startDesktopAI({ env: environment });
       const previous = ai;
       ai = next;
+      agentEnvironment = environment;
       await previous?.stop();
       mainWindow?.webContents.send('papertrail:ai-settings-changed');
       return summary;

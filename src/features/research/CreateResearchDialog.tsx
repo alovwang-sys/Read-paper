@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Check, Folder, FolderPlus, Link, LoaderCircle, X } from 'lucide-react';
-import { browseDirectories, chooseDirectory, createDirectoryDraft, createResearchLater, createResearchWithDirectory, directoryPath, getDirectoryDefaults, previewDirectory } from '../../services/research-directory';
+import { browseDirectories, chooseDirectory, createDirectoryDraft, createResearchLater, createResearchWithDirectory, directoryPath, getDirectoryDefaults, makeDirectory, previewDirectory } from '../../services/research-directory';
 import { useWorkspace } from '../../services/workspace';
 import { DirectoryPicker } from './DirectoryPicker';
 import './research-directory.css';
@@ -127,6 +127,6 @@ export function CreateResearchDialog({ onClose }: { onClose: () => void }) {
         <footer><button type="button" className="directory-later" disabled={!title || locked} onClick={later}>稍后设置目录</button><button type="button" disabled={locked} onClick={onClose}>取消</button><button type="submit" className="directory-primary" disabled={!!invalidName || !targetPath || locked || (mode === 'new' && loading)}>{busy ? <><LoaderCircle className="directory-spinner" size={15} />正在关联…</> : <><Check size={15} />创建并关联</>}</button></footer>
       </form>
     </dialog>
-    {picker && <DirectoryPicker title={picker === 'parent' ? '选择父位置' : '选择已有目录'} initialPath={picker === 'parent' ? parent || undefined : existing?.path || parent || undefined} browse={path => browseDirectories(draft, path)} onClose={() => setPicker(undefined)} onChoose={path => void selected(path, picker)} />}
+    {picker && <DirectoryPicker title={picker === 'parent' ? '选择父位置' : '选择已有目录'} initialPath={picker === 'parent' ? parent || undefined : existing?.path || parent || undefined} browse={path => browseDirectories(draft, path)} create={(folderParent, folderName) => makeDirectory(draft, folderParent, folderName)} onClose={() => setPicker(undefined)} onChoose={path => void selected(path, picker)} />}
   </>;
 }

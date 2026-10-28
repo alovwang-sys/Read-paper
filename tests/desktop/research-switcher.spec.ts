@@ -1,5 +1,5 @@
 import { test, expect, _electron, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { openResearchNavigation, switchResearch } from '../e2e/knowledge-helpers';
@@ -18,6 +18,8 @@ async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'papertrail-navigation-desktop-'));
   const home = join(directory, 'isolated-home');
   await mkdir(home);
+  // New researches create real folders; keep them inside the isolated profile.
+  await mkdir(join(home, 'Documents'));
   const env = {
     ...process.env, PAPERTRAIL_USER_DATA: join(directory, 'data'), HOME: home, USERPROFILE: home,
     APPDATA: join(home, 'AppData/Roaming'), LOCALAPPDATA: join(home, 'AppData/Local'),
@@ -40,6 +42,7 @@ async function fixture() {
   return {
     async launch() {
       application = await _electron.launch({ executablePath, env, timeout: 60_000 });
+      await application.evaluate(({ app }, documents) => app.setPath('documents', documents), join(home, 'Documents'));
       const context = application.context();
       context.on('request', request => {
         if (/\/api\/ai\/(?:chat|agents\/run|research\/run)$/.test(new URL(request.url()).pathname)) modelRequests.push(request.url());
@@ -58,6 +61,7 @@ async function fixture() {
       return page;
     },
     close,
+    documents: join(home, 'Documents'),
     check() { expect(modelRequests).toEqual([]); expect(pageErrors).toEqual([]); },
     async dispose() {
       await close();
@@ -139,16 +143,19 @@ test('打包桌面：新研究命名、空名和取消保护，多研究与资�
     await composer(page).fill('研究 B 的未发送问题');
     await switchResearch(page, 'research-a');
     await expect(composer(page)).toHaveValue('研究 A 的未发送问题');
-    await page.getByRole('button', { name: '资料库', exact: true }).click();
+    await page.getByRole('button', { name: '全局资料库', exact: true }).click();
     await expect(trigger(page)).toContainText('全局资料库');
     await switchResearch(page, 'research-b');
     await expect(composer(page)).toHaveValue('研究 B 的未发送问题');
 
     for (const title of ['新研究', '新研究 2']) {
       await page.getByRole('button', { name: '新建研究', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: '新建研究', exact: true }), name = dialog.getByRole('textbox', { name: '新研究名称', exact: true });
+      await expect(name).toHaveValue(title); await expect(name).toBeFocused();
+      await name.press('Enter');
+      await expect(dialog).toHaveCount(0);
       await expect(researchName(page)).toHaveValue(title);
-      await expect(researchName(page)).toBeFocused();
-      await expect(page.getByRole('dialog', { name: '新建研究', exact: true })).toHaveCount(0);
+      await expect(composer(page)).toBeFocused();
     }
     await composer(page).fill('新研究 2 的独立草稿');
     await saved(page);
@@ -156,6 +163,9 @@ test('打包桌面：新研究命名、空名和取消保护，多研究与资�
     if (before.scope.kind !== 'research') throw new Error('Expected a current research');
     const lastId = before.scope.researchId;
     expect(Object.values(before.researches).filter(item => item.title.startsWith('新研究')).map(item => item.title)).toEqual(['新研究', '新研究 2']);
+    // Each new research got its own same-named folder, created and bound at creation time.
+    expect(Object.values(before.researches).filter(item => item.title.startsWith('新研究')).map(item => item.directory?.name)).toEqual(['新研究', '新研究 2']);
+    for (const title of ['新研究', '新研究 2']) expect((await stat(join(f.documents, title, '.read-paper', 'project.json'))).isFile()).toBe(true);
     await screenshot(page, 'desktop-drafts-before-restart.png');
     await f.close();
 

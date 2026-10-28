@@ -66,13 +66,14 @@ test('目录浏览取消不写入，唯一确认绑定后保留输入并随请�
 test('首次目录加载锁定路径输入，加载完成后的目标预览与取消保持一致', async ({ page }) => {
   const api = await setup(page, { bound: false }); const originalName = (await state(page)).researches['research-a'].title;
   let releaseBrowse!: () => void; const initialBrowse = new Promise<void>(resolve => { releaseBrowse = resolve; }); let firstBrowse = true;
+  // An unbound research opens at the default research location (here /fixture); hold that first listing.
   await page.route('**/api/ai/agents/projects/browse', async route => {
-    if (!firstBrowse || route.request().postDataJSON().path) return route.fallback();
+    if (!firstBrowse) return route.fallback();
     firstBrowse = false; await initialBrowse;
     return route.fulfill({ json: { path: '/fixture', parent: '/', directories: [] } });
   });
   try {
-    const requested = page.waitForRequest(request => request.url().endsWith('/api/ai/agents/projects/browse') && !request.postDataJSON().path);
+    const requested = page.waitForRequest(request => request.url().endsWith('/api/ai/agents/projects/browse'));
     await navigation(page).getByRole('button', { name: `项目设置 · ${originalName}`, exact: true }).click();
     await requested;
     const dialog = page.getByRole('dialog', { name: '项目设置', exact: true }), path = dialog.getByLabel('本机目录路径');

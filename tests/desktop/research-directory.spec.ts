@@ -50,7 +50,8 @@ async function launch(userData: string, home: string, modelRequests: string[]) {
   const page = await application.firstWindow();
   page.on('request', request => { if (/\/api\/ai\/(?:chat|agents\/run)$/.test(new URL(request.url()).pathname)) modelRequests.push(request.url()); });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(main(page)).toBeVisible(); await useClassicWorkbench(page); await saved(page);
+  // The main area is aria-hidden while the full-width chat is open; switch to classic first.
+  await expect(page.getByRole('main', { name: '主工作区', includeHidden: true })).toBeAttached(); await useClassicWorkbench(page); await expect(main(page)).toBeVisible(); await saved(page);
   expect(page.url()).toBe('papertrail://app/');
   expect(await page.evaluate(() => window.papertrailDesktop!.getProjectLocation!())).toBe(join(home, 'Documents'));
   // Return to the workbench if a real save error blocks quit; never force-close it.
@@ -119,7 +120,7 @@ test('打包桌面：原生目录选择取消无残留，创建后左右沿用�
     const registry = JSON.parse(await readFile(join(f.userData, 'agents', 'projects.json'), 'utf8'));
     expect(manifest).toMatchObject({ researchId: research.id, projectId: research.directory!.projectId, title });
     expect(registry.bindings[JSON.stringify([manifest.workspaceId, research.id])]).toMatchObject(research.directory!);
-    const calls = await pickerCalls(application); expect(calls).toHaveLength(2); expect(calls.every(call => call.properties?.includes('openDirectory'))).toBe(true);
+    const calls = await pickerCalls(application); expect(calls).toHaveLength(2); expect(calls.every(call => call.properties?.includes('openDirectory') && call.properties.includes('createDirectory'))).toBe(true);
     await expect(navigation(page).getByRole('button', { name: `项目设置 · ${title}`, exact: true })).toBeVisible();
     await panel(page).getByRole('tab', { name: 'AI', exact: true }).click();
     await panel(page).getByRole('button', { name: '切换 AI 助手', exact: true }).click(); await panel(page).getByRole('button', { name: 'Codex', exact: true }).click();

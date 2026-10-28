@@ -248,12 +248,12 @@ export function createOpenCodeRuntime({ executable, spawnImpl = spawn, env = pro
             } else if (event.type === 'error') {
               failed = event.error?.type === 'provider.rate-limit' || event.error?.status === 429
                 ? runtimeError('OpenCode 供应商限制了请求频率或额度，请稍后重试。', 'rate_limited')
-                : runtimeError('OpenCode 运行失败，请检查所选模型的登录、额度或网络后重试。', /auth|401|403/i.test(JSON.stringify(event.error)) ? 'needs-auth' : 'agent_failed');
+                : Object.assign(runtimeError('OpenCode 运行失败，请检查所选模型的登录、额度或网络后重试。', /auth|401|403/i.test(JSON.stringify(event.error)) ? 'needs-auth' : 'agent_failed'), { detail: JSON.stringify(event.error ?? {}).slice(0, 1200) });
             } else if (event.type === 'step_finish') { finishReceived = true; completed = event.part?.reason === 'stop'; }
           },
         });
         if (failed) throw failed;
-        if (response.code !== 0) throw runtimeError('OpenCode 进程退出，请检查本机 CLI 配置后重试。');
+        if (response.code !== 0) throw Object.assign(runtimeError('OpenCode 进程退出，请检查本机 CLI 配置后重试。'), { detail: response.stderr.slice(-1200) });
         // v2 can backfill text after session.wait without draining step_finish; verify this turn, never an older answer.
         if (!completed && !finishReceived && materialCwd && sessionId && body.trim() && !unboundText && messageIds.size === 1)
           completed = await nativeCompletion(cwd, sessionId, [...messageIds][0], body, startedAt, signal);

@@ -46,5 +46,11 @@ export type ResearchAgentEvent =
   | { type: 'delta'; text: string }
   | { type: 'artifact'; artifact: ResearchAgentArtifact }
   | { type: 'done'; model?: string; nativeSessionId?: string; readPages: { documentId: string; pageIndex: number }[] }
-  | { type: 'error'; error: string };
-export type ResearchAgentCapability = { id: AIConnectionId; research: boolean; images?: boolean; detail: string };
+  | { type: 'error'; error: string; code?: string; detail?: string };
+/** `kind` and `hint` explain a connection that is not ready, classified from the CLI's own output. */
+export type ResearchAgentCapability = { id: AIConnectionId; research: boolean; images?: boolean; detail: string; state?: string; version?: string; kind?: string; hint?: string };
+export type AgentInstall = { path: string; version?: string };
+export type AgentDiagnostics = {
+  agents: { id: 'codex' | 'claude' | 'opencode'; used?: AgentInstall; others: AgentInstall[] }[];
+  environment: { source: string; imported: string[]; proxy: string[]; provider: string[] };
+};

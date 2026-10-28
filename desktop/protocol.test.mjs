@@ -105,7 +105,9 @@ test('生产服务的相对模块依赖都包含在安装包中', async () => {
   assert.ok(visited.has(new URL('../server/literature.mjs', import.meta.url).href));
   assert.ok(visited.has(new URL('../server/research.mjs', import.meta.url).href));
   assert.ok(visited.has(new URL('../server/research-literature.mjs', import.meta.url).href));
-  assert.equal(visited.size, 15);
+  assert.ok(visited.has(new URL('../server/agent-diagnostics.mjs', import.meta.url).href));
+  assert.ok(visited.has(new URL('../server/text-research.mjs', import.meta.url).href));
+  assert.equal(visited.size, 17);
 });
 test('仅工作台主框架可写剪贴板，设置页/子框架/读取/外部来源均拒绝', () => {
   const contents = { getURL: () => APP_URL, isDestroyed: () => false };

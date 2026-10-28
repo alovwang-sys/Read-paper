@@ -780,6 +780,9 @@ export const workspace = {
         researchId: id,
         contextIds: [],
         requestIds: [],
+        // Without a timestamp the first conversation would be filed under "更早".
+        createdAt: data.researches[id].createdAt,
+        updatedAt: data.researches[id].createdAt,
       };
       data.sessions[id] = emptySession({ kind: 'researchView', id: 'home' });
       ensurePaneLayout(data.sessions[id], id);

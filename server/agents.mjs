@@ -576,7 +576,7 @@ export function createAgentHandler({ env = process.env, runtimes, stateDir = env
       if (req.url.startsWith('/api/ai/agents/projects/')) {
         if (req.method !== 'POST') throw failure(405, 'method_not_allowed', '研究目录接口须使用 POST。');
         const action = req.url.slice('/api/ai/agents/projects/'.length);
-        if (!['defaults', 'browse', 'preview', 'bind', 'status', 'list', 'read', 'sync'].includes(action)) throw failure(404, 'not_found', '研究目录接口不存在。');
+        if (!['defaults', 'browse', 'mkdir', 'preview', 'bind', 'status', 'list', 'read', 'sync'].includes(action)) throw failure(404, 'not_found', '研究目录接口不存在。');
         const input = await readBody(req, action === 'sync' ? 360_000_000 : MAX_BYTES);
         const result = action === 'sync' ? await writeProjectFiles(await projects.binding(input), input) : await projects[action](input);
         res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify(result ?? null)); return true;

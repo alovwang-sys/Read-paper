@@ -28,7 +28,7 @@ async function image(page: Page, mimeType: string, label: string) {
 test('默认桌面图片原字节发送、冻结重试、新图草稿与退出重启恢复', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'papertrail-chat-inputs-'));
   const home = join(directory, 'isolated-home');
-  await mkdir(home);
+  await mkdir(join(home, 'Documents'), { recursive: true });
   const env = { ...process.env, PAPERTRAIL_USER_DATA: join(directory, 'data'), HOME: home, CODEX_HOME: join(home, '.codex'), CLAUDE_CONFIG_DIR: join(home, '.claude'), XDG_CONFIG_HOME: join(home, '.config'), XDG_DATA_HOME: join(home, '.local/share'), XDG_CACHE_HOME: join(home, '.cache'), XDG_STATE_HOME: join(home, '.local/state'), OPENCODE_CONFIG_DIR: join(home, '.opencode'), OPENCODE_CONFIG: '', OPENCODE_CONFIG_CONTENT: '', AI_API_KEY: '', OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', ANTHROPIC_AUTH_TOKEN: '' };
   let application: ElectronApplication | undefined;
   const errors: string[] = [], sent: ResearchAgentInput[] = [];
@@ -36,6 +36,8 @@ test('默认桌面图片原字节发送、冻结重试、新图草稿与退出�
   const held = new Promise<void>(resolve => { release = resolve; });
   try {
     application = await _electron.launch({ executablePath, env, timeout: 60_000 });
+    // New researches create real folders; keep them inside the isolated profile.
+    await application.evaluate(({ app }, documents) => app.setPath('documents', documents), join(home, 'Documents'));
     let page = await application.firstWindow();
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -52,6 +54,8 @@ test('默认桌面图片原字节发送、冻结重试、新图草稿与退出�
     await page.reload();
     await expect(input(page)).toBeVisible();
     await page.getByRole('button', { name: '新建研究', exact: true }).click();
+    await page.getByRole('dialog', { name: '新建研究', exact: true }).getByRole('textbox', { name: '新研究名称', exact: true }).press('Enter');
+    await expect(page.getByRole('dialog', { name: '新建研究', exact: true })).toHaveCount(0);
     await expect(input(page)).toHaveValue('');
     await expect(page.getByRole('button', { name: '语音输入', exact: true })).toBeVisible();
     // Real dictation owns microphone and OS permission UI; this test only checks its entry point.

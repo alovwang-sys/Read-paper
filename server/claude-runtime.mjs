@@ -172,6 +172,7 @@ async function claudeTranscript({ cwd, path, sessionId, signal }) {
 export function createClaudeRuntime({ executable, spawnImpl = spawn, env = process.env, timeoutMs = 180_000, killAfterMs = 750 } = {}) {
   executable ||= executablePath(env);
   const invoke = (args, options = {}) => runNativeProcess({ executable, spawnImpl, env, timeoutMs, killAfterMs, args, ...options });
+  let permissionPrompts;
   async function applyActivity(sessions, cwd, signal) {
     try {
       const response = await invoke(['agents', '--json', '--cwd', cwd], { cwd, signal, timeoutMs: 10_000 });
@@ -219,9 +220,12 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
         if (installed.code !== 0) throw runtimeError('Claude Code 版本检测失败。');
         version = installed.output.trim().slice(0, 100);
         const help = await invoke(['--help'], { signal, timeoutMs: 10_000 });
-        if (help.code !== 0 || ['--safe-mode', '--tools', '--strict-mcp-config', '--permission-prompts', '--include-partial-messages'].some((flag) => !help.output.includes(flag))) {
-          return status({ state: 'error', version, detail: '此 Claude Code 版本缺少安全隔离或流式协议参数，请升级后重新检测。' });
+        const missing = ['--safe-mode', '--tools', '--strict-mcp-config', '--permission-mode', '--include-partial-messages'].filter((flag) => !help.output.includes(flag));
+        if (help.code !== 0 || missing.length) {
+          return status({ state: 'error', version, detail: `此 Claude Code（${version}）缺少安全隔离或流式协议参数 ${missing.join(' ') || '--help'}，请升级后重新检测。` });
         }
+        // Some releases dropped --permission-prompts; with every tool disabled in --print mode it is only a belt-and-braces flag.
+        permissionPrompts = help.output.includes('--permission-prompts');
         const auth = await invoke(['auth', 'status', '--json'], { signal, timeoutMs: 10_000 });
         if (JSON.parse(auth.output).loggedIn !== true) return status({ state: 'needs-auth', version, detail: '请在本机终端完成 claude auth login 后重新检测；平台不会读取或代管登录凭据。' });
         return status({ state: 'ready', version, detail: '使用本机认证，仅处理显式提供的文字；工具、MCP、插件、交互权限和图片均未开放。' });
@@ -239,7 +243,7 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
       let model;
       let result;
       // Restricted mode ignores native connection settings; safe mode and empty tools/MCP retain the text-only boundary.
-      const args = ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--safe-mode', '--disable-slash-commands', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--permission-mode', 'dontAsk', '--permission-prompts', 'none'];
+      const args = ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--safe-mode', '--disable-slash-commands', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--permission-mode', 'dontAsk', ...(permissionPrompts === false ? [] : ['--permission-prompts', 'none'])];
       if (nativeSessionId) args.push('--resume', nativeSessionId);
       const response = await invoke(args, { cwd, input: prompt, signal, onLine(line) {
         const event = JSON.parse(line);
@@ -260,7 +264,8 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
           onEvent({ type: 'progress', kind: 'permission', text: 'Claude Code 的工具或交互请求已拒绝；当前仅支持文字问答。' });
         } else if (event.type === 'result') result = event;
       } });
-      if (response.code !== 0 || result?.is_error) throw runtimeError('Claude Code 运行失败，请检查本机登录、额度或配置后重试。', /auth|login|401|403/i.test(response.stderr + JSON.stringify(result || {})) ? 'needs-auth' : 'agent_failed');
+      if (response.code !== 0 || result?.is_error) throw Object.assign(runtimeError('Claude Code 运行失败，请检查本机登录、额度或配置后重试。', /auth|login|401|403/i.test(response.stderr + JSON.stringify(result || {})) ? 'needs-auth' : 'agent_failed'),
+        { detail: `${response.stderr}\n${typeof result?.result === 'string' ? result.result : ''}`.trim().slice(-1200) });
       if (!result || result.subtype !== 'success') throw runtimeError('Claude Code 回答中断，已保留收到的内容。', 'stream_interrupted');
       body = typeof result.result === 'string' ? result.result : body || streamed;
       if (!body.trim() || !sessionId) throw runtimeError('Claude Code 没有返回完整的可见回答或会话标识。', 'protocol_error');

@@ -169,7 +169,7 @@ test('卡片与摘录以浮窗编辑和按本篇筛选，定位原文后保留�
   fixture.assertClean();
 });
 
-test('切换文字助手保留同会话历史、草稿与图片；不支持的附件阻止提交，语音入口说明范围', async ({ page }) => {
+test('切换助手沿用同一研究界面，保留历史、草稿与图片；不支持的附件阻止提交，语音入口说明范围', async ({ page }) => {
   const fixture = await installControlledServices(page);
   await page.goto('/'); await openSeedPaper(page);
   await composer(page).fill('先保留一轮研究回答。');
@@ -186,12 +186,13 @@ test('切换文字助手保留同会话历史、草稿与图片；不支持的�
   const before = await readData(page);
   await chat(page).getByRole('button', { name: '选择研究助手', exact: true }).click();
   await chat(page).getByRole('option', { name: 'Claude Code', exact: true }).click();
-  const ordinaryInput = chat(page).getByRole('textbox', { name: '向 AI 提问', exact: true });
-  await expect(ordinaryInput).toHaveValue('切换助手也要保留这条未发送草稿');
+  // Every assistant keeps the same research view; only what it can accept differs.
+  await expect(composer(page)).toHaveValue('切换助手也要保留这条未发送草稿');
+  await expect(chat(page).getByRole('button', { name: '选择研究助手', exact: true })).toContainText('Claude Code');
   await expect(chat(page)).toContainText('受控研究回答 1');
   await expect(chat(page).getByRole('region', { name: '待发送图片', exact: true })).toBeVisible();
-  await expect(chat(page).getByRole('button', { name: '发送问题', exact: true })).toBeDisabled();
-  await expect(chat(page)).toContainText('草稿已保留');
+  await expect(chat(page).getByRole('button', { name: '开始研究', exact: true })).toBeDisabled();
+  await expect(chat(page)).toContainText('当前连接未确认支持图片，附件已保留');
   const after = await readData(page);
   expect(after.sessions['research-a'].activeConversationId).toBe(primaryId);
   expect(Object.keys(after.conversations)).toEqual(Object.keys(before.conversations));
@@ -204,7 +205,8 @@ test('切换文字助手保留同会话历史、草稿与图片；不支持的�
   await screenshot(page, 'assistant-switch-retains-image-and-history.png');
   await chat(page).getByRole('button', { name: '移除图片：continuous-selection.png', exact: true }).click();
   await expect(chat(page).getByRole('region', { name: '待发送图片', exact: true })).toHaveCount(0);
-  await expect(ordinaryInput).toHaveValue('切换助手也要保留这条未发送草稿');
+  await expect(composer(page)).toHaveValue('切换助手也要保留这条未发送草稿');
+  await expect(chat(page).getByRole('button', { name: '开始研究', exact: true })).toBeEnabled();
   fixture.assertClean();
 });
 

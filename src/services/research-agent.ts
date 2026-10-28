@@ -386,7 +386,7 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
   const imageMetadata = chatImages.map(({ assetId, hash, name, mimeType, size }) => ({ assetId, hash, name, mimeType, size }));
   const inputChars = JSON.stringify({ prompt: requestPrompt, history, ...(focus ? { focus } : {}), ...(drawingQuestion ? { drawing: drawingQuestion.snapshot } : {}), ...(imageMetadata.length ? { images: imageMetadata } : {}), ...(carried.length ? { materials: carried } : {}) }).length + 2048;
   if (inputChars > RESEARCH_INPUT_CHAR_LIMIT) throw new Error('问题、历史、局部目标与绘图结构超过 120,000 字符，未发送。请减少本轮内容或新建会话。字符上限不是模型 token 预算。');
-  const request: AIRequest = { id, researchId, conversationId: conversation.id, connectionId, prompt: requestPrompt, context: [], history: historyTurns, createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [], purpose: 'chat', mode: 'live', ...(retryId ? { retryOf: retryId } : {}), ...(carried.length ? { materials: carried } : {}), researchRun: { ...(focus ? { focus: structuredClone(focus) } : {}), ...(drawingQuestion ? { drawingQuestion: structuredClone(drawingQuestion) } : {}), ...(chatImages.length ? { chatImages } : {}) } };
+  const request: AIRequest = { id, researchId, conversationId: conversation.id, connectionId, prompt: requestPrompt, context: [], history: historyTurns, createdAt: new Date().toISOString(), status: 'generating', body: '', evidenceIds: [], purpose: 'chat', mode: connectionId === 'demo' ? 'demo' : 'live', ...(retryId ? { retryOf: retryId } : {}), ...(carried.length ? { materials: carried } : {}), researchRun: { ...(focus ? { focus: structuredClone(focus) } : {}), ...(drawingQuestion ? { drawingQuestion: structuredClone(drawingQuestion) } : {}), ...(chatImages.length ? { chatImages } : {}) } };
   running.set(id, controller);
   let consumedInput = false, consumedDrawing = false, consumedImages = false, consumedCarried = false;
   workspace.updateData(data => {
@@ -414,7 +414,7 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
   try {
     const capabilities = await getResearchAgentCapabilities(); aborted(signal);
     const capability = capabilities.find(item => item.id === connectionId);
-    if (!capability?.research) throw new Error(capability?.detail || '这个连接尚不支持研究工具。请切换 Codex，或回到经典工作台继续使用原连接。');
+    if (!capability?.research) throw Object.assign(new Error(capability ? `${capability.detail}${capability.hint ? ` ${capability.hint}` : ''}` : '研究服务没有返回这个连接的状态，请稍后重试。'), { kind: capability?.kind ?? 'unknown' });
     if ((chatImages.length || drawingQuestion?.mode === 'image') && capability.images !== true) throw new Error('这个连接未确认支持图片，附件和输入已保留。请选择支持图片的助手，或移除普通图片、明确选择绘图仅发送文字和结构。');
     const images: NonNullable<ResearchAgentInput['images']> = [];
     for (const image of imageMetadata) {
@@ -452,7 +452,7 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
     let artifact: ResearchAgentArtifact | undefined, completed: Extract<ResearchAgentEvent, { type: 'done' }> | undefined;
     await streamResearchRun({ requestId: id, researchId, connectionId, prompt: request.prompt, sources, history, ...(focus ? { focus } : {}), ...(drawing ? { drawing } : {}), ...(images.length ? { images } : {}), ...(carried.length ? { materials: carried } : {}) }, signal, event => {
       if (!current() || signal.aborted) return;
-      if (event.type === 'error') throw new Error(event.error);
+      if (event.type === 'error') throw Object.assign(new Error(event.error), { kind: event.code, detail: event.detail });
       if (event.type === 'literature') {
         validateResearchLiteratureSearch(event.search);
         workspace.updateData(data => {
@@ -506,14 +506,19 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
       }
       saved.status = 'done';
       data.conversations[conversation.id].updatedAt = new Date().toISOString();
-      if (data.researches[researchId].title === '新研究') data.researches[researchId].title = request.prompt.slice(0, 30);
+      // A bound research keeps its folder's name; only an unbound default name follows the first question.
+      if (data.researches[researchId].title === '新研究' && !data.researches[researchId].directory) data.researches[researchId].title = request.prompt.slice(0, 30);
     });
     const view = workspace.getState().data;
     const viewingReply = view.scope.kind === 'research' && view.scope.researchId === researchId && getActiveConversation(view, researchId)?.id === conversation.id && view.sessions[researchId].active.kind === 'researchView' && view.sessions[researchId].active.id === 'home';
     if (openDraftId && !viewingReply) workspace.notice(`会话「${view.conversations[conversation.id].title}」的成果已保存，可打开编辑和核查引用。`);
   } catch (error) {
     const stopped = signal.aborted; controller.abort();
-    if (current()) workspace.updateData(data => { data.requests[id].status = stopped ? 'stopped' : 'error'; data.requests[id].error = error instanceof Error ? error.message : '研究执行失败，本轮问题、附件和已收到内容已保留。'; });
+    const { kind, detail } = error as { kind?: string; detail?: string };
+    if (current()) workspace.updateData(data => {
+      data.requests[id].status = stopped ? 'stopped' : 'error'; data.requests[id].error = error instanceof Error ? error.message : '研究执行失败，本轮问题、附件和已收到内容已保留。';
+      if (!stopped && typeof kind === 'string') data.requests[id].researchRun!.failure = { kind, ...(typeof detail === 'string' && detail ? { detail: detail.slice(0, 600) } : {}) };
+    });
   } finally {
     if (workspace.getGeneration() === generation) {
       workspace.updateData(data => {

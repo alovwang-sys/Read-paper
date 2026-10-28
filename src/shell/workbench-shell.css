@@ -102,3 +102,26 @@
 .research-agent-config-status { display: flex; align-items: center; gap: 5px; padding: 8px 3px 0; margin-top: 8px; border-top: 1px solid #ecf0e6; font-size: 10px; line-height: 1.6; color: #91a182; }
 .research-agent-config-status > span { flex: 1; min-width: 0; }
 .research-agent-config-status > button { flex-shrink: 0; font-size: 10px; }
+/* Assistant readiness: a dot on the chip and in the list; the list explains anything not ready. */
+.research-agent-connection-dot { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #c9cfbf; flex-shrink: 0; vertical-align: middle; }
+.research-agent-connection-dot.is-ready { background: #5f9a5a; }
+.research-agent-connection-dot.is-blocked { background: #d08a55; }
+.conversation-host-body .research-agent-config { width: 300px; max-height: min(420px, 60dvh); }
+.research-agent-options > button { flex-direction: column; align-items: stretch; gap: 3px; }
+.research-agent-option-main { display: flex; align-items: center; gap: 2px; }
+.research-agent-option-main > span:nth-child(2) { flex: 1; }
+.research-agent-option-main > small { color: #a0866b; font-size: 10px; margin-right: 6px; }
+.research-agent-options > button[aria-selected="true"] .research-agent-option-main > small { color: #8f9a85; }
+.research-agent-option-detail { color: #8b7a66; font-size: 10px; line-height: 1.6; padding-left: 11px; white-space: normal; }
+.research-agent-option-detail:empty { display: none; }
+.research-agent-option-detail > small { display: block; margin-top: 2px; color: #9aa190; font: 10px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.research-agent-config-env { margin: 8px 3px 0 !important; color: #9aa190; font-size: 10px !important; line-height: 1.6; }
+.research-agent-connection-notice { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 8px 11px; border: 1px solid #f0dcc9; border-radius: 9px; background: #fdf6ef; color: #8d6142; font-size: 12px; line-height: 1.65; }
+.research-agent-connection-notice > span { flex: 1; min-width: 0; }
+.research-agent-connection-notice strong { margin-right: 6px; color: #7d4f30; font-weight: 600; }
+.research-agent-connection-notice > button { flex-shrink: 0; padding: 5px 10px; border: 1px solid #e8cdb6; border-radius: 6px; background: #fff; color: #7d4f30; font-size: 12px; cursor: pointer; }
+.research-agent-connection-notice > button:hover { background: #fbefe3; }
+.research-agent-error-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.research-agent-failure-detail { margin: -4px 0 8px; font-size: 11px; color: #9a8673; }
+.research-agent-failure-detail > summary { cursor: pointer; }
+.research-agent-failure-detail pre { margin: 6px 0 0; padding: 8px 10px; border-radius: 6px; background: #faf6f1; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 1.6; max-height: 160px; overflow: auto; }

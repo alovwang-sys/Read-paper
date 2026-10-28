@@ -558,6 +558,8 @@ export type AIRequest = {
     readPages?: { documentId: string; pageIndex: number }[];
     suggestion?: { title: string; body: string; evidenceIds: string[]; baseTitle: string; baseBody: string; baseEvidenceIds: string[] };
     previous?: { title: string; body: string; evidenceIds: string[]; appliedTitle: string; appliedBody: string; appliedEvidenceIds: string[] };
+    /** Classified connection failure and the CLI's own (redacted) output. */
+    failure?: { kind: string; detail?: string };
   };
 };
 export type Conversation = {

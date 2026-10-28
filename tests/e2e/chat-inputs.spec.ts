@@ -122,7 +122,7 @@ test('能力不支持时保留图片、切会话与刷新隔离，三尺寸入�
   let sends = 0; await page.route('**/api/ai/research/run', route => { sends++; return route.abort(); });
   await start(page, false);
   await picker(page).setInputFiles(await image(page)); await input(page).fill('图片草稿留在这个会话');
-  await expect(page.getByText('当前连接未确认支持图片，附件已保留；请选择支持图片的 Codex 模型并重新检测。', { exact: true })).toBeVisible();
+  await expect(page.getByText('当前连接未确认支持图片，附件已保留；请改用支持图片的 Codex 模型。', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '开始研究', exact: true })).toBeDisabled();
   await mkdir('docs/verification/chat-inputs/screenshots', { recursive: true });
   for (const [width, height] of [[1440, 900], [1280, 800], [1024, 800]]) {

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Check, Ellipsis, FolderOpen, LoaderCircle, X } from 'lucide-react';
-import { bindResearchDirectory, browseResearchDirectories, getResearchDirectory, previewResearchDirectory } from '../../services/agents';
-import { chooseDirectory } from '../../services/research-directory';
+import { Check, Ellipsis, FolderOpen, FolderPlus, LoaderCircle, X } from 'lucide-react';
+import { bindResearchDirectory, browseResearchDirectories, defaultResearchParent, getResearchDirectory, makeResearchFolder, previewResearchDirectory } from '../../services/agents';
+import { chooseDirectory, folderNameProblem } from '../../services/research-directory';
 import { useWorkspace } from '../../services/workspace';
 import { DirectoryBrowser } from './DirectoryPicker';
 import { ProjectFileStatus } from './ProjectFileStatus';
@@ -47,18 +47,21 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
   }, [open]);
   useEffect(() => { setOpen(false); version.current++; }, [researchId]);
 
-  async function browse(nextPath?: string) {
+  async function browse(nextPath?: string, startAtDefault = false) {
     const request = ++version.current;
     setBusy(true);
     setError('');
     setOwnerResearchId(undefined);
     setCandidate(undefined);
     try {
+      // Start beside earlier researches so one click can create this research's folder there.
+      if (startAtDefault) nextPath = await defaultResearchParent(researchId).catch(() => undefined);
+      if (request !== version.current) return;
       const result = await browseResearchDirectories(nextPath, researchId);
       if (request !== version.current) return;
       setListing(result);
       setPath(result.path);
-      if (!nextPath) return;
+      if (!nextPath || startAtDefault) return;
       const preview = await previewResearchDirectory(result.path, researchId);
       if (request === version.current) setCandidate(preview);
     } catch (caught) {
@@ -74,20 +77,20 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
     setError('');
     setOwnerResearchId(undefined);
     setOpen(true);
-    void browse(directory?.path);
+    void browse(directory?.path, !directory);
   }
   function close() {
     if (busy) version.current++;
     setBusy(false);
     setOpen(false);
   }
-  async function bind() {
-    if (!candidate || busy) return;
+  async function bind(path = candidate?.path) {
+    if (!path || binding) return;
     setBusy(true);
     setBinding(true);
     setError('');
     try {
-      await bindResearchDirectory(researchId, candidate.path);
+      await bindResearchDirectory(researchId, path);
       setConnected(true);
       setOpen(false);
       actions.notice('项目已连接，名称已与文件夹保持一致。');
@@ -95,6 +98,19 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
       setError(caught instanceof Error ? caught.message : '目录连接失败，请重试。');
       if (caught instanceof Error) setOwnerResearchId((caught as Error & { ownerResearchId?: string }).ownerResearchId);
     } finally { setBusy(false); setBinding(false); }
+  }
+  // A folder made here is the one the user means to use, so it is bound without a second confirmation.
+  async function createAndBind(parent: string, name: string, unique = false) {
+    setBusy(true); setError('');
+    try {
+      const created = await makeResearchFolder(researchId, parent, name, unique);
+      await bind(created.path);
+    } finally { setBusy(false); }
+  }
+  async function quickBind() {
+    if (!research || busy || !listing) return;
+    try { await createAndBind(listing.path, folderName, true); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : '无法新建目录，请重试。'); }
   }
   async function selectDirectory() {
     setBusy(true); setError('');
@@ -105,6 +121,7 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
     finally { setBusy(false); }
   }
   if (!research) return null;
+  const folderName = folderNameProblem(research.title) ? '研究资料' : research.title.trim();
   const status = directory ? checking ? '正在检查' : connected ? '已连接' : '需要重新连接' : '尚未选择目录';
   return <>
     <button ref={trigger} type="button" className={`research-directory-trigger ${settings ? 'is-settings' : ''}`} title={settings ? `项目设置 · ${status}${directory ? `\n${directory.path}` : ''}` : label} aria-label={settings ? `项目设置 · ${research.title}` : label} aria-haspopup="dialog" onClick={show}>
@@ -115,8 +132,9 @@ export function ResearchDirectory({ researchId, settings = false, label = '选�
       <div className="directory-dialog-content">
         <p className="directory-description">一个研究，一个工作位置。Codex 和其他本机助手沿用此目录，无需在右侧重复选择。</p>
         <p className="directory-connection" role="status">{checking ? <LoaderCircle className="directory-spinner" size={15} /> : <FolderOpen size={15} />}{status}</p>
-        {!directory && <button type="button" className="directory-native-picker" disabled={busy} onClick={() => void selectDirectory()}><FolderOpen size={15} />选择文件夹…</button>}
-        <DirectoryBrowser path={path} onPathChange={value => { setPath(value); setCandidate(undefined); }} listing={listing} busy={busy} onBrowse={nextPath => void browse(nextPath)} readOnly={!!directory} />
+        {!directory && <div className="directory-quick-actions"><button type="button" className="directory-primary" disabled={busy || !listing} onClick={() => void quickBind()}><FolderPlus size={15} />在当前位置新建「{folderName}」并关联</button><button type="button" className="directory-native-picker" disabled={busy} onClick={() => void selectDirectory()}><FolderOpen size={15} />选择文件夹…</button></div>}
+        <DirectoryBrowser path={path} onPathChange={value => { setPath(value); setCandidate(undefined); }} listing={listing} busy={busy} onBrowse={nextPath => void browse(nextPath)} readOnly={!!directory}
+          createLabel="新建并关联" onCreate={!directory && listing ? name => createAndBind(listing.path, name) : undefined} />
         {directory && <p className="directory-location-note">可重新连接原目录，论文、卡片和已有对话会保留。</p>}
         {!directory && candidate && <div className="directory-preview"><Check size={16} /><div><strong>项目将命名为「{candidate.name || candidate.path}」</strong><p>{candidate.path}</p><small>点击“使用这个目录”后生效，原有资料和输入会保留。</small></div></div>}
         {error && <div className="directory-error" role="alert"><p>{error}</p>{ownerResearchId && data.researches[ownerResearchId] && <button type="button" disabled={busy} onClick={() => { actions.switchResearch(ownerResearchId); close(); }}>打开已有研究</button>}</div>}

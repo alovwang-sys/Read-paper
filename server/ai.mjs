@@ -232,7 +232,28 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
   const agents = createAgentHandler({ env, runtimes: agentRuntimes, ports: [...config.ports] });
   const sources = createSourceHandler(sourceOptions);
   const literature = createLiteratureHandler({ env, fetchImpl });
-  const research = createResearchHandler({ env, runtimes: agentRuntimes, ports: [...config.ports], searchLiterature: literature.search });
+  async function* streamCompletion(messages, signal) {
+    const upstream = await fetchImpl(config.endpoint, {
+      method: 'POST', signal, redirect: 'error',
+      headers: { Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ model: config.model, messages, stream: true, reasoning_effort: 'low', max_tokens: 8192 }),
+    });
+    if (!upstream.ok) {
+      await upstream.body?.cancel().catch(() => {});
+      throw upstreamError(upstream.status);
+    }
+    if (!upstream.body || !/^text\/event-stream(?:\s*;|$)/i.test(upstream.headers.get('content-type') || '')) {
+      await upstream.body?.cancel().catch(() => {});
+      throw new AIError(502, 'invalid_stream', '模型未返回流式回答，请检查模型连接。');
+    }
+    yield* readCompletionStream(upstream.body);
+  }
+  // Direct-model research shares the chat transport; the research handler owns validation and citation checks.
+  const runModel = async ({ system, prompt, signal, onDelta }) => {
+    await runPiCompletion({ model: config.model, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], images: false, signal, onDelta, streamCompletion });
+    return config.model;
+  };
+  const research = createResearchHandler({ env, runtimes: agentRuntimes, ports: [...config.ports], searchLiterature: literature.search, runModel, modelConfigured: Boolean(config.key) });
   const active = new Set();
   const controllers = new Set();
   const pending = new Set();
@@ -283,22 +304,7 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
       await runPiCompletion({
         model: config.model, messages: validated.messages, images: config.images, signal: controller.signal,
         onDelta: (text) => send({ type: 'delta', text }),
-        streamCompletion: async function* (messages, signal) {
-          const upstream = await fetchImpl(config.endpoint, {
-            method: 'POST', signal, redirect: 'error',
-            headers: { Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-            body: JSON.stringify({ model: config.model, messages, stream: true, reasoning_effort: 'low', max_tokens: 8192 }),
-          });
-          if (!upstream.ok) {
-            await upstream.body?.cancel().catch(() => {});
-            throw upstreamError(upstream.status);
-          }
-          if (!upstream.body || !/^text\/event-stream(?:\s*;|$)/i.test(upstream.headers.get('content-type') || '')) {
-            await upstream.body?.cancel().catch(() => {});
-            throw new AIError(502, 'invalid_stream', '模型未返回流式回答，请检查模型连接。');
-          }
-          yield* readCompletionStream(upstream.body);
-        },
+        streamCompletion,
       });
       controller.signal.throwIfAborted();
       await send({ type: 'done', model: config.model });

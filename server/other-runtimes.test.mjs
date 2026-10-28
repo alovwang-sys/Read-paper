@@ -13,7 +13,7 @@ const uuid = 'b70f0269-c566-4cd2-a423-04c7a2f0229f';
 const sid = 'ses_testSession123';
 const model = 'zhipuai-coding-plan/glm-5.3-flash';
 const jsonl = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
-const claudeHelp = '--safe-mode --tools --strict-mcp-config --permission-prompts --include-partial-messages';
+const claudeHelp = '--safe-mode --tools --strict-mcp-config --permission-mode --permission-prompts --include-partial-messages';
 const opencodeHelp = '--standalone --format --session --agent --model';
 const openCodeConfig = (...infos) => ({ output: JSON.stringify(infos.map((info) => ({ type: 'document', info }))) });
 const openCodeAnswer = (text = 'answer') => ({ output: jsonl(
@@ -69,6 +69,22 @@ test('Claude readiness requires installed safety flags and native authentication
     assert.equal((await createClaudeRuntime({ spawnImpl: fake.spawnImpl }).probe()).state, state);
     assert.ok(fake.calls.every((call) => call.options.shell === false));
   }
+});
+
+test('Claude releases without --permission-prompts stay usable and omit only that flag', async () => {
+  const fake = fakeProcesses([
+    { output: '2.1.239 (Claude Code)' }, { output: '--safe-mode --tools --strict-mcp-config --permission-mode --include-partial-messages' }, { output: '{"loggedIn":true}' },
+    { output: jsonl({ type: 'result', subtype: 'success', result: 'answer', session_id: uuid }) },
+  ]);
+  const runtime = createClaudeRuntime({ spawnImpl: fake.spawnImpl });
+  assert.equal((await runtime.probe()).state, 'ready');
+  await runtime.run({ prompt: 'question', cwd: '/tmp/supplied-materials' });
+  const run = fake.calls.at(-1);
+  assert.equal(run.args.includes('--permission-prompts'), false);
+  assert.equal(run.args[run.args.indexOf('--permission-mode') + 1], 'dontAsk');
+  assert.equal(run.args[run.args.indexOf('--tools') + 1], '');
+  const old = fakeProcesses([{ output: '2.1.0' }, { output: '--safe-mode --tools' }]);
+  assert.match((await createClaudeRuntime({ spawnImpl: old.spawnImpl }).probe()).detail, /2\.1\.0.*--strict-mcp-config/);
 });
 
 test('Claude parses only visible text and resumes real session using fixed safe arguments and stdin', async () => {

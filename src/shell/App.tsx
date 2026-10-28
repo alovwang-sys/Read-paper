@@ -32,6 +32,7 @@ import {
 import { ResearchView } from '../features/research/ResearchView';
 import { ResearchDirectory } from '../features/research/ResearchDirectory';
 import { CreateResearchDialog } from '../features/research/CreateResearchDialog';
+import { QuickCreateResearch } from '../features/research/QuickCreateResearch';
 import { PendingResearchRecovery } from '../features/research/PendingResearchRecovery';
 import { ProjectFileStatus } from '../features/research/ProjectFileStatus';
 import { LibraryView } from '../features/library/LibraryView';
@@ -148,7 +149,7 @@ export function App() {
   } = useWorkspace();
   const [narrow, setNarrow] = useState(window.innerWidth <= 1024);
   const [navigationOpen, setNavigationOpen] = useState(false);
-  const [dialog, setDialog] = useState<'new' | 'search' | 'settings' | null>(
+  const [dialog, setDialog] = useState<'new' | 'quick' | 'search' | 'settings' | null>(
     null,
   );
   useEffect(() => window.papertrailDesktop?.onOpenStorage(() => setDialog('settings')), []);
@@ -272,14 +273,13 @@ export function App() {
   function closeNavigation() { setNavigationOpen(false); navigationTrigger.current?.focus(); }
   function newResearch() {
     if (!agentEnabled) { showDialog('new'); return; }
+    if (narrow) closeNavigation();
+    showDialog('quick');
+  }
+  function defaultResearchTitle() {
     let title = '新研究';
     for (let number = 2; Object.values(data.researches).some(item => item.title.trim() === title); number++) title = `新研究 ${number}`;
-    actions.createResearch(title, '');
-    if (narrow) closeNavigation();
-    requestAnimationFrame(() => {
-      const name = document.querySelector<HTMLInputElement>('.agent-research-name');
-      name?.focus(); name?.select();
-    });
+    return title;
   }
   function navigate(view: ResearchViewId) { if (research) actions.openResearchView(research.id, view); if (agentWorkbench && chatMode === 'main' && view !== 'home') setChatMode('side'); if (narrow) closeNavigation(); }
   function showDialog(kind: typeof dialog) {
@@ -496,7 +496,7 @@ export function App() {
                 '未保存'
               )}
             </span>
-            {agentWorkbench && (!currentConversation || isResearchConversation(data, currentConversation) && (currentConversation.connectionId ?? 'codex') === 'codex') && active.kind !== 'sourcePreview' && active.kind !== 'collection' && active.kind !== 'researchView' && <button className="text-button agent-local-ask" onClick={() => { focusResearchResource(research!.id, active); if (chatMode === 'closed') setChatMode('side'); }}><Sparkles size={14} />围绕这里追问</button>}
+            {agentWorkbench && (!currentConversation || isResearchConversation(data, currentConversation)) && active.kind !== 'sourcePreview' && active.kind !== 'collection' && active.kind !== 'researchView' && <button className="text-button agent-local-ask" onClick={() => { focusResearchResource(research!.id, active); if (chatMode === 'closed') setChatMode('side'); }}><Sparkles size={14} />围绕这里追问</button>}
             {agentWorkbench && <><button className="text-button workspace-notes-trigger" aria-label="卡片与摘录" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}><Layers size={15}/>卡片与摘录</button><button className="text-button workspace-chat-trigger" aria-label={chatMode === 'closed' ? '打开聊天' : '聊天'} aria-pressed={chatMode !== 'closed'} onClick={() => setChatMode(chatMode === 'closed' ? 'side' : 'closed')}><MessageSquare size={15}/>聊天</button></>}
             {research && <ImportPDFButton compact />}
             <button
@@ -706,7 +706,8 @@ export function App() {
         </div>
       )}
       {dialog === 'new' && <CreateResearchDialog onClose={closeDialog} />}
-      {dialog && dialog !== 'new' && (
+      {dialog === 'quick' && <QuickCreateResearch defaultTitle={defaultResearchTitle()} onClose={closeDialog} />}
+      {dialog && dialog !== 'new' && dialog !== 'quick' && (
         <div
           className="modal-backdrop"
           onMouseDown={(event) => {

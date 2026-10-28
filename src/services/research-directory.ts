@@ -12,6 +12,14 @@ export class DirectoryError extends Error {
   ownerResearchId?: string;
 }
 
+/** Folder names follow the strictest platform rules so a research created here can move between systems. */
+export function folderNameProblem(name: string) {
+  const title = name.trim();
+  if (!title) return '请填写研究名称。';
+  if (/[\\/:*?"<>|\u0000-\u001f]/.test(title) || /[. ]$/.test(name) || /^\.+$/.test(title) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(title)) return '请使用有效文件夹名称，避开保留字符、系统保留名及结尾的句点或空格。';
+  return '';
+}
+
 export function directoryPath(parent: string, name: string) {
   return parent.replace(/[\\/]+$/, '') + (parent.includes('\\') ? '\\' : '/') + name.trim();
 }
@@ -81,8 +89,11 @@ export async function directoryRequest<T>(draft: Pick<DirectoryDraft, 'workspace
   } finally { clearTimeout(timer); signal?.removeEventListener('abort', aborted); }
 }
 
+export function rememberedParent() {
+  try { return localStorage.getItem(PARENT) || undefined; } catch { return undefined; }
+}
 export async function getDirectoryDefaults(draft: DirectoryDraft): Promise<{ path: string }> {
-  const remembered = localStorage.getItem(PARENT);
+  const remembered = rememberedParent();
   if (remembered) {
     try { return { path: (await browseDirectories(draft, remembered)).path }; } catch { /* A missing previous location is offered again in the picker. */ }
   }
@@ -92,6 +103,9 @@ export async function getDirectoryDefaults(draft: DirectoryDraft): Promise<{ pat
 }
 export function browseDirectories(draft: DirectoryDraft, path?: string): Promise<{ path: string; parent?: string; directories: { name: string; path: string }[] }> {
   return directoryRequest(draft, 'browse', path ? { path } : {});
+}
+export function makeDirectory(draft: DirectoryDraft, parent: string, name: string, unique = false): Promise<{ path: string; name: string; parent: string }> {
+  return directoryRequest(draft, 'mkdir', { path: parent, name, unique });
 }
 export function previewDirectory(draft: DirectoryDraft, input: { path: string; mode: DirectoryMode }): Promise<{ path: string; name: string }> {
   return directoryRequest(draft, 'preview', { ...input, operationId: draft.operationId });
@@ -148,7 +162,8 @@ async function completeResearch(draft: DirectoryDraft, input: CreateInput) {
   await workspace.flushSave();
   checkWorkspace();
   clearPending(pending);
-  try { localStorage.setItem(PARENT, input.mode === 'new' ? input.path.replace(/[\\/][^\\/]+$/, '') : input.path); } catch { /* The research has already been saved. */ }
+  // The next research starts beside this one, whether its folder was new or chosen.
+  try { localStorage.setItem(PARENT, input.path.replace(/[\\/][^\\/]+$/, '') || input.path); } catch { /* The research has already been saved. */ }
   workspace.switchResearch(draft.researchId);
   return draft.researchId;
 }

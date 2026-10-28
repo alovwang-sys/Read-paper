@@ -4,6 +4,10 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCodexRuntime } from './codex-runtime.mjs';
+import { createClaudeRuntime } from './claude-runtime.mjs';
+import { createOpenCodeRuntime } from './opencode-runtime.mjs';
+import { classifyAgentFailure, diagnoseAgents, redactSecrets } from './agent-diagnostics.mjs';
+import { createResultFilter, demoResearch, packSources, parseResultBlock, TEXT_BUDGETS, TEXT_INSTRUCTIONS, textResearchPrompt } from './text-research.mjs';
 import { createResearchLiterature, RESEARCH_LITERATURE_TOOLS } from './research-literature.mjs';
 import { decodeImageDataURL, IMAGE_LIMITS, MAX_IMAGE_BODY_BYTES } from './images.mjs';
 
@@ -205,6 +209,8 @@ export function createResearchTools(input, { signal, onProgress = () => {}, sear
         return result(false, { error: failure.status ? failure.message : '工具调用失败。' });
       }
     },
+    /** Pages sent in full up front (text research) count as read without a read_page call. */
+    markRead(pages) { for (const page of pages) read.set(`${page.documentId}:${page.pageIndex}`, { ...page }); },
     get artifact() { return artifact ? structuredClone(artifact) : undefined; },
     get readPages() { return [...read.values()]; },
   };
@@ -230,8 +236,42 @@ async function readBody(req, signal) {
   try { return JSON.parse(new TextDecoder('utf8', { fatal: true }).decode(Buffer.concat(chunks))); } catch { throw invalid('请求不是有效 JSON。'); }
 }
 
-export function createResearchHandler({ env = process.env, runtimes, ports: allowedPorts, timeoutMs = 180000, searchLiterature } = {}) {
+const LABELS = { codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode', model: '模型直连', demo: '演示模式' };
+const CONNECTIONS = ['codex', 'claude', 'opencode', 'model', 'demo'];
+
+export function createResearchHandler({ env = process.env, runtimes, ports: allowedPorts, timeoutMs = 180000, searchLiterature, runModel, modelConfigured = false } = {}) {
   const codex = runtimes?.codex || createCodexRuntime({ env });
+  // Callers that inject runtimes (tests) pass only the ones they exercise; the rest report as not installed.
+  // Whole-run limit is longer than chat's: a research answer over ~100k characters of pages takes minutes; the idle timer still applies.
+  const textRuntimes = runtimes ? { claude: runtimes.claude, opencode: runtimes.opencode } : { claude: createClaudeRuntime({ env, timeoutMs: 600_000 }), opencode: createOpenCodeRuntime({ env, timeoutMs: 600_000 }) };
+  // Results are reused briefly so each send does not re-run multi-second CLI probes; a failed run clears its entry.
+  const probes = new Map();
+  async function probeConnection(id) {
+    const cached = probes.get(id);
+    if (cached && Date.now() - cached.at < (cached.value.research ? 60_000 : 8_000)) return cached.value;
+    let value;
+    if (id === 'demo') value = { id, research: true, images: false, state: 'ready', detail: '固定演示流程，不调用任何模型，用于熟悉界面与引用核对。' };
+    else if (id === 'model') value = modelConfigured && runModel
+      ? { id, research: true, images: false, state: 'ready', detail: `使用设置中的模型 API；每轮随问附送本轮论文页面文字（单次约 ${TEXT_BUDGETS.model / 10_000} 万字以内），由应用核对引用。不能联网检索、看图或使用工具。` }
+      : { id, research: false, images: false, state: 'unconfigured', kind: 'unconfigured', detail: '尚未配置模型 API 密钥。', hint: '桌面版在“文件 → 模型连接…”填写地址、模型和密钥；网页开发版在 .env.local 配置后重启 npm run ai。' };
+    else {
+      const runtime = id === 'codex' ? codex : textRuntimes[id];
+      let state, probeTimer;
+      if (!runtime?.probe) state = { state: 'not-installed', detail: `未检测到 ${LABELS[id]}。` };
+      else {
+        try { state = await Promise.race([runtime.probe(id === 'codex' ? { images: true } : {}), new Promise((_, reject) => { probeTimer = setTimeout(() => reject(new Error()), 22000); })]); }
+        catch { state = { state: 'error', detail: `${LABELS[id]} 检测超时或 CLI 不可用。` }; } finally { clearTimeout(probeTimer); }
+      }
+      const ready = state.state === 'ready';
+      value = { id, research: ready, images: id === 'codex' && ready && state.images === true, state: ready ? 'ready' : state.state || 'error', ...(typeof state.version === 'string' ? { version: state.version.slice(0, 80) } : {}),
+        detail: !ready ? state.detail || `${LABELS[id]} 尚未就绪。` : id === 'codex'
+          ? '使用已登录的本机 Codex，已接资料目录、逐页阅读与引用草稿工具。每轮使用隔离新会话。' + (state.images ? '当前模型支持图片附件与绘图选区。' : '当前模型图片能力尚未确认；可明确选择仅文字与结构。')
+          : `使用本机 ${LABELS[id]} 的登录与模型；每轮随问附送本轮论文页面文字（单次约 ${TEXT_BUDGETS[id] / 10_000} 万字以内），由应用核对引用。不能联网检索、看图或使用工具。` };
+      if (!ready) Object.assign(value, classifyAgentFailure(id, { code: ['needs-auth', 'not-installed'].includes(state.state) ? state.state : undefined, detail: state.detail }));
+    }
+    probes.set(id, { at: Date.now(), value });
+    return value;
+  }
   const ports = new Set(allowedPorts || [Number(env.AI_PORT || 8787), Number(env.AI_APP_PORT || 5173), 5173, 5174, 4173]);
   const active = new Map();
   const reading = new Set();
@@ -239,8 +279,9 @@ export function createResearchHandler({ env = process.env, runtimes, ports: allo
   const recent = new Set();
   let closed = false;
   const handler = async (req, res) => {
-    if (!['/api/ai/research/run', '/api/ai/research/capabilities'].includes(req.url)) return false;
-    let controller, bodyController, timer, cwd, key, researchId;
+    const url = new URL(req.url, 'http://local');
+    if (!['/api/ai/research/run', '/api/ai/research/capabilities', '/api/ai/research/diagnose'].includes(url.pathname)) return false;
+    let controller, bodyController, timer, cwd, scratch, key, researchId, input;
     let timedOut = false;
     let queue = Promise.resolve();
     const toolActivity = new Map();
@@ -259,36 +300,65 @@ export function createResearchHandler({ env = process.env, runtimes, ports: allo
       clearTimeout(timer);
       timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
     };
+    const cwdDetail = text => scratch ? text.split(scratch).join('<本轮临时目录>') : text;
+    async function runTextResearch(input) {
+      const id = input.connectionId, label = LABELS[id];
+      const { packed, delivered, skipped } = packSources(input.sources, TEXT_BUDGETS[id]);
+      const tools = createResearchTools({ ...input, sources: packed }, { signal: controller.signal, onProgress: event => { if (!controller.signal.aborted && active.has(key)) { armTimer(); send(event); } } });
+      tools.markRead(delivered);
+      const papers = packed.filter(source => source.pages.length).length;
+      await send({ type: 'progress', text: `${label} 正在阅读本轮附送的 ${papers} 篇、${delivered.length} 页原文${skipped.length ? `（另有 ${skipped.length} 页超出单次预算未附送）` : ''}` });
+      const filter = createResultFilter(text => { if (controller.signal.aborted || !active.has(key)) return; if (text.trim()) armTimer(); send({ type: 'delta', text }); });
+      const prompt = textResearchPrompt(input, packed, skipped);
+      let result = {};
+      if (id === 'demo') for (const chunk of demoResearch(input, packed).match(/[\s\S]{1,48}/g) ?? []) filter.push(chunk);
+      else if (id === 'model') result = { model: await runModel({ system: TEXT_INSTRUCTIONS, prompt, signal: controller.signal, onDelta: text => filter.push(text) }) };
+      else result = await textRuntimes[id].run({ prompt: `${TEXT_INSTRUCTIONS}\n\n${prompt}`, cwd, title: input.prompt.slice(0, 80), signal: controller.signal, onEvent(event) {
+        if (controller.signal.aborted || !active.has(key) || res.writableEnded) return;
+        if (event.type === 'delta') filter.push(event.text);
+        else if (event.type === 'progress' && event.kind === 'status' && typeof event.text === 'string') { armTimer(); send({ type: 'progress', text: event.text.slice(0, 2000) }); }
+      } });
+      const block = filter.finish();
+      if (block !== undefined && !controller.signal.aborted) {
+        let problem;
+        try {
+          const outcome = await tools.call('submit_result', parseResultBlock(block, packed));
+          if (!outcome.success) problem = JSON.parse(outcome.contentItems[0].text).error;
+        } catch (failure) { if (controller.signal.aborted) throw failure; problem = failure.message; }
+        if (problem) await send({ type: 'delta', text: `\n\n（成果草稿未通过引用核对，未保存：${problem}）` });
+      }
+      return { ...result, tools };
+    }
     try {
       caller(req, ports);
       if (closed) throw error(503, '研究服务正在关闭。');
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      if (req.url.endsWith('/capabilities')) {
+      if (url.pathname.endsWith('/capabilities')) {
         if (req.method !== 'GET') throw error(405, '此接口仅支持 GET。');
-        let state;
-        let probeTimer;
-        try { state = await Promise.race([codex.probe({ images: true }), new Promise((_, reject) => { probeTimer = setTimeout(() => reject(new Error()), 22000); })]); }
-        catch { state = { state: 'error' }; } finally { clearTimeout(probeTimer); }
+        const connections = await Promise.all(CONNECTIONS.map(probeConnection));
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(JSON.stringify({ connections: [
-          { id: 'codex', research: state.state === 'ready', images: state.state === 'ready' && state.images === true, detail: state.state === 'ready' ? '使用已登录的本机 Codex，已接资料目录、逐页阅读与引用草稿工具。每轮使用隔离新会话。' + (state.images ? '当前模型支持图片附件与绘图选区。' : '当前模型图片能力尚未确认；可明确选择仅文字与结构。') : 'Codex 尚未就绪；请在设置中安装、登录或重新检测本机连接。' },
-          { id: 'claude', research: false, images: false, detail: '原生文字会话仍可用；本版尚未接入应用研究工具。' },
-          { id: 'opencode', research: false, images: false, detail: '原生文字会话仍可用；本版尚未接入应用研究工具。' },
-          { id: 'model', research: false, images: false, detail: '保留原有模型直连问答；本版尚未接入应用研究工具。' },
-          { id: 'demo', research: false, images: false, detail: '固定演示保留；不能执行真实研究。' },
-        ] }));
+        res.end(JSON.stringify({ connections }));
+        return true;
+      }
+      if (url.pathname.endsWith('/diagnose')) {
+        if (req.method !== 'GET') throw error(405, '此接口仅支持 GET。');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify(await diagnoseAgents(env)));
         return true;
       }
       if (req.method !== 'POST') throw error(405, '此接口仅支持 POST。');
       if (reading.size >= 2) { res.setHeader('Connection', 'close'); throw error(429, '已有两个请求正在上传，请稍后重试。'); }
       bodyController = new AbortController(); reading.add(bodyController);
       req.on('aborted', disconnect); res.on('close', disconnect); res.on('error', disconnect);
-      let input;
       try { input = validateResearchInput(await readBody(req, bodyController.signal)); }
       finally { reading.delete(bodyController); }
       if (closed || bodyController.signal.aborted || res.destroyed) throw error(499, '研究已停止。', 'stopped');
-      if (input.connectionId !== 'codex') throw error(400, '此连接尚未接入应用研究工具；可继续使用原有文字会话。');
+      if (input.connectionId !== 'codex') {
+        if (input.images?.length || input.drawing?.mode === 'image') throw error(400, `${LABELS[input.connectionId]} 未确认支持图片，附件和输入已保留。请选择支持图片的 Codex 模型，或让绘图仅发送文字和结构。`, 'images_unsupported');
+        if (input.connectionId === 'model' && !(modelConfigured && runModel)) throw error(400, '尚未配置模型 API 密钥，请在设置中填写后重试。', 'not_configured');
+        if (['claude', 'opencode'].includes(input.connectionId) && !textRuntimes[input.connectionId]?.run) throw error(400, `未检测到 ${LABELS[input.connectionId]}，请安装并登录后重试。`, 'not-installed');
+      }
       key = JSON.stringify([input.researchId, input.requestId]);
       researchId = input.researchId;
       if (active.has(key) || busy.has(researchId)) throw error(409, '该研究正在执行，请等待或停止后重试。');
@@ -298,8 +368,17 @@ export function createResearchHandler({ env = process.env, runtimes, ports: allo
       controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
       recent.add(key); if (recent.size > 512) recent.delete(recent.values().next().value);
       armTimer();
-      cwd = await mkdtemp(join(tmpdir(), 'read-paper-research-'));
+      cwd = scratch = await mkdtemp(join(tmpdir(), 'read-paper-research-'));
       await writeFile(join(cwd, 'manifest.json'), JSON.stringify({ requestId: input.requestId, researchId: input.researchId, sourceIds: input.sources.map(source => source.id) }), { mode: 0o600 });
+      if (input.connectionId !== 'codex') {
+        const result = await runTextResearch(input);
+        if (controller.signal.aborted) throw error(499, '研究已停止。', 'stopped');
+        await rm(cwd, { recursive: true, force: true }); cwd = undefined;
+        if (result.tools.artifact) await send({ type: 'artifact', artifact: result.tools.artifact });
+        await send({ type: 'done', ...(typeof result.model === 'string' ? { model: result.model } : {}), ...(typeof result.nativeSessionId === 'string' ? { nativeSessionId: result.nativeSessionId } : {}), readPages: result.tools.readPages });
+        res.end();
+        return true;
+      }
       let localImages;
       if (input.drawing?.mode === 'image') {
         const path = join(cwd, 'drawing.png');
@@ -333,7 +412,13 @@ export function createResearchHandler({ env = process.env, runtimes, ports: allo
       if (!res.destroyed) {
         queue = queue.catch(() => {});
         if (!res.headersSent) res.statusCode = timedOut ? 504 : failure.status || (failure.code === 'images_unsupported' ? 400 : 502);
-        await send({ type: 'error', error: timedOut ? '研究长时间未返回新进展，已请求停止；收到的内容已保留。' : failure.status || failure.code === 'images_unsupported' ? failure.message : failure.code === 'stopped' ? '研究已停止。' : '本机 Codex 执行失败，请检查登录、额度或 CLI 连接后重试。' }).catch(() => {});
+        const connectionId = CONNECTIONS.includes(input?.connectionId) ? input.connectionId : 'codex';
+        // Runtime failures are classified from the CLI's own output; only that output (redacted) is shown, never internal paths.
+        const diagnosis = !timedOut && !failure.status && !['images_unsupported', 'stopped'].includes(failure.code) ? classifyAgentFailure(connectionId, { code: failure.code, message: failure.message, detail: failure.detail }) : undefined;
+        if (diagnosis) probes.delete(connectionId);
+        const detail = diagnosis && typeof failure.detail === 'string' && failure.detail.trim() ? redactSecrets(cwdDetail(failure.detail), env) : '';
+        await send({ type: 'error', error: timedOut ? '研究长时间未返回新进展，已请求停止；收到的内容已保留。' : failure.status || failure.code === 'images_unsupported' ? failure.message : failure.code === 'stopped' ? '研究已停止。' : `${LABELS[connectionId]} 执行失败。${diagnosis.hint}`,
+          ...(diagnosis ? { code: diagnosis.kind } : {}), ...(detail ? { detail } : {}) }).catch(() => {});
         res.end();
       }
     } finally {

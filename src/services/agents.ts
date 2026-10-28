@@ -2,6 +2,7 @@ import type { AgentConnection, AgentEvent, AIConnectionId, CodexCapabilities, Co
 import { mapCitationNumbers } from '../domain/citations';
 import { getActiveConversation, workspace, uid } from './workspace';
 import { autoApplyBoard, boardSkillResult } from './board-skill';
+import { rememberedParent } from './research-directory';
 
 export function connectionLabel(id?: AIConnectionId) {
   return { model: '模型直连', demo: '演示模式', codex: 'Codex', claude: 'Claude Code', opencode: 'OpenCode' }[id ?? 'model'];
@@ -100,6 +101,18 @@ export function browseResearchDirectories(path?: string, researchId?: string): P
   const id = researchId ?? (scope.kind === 'research' ? scope.researchId : undefined);
   if (!id) return Promise.reject(new Error('请先选择研究。'));
   return projectRequest(id, 'browse', path ? { path } : {});
+}
+/** The remembered location of earlier researches, else the system's documents folder. */
+export async function defaultResearchParent(researchId: string): Promise<string> {
+  const remembered = rememberedParent();
+  if (remembered) {
+    try { return (await browseResearchDirectories(remembered, researchId)).path; } catch { /* Offer the default location instead. */ }
+  }
+  if (window.papertrailDesktop?.getProjectLocation) return window.papertrailDesktop.getProjectLocation();
+  return (await projectRequest<{ parentPath: string }>(researchId, 'defaults')).parentPath;
+}
+export function makeResearchFolder(researchId: string, parent: string, name: string, unique = false): Promise<{ path: string; name: string; parent: string }> {
+  return projectRequest(researchId, 'mkdir', { path: parent, name, unique });
 }
 export async function bindResearchDirectory(researchId: string, path: string): Promise<ResearchDirectory> {
   const directory = await projectRequest<ResearchDirectory>(researchId, 'bind', { path });

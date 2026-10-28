@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUp, ArrowUpRight, BookOpen, ChevronDown, ChevronRight, ImagePlus, Plus, Search, Square, X } from 'lucide-react';
 import type { AIConnectionId, AIRequest, Conversation } from '../../domain/types';
-import type { ResearchAgentCapability } from '../../domain/research-agent';
+import type { AgentDiagnostics } from '../../domain/research-agent';
 import { connectionLabel } from '../../services/agents';
 import { getActiveConversation, useWorkspace } from '../../services/workspace';
 import { stopAI } from '../../services/ai';
-import { applyResearchSuggestion, changeResearchAgent, clearResearchFocus, createResearchConversation, discussionAnchor, discussionGroupKey, getResearchAgentCapabilities, isResearchConversation, keepResearchDraft, openResearchConversation, removeCarried, researchConversationLists, splitByRecency, EARLIER_AFTER_DAYS, stopResearchRun, submitResearchRun, undoResearchSuggestion } from '../../services/research-agent';
+import { applyResearchSuggestion, changeResearchAgent, clearResearchFocus, createResearchConversation, discussionAnchor, discussionGroupKey, isResearchConversation, keepResearchDraft, openResearchConversation, removeCarried, researchConversationLists, splitByRecency, EARLIER_AFTER_DAYS, stopResearchRun, submitResearchRun, undoResearchSuggestion } from '../../services/research-agent';
 import { hasDrawingText, removeDrawingQuestion, setDrawingQuestionMode } from '../../services/drawing-question';
 import { MarkdownContent } from '../ai/MarkdownContent';
 import { SourceRecommendations } from '../ai/SourceRecommendations';
@@ -16,6 +16,7 @@ import { VoiceInput } from '../ai/VoiceInput';
 import { ChatImagePreview } from './ChatImagePreview';
 import { DeleteConversationButton, DeletedConversations, RenameConversationButton } from '../ai/ConversationManagement';
 import { attachChatImages, removeChatImage } from '../../services/chat-images';
+import { getAgentDiagnostics, readyAlternative, refreshCapabilities, useCapabilities } from '../../services/agent-capabilities';
 import './workbench.css';
 
 export { focusResearchResource } from '../../services/research-agent';
@@ -31,7 +32,13 @@ export function ResearchAgentTurn({ researchId, request, index, busy }: { resear
   const failed = ['error', 'interrupted', 'stopped'].includes(request.status);
   const body = run ? request.result?.body || request.body : request.body;
   function act(operation: () => void) { try { operation(); setError(''); } catch (problem) { setError((problem as Error).message); } }
-  async function retry() { setError(''); try { await submitResearchRun(researchId, request.prompt, request.id); } catch (problem) { setError((problem as Error).message); } }
+  const { list: capabilities } = useCapabilities();
+  const alternative = failed && run?.failure ? readyAlternative(capabilities, request.connectionId ?? 'codex') : undefined;
+  async function retry(connectionId?: AIConnectionId) {
+    setError('');
+    try { if (connectionId) changeResearchAgent(researchId, connectionId); await submitResearchRun(researchId, request.prompt, request.id); }
+    catch (problem) { setError((problem as Error).message); }
+  }
   function showCitation(number: number) {
     const evidenceId = request.evidenceIds[number - 1], snapshot = request.context.find(source => source.evidenceId === evidenceId), evidence = data.evidence[evidenceId];
     const documentId = snapshot?.documentId ?? evidence?.documentId;
@@ -51,9 +58,10 @@ export function ResearchAgentTurn({ researchId, request, index, busy }: { resear
       {run?.suggestion && <div className="research-agent-suggestion"><strong>修改建议 · 原稿尚未覆盖</strong><details><summary>对比修改</summary><div className="research-agent-diff"><section><small>原稿：{run.suggestion.baseTitle}</small><MarkdownContent text={run.suggestion.baseBody}/></section><section><small>建议：{run.suggestion.title}</small><MarkdownContent text={run.suggestion.body}/></section></div></details><div className="research-agent-turn-actions"><button onClick={() => act(() => applyResearchSuggestion(request.id))}>采用建议</button><button onClick={() => act(() => keepResearchDraft(request.id))}>保留我的</button></div></div>}
       {run?.previous && <button className="research-agent-undo" aria-label="撤销本次修改" onClick={() => act(() => undoResearchSuggestion(request.id))}>撤销本次 Agent 修改</button>}
       {request.status === 'done' && conversation && discussionAnchor(conversation) && <CarryToConversation researchId={researchId} requestId={request.id} conversationId={conversation.id}/>}
-      {failed && <div className="research-agent-error"><span>{request.error || '执行已中断，已有内容仍然保留。'}</span>{run && <button disabled={busy} onClick={() => void retry()}>重试</button>}</div>}
+      {failed && <div className="research-agent-error"><span>{request.error || '执行已中断，已有内容仍然保留。'}</span>{run && <span className="research-agent-error-actions">{alternative && <button disabled={busy} onClick={() => void retry(alternative)}>改用 {connectionLabel(alternative)} 重试</button>}<button disabled={busy} onClick={() => void retry()}>重试</button></span>}</div>}
+      {failed && run?.failure?.detail && <details className="research-agent-failure-detail"><summary>{connectionLabel(request.connectionId)} 原始输出</summary><pre>{run.failure.detail}</pre></details>}
       {!failed && request.error && <p className="research-agent-error">{request.error}</p>}
-      {(run?.sourceSummary || request.context.length > 0 || request.materials?.length || request.events?.length) && <details className="research-agent-scope"><summary>{run ? '本次资料与执行记录' : '当时的来源与执行记录'}</summary>{!!run?.readPages?.length && <p>实际读取 {new Set(run.readPages.map(page => page.documentId)).size} 篇、{run.readPages.length} 页；原句匹配不代表结论已核实。</p>}{run?.sourceSummary && <p>{run.sourceSummary}</p>}{request.context.map((source, sourceIndex) => <blockquote key={`${source.evidenceId}-${sourceIndex}`}><strong>{source.title} · PDF 第 {source.pageIndex + 1} 页</strong><p>{source.quote || '保存的区域证据'}</p><button onClick={() => act(() => actions.openResource({ kind: 'document', id: source.documentId }, { scope: { kind: 'research', researchId }, target: 'inspector', anchor: { pageIndex: source.pageIndex } }))}>查看这段来源</button></blockquote>)}{request.materials?.map(material => <p key={material.id}><strong>{material.title}</strong><br/>{material.text}</p>)}{request.events?.map((event, eventIndex) => <p key={event.id ?? eventIndex}>{event.text}</p>)}</details>}
+      {(run?.sourceSummary || request.context.length > 0 || request.materials?.length || request.events?.length) && <details className="research-agent-scope"><summary>{run ? '本次资料与执行记录' : '当时的来源与执行记录'}</summary>{!!run?.readPages?.length && <p>{(request.connectionId ?? 'codex') === 'codex' ? '实际读取' : '随问附送'} {new Set(run.readPages.map(page => page.documentId)).size} 篇、{run.readPages.length} 页；原句匹配不代表结论已核实。</p>}{run?.sourceSummary && <p>{run.sourceSummary}</p>}{request.context.map((source, sourceIndex) => <blockquote key={`${source.evidenceId}-${sourceIndex}`}><strong>{source.title} · PDF 第 {source.pageIndex + 1} 页</strong><p>{source.quote || '保存的区域证据'}</p><button onClick={() => act(() => actions.openResource({ kind: 'document', id: source.documentId }, { scope: { kind: 'research', researchId }, target: 'inspector', anchor: { pageIndex: source.pageIndex } }))}>查看这段来源</button></blockquote>)}{request.materials?.map(material => <p key={material.id}><strong>{material.title}</strong><br/>{material.text}</p>)}{request.events?.map((event, eventIndex) => <p key={event.id ?? eventIndex}>{event.text}</p>)}</details>}
       {request.nativeImported && <p className="research-agent-native-note">导入的原生记录；继续原生会话请使用经典工作台。</p>}
       {error && <p className="research-agent-error" role="alert">{error}</p>}
     </section>
@@ -113,11 +121,42 @@ export function ResearchAgentHome({ researchId }: { researchId: string }) {
   </section>{newReply && <button className="research-agent-latest" onClick={showLatest}>查看最新回复 <ChevronDown size={14}/></button>}</div>;
 }
 
+const agentOrder: AIConnectionId[] = ['codex', 'claude', 'opencode', 'model', 'demo'];
+const kindLabels: Record<string, string> = { 'not-installed': '未安装', auth: '需登录', quota: '额度受限', network: '连不上', timeout: '超时', version: '版本不符', unconfigured: '未配置', unknown: '异常' };
+const envSources: Record<string, string> = { 'login-shell': '已读取登录 shell 环境', launchd: '已读取 launchd 环境', 'login-shell+launchd': '已读取登录 shell 与 launchd 环境', pending: '正在读取登录 shell 环境', none: '未能读取登录 shell 环境', process: '使用启动时的环境' };
+const install = (item: { path: string; version?: string }) => `${item.path}${item.version ? ` · ${item.version}` : ''}`;
+
+/** Assistant list with live readiness; detection and diagnostics load on their own when the list opens. */
+function AgentPickerPanel({ connectionId, disabled, onSelect, onClose }: { connectionId: AIConnectionId; disabled: boolean; onSelect: (id: AIConnectionId) => void; onClose: () => void }) {
+  const { list, error, loading } = useCapabilities();
+  const [diagnostics, setDiagnostics] = useState<AgentDiagnostics>();
+  const blockedLocal = list.some(item => ['codex', 'claude', 'opencode'].includes(item.id) && !item.research);
+  const current = list.find(item => item.id === connectionId);
+  useEffect(() => { void refreshCapabilities(); }, []);
+  useEffect(() => {
+    if (!blockedLocal || diagnostics) return;
+    let alive = true;
+    getAgentDiagnostics().then(result => { if (alive) setDiagnostics(result); }, () => { /* Diagnostics are an extra; the list stays usable. */ });
+    return () => { alive = false; };
+  }, [blockedLocal]);
+  const environment = diagnostics?.environment;
+  return <div className="research-agent-config" role="dialog" aria-label="选择研究助手"><div className="research-agent-config-heading"><strong>助手</strong><button aria-label="关闭 Agent 配置" onClick={onClose}><X size={16}/></button></div>
+    <div className="research-agent-options" role="listbox" aria-label="研究 Agent 连接">{agentOrder.map(id => {
+      const item = list.find(entry => entry.id === id), local = diagnostics?.agents.find(agent => agent.id === id);
+      return <button type="button" role="option" aria-label={connectionLabel(id)} aria-describedby={`agent-option-${id}`} aria-selected={connectionId === id} key={id} disabled={disabled} onClick={() => onSelect(id)}>
+        <span className="research-agent-option-main"><span className={`research-agent-connection-dot ${item ? item.research ? 'is-ready' : 'is-blocked' : ''}`} aria-hidden="true"/><span>{connectionLabel(id)}</span><small>{item ? item.research ? '就绪' : kindLabels[item.kind ?? 'unknown'] ?? '异常' : loading ? '检测中' : ''}</small>{connectionId === id && <span aria-hidden="true">✓</span>}</span>
+        <span id={`agent-option-${id}`} className="research-agent-option-detail">{item && !item.research && (item.hint || item.detail)}{item && !item.research && local?.used && <small>应用实际调用：{install(local.used)}{local.others.length ? `；另有 ${local.others.map(install).join('、')}` : ''}</small>}</span>
+      </button>;
+    })}</div>
+    <div className="research-agent-config-status"><span role="status">{error || (current ? current.research ? current.detail : `${current.detail}${current.hint ? ` ${current.hint}` : ''}` : '正在检测连接…')}</span></div>
+    {environment && <p className="research-agent-config-env">{envSources[environment.source] ?? environment.source}{environment.imported.length ? `，补入 ${environment.imported.join('、')}` : ''}。代理变量：{environment.proxy.length ? environment.proxy.join('、') : '无'}。检测会在回到应用时自动重跑。</p>}
+  </div>;
+}
+
 export function ResearchAgentDock({ researchId }: { researchId: string }) {
   const { data, actions } = useWorkspace();
   const conversation = getActiveConversation(data, researchId);
-  const [capabilities, setCapabilities] = useState<ResearchAgentCapability[]>([]);
-  const [capabilityError, setCapabilityError] = useState('');
+  const { list: capabilities, error: capabilityError } = useCapabilities();
   const [error, setError] = useState('');
   const [configOpen, setConfigOpen] = useState(false);
   const [pendingImages, setPendingImages] = useState(0);
@@ -136,8 +175,13 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
   const attachmentBlocked = drawingImageBlocked || chatImageBlocked || pendingImages > 0;
   const nativeReadOnly = !!conversation && !isResearchConversation(data, conversation);
   const text = conversation?.input ?? '';
-  async function detect() { setCapabilityError(''); try { setCapabilities(await getResearchAgentCapabilities()); } catch (problem) { setCapabilityError((problem as Error).message); } }
-  useEffect(() => { if (!conversation) createResearchConversation(researchId, 'codex'); void detect(); }, [researchId]);
+  const latest = (conversation?.requestIds ?? []).map(id => data.requests[id]).at(-1);
+  const alternative = capability && !capability.research ? readyAlternative(capabilities, connectionId) : undefined;
+  useEffect(() => { if (!conversation) createResearchConversation(researchId, 'codex'); void refreshCapabilities(); }, [researchId]);
+  // Detection reruns on its own: back from a terminal login, or after a run failed.
+  useEffect(() => { const again = () => void refreshCapabilities(); window.addEventListener('focus', again); return () => window.removeEventListener('focus', again); }, []);
+  useEffect(() => { if (latest?.status === 'error') void refreshCapabilities(); }, [latest?.id, latest?.status]);
+  function switchAgent(id: AIConnectionId) { try { changeResearchAgent(researchId, id); setError(''); setConfigOpen(false); } catch (problem) { setError((problem as Error).message); } }
   useEffect(() => { if (input.current) { input.current.style.height = 'auto'; input.current.style.height = `${Math.min(input.current.scrollHeight, 136)}px`; } }, [text, conversation?.id]);
   useEffect(() => { setError(''); }, [conversation?.id]);
   async function send() { setError(''); try { await submitResearchRun(researchId, text); } catch (problem) { setError((problem as Error).message); } }
@@ -152,6 +196,8 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
   function changeDrawingMode(mode: 'image' | 'text') { try { setDrawingQuestionMode(researchId, mode); setError(''); } catch (problem) { setError((problem as Error).message); } }
   return <section className="research-agent-dock" aria-label="研究 Agent">
     {error && <p className="research-agent-error" role="alert">{error}</p>}
+    {!capability && capabilityError && !nativeReadOnly && <div className="research-agent-connection-notice" role="status"><span><strong>研究服务未连接</strong>{capabilityError} 回到应用时会自动重试。</span></div>}
+    {capability && !capability.research && !running && !nativeReadOnly && <div className="research-agent-connection-notice" role="status"><span><strong>{connectionLabel(connectionId)} 暂不可用</strong>{capability.hint || capability.detail}</span>{alternative && <button type="button" onClick={() => switchAgent(alternative)}>改用 {connectionLabel(alternative)}</button>}</div>}
     {focus && !drawingQuestion && <div className="research-agent-focus"><span>围绕：{focus.title}</span><button aria-label="清除追问对象" onClick={() => clearResearchFocus(researchId)}><X size={14}/></button></div>}
     {/* Only while something is ready to send, so an idle chat keeps its full height. */}
     {conversation && !nativeReadOnly && (!!text.trim() || chatImages.length > 0 || !!drawingQuestion || carried.length > 0) && <DraftRoute researchId={researchId} onError={setError}/>}
@@ -160,14 +206,14 @@ export function ResearchAgentDock({ researchId }: { researchId: string }) {
       {!!chatImages.length && <ChatImagePreview images={chatImages} onRemove={assetId => removeChatImage(researchId, assetId)}/>}
       {!!carried.length && <ul className="research-carried" aria-label="带入的讨论结论">{carried.map(item => <li key={item.id} title={item.text.slice(0, 600)}><span>带入：{item.title}</span><button type="button" aria-label={`移除带入：${item.title}`} onClick={() => removeCarried(researchId, item.id)}><X size={12}/></button></li>)}<small>随下一问作为参考材料发送，不算原文证据</small></ul>}
       {pendingImages > 0 && <p className="research-agent-attachment-status" role="status">正在添加图片…</p>}
-      {chatImageBlocked && <p className="research-agent-attachment-status" role="status">{capability ? '当前连接未确认支持图片，附件已保留；请选择支持图片的 Codex 模型并重新检测。' : '正在检测图片能力，附件已保留。'}</p>}
+      {chatImageBlocked && <p className="research-agent-attachment-status" role="status">{capability ? '当前连接未确认支持图片，附件已保留；请改用支持图片的 Codex 模型。' : '正在检测图片能力，附件已保留。'}</p>}
       {drawingQuestion && <DrawingQuestionPreview question={drawingQuestion} onRemove={() => removeDrawingQuestion(researchId)}/>}
       {drawingQuestion && <div className="research-drawing-mode"><span>未追加论文原文 · 只读分析 · 继续当前会话历史</span>{drawingImageBlocked && <p role="status">{capability ? '当前连接尚未确认支持图片，附件与输入已保留。可在下方选择研究助手并检测图片能力。' : capabilityError || '正在检测图片能力；附件与输入已保留。'}{hasDrawingText(drawingQuestion.snapshot) ? <button type="button" onClick={() => changeDrawingMode('text')}>仅发送文字和结构</button> : '这段选区没有可发送的文字，需使用支持图片的连接。'}</p>}{drawingQuestion.mode === 'text' && <p>本轮 Agent 未看图。{capability?.images === true && <button type="button" onClick={() => changeDrawingMode('image')}>改为发送图片</button>}</p>}</div>}
       <textarea ref={input} className="research-agent-input" aria-label="研究目标" placeholder={nativeReadOnly ? '原生或经典记录的草稿会保留；请到经典工作台继续…' : carried.length ? '基于带入的结论继续问…' : drawingQuestion ? '围绕这张选区图，继续问点什么…' : chatImages.length ? '补充问题，或直接发送图片…' : '在当前会话继续研究，或围绕选定内容追问…'} value={text} onPaste={event => { const files = Array.from(event.clipboardData.files); if (files.some(file => file.type.startsWith('image/'))) { event.preventDefault(); event.stopPropagation(); if (!nativeReadOnly) void addImages(files); } }} onChange={event => { const current = actions.getActiveConversation(researchId); actions.updateData(next => { next.conversations[current.id].input = event.target.value; }); }} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (!running && !nativeReadOnly && !attachmentBlocked && (text.trim() || chatImages.length)) void send(); } }}/>
-      <div className="research-agent-composer-foot"><button type="button" className="research-agent-connection" aria-label="选择研究助手" onClick={() => setConfigOpen(!configOpen)} aria-expanded={configOpen}>{connectionLabel(connectionId)}<ChevronDown size={12}/></button><span className="research-agent-permission" title="仅使用已关联研究资料；成果与修改建议在应用中保存">只读资料</span><button type="button" className="research-agent-add-image" aria-label="添加图片" title="添加图片，也可粘贴或拖入；PNG / JPEG / WebP，最多 4 张、每张 8 MB" disabled={!conversation || nativeReadOnly || pendingImages > 0} onClick={() => imagePicker.current?.click()}><ImagePlus size={17}/></button><VoiceInput key={conversation?.id} inputRef={input} disabled={nativeReadOnly}/><span className="research-agent-enter-hint">Enter 发送 · Shift Enter 换行</span>{running ? <button key="stop" type="button" className="research-agent-send" onClick={event => { event.preventDefault(); running.researchRun ? stopResearchRun(running.id) : stopAI(running.id); }} aria-label="停止研究"><Square size={16}/></button> : <button key="send" type="submit" className="research-agent-send" disabled={(!text.trim() && !chatImages.length) || !conversation || nativeReadOnly || attachmentBlocked} aria-label="开始研究"><ArrowUp size={19}/></button>}</div>
+      <div className="research-agent-composer-foot"><button type="button" className="research-agent-connection" aria-label="选择研究助手" title={capability ? capability.research ? capability.detail : capability.hint || capability.detail : capabilityError || '正在检测连接…'} onClick={() => setConfigOpen(!configOpen)} aria-expanded={configOpen}><span className={`research-agent-connection-dot ${capability ? capability.research ? 'is-ready' : 'is-blocked' : ''}`} aria-hidden="true"/>{connectionLabel(connectionId)}<ChevronDown size={12}/></button><span className="research-agent-permission" title={connectionId === 'codex' ? '仅使用已关联研究资料，按需逐页阅读；成果与修改建议在应用中保存' : '本轮论文页面文字随问附送，由应用核对引用；成果与修改建议在应用中保存'}>{connectionId === 'codex' ? '只读资料' : '附送原文'}</span><button type="button" className="research-agent-add-image" aria-label="添加图片" title="添加图片，也可粘贴或拖入；PNG / JPEG / WebP，最多 4 张、每张 8 MB" disabled={!conversation || nativeReadOnly || pendingImages > 0} onClick={() => imagePicker.current?.click()}><ImagePlus size={17}/></button><VoiceInput key={conversation?.id} inputRef={input} disabled={nativeReadOnly}/><span className="research-agent-enter-hint">Enter 发送 · Shift Enter 换行</span>{running ? <button key="stop" type="button" className="research-agent-send" onClick={event => { event.preventDefault(); running.researchRun ? stopResearchRun(running.id) : stopAI(running.id); }} aria-label="停止研究"><Square size={16}/></button> : <button key="send" type="submit" className="research-agent-send" disabled={(!text.trim() && !chatImages.length) || !conversation || nativeReadOnly || attachmentBlocked} aria-label="开始研究"><ArrowUp size={19}/></button>}</div>
     </form>
     {nativeReadOnly && <p className="research-agent-native-note">这是原生或经典会话记录，研究工具暂不接续这段会话。<button onClick={() => actions.updateData(next => { next.agentWorkbench = false; })}>到经典工作台继续</button></p>}
-    {configOpen && <div className="research-agent-config" role="dialog" aria-label="选择研究助手"><div className="research-agent-config-heading"><strong>助手</strong><button aria-label="关闭 Agent 配置" onClick={() => setConfigOpen(false)}><X size={16}/></button></div><div className="research-agent-options" role="listbox" aria-label="研究 Agent 连接">{(['codex', 'claude', 'opencode', 'model', 'demo'] as const).map(id => <button type="button" role="option" aria-selected={connectionId === id} key={id} disabled={!!running} onClick={() => { try { changeResearchAgent(researchId, id); setError(''); setConfigOpen(false); } catch (problem) { setError((problem as Error).message); } }}><span>{connectionLabel(id)}</span>{connectionId === id && <span aria-hidden="true">✓</span>}</button>)}</div><div className="research-agent-config-status"><span role="status">{capabilityError || (capability?.research ? '研究工具已连接' : capability?.detail) || '正在检测连接…'}</span><button onClick={() => void detect()}>重新检测</button></div></div>}
+    {configOpen && <AgentPickerPanel connectionId={connectionId} disabled={!!running} onSelect={switchAgent} onClose={() => setConfigOpen(false)}/>}
 
   </section>;
 }

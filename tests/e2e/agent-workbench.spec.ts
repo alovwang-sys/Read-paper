@@ -124,9 +124,10 @@ test('一句委托形成真实持久草稿，局部修订保护人工修改，�
 test('全部旧功能可达，经典模式和Agent模式共享数据，连接能力不冒充', async ({ page }) => {
   await start(page);
   await page.getByRole('button', { name: '选择研究助手' }).click();
-  await page.getByRole('combobox', { name: '研究 Agent 连接' }).selectOption('claude');
-  await expect(page.locator('.research-agent-config')).toContainText('尚未接入应用研究工具');
-  await page.getByRole('button', { name: '关闭 Agent 配置' }).click();
+  await page.getByRole('listbox', { name: '研究 Agent 连接' }).getByRole('option', { name: 'Claude Code', exact: true }).click();
+  // A connection that is not ready says so beside the composer, with a one-click switch, instead of pretending to work.
+  await expect(page.locator('.research-agent-connection-notice')).toContainText('尚未接入应用研究工具');
+  await expect(page.locator('.research-agent-connection-notice').getByRole('button', { name: '改用 Codex', exact: true })).toBeVisible();
   const before = await data(page);
   await page.getByRole('button', { name: '经典工作台', exact: true }).click();
   await expect(input(page)).toHaveCount(0);

@@ -302,15 +302,76 @@ test('HTTP NDJSON carries actual shared search snapshots for successful, empty a
   }
 });
 
-test('research capabilities retain connections honestly and reject remote callers and unsupported runtimes', async t => {
+test('research capabilities report every connection honestly and reject remote callers and missing runtimes', async t => {
   const f = await fixture(t, { probe: async () => ({ state: 'ready' }), run: () => assert.fail() });
   const capabilities = await (await fetch(`${f.url}/api/ai/research/capabilities`)).json();
-  assert.deepEqual(capabilities.connections.map(item => [item.id, item.research]), [['codex', true], ['claude', false], ['opencode', false], ['model', false], ['demo', false]]);
+  assert.deepEqual(capabilities.connections.map(item => [item.id, item.research]), [['codex', true], ['claude', false], ['opencode', false], ['model', false], ['demo', true]]);
   assert.ok(capabilities.connections.every(item => item.images === false));
+  assert.deepEqual(capabilities.connections.slice(1, 4).map(item => item.kind), ['not-installed', 'not-installed', 'unconfigured']);
+  assert.ok(capabilities.connections.slice(1, 4).every(item => item.hint));
   assert.equal((await fetch(`${f.url}/api/ai/research/capabilities`, { headers: { Origin: 'https://evil.example' } })).status, 403);
   assert.equal((await f.post(request({ connectionId: 'claude' }))).status, 400);
-  const unavailable = await fixture(t, { probe: async () => ({ state: 'needs-auth' }) });
-  assert.equal((await (await fetch(`${unavailable.url}/api/ai/research/capabilities`)).json()).connections[0].research, false);
+  assert.equal((await f.post(request({ requestId: 'model-unset', connectionId: 'model' }))).status, 400);
+  const unavailable = await fixture(t, { probe: async () => ({ state: 'needs-auth', detail: '请在本机终端运行 codex login 后重新检测。' }) });
+  const codex = (await (await fetch(`${unavailable.url}/api/ai/research/capabilities`)).json()).connections[0];
+  assert.equal(codex.research, false); assert.equal(codex.kind, 'auth'); assert.match(codex.hint, /codex login/);
+});
+
+const textFixture = (t, claude, options = {}) => fixture(t, { probe: async () => ({ state: 'ready' }), run: () => assert.fail('text research must not call Codex') }, { runtimes: { codex: { probe: async () => ({ state: 'ready' }), run: () => assert.fail() }, claude }, ...options });
+
+test('Claude Code research gets the page snapshot up front, streams only visible text and saves a checked result', async t => {
+  const prompts = [];
+  const block = '```papertrail-result\n' + JSON.stringify({ title: '研究结论草稿', body: '方法降低了误差。[1]', citations: [{ documentId: source.id, pageIndex: 1, quote: 'The method reduces error under this condition.' }] }) + '\n```';
+  const f = await textFixture(t, { probe: async () => ({ state: 'ready', version: '2.1.239' }), async run(input) {
+    prompts.push(input);
+    assert.match(input.prompt, /<page pageIndex="1">/); assert.match(input.prompt, /papertrail-result/);
+    const text = `已整理成果。\n\n${block}`;
+    for (let index = 0; index < text.length; index += 7) input.onEvent({ type: 'delta', text: text.slice(index, index + 7) });
+    return { body: text, nativeSessionId: '11111111-2222-3333-4444-555555555555', model: 'claude-test' };
+  } });
+  const capabilities = await (await fetch(`${f.url}/api/ai/research/capabilities`)).json();
+  assert.equal(capabilities.connections[1].research, true);
+  const stream = await events(await f.post(request({ connectionId: 'claude' })));
+  const visible = stream.filter(event => event.type === 'delta').map(event => event.text).join('');
+  assert.equal(visible.trim(), '已整理成果。');
+  assert.deepEqual(stream.find(event => event.type === 'artifact').artifact, artifact);
+  assert.deepEqual(stream.at(-1).readPages, [{ documentId: source.id, pageIndex: 1 }]);
+  assert.equal(stream.at(-1).model, 'claude-test');
+  assert.equal(prompts[0].cwd.includes('read-paper-research-'), true);
+});
+
+test('text research rejects unverifiable citations, keeps the answer, and never sends images', async t => {
+  const block = '```papertrail-result\n' + JSON.stringify({ title: 'x', body: '编造。[1]', citations: [{ documentId: source.id, pageIndex: 1, quote: 'Invented sentence not in the page.' }] }) + '\n```';
+  const f = await textFixture(t, { probe: async () => ({ state: 'ready' }), async run(input) { input.onEvent({ type: 'delta', text: `说明。\n${block}` }); return { body: 'x' }; } });
+  const stream = await events(await f.post(request({ connectionId: 'claude' })));
+  assert.equal(stream.some(event => event.type === 'artifact'), false);
+  assert.match(stream.filter(event => event.type === 'delta').map(event => event.text).join(''), /未通过引用核对/);
+  assert.equal(stream.at(-1).type, 'done');
+  const images = await f.post(request({ requestId: 'image', connectionId: 'claude', images: [chatImage()] }));
+  assert.equal(images.status, 400); assert.match((await events(images))[0].error, /图片/);
+});
+
+test('demo and direct model research use the same result path', async t => {
+  const models = [];
+  const f = await textFixture(t, undefined, { modelConfigured: true, runModel: async ({ system, prompt, onDelta }) => {
+    models.push({ system, prompt }); onDelta('模型的简短回答。'); return 'glm-test';
+  } });
+  const demo = await events(await f.post(request({ requestId: 'demo', connectionId: 'demo' })));
+  assert.match(demo.filter(event => event.type === 'delta').map(event => event.text).join(''), /演示模式/);
+  assert.deepEqual(demo.find(event => event.type === 'artifact').artifact.citations, [{ documentId: source.id, documentHash: source.hash, pageIndex: 1, quote: 'First result.' }]);
+  const model = await events(await f.post(request({ requestId: 'model', connectionId: 'model' })));
+  assert.equal(model.at(-1).model, 'glm-test'); assert.match(models[0].system, /papertrail-result/);
+  assert.equal(model.filter(event => event.type === 'delta').map(event => event.text).join(''), '模型的简短回答。');
+});
+
+test('runtime failures are classified from CLI output with secrets and temporary paths hidden', async t => {
+  const f = await textFixture(t, { probe: async () => ({ state: 'ready' }), async run(input) {
+    throw Object.assign(new Error('Claude Code 运行失败，请检查本机登录、额度或配置后重试。'), { code: 'agent_failed', detail: `API Error: Connection error (ECONNREFUSED) at ${input.cwd} key sk-abcdefghijklmnopqrstu` });
+  } });
+  const failed = (await events(await f.post(request({ connectionId: 'claude' })))).at(-1);
+  assert.equal(failed.type, 'error'); assert.equal(failed.code, 'network');
+  assert.match(failed.error, /Claude Code 执行失败/); assert.match(failed.error, /代理/);
+  assert.match(failed.detail, /ECONNREFUSED/); assert.doesNotMatch(failed.detail, /read-paper-research-|sk-abc/);
 });
 
 test('drawing routes send one owned private image with frozen metadata, no PDFs, and remove it after success or failure', async t => {

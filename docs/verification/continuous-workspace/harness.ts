@@ -56,7 +56,7 @@ export async function installControlledServices(page: Page, options: { seed?: Wo
   } }));
   await page.route('**/api/ai/research/capabilities', route => route.fulfill({ json: { connections: [
     { id: 'codex', research: true, images: true, detail: '受控验收连接，未调用真实模型' },
-    { id: 'claude', research: false, images: false, detail: '仅文字；未接研究工具' },
+    { id: 'claude', research: true, images: false, detail: '受控验收连接；随问附送原文，不能看图' },
   ] } }));
   await page.route('**/api/ai/research/run', route => {
     researchCalls.push(route.request().postDataJSON());

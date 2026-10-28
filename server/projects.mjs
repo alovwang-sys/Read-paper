@@ -30,6 +30,7 @@ function visibleItems(values) {
 }
 const present = path => lstat(path).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
 const creationUnknown = () => fail(409, 'creation_unconfirmed', '目录可能已创建，但尚不能核实完整关联。请保留当前表单并检查目录，不要重复创建或删除其中内容。');
+const validName = name => !(!name || name !== name.trim() || ['.', '..'].includes(name) || /[\\/\x00-\x1f\x7f]/.test(name) || Buffer.byteLength(name) > 255 || process.platform === 'win32' && (/[<>:"|?*]/.test(name) || /[. ]$/.test(name) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name)));
 
 async function atomicJSON(path, value) {
   const temporary = `${path}.${randomUUID()}.tmp`;
@@ -94,7 +95,7 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
     if (body.mode !== undefined && !['new', 'existing'].includes(body.mode) || body.operationId !== undefined && !validId(body.operationId) || body.mode !== undefined && !validId(body.operationId)) throw fail(400, 'invalid_operation', '目录创建方式或操作标识无效，请重新打开表单。');
     if (body.mode === 'new') {
       const name = typeof body.path === 'string' ? basename(body.path) : '';
-      if (!name || name !== name.trim() || ['.', '..'].includes(name) || /[\\/\x00-\x1f\x7f]/.test(name) || Buffer.byteLength(name) > 255 || process.platform === 'win32' && (/[<>:"|?*]/.test(name) || /[. ]$/.test(name) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name))) throw fail(400, 'invalid_name', '请输入有效的目录名称，不要使用路径分隔符或系统保留名称。');
+      if (!validName(name)) throw fail(400, 'invalid_name', '请输入有效的目录名称，不要使用路径分隔符或系统保留名称。');
     }
   }
   async function managed(path, create = false) {
@@ -300,6 +301,26 @@ export function createProjectStore({ stateDir, runtimes, isBusy = () => false, q
       const path = body.path ? await canonical(body.path, false, true) : homedir();
       const entries = await readdir(path, { withFileTypes: true }).catch(() => { throw fail(400, 'directory_unavailable', '无法浏览此目录，请检查访问权限。'); });
       return { path, ...(dirname(path) !== path ? { parent: dirname(path) } : {}), directories: entries.filter(e => e.isDirectory() && !e.name.startsWith('.')).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 200).map(e => ({ name: e.name, path: join(path, e.name) })) };
+    },
+    // Creates a plain folder inside the browsed location so a picker can use it as the research directory.
+    async mkdir(body) {
+      identity(body);
+      if (typeof body.name !== 'string' || body.unique !== undefined && typeof body.unique !== 'boolean') throw fail(400, 'invalid_name', '请输入文件夹名称。');
+      const name = body.name.trim();
+      if (!validName(name) || name.startsWith('.')) throw fail(400, 'invalid_name', '请输入有效的文件夹名称，不要使用路径分隔符、开头的句点或系统保留名称。');
+      const parent = await canonical(body.path, false, true);
+      await access(parent, constants.W_OK).catch(() => { throw fail(400, 'directory_unwritable', '此位置不可写，请更换位置或检查权限。'); });
+      for (let attempt = 1; attempt <= (body.unique ? 100 : 1); attempt++) {
+        const candidate = attempt === 1 ? name : `${name} ${attempt}`;
+        const path = join(parent, candidate);
+        try { await mkdir(path); }
+        catch (error) {
+          if (error.code === 'EEXIST') { if (body.unique) continue; throw fail(409, 'directory_exists', '此位置已有同名文件夹，可直接选择它，或换一个名称。'); }
+          throw fail(400, 'directory_unwritable', '无法在此位置新建文件夹，请更换位置或检查权限。');
+        }
+        return { path: await canonical(path, false, true), name: candidate, parent };
+      }
+      throw fail(409, 'directory_exists', '同名文件夹过多，请换一个名称。');
     },
     async status(body) {
       identity(body); await ready;

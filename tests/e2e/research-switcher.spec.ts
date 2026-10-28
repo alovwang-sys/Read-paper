@@ -17,14 +17,15 @@ async function boot(page: Page, options: { classic?: boolean; duplicate?: boolea
   seed.researches['research-b'].title = options.duplicate ? seed.researches['research-a'].title : '对照研究：长文档证据与可靠性';
   for (const [index, board] of Object.values(seed.boards).entries()) board.title = index === 0 ? '导航回归匹配图' : `导航回归条件图 ${index}`;
   for (const conversation of Object.values(seed.conversations)) conversation.connectionId = 'demo';
-  await mockProjectService(page, { bound: false, seed });
+  const projects = await mockProjectService(page, { bound: false, seed });
   await page.route('**/api/ai/config', route => route.fulfill({ json: { configured: false, mode: 'demo', model: 'navigation-test', images: false } }));
   await page.route('**/api/ai/agents', route => route.fulfill({ json: { agents: [] } }));
   await page.route('**/api/ai/research/capabilities', route => route.fulfill({ json: { connections: [] } }));
   await page.route('**/api/ai/research/run', () => { throw new Error('Navigation tests must not contact a model'); });
   await page.goto('/');
-  await expect(page.getByRole('main', { name: '主工作区' })).toBeVisible(); await saved(page);
-  return seed;
+  // The main area is aria-hidden while the full-width chat is open, so wait for the shell itself.
+  await expect(page.getByRole('main', { name: '主工作区', includeHidden: true })).toBeAttached(); await saved(page);
+  return Object.assign(seed, { projects });
 }
 
 for (const [width, height] of [[1440, 900], [1280, 800], [1024, 800]]) {
@@ -101,8 +102,8 @@ test('切换研究和资料库保留各自草稿，旧空名称仍有可见入�
   await switchResearch(page, 'research-b'); await expect(composer).toHaveValue('研究 B 草稿');
 });
 
-test('新建保持一键开始，默认名称唯一，编辑可取消且不会保存空名', async ({ page }) => {
-  await boot(page);
+test('新建研究回车即新建同名目录并关联，默认名称唯一，编辑可取消且不会保存空名', async ({ page }) => {
+  const { projects } = await boot(page);
   const name = page.getByRole('textbox', { name: '研究名称', exact: true });
   await name.fill(''); await name.press('Enter'); await expect(name).toHaveValue('检索增强，何时有效？');
   await name.fill('尚未确认的名称'); await name.press('Escape'); await expect(name).toHaveValue('检索增强，何时有效？');
@@ -110,11 +111,22 @@ test('新建保持一键开始，默认名称唯一，编辑可取消且不会�
   await saved(page); await page.reload(); await expect(name).toHaveValue('更新后的研究名称');
   for (const expected of ['新研究', '新研究 2']) {
     await page.getByRole('button', { name: '新建研究', exact: true }).click();
-    await expect(name).toHaveValue(expected); await expect(name).toBeFocused();
-    await expect(page.getByRole('dialog', { name: '新建研究' })).toHaveCount(0);
+    const dialog = page.getByRole('dialog', { name: '新建研究', exact: true });
+    const title = dialog.getByRole('textbox', { name: '新研究名称', exact: true });
+    await expect(title).toHaveValue(expected); await expect(title).toBeFocused();
+    await expect(dialog).toContainText(`/fixture/${expected}`);
+    await title.press('Enter');
+    await expect(dialog).toHaveCount(0);
+    await expect(name).toHaveValue(expected);
+    await expect(page.getByRole('textbox', { name: '研究目标', exact: true })).toBeFocused();
   }
-  const names = Object.values((await state(page)).researches).map(item => item.title);
-  expect(names.filter(title => title.startsWith('新研究'))).toEqual(['新研究', '新研究 2']);
+  const created = Object.values((await state(page)).researches).filter(item => item.title.startsWith('新研究'));
+  expect(created.map(item => item.title)).toEqual(['新研究', '新研究 2']);
+  expect(created.every(item => item.directory)).toBe(true);
+  expect(projects.calls.filter(call => call.action === 'bind').map(call => [call.body.path, call.body.mode])).toEqual([['/fixture/新研究', 'new'], ['/fixture/新研究 2', 'new']]);
+  await page.getByRole('button', { name: '新建研究', exact: true }).click();
+  await page.getByRole('dialog', { name: '新建研究', exact: true }).getByRole('button', { name: '取消', exact: true }).click();
+  expect(Object.values((await state(page)).researches).filter(item => item.title.startsWith('新研究'))).toHaveLength(2);
   await saved(page);
 });
 

@@ -29,7 +29,8 @@ export async function startDesktopAI({ env = {}, fetchImpl, timeoutMs } = {}) {
     server.listen(0, '127.0.0.1');
     await listening;
     const port = server.address().port;
-    handler = createAIHandler({ env: { ...env, AI_PORT: String(port) }, fetchImpl, timeoutMs, localToken: token });
+    // The env object stays live: login-shell variables resolved after startup reach later agent launches.
+    handler = createAIHandler({ env: Object.assign(env, { AI_PORT: String(port) }), fetchImpl, timeoutMs, localToken: token });
     server.on('request', handler);
     return { baseURL: `http://127.0.0.1:${port}`, token, stop };
   } catch (error) {

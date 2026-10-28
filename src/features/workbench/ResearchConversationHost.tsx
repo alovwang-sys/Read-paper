@@ -19,7 +19,8 @@ export function ResearchConversationHost({ researchId, mode, onMode }: { researc
   const host = useRef<HTMLElement>(null);
   const drag = useRef<{ pointer: number; x: number; y: number; resize: boolean; rect: NonNullable<ChatState['rect']> } | undefined>(undefined);
   const rectangle = previewRect ?? session.agentChat?.rect;
-  const researchChat = !current || isResearchConversation(data, current) && (current.connectionId ?? 'codex') === 'codex';
+  // Every assistant shares the research view; only legacy native/classic records keep the classic panel.
+  const researchChat = !current || isResearchConversation(data, current);
   const previousBinding = useRef({ id: current?.id, connection: current?.connectionId });
   useEffect(() => {
     const previous = previousBinding.current;
