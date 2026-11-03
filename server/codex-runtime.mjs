@@ -7,6 +7,7 @@ import { StringDecoder } from 'node:string_decoder';
 import { stripVTControlCharacters } from 'node:util';
 import { inspectTikHubSkill, createTikHubBridge, TIKHUB_TOOL } from './tikhub-tools.mjs';
 import { IMAGE_LIMITS } from './images.mjs';
+import { checkCodexSchema } from './agent-selfcheck.mjs';
 
 const PROFILE = 'read_paper_materials';
 const safeError = (message, code = 'agent_failed') => Object.assign(new Error(message), { code });
@@ -282,10 +283,14 @@ async function modelCatalog(client, env) {
   return models;
 }
 
-async function configuredImageModel(client, cwd, env, knownModels) {
-  const [{ config }, models] = await Promise.all([client.rpc('config/read', { includeLayers: false, cwd }), knownModels ?? modelCatalog(client, env)]);
-  const model = typeof config?.model === 'string' && config.model ? models.find(model => model.nativeModel === config.model || model.id === config.model)
+async function configuredModel(client, cwd, models) {
+  const { config } = await client.rpc('config/read', { includeLayers: false, cwd });
+  return typeof config?.model === 'string' && config.model ? models.find(model => model.nativeModel === config.model || model.id === config.model)
     : models.find(model => model.isDefault) || models[0];
+}
+
+async function configuredImageModel(client, cwd, env, knownModels) {
+  const model = await configuredModel(client, cwd, knownModels ?? await modelCatalog(client, env));
   if (!model?.inputModalities?.includes('image')) throw safeError('当前 Codex 模型的图片能力未确认；附件已保留，请选择支持图片的模型，或移除图片后重试。', 'images_unsupported');
   return model;
 }
@@ -422,6 +427,28 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
   const managed = new Map();
   const owned = new Set();
   let closed = false;
+  // Protocol self-check, once per CLI version: the installed app-server writes out its own methods and fields; no model is called.
+  const protocolChecks = new Map();
+  async function protocolCheck(version, signal) {
+    if (protocolChecks.has(version)) return protocolChecks.get(version);
+    const dir = await mkdtemp(join(tmpdir(), 'read-paper-codex-schema-'));
+    try {
+      const code = await new Promise(resolve => {
+        let child;
+        const done = value => { clearTimeout(timer); signal?.removeEventListener('abort', stop); resolve(value); };
+        const stop = () => { try { child?.kill('SIGTERM'); } catch {} done(undefined); };
+        const timer = setTimeout(stop, 8_000);
+        try { child = spawnImpl(executable, ['app-server', 'generate-json-schema', '--experimental', '--out', dir], { env, shell: false, stdio: ['ignore', 'ignore', 'ignore'] }); }
+        catch { done(undefined); return; }
+        child.on('error', () => done(undefined));
+        child.on('exit', done);
+        signal?.addEventListener('abort', stop, { once: true });
+      });
+      const result = code === 0 ? await checkCodexSchema(dir) : { skipped: '此 Codex 版本不能导出协议说明，未做协议自检。' };
+      if (!signal?.aborted && version) protocolChecks.set(version, result);
+      return result;
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  }
   const release = async record => {
     clearTimeout(record.timer);
     if (record.key && managed.get(record.key) === record) managed.delete(record.key);
@@ -581,28 +608,42 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), imageProbe ? 20_000 : 10_000);
       const root = await mkdtemp(join(tmpdir(), 'read-paper-codex-probe-'));
+      const probeSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
       try {
         await writeFile(join(root, 'manifest.json'), '{}');
-        client = createCodexClient({ executable, spawnImpl, env, cwd: root, rpcTimeoutMs, signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal });
+        client = createCodexClient({ executable, spawnImpl, env, cwd: root, rpcTimeoutMs, signal: probeSignal });
         const initialized = await client.initialize();
-        const version = initialized.userAgent?.match(/codex[^/]*\/([^ ]+)/i)?.[1] || initialized.version;
+        // The user agent starts with the client's own name (`read_paper/0.165.0 …`), so take the first name/version pair.
+        const version = initialized.userAgent?.match(/codex[^/]*\/([^ ]+)/i)?.[1] || initialized.userAgent?.match(/^[\w.-]+\/(\d[\w.+-]*)/)?.[1] || initialized.version;
         const account = await client.rpc('account/read', { refreshToken: false });
         if (account.requiresOpenaiAuth && !account.account) return { state: 'needs-auth', version, detail: '请在本机终端运行 codex login 后重新检测。' };
         await verifySandbox(client, root);
         const models = await modelCatalog(client, env).catch(error => { if (imageProbe) throw error; return []; });
         const images = models.some(model => model.inputModalities?.includes('image'));
-        let imageSupport;
+        let imageSupport, menu;
         if (imageProbe) {
           try { imageSupport = Boolean(await configuredImageModel(client, root, env, models)); }
           catch (error) { if (error.code !== 'images_unsupported') throw error; imageSupport = false; }
+          // The research composer mirrors the CLI's own menu: catalog models, their efforts, and what config.toml selects today.
+          const [{ config }, modes] = await Promise.all([client.rpc('config/read', { includeLayers: false, cwd: root }), client.rpc('collaborationMode/list', {}).catch(() => ({}))]);
+          const configured = models.find(model => model.nativeModel === config?.model || model.id === config?.model) || models.find(model => model.isDefault) || models[0];
+          menu = { models: models.map(({ id, name, effort, reasoningEfforts, inputModalities }) => ({ id, name, isDefault: id === configured?.id, efforts: reasoningEfforts.map(option => option.effort), ...(typeof effort === 'string' ? { defaultEffort: effort } : {}), images: !!inputModalities?.includes('image') })),
+            ...(typeof config?.model_reasoning_effort === 'string' && configured?.reasoningEfforts.some(option => option.effort === config.model_reasoning_effort) ? { configuredEffort: config.model_reasoning_effort } : {}),
+            plan: (modes.data || []).some(mode => mode.mode === 'plan') };
+          const protocol = await protocolCheck(version, probeSignal);
+          menu.selfCheck = { checked: (protocol.checked ?? 0) + 2, ...(protocol.skipped ? { skipped: protocol.skipped } : {}), warnings: [...(protocol.warnings ?? []),
+            ...(models.length ? [] : ['Codex 的模型目录为空（格式可能已变）：模型按钮已隐藏，按 config.toml 的模型运行。']),
+            ...(menu.plan ? [] : ['Codex 不再提供 Plan 协作模式：已隐藏「规划」。'])] };
         }
-        return { state: 'ready', version, ...(imageProbe ? { images: imageSupport } : {}), detail: '使用本机登录；默认只读材料及所选技能，额外权限由你在当前对话中逐次答复。', capabilities: { images } };
+        return { state: 'ready', version, ...(imageProbe ? { images: imageSupport, ...menu } : {}), detail: '使用本机登录；默认只读材料及所选技能，额外权限由你在当前对话中逐次答复。', capabilities: { images } };
       } catch (error) {
         return { state: error.code === 'not-installed' ? 'not-installed' : 'error', detail: error.message };
       } finally { clearTimeout(timeout); if (client) await client.shutdown(); await rm(root, { recursive: true, force: true }); }
     },
-    async run({ prompt, title, cwd, materialCwd, nativeSessionId, nativeToolsVersion, managedKey, requestId, signal, onEvent = () => {}, onActivity = () => {}, skillIds, codex, onInteraction, imagePaths = [], researchTools, localImages }) {
-      if (researchTools && (nativeSessionId || managedKey || requestId || nativeToolsVersion || imagePaths.length || skillIds !== undefined || codex !== undefined || onInteraction !== undefined || !Array.isArray(researchTools.definitions) || !researchTools.definitions.length || researchTools.definitions.length > 8 || typeof researchTools.call !== 'function' || typeof researchTools.instructions !== 'string')) throw safeError('研究工具必须使用新的隔离会话。', 'invalid_input');
+    async run({ prompt, title, cwd, materialCwd, nativeSessionId, nativeToolsVersion, managedKey, requestId, signal, onEvent = () => {}, onActivity = () => {}, skillIds, codex, onInteraction, imagePaths = [], researchTools, localImages, web = false }) {
+      // Research may pick a model, effort or plan mode, but never wider access; `web` turns on the hosted web_search tool only.
+      if (researchTools && (nativeSessionId || managedKey || requestId || nativeToolsVersion || imagePaths.length || skillIds !== undefined || codex?.access !== undefined || codex?.mode === 'chat' || onInteraction !== undefined || !Array.isArray(researchTools.definitions) || !researchTools.definitions.length || researchTools.definitions.length > 8 || typeof researchTools.call !== 'function' || typeof researchTools.instructions !== 'string')) throw safeError('研究工具必须使用新的隔离会话。', 'invalid_input');
+      if (typeof web !== 'boolean' || (web && !researchTools)) throw safeError('联网检索只在研究会话中按次开启。', 'invalid_input');
       if (localImages !== undefined) {
         if (!researchTools || !Array.isArray(localImages) || !localImages.length || localImages.length > IMAGE_LIMITS.maxImages || localImages.some(path => typeof path !== 'string' || !isAbsolute(path))) throw safeError('图片输入格式不正确。', 'invalid_input');
         const root = await realpath(cwd);
@@ -619,7 +660,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         cwd = await projectCwd(cwd);
         materialCwd = await projectCwd(materialCwd);
       }
-      const desktop = skillIds !== undefined || codex !== undefined || typeof onInteraction === 'function';
+      const desktop = !researchTools && (skillIds !== undefined || codex !== undefined || typeof onInteraction === 'function');
       if (!Array.isArray(imagePaths) || imagePaths.length > IMAGE_LIMITS.maxImages) throw safeError('图片材料格式不正确。', 'invalid_input');
       const imageRoot = imagePaths.length ? await projectCwd(materialCwd || cwd) : undefined;
       for (const image of imagePaths) {
@@ -849,7 +890,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
           if (thread?.id !== nativeSessionId || !await projectThread(thread, cwd, env)) throw safeError('此 Codex 会话不属于当前研究目录。', 'invalid_session');
         }
         if (!record.verified) { await verifySandbox(client, materialCwd === undefined ? cwd : undefined); record.verified = true; }
-        const catalog = desktop ? await desktopCatalog(client, cwd, env) : imagePaths.length ? { models: await modelCatalog(client, env) } : undefined;
+        const catalog = desktop ? await desktopCatalog(client, cwd, env) : imagePaths.length || (researchTools && codex) ? { models: await modelCatalog(client, env), plan: codex?.mode === 'plan' && ((await client.rpc('collaborationMode/list', {})).data || []).some(mode => mode.mode === 'plan') } : undefined;
         const selectedSkills = [...new Set(skillIds || [])].map((id) => {
           const skill = catalog.skills.find((entry) => entry.id === id);
           if (!skill?.enabled) throw safeError('所选技能已停用、不可用或不再存在，请重新选择。', 'invalid_skill');
@@ -858,18 +899,22 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         const tikHubSkill = selectedSkills.find(skill => skill.tikHubScript);
         if (tikHubSkill && threadId && record.nativeToolsVersion !== 1 && nativeToolsVersion !== 1) throw safeError('这条旧原生线程未注册 Papertrail 的 TikHub 工具；原对话保留，请新建对话后使用此技能。', 'new_conversation_required');
         if (tikHubSkill) tikHubBridge = createTikHubBridge({ scriptPath: tikHubSkill.tikHubScript, env, signal, onInteraction: interaction, ...(tikhubSpawnImpl ? { spawnImpl: tikhubSpawnImpl } : {}) });
-        const selectedModel = localImages ? await configuredImageModel(client, cwd, env) : codex?.model ? catalog.models.find((entry) => entry.id === codex.model) : catalog?.models.find((entry) => entry.isDefault) || catalog?.models[0];
+        // Research without a choice keeps config.toml's model and effort, as the CLI itself would.
+        const selectedModel = researchTools
+          ? codex?.model ? catalog.models.find((entry) => entry.id === codex.model) : localImages ? await configuredImageModel(client, cwd, env, catalog?.models) : codex ? await configuredModel(client, cwd, catalog.models) : undefined
+          : codex?.model ? catalog.models.find((entry) => entry.id === codex.model) : catalog?.models.find((entry) => entry.isDefault) || catalog?.models[0];
         if (codex?.model && !selectedModel) throw safeError('所选模型不在本机 Codex 可用目录中，请重新选择。', 'invalid_model');
+        if (localImages && !selectedModel?.inputModalities?.includes('image')) throw safeError('所选 Codex 模型未明确提供图片能力；附件已保留，请换用支持图片的模型。', 'images_unsupported');
         if (desktop && !selectedModel) throw safeError('本机 Codex 未返回可用模型，请重新检测连接。', 'capability_unavailable');
         if (imagePaths.length && !selectedModel?.inputModalities?.includes('image')) throw safeError('所选 Codex 模型未明确提供图片能力；请选择支持图片的模型或升级 CLI 后重试。', 'images_unsupported');
         if (codex?.effort && !selectedModel?.reasoningEfforts.some(option => option.effort === codex.effort)) throw safeError('所选模型不支持此推理强度，请重新选择。', 'invalid_effort');
-        const effort = codex?.effort || selectedModel?.effort || 'low';
+        const effort = codex?.effort || (researchTools ? undefined : selectedModel?.effort || 'low');
         const access = codex?.access || 'read-only';
         if (desktop && !(await accessModes(client, cwd)).includes(access)) throw safeError('当前 Codex 版本或项目策略未提供所选访问权限，请重新选择。', 'capability_unavailable');
         const permissionProfile = access === 'full-access' ? ':danger-full-access' : PROFILE;
         if (codex?.mode === 'plan' && (!catalog.plan || !selectedModel)) throw safeError('本机 Codex 当前无法启用计划模式。', 'capability_unavailable');
         const config = await isolatedConfig(client, cwd, selectedSkills);
-        if (researchTools) config['features.shell_tool'] = false;
+        if (researchTools) { config['features.shell_tool'] = false; if (web) config.web_search = 'live'; }
         // Extra roots load explicitly selected skill files even when their distributing plugin is disabled.
         // This API is scoped to our owned app-server connection and never writes the user's skill configuration.
         if (desktop) await client.rpc('skills/extraRoots/set', { extraRoots: [...new Set(selectedSkills.map((skill) => dirname(skill.path)))] });
@@ -894,7 +939,7 @@ export function createCodexRuntime({ executable = 'codex', spawnImpl = spawn, ti
         if (signal?.aborted) throw abortError();
         acceptingEvents = true;
         turnSubmitted = true;
-        const started = await client.rpc('turn/start', { threadId, ...(requestId ? { clientUserMessageId: requestId } : {}), cwd, runtimeWorkspaceRoots: roots, permissions: permissionProfile, approvalPolicy, ...(desktop ? { approvalsReviewer: 'user' } : {}), effort, ...(selectedModel ? { model: selectedModel.nativeModel } : {}), ...(codex?.mode === 'plan' ? { collaborationMode: { mode: 'plan', settings: { model: selectedModel.nativeModel, developer_instructions: null, reasoning_effort: effort } } } : codex?.mode === 'chat' ? { collaborationMode: { mode: 'default', settings: { model: selectedModel?.nativeModel || model, developer_instructions: null, reasoning_effort: effort } } } : {}), input: [{ type: 'text', text: prompt, text_elements: [] }, ...(localImages || []).map(path => ({ type: 'localImage', path })), ...imagePaths.flatMap(image => [{ type: 'text', text: `区域图片来源 evidenceId=${image.evidenceId}`, text_elements: [] }, { type: 'localImage', path: image.path }]), ...selectedSkills.map((skill) => ({ type: 'skill', name: skill.nativeName, path: skill.path }))] });
+        const started = await client.rpc('turn/start', { threadId, ...(requestId ? { clientUserMessageId: requestId } : {}), cwd, runtimeWorkspaceRoots: roots, permissions: permissionProfile, approvalPolicy, ...(desktop ? { approvalsReviewer: 'user' } : {}), ...(effort ? { effort } : {}), ...(selectedModel ? { model: selectedModel.nativeModel } : {}), ...(codex?.mode === 'plan' ? { collaborationMode: { mode: 'plan', settings: { model: selectedModel.nativeModel, developer_instructions: null, reasoning_effort: effort ?? null } } } : codex?.mode === 'chat' ? { collaborationMode: { mode: 'default', settings: { model: selectedModel?.nativeModel || model, developer_instructions: null, reasoning_effort: effort } } } : {}), input: [{ type: 'text', text: prompt, text_elements: [] }, ...(localImages || []).map(path => ({ type: 'localImage', path })), ...imagePaths.flatMap(image => [{ type: 'text', text: `区域图片来源 evidenceId=${image.evidenceId}`, text_elements: [] }, { type: 'localImage', path: image.path }]), ...selectedSkills.map((skill) => ({ type: 'skill', name: skill.nativeName, path: skill.path }))] });
         if (!sessionIdValid(started?.turn?.id)) throw safeError('Codex 返回了无效回合。', 'protocol_error');
         turnId = started.turn.id; record.turnId = turnId;
         onEvent({ type: 'session', nativeSessionId: threadId, nativeTurnId: turnId, ...(record.nativeToolsVersion === 1 ? { nativeToolsVersion: 1 } : {}) });

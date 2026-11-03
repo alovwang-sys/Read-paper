@@ -76,7 +76,6 @@
 .conversation-host-body .research-agent-config { position: absolute; bottom: 75px; left: 16px; right: 16px; margin: 0; max-height: min(300px, 42dvh); z-index: 12; box-shadow: 0 8px 25px #213b2820; }
 .conversation-host-body .research-agent-config-heading strong { font-size: 12px; }
 .conversation-host-body .research-agent-config p { font-size: 11px; }
-.research-agent-permission { color: #96a18d; font-size: 10px; white-space: nowrap; }
 .conversation-host-body .research-agent-composer-foot { gap: 10px; }
 .conversation-host-body .research-agent-input { font-size: 13px; }
 .conversation-host-body .research-agent-enter-hint { display: none; }
@@ -106,6 +105,7 @@
 .research-agent-connection-dot { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #c9cfbf; flex-shrink: 0; vertical-align: middle; }
 .research-agent-connection-dot.is-ready { background: #5f9a5a; }
 .research-agent-connection-dot.is-blocked { background: #d08a55; }
+.research-agent-connection-dot.is-warning { background: #c9a227; box-shadow: 0 0 0 2px #f6edc8; }
 .conversation-host-body .research-agent-config { width: 300px; max-height: min(420px, 60dvh); }
 .research-agent-options > button { flex-direction: column; align-items: stretch; gap: 3px; }
 .research-agent-option-main { display: flex; align-items: center; gap: 2px; }
@@ -116,6 +116,7 @@
 .research-agent-option-detail:empty { display: none; }
 .research-agent-option-detail > small { display: block; margin-top: 2px; color: #9aa190; font: 10px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
 .research-agent-config-env { margin: 8px 3px 0 !important; color: #9aa190; font-size: 10px !important; line-height: 1.6; }
+.research-agent-config-check + .research-agent-config-env { margin-top: 4px !important; }
 .research-agent-connection-notice { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 8px 11px; border: 1px solid #f0dcc9; border-radius: 9px; background: #fdf6ef; color: #8d6142; font-size: 12px; line-height: 1.65; }
 .research-agent-connection-notice > span { flex: 1; min-width: 0; }
 .research-agent-connection-notice strong { margin-right: 6px; color: #7d4f30; font-weight: 600; }
@@ -125,3 +126,26 @@
 .research-agent-failure-detail { margin: -4px 0 8px; font-size: 11px; color: #9a8673; }
 .research-agent-failure-detail > summary { cursor: pointer; }
 .research-agent-failure-detail pre { margin: 6px 0 0; padding: 8px 10px; border-radius: 6px; background: #faf6f1; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 1.6; max-height: 160px; overflow: auto; }
+/* Native-style run controls: model · effort and the mode, beside the assistant chip. */
+.research-agent-composer-foot > .research-run-chip { min-width: 0; max-width: 190px; }
+.research-run-chip-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.research-run-chip.is-static { color: #959c8b; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.research-agent-composer-foot > .research-run-mode { flex-shrink: 0; padding: 3px 9px; border-radius: 11px; }
+.research-agent-composer-foot > .research-run-mode.is-plan { background: #eef3f8; color: #4b6d8c; }
+.research-agent-composer-foot > .research-run-mode.is-offline { background: #f1f2ec; color: #7d8473; }
+.research-run-mode-mark { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #5f9a5a; flex-shrink: 0; }
+.research-run-mode-mark.is-plan { background: #5a80a8; }
+.research-run-mode-mark.is-offline { background: #a3a897; }
+.research-agent-options .research-run-mode-mark { margin-right: 2px; }
+.research-run-menu .research-agent-config-heading small { margin-left: 6px; color: #a3ab98; font-size: 10px; font-weight: 400; }
+.research-run-efforts { margin-top: 8px; padding: 8px 3px 0; border-top: 1px solid #ecf0e6; }
+.research-run-efforts > span { display: block; margin-bottom: 5px; color: #91a182; font-size: 10px; }
+.research-run-efforts > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.research-agent-config .research-run-efforts button { padding: 3px 9px; border: 1px solid #e3e7dc; border-radius: 12px; color: #6b7862; font-size: 11px; }
+.research-agent-config .research-run-efforts button[aria-checked="true"] { border-color: #b9cfae; background: #edf3e7; color: #3f6136; }
+.research-agent-config .research-run-note { margin: 8px 3px 0; color: #9aa190; font-size: 10px; line-height: 1.6; }
+.research-agent-message-heading > .research-agent-run-meta { color: #a3ab98; }
+/* Side and floating chats: the voice button keeps its icon so assistant, model and mode fit on one row. */
+.conversation-host-body .research-agent-dock .ai-voice-button > span { display: none; }
+.conversation-host-body .research-agent-composer-foot { gap: 8px; }
+.conversation-host-body .research-agent-composer-foot > .research-run-chip { max-width: 150px; }

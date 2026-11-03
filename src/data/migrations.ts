@@ -24,6 +24,11 @@ function validAbstract(value: unknown) {
 const validAgentFocus = (value: unknown) => record(value) && record(value.ref)
   && ['research', 'document', 'card', 'board', 'draft'].includes(String(value.ref.kind))
   && typeof value.ref.id === 'string' && typeof value.title === 'string' && typeof value.body === 'string';
+const runModes = ['auto', 'plan', 'offline'];
+const validRunSettings = (value: unknown, mode = false) => record(value) && Object.keys(value).every(key => ['model', 'effort', ...(mode ? ['mode'] : [])].includes(key))
+  && (value.model === undefined || typeof value.model === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:[\]-]{0,99}$/.test(value.model))
+  && (value.effort === undefined || typeof value.effort === 'string' && /^[a-z][a-z0-9_-]{0,39}$/.test(value.effort))
+  && (value.mode === undefined || runModes.includes(value.mode as string));
 const validAgentDraft = (value: unknown) => record(value) && typeof value.title === 'string'
   && typeof value.body === 'string' && strings(value.evidenceIds);
 
@@ -32,6 +37,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     throw new Error('存储版本不受支持，未覆盖现有数据。');
   const data = structuredClone(value) as unknown as WorkspaceData;
   if (data.agentWorkbench !== undefined && typeof data.agentWorkbench !== 'boolean') throw new Error('工作台界面设置损坏，未覆盖现有数据。');
+  if (data.agentRunSettings !== undefined && (!record(data.agentRunSettings) || Object.entries(data.agentRunSettings).some(([id, settings]) => !connectionIds.includes(id) || !validRunSettings(settings)))) throw new Error('助手模型设置损坏，未覆盖现有数据。');
   validateBoardHistory(data);
   const legacy = value.schemaVersion === 1;
   for (const key of [
@@ -114,6 +120,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     if (session.agentWorkbenchStarted !== undefined && typeof session.agentWorkbenchStarted !== 'boolean'
       || session.agentFocus !== undefined && !validAgentFocus(session.agentFocus)) throw new Error('Agent 工作台焦点损坏，未覆盖现有数据。');
   }
+  for (const request of Object.values(data.requests)) if (request.runSettings !== undefined && !validRunSettings(request.runSettings, true)) throw new Error('研究轮次的助手设置损坏，未覆盖现有数据。');
   for (const item of [...Object.values(data.conversations), ...Object.values(data.requests)]) {
     const settings = item.codex;
     if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key => !['model', 'mode', 'effort', 'access'].includes(key))
@@ -124,6 +131,7 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
   }
   for (const conversation of Object.values(data.conversations)) {
     if (conversation.titleEdited !== undefined && typeof conversation.titleEdited !== 'boolean') throw new Error('会话名称编辑状态损坏，未覆盖现有资料。');
+    if (conversation.agentMode !== undefined && !runModes.includes(conversation.agentMode)) throw new Error('会话的助手模式损坏，未覆盖现有资料。');
     if (conversation.deletedAt !== undefined) {
       if (typeof conversation.deletedAt !== 'string' || !Number.isFinite(Date.parse(conversation.deletedAt))) throw new Error('会话删除记录损坏，未覆盖现有资料。');
       conversation.archived = true;

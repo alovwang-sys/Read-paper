@@ -364,6 +364,104 @@ test('demo and direct model research use the same result path', async t => {
   assert.equal(model.filter(event => event.type === 'delta').map(event => event.text).join(''), '模型的简短回答。');
 });
 
+test('self-check results reach the connection list, and what a run finds stays there until the CLI version changes', async t => {
+  let version = '2.1.316', isolation = false;
+  const claudeRuntime = { probe: async () => ({ state: 'ready', version, plan: true, selfCheck: { checked: 16, warnings: [] } }), async run(input) {
+    if (isolation) throw Object.assign(new Error('Claude Code 实际开放了未请求的能力（Read），已停止本轮以保持隔离；多半是新版本改了参数，需要更新本应用的适配。'), { code: 'isolation_failed' });
+    input.onEvent({ type: 'progress', kind: 'compat', text: '此版本的 Claude Code 没有 WebSearch 工具（可能已改名），本轮联网能力不完整；需要更新本应用的适配。' });
+    input.onEvent({ type: 'delta', text: '回答' });
+    return {};
+  } };
+  const codexRuntime = { probe: async () => ({ state: 'ready', images: true, selfCheck: { checked: 2, warnings: [], skipped: '此 Codex 版本不能导出协议说明，未做协议自检。' } }), run: () => assert.fail() };
+  const g = await fixture(t, codexRuntime, { runtimes: { codex: codexRuntime, claude: claudeRuntime } });
+  const list = async () => (await (await fetch(`${g.url}/api/ai/research/capabilities`)).json()).connections;
+  const [codex, claude, opencode] = await list();
+  assert.deepEqual(codex.selfCheck, { checked: 2, warnings: [], skipped: '此 Codex 版本不能导出协议说明，未做协议自检。' });
+  assert.deepEqual(claude.selfCheck, { checked: 16, warnings: [] });
+  assert.equal(opencode.selfCheck, undefined);
+
+  const run = await events(await g.post(request({ requestId: 'compat-run', connectionId: 'claude' })));
+  assert.ok(run.some(event => event.type === 'progress' && /没有 WebSearch 工具/.test(event.text)), 'the run itself says what it lost');
+  assert.match((await list())[1].selfCheck.warnings.join(), /没有 WebSearch 工具/);
+  isolation = true;
+  const stopped = await events(await g.post(request({ requestId: 'isolation-run', connectionId: 'claude' })));
+  assert.equal(stopped.at(-1).type, 'error'); assert.equal(stopped.at(-1).code, 'version');
+  assert.match(stopped.at(-1).error, /实际开放的能力超出本轮请求/);
+  assert.equal((await list())[1].selfCheck.warnings.length, 2, 'the failure re-probed and kept both findings');
+  // A new CLI version starts clean: the next failure drops the cached probe, and the re-probe reports 2.2.0.
+  await events(await g.post(request({ requestId: 'isolation-again', connectionId: 'claude' })));
+  version = '2.2.0'; isolation = false;
+  const upgraded = (await list())[1];
+  assert.equal(upgraded.version, '2.2.0'); assert.deepEqual(upgraded.selfCheck.warnings, []);
+
+  // A release without --allowedTools keeps the composer from offering web, and runs never ask for it.
+  const calls = [];
+  const noWeb = { probe: async () => ({ state: 'ready', version: '2.1.0', web: false, plan: false, selfCheck: { checked: 15, warnings: ['没有 --allowedTools 参数：无法只放行联网工具，已关闭联网检索。'] } }), async run(input) { calls.push(input); input.onEvent({ type: 'delta', text: '回答' }); return {}; } };
+  const h = await fixture(t, codexRuntime, { runtimes: { codex: codexRuntime, claude: noWeb } });
+  const limited = (await (await fetch(`${h.url}/api/ai/research/capabilities`)).json()).connections[1];
+  assert.deepEqual([limited.web, limited.modes], [false, ['auto']]);
+  assert.match(limited.detail, /不能联网检索/);
+  await events(await h.post(request({ requestId: 'no-web', connectionId: 'claude' })));
+  assert.equal(calls[0].web, false);
+  assert.doesNotMatch(calls[0].prompt, /WebSearch/);
+});
+
+test('composer settings reach each runtime natively: model, effort, plan mode and web only where supported', async t => {
+  const claudeCalls = [], codexCalls = [];
+  const claudeModels = [{ id: 'default', name: 'Default', isDefault: true, efforts: ['low', 'max'] }, { id: 'sonnet', name: 'Sonnet', efforts: ['low'] }];
+  const codexModels = [{ id: 'gpt-a', name: 'GPT A', isDefault: true, efforts: ['low', 'high'], defaultEffort: 'low', images: true }];
+  const block = '```papertrail-result\n' + JSON.stringify({ title: '计划不应保存', body: 'x', citations: [] }) + '\n```';
+  const codexRuntime = { probe: async () => ({ state: 'ready', images: true, models: codexModels, configuredEffort: 'high', plan: true }), async run(input) {
+    codexCalls.push(input);
+    if (input.codex?.mode === 'plan') for (const text of ['1. 先读', '1. 先读第 2 页']) input.onEvent({ type: 'item', item: { id: 'p1', type: 'plan', text } });
+    input.onEvent({ type: 'progress', kind: 'tool', id: 'w1', toolName: 'webSearch', status: 'done', command: 'transformer survey' });
+    return { model: 'gpt-a' };
+  } };
+  const claudeRuntime = { probe: async () => ({ state: 'ready', models: claudeModels }), async run(input) {
+    claudeCalls.push(input);
+    input.onEvent({ type: 'progress', kind: 'web', text: '联网检索：attention' });
+    input.onEvent({ type: 'delta', text: `计划如下。\n${block}` });
+    return { model: 'claude-x' };
+  } };
+  const g = await fixture(t, codexRuntime, { runtimes: { codex: codexRuntime, claude: claudeRuntime } });
+  const { connections } = await (await fetch(`${g.url}/api/ai/research/capabilities`)).json();
+  const [codex, claude, , , demo] = connections;
+  assert.deepEqual(codex.modes, ['auto', 'plan', 'offline']); assert.equal(codex.web, true); assert.equal(codex.configuredEffort, 'high');
+  assert.deepEqual(codex.models, codexModels);
+  assert.deepEqual(claude.models, claudeModels); assert.deepEqual(claude.modes, ['auto', 'plan', 'offline']); assert.equal(claude.web, true);
+  assert.deepEqual(demo.modes, ['auto', 'plan']); assert.equal(demo.web, false); assert.equal(demo.models, undefined);
+
+  const claudePlan = await events(await g.post(request({ requestId: 'claude-plan', connectionId: 'claude', settings: { model: 'sonnet', effort: 'low', mode: 'plan' } })));
+  assert.deepEqual([claudeCalls[0].model, claudeCalls[0].effort, claudeCalls[0].plan, claudeCalls[0].web], ['sonnet', 'low', true, true]);
+  assert.match(claudeCalls[0].prompt, /规划”模式/); assert.match(claudeCalls[0].prompt, /WebSearch/); assert.doesNotMatch(claudeCalls[0].prompt, /最后输出且只输出一个成果块/);
+  assert.equal(claudePlan.some(event => event.type === 'artifact'), false);
+  assert.ok(claudePlan.some(event => event.type === 'progress' && event.text === '联网检索：attention'));
+  assert.match(claudePlan.filter(event => event.type === 'delta').map(event => event.text).join(''), /规划模式不保存成果/);
+  await events(await g.post(request({ requestId: 'claude-offline', connectionId: 'claude', settings: { mode: 'offline' } })));
+  assert.deepEqual([claudeCalls[1].model, claudeCalls[1].effort, claudeCalls[1].plan, claudeCalls[1].web], [undefined, undefined, false, false]);
+  assert.match(claudeCalls[1].prompt, /仅资料”模式/);
+
+  const auto = await events(await g.post(request({ requestId: 'codex-auto', settings: { model: 'gpt-a', effort: 'high' } })));
+  assert.deepEqual(codexCalls[0].codex, { model: 'gpt-a', effort: 'high' }); assert.equal(codexCalls[0].web, true);
+  assert.ok(codexCalls[0].researchTools.definitions.some(tool => tool.name === 'search_literature'));
+  assert.ok(auto.some(event => event.type === 'progress' && event.text === '已联网检索：transformer survey'));
+  const plan = await events(await g.post(request({ requestId: 'codex-plan', settings: { mode: 'plan' } })));
+  assert.deepEqual(codexCalls[1].codex, { mode: 'plan' });
+  assert.equal(codexCalls[1].researchTools.definitions.some(tool => tool.name === 'submit_result'), false);
+  assert.equal(plan.filter(event => event.type === 'delta').map(event => event.text).join(''), '\n\n1. 先读第 2 页');
+  await events(await g.post(request({ requestId: 'codex-offline', settings: { mode: 'offline' } })));
+  assert.equal(codexCalls[2].codex, undefined); assert.equal(codexCalls[2].web, false);
+  assert.equal(codexCalls[2].researchTools.definitions.some(tool => tool.name === 'search_literature'), false);
+  assert.equal((await codexCalls[2].researchTools.call('search_literature', { query: 'x' })).success, false);
+
+  for (const settings of [{ model: 'x; rm' }, { effort: 'High' }, { mode: 'yolo' }, { access: 'full-access' }])
+    assert.equal((await g.post(request({ requestId: `bad-${JSON.stringify(settings).length}-${Object.keys(settings)[0]}`, settings }))).status, 400);
+  assert.equal((await g.post(request({ requestId: 'demo-model', connectionId: 'demo', settings: { model: 'gpt-a' } }))).status, 400);
+  const demoPlan = await events(await g.post(request({ requestId: 'demo-plan', connectionId: 'demo', settings: { mode: 'plan' } })));
+  assert.equal(demoPlan.some(event => event.type === 'artifact'), false);
+  assert.match(demoPlan.filter(event => event.type === 'delta').map(event => event.text).join(''), /规划/);
+});
+
 test('runtime failures are classified from CLI output with secrets and temporary paths hidden', async t => {
   const f = await textFixture(t, { probe: async () => ({ state: 'ready' }), async run(input) {
     throw Object.assign(new Error('Claude Code 运行失败，请检查本机登录、额度或配置后重试。'), { code: 'agent_failed', detail: `API Error: Connection error (ECONNREFUSED) at ${input.cwd} key sk-abcdefghijklmnopqrstu` });
@@ -710,6 +808,57 @@ test('Codex research dynamic tools disable shell and ignore foreign, repeated or
   assert.notEqual(replies.find(reply => reply.id === 'late')?.result.success, true);
   assert.ok(child.killed);
   await assert.rejects(runtime.run({ cwd, prompt: 'bad', researchTools: tools, nativeSessionId: 'old' }), { code: 'invalid_input' });
+});
+
+test('Codex research keeps config.toml defaults unless the composer picks, and plan or web never widen access', async t => {
+  const cwd = await mkdtemp(join(tmpdir(), 'read-paper-research-settings-'));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  const runs = [];
+  const spawnImpl = () => {
+    const child = new EventEmitter(); Object.assign(child, { stdout: new PassThrough(), stderr: new PassThrough(), exitCode: null, killed: false });
+    const captured = []; runs.push(captured);
+    const send = message => child.stdout.write(`${JSON.stringify(message)}\n`);
+    child.kill = () => { child.killed = true; child.exitCode = 0; queueMicrotask(() => child.emit('exit', 0)); return true; };
+    child.stdin = new Writable({ write(chunk, _encoding, callback) {
+      const message = JSON.parse(chunk.toString()); captured.push(message);
+      let result;
+      if (message.method === 'initialize') result = {};
+      if (message.method === 'config/read') result = { config: { model: 'gpt-config' } };
+      if (message.method === 'skills/list') result = { data: [] };
+      if (message.method === 'model/list') result = { data: [
+        { id: 'gpt-config', model: 'gpt-config', displayName: 'Config', isDefault: false, defaultReasoningEffort: 'low', supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'high' }] },
+        { id: 'gpt-other', model: 'gpt-other', displayName: 'Other', isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium' }] },
+      ] };
+      if (message.method === 'collaborationMode/list') result = { data: [{ mode: 'plan' }, { mode: 'default' }] };
+      if (message.method === 'command/exec') result = { exitCode: message.params.command[0].includes('touch') || message.params.command[1].endsWith('outside.txt') ? 1 : 0 };
+      if (message.method === 'thread/start') result = { thread: { id: 'native1' }, model: 'gpt-config' };
+      if (message.method === 'turn/start') {
+        result = { turn: { id: 'turn1' } };
+        setImmediate(() => send({ method: 'turn/completed', params: { threadId: 'native1', turn: { id: 'turn1', status: 'completed', items: [{ id: 'm1', type: 'agentMessage', text: 'ok' }] } } }));
+      }
+      if (result) send({ id: message.id, result }); callback();
+    } });
+    return child;
+  };
+  const runtime = createCodexRuntime({ spawnImpl, env: {}, rpcTimeoutMs: 300 });
+  const tools = { definitions: RESEARCH_TOOLS, instructions: 'Research tools only', async call() { return { success: true, contentItems: [] }; } };
+  const params = (index, method) => runs[index].find(message => message.method === method).params;
+  await runtime.run({ cwd, prompt: 'Research', researchTools: tools, web: true });
+  assert.equal(params(0, 'thread/start').model, undefined); assert.equal(params(0, 'turn/start').effort, undefined);
+  assert.equal(params(0, 'thread/start').config.web_search, 'live'); assert.equal(params(0, 'thread/start').approvalPolicy, 'never');
+  assert.ok(!runs[0].some(message => message.method === 'model/list'));
+  await runtime.run({ cwd, prompt: 'Research', researchTools: tools, codex: { effort: 'high' } });
+  assert.equal(params(1, 'thread/start').model, 'gpt-config'); assert.equal(params(1, 'turn/start').effort, 'high');
+  assert.equal(params(1, 'thread/start').config.web_search, 'disabled');
+  await runtime.run({ cwd, prompt: 'Research', researchTools: tools, codex: { model: 'gpt-other', mode: 'plan' }, web: true });
+  const planTurn = params(2, 'turn/start');
+  assert.equal(planTurn.model, 'gpt-other'); assert.equal(planTurn.effort, undefined);
+  assert.deepEqual(planTurn.collaborationMode, { mode: 'plan', settings: { model: 'gpt-other', developer_instructions: null, reasoning_effort: null } });
+  assert.equal(params(2, 'thread/start').permissions, planTurn.permissions); assert.equal(planTurn.approvalPolicy, 'never');
+  assert.ok(!runs[2].some(message => message.method === 'skills/extraRoots/set'));
+  await assert.rejects(runtime.run({ cwd, prompt: 'x', researchTools: tools, codex: { access: 'full-access' } }), { code: 'invalid_input' });
+  await assert.rejects(runtime.run({ cwd, prompt: 'x', web: true }), { code: 'invalid_input' });
+  await assert.rejects(runtime.run({ cwd, prompt: 'x', researchTools: tools, codex: { effort: 'max' } }), { code: 'invalid_effort' });
 });
 
 test('carried discussion conclusions are validated, budgeted and reach the prompt only as labeled data', async t => {

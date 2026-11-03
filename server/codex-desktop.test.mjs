@@ -6,6 +6,7 @@ import { mkdtemp, mkdir, writeFile, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCodexRuntime } from './codex-runtime.mjs';
+import { writeCodexSchema } from './codex-schema.fixture.mjs';
 
 async function fixture(t, options = {}) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'read-paper-desktop-test-')));
@@ -18,9 +19,15 @@ async function fixture(t, options = {}) {
   await writeFile(join(skillDir, 'plugin', 'SKILL.md'), '---\nname: plugin\ndescription: Plain local guidance\n---\nRead the selected research materials.');
   t.after(() => rm(root, { recursive: true, force: true }));
   const skillPath = join(skillDir, 'SKILL.md');
-  const captured = []; const children = []; const nativeReplies = [];
+  const captured = []; const children = []; const nativeReplies = []; const schemaRuns = [];
   let enabled = true; let requestId = 1000;
   const spawnImpl = (executable, args, spawnOptions) => {
+    if (args.includes('generate-json-schema')) {
+      // The protocol self-check: write the requested schema bundle, or exit like a release without the command.
+      const child = new EventEmitter(); child.kill = () => true; schemaRuns.push(args);
+      setImmediate(async () => { if (options.schema) await writeCodexSchema(args[args.indexOf('--out') + 1], options.schema); child.emit('exit', options.schema ? 0 : 2); });
+      return child;
+    }
     const child = new EventEmitter();
     child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.exitCode = null; child.killed = false;
     const waiting = new Map();
@@ -42,7 +49,7 @@ async function fixture(t, options = {}) {
       }
       let result;
       switch (message.method) {
-        case 'initialize': result = { userAgent: 'codex/0.162.1' }; break;
+        case 'initialize': result = { userAgent: options.userAgent || 'codex/0.162.1' }; break;
         case 'config/read':
           if (options.failConfigRead) { send({ id: message.id, error: { code: -32603, message: 'Configuration unavailable' } }); callback(); return; }
           result = { config: { ...(options.configuredModel ? { model: options.configuredModel } : {}), mcp_servers: { external: {} }, plugins: { installed: {} } } }; break;
@@ -72,7 +79,7 @@ async function fixture(t, options = {}) {
   };
   const runtime = createCodexRuntime({ spawnImpl, tikhubSpawnImpl: options.tikhubSpawnImpl, rpcTimeoutMs: 500, idleTimeoutMs: options.idleTimeoutMs ?? 60_000, interruptTimeoutMs: options.interruptTimeoutMs ?? 100, env: { PRIVATE_TOKEN: 'secret-for-redaction', ...options.env } });
   t.after(() => runtime.close());
-  return { runtime, captured, children, nativeReplies, cwd, skillPath, skillDir, setEnabled(value) { enabled = value; } };
+  return { runtime, captured, children, nativeReplies, schemaRuns, cwd, skillPath, skillDir, setEnabled(value) { enabled = value; } };
 }
 
 test('capabilities discover native skills/models/plan without exposing skill paths or enabling disconnected tools', async (t) => {
@@ -121,6 +128,27 @@ test('research image probe reuses one model catalog and reports failed checks as
   const failed = await unavailable.runtime.probe({ images: true });
   assert.equal(failed.state, 'error'); assert.equal(failed.images, undefined);
   assert.ok(!unavailable.captured.some(message => message.method === 'turn/start'));
+});
+
+test('research probe runs the protocol self-check once per Codex version and reports what a changed protocol costs', async t => {
+  const models = [{ id: 'vision', model: 'vision', displayName: 'Vision', isDefault: true, inputModalities: ['text', 'image'] }];
+  const f = await fixture(t, { configuredModel: 'vision', models, schema: { drop: ['effort', 'live'] } });
+  const state = await f.runtime.probe({ images: true });
+  assert.equal(state.state, 'ready');
+  assert.deepEqual(state.selfCheck, { checked: 27, warnings: ['协议缺少 effort：所选思考程度不会生效；需要更新本应用的适配。', '协议缺少 live：「自动」模式可能不会联网；需要更新本应用的适配。'] });
+  assert.deepEqual((await f.runtime.probe({ images: true })).selfCheck, state.selfCheck);
+  assert.equal(f.schemaRuns.length, 1, 'the same version is checked once');
+  assert.deepEqual(f.schemaRuns[0].slice(0, 3), ['app-server', 'generate-json-schema', '--experimental']);
+  assert.equal(state.version, '0.162.1');
+  await f.runtime.probe();
+  assert.equal(f.schemaRuns.length, 1, 'the classic probe does not run the research self-check');
+
+  const old = await fixture(t, { configuredModel: 'vision', models, modes: [{ name: 'Default', mode: 'default' }], userAgent: 'read_paper/0.165.0 (Mac OS 15.5.0; arm64) unknown (read_paper; 0.1.0)' });
+  const skipped = await old.runtime.probe({ images: true });
+  assert.equal(skipped.state, 'ready');
+  assert.match(skipped.selfCheck.skipped, /不能导出协议说明/);
+  assert.equal(skipped.version, '0.165.0', 'the version is read from the client-named user agent real Codex sends');
+  assert.deepEqual(skipped.selfCheck.warnings, ['Codex 不再提供 Plan 协作模式：已隐藏「规划」。']);
 });
 
 test('research vision fails closed when the configured model cannot be confirmed to support images', async t => {

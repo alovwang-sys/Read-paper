@@ -13,7 +13,8 @@ const uuid = 'b70f0269-c566-4cd2-a423-04c7a2f0229f';
 const sid = 'ses_testSession123';
 const model = 'zhipuai-coding-plan/glm-5.3-flash';
 const jsonl = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
-const claudeHelp = '--safe-mode --tools --strict-mcp-config --permission-mode --permission-prompts --include-partial-messages';
+// Flags the adapter relies on, as `claude --help` lists them; tests drop entries to imitate other releases.
+const claudeHelp = '-p, --print --output-format --verbose --include-partial-messages --safe-mode --disable-slash-commands --tools --allowedTools --strict-mcp-config --mcp-config --permission-mode <mode> (choices: "acceptEdits", "auto", "dontAsk", "plan") --permission-prompts --effort --model';
 const opencodeHelp = '--standalone --format --session --agent --model';
 const openCodeConfig = (...infos) => ({ output: JSON.stringify(infos.map((info) => ({ type: 'document', info }))) });
 const openCodeAnswer = (text = 'answer') => ({ output: jsonl(
@@ -73,7 +74,7 @@ test('Claude readiness requires installed safety flags and native authentication
 
 test('Claude releases without --permission-prompts stay usable and omit only that flag', async () => {
   const fake = fakeProcesses([
-    { output: '2.1.239 (Claude Code)' }, { output: '--safe-mode --tools --strict-mcp-config --permission-mode --include-partial-messages' }, { output: '{"loggedIn":true}' },
+    { output: '2.1.239 (Claude Code)' }, { output: claudeHelp.replace(' --permission-prompts', '') }, { output: '{"loggedIn":true}' }, { output: '' },
     { output: jsonl({ type: 'result', subtype: 'success', result: 'answer', session_id: uuid }) },
   ]);
   const runtime = createClaudeRuntime({ spawnImpl: fake.spawnImpl });
@@ -85,6 +86,89 @@ test('Claude releases without --permission-prompts stay usable and omit only tha
   assert.equal(run.args[run.args.indexOf('--tools') + 1], '');
   const old = fakeProcesses([{ output: '2.1.0' }, { output: '--safe-mode --tools' }]);
   assert.match((await createClaudeRuntime({ spawnImpl: old.spawnImpl }).probe()).detail, /2\.1\.0.*--strict-mcp-config/);
+});
+
+test('Claude reads its own model menu and runs with the chosen model, effort, plan mode and web tools only', async () => {
+  const menu = { type: 'control_response', response: { subtype: 'success', request_id: 'read-paper-models', response: { models: [
+    { value: 'default', displayName: 'Default (recommended)', description: 'Opus', supportsEffort: true, supportedEffortLevels: ['low', 'high', 'max'] },
+    { value: 'claude-fable-5-1[1m]', displayName: 'Fable', supportsEffort: true, supportedEffortLevels: ['low', 'xhigh'] },
+    { value: 'sonnet', displayName: 'Sonnet', supportsEffort: false },
+    { value: 'bad value; rm', displayName: 'Injected' },
+  ] } } };
+  const events = [];
+  const fake = fakeProcesses([
+    { output: '2.1.316 (Claude Code)' }, { output: claudeHelp }, { output: '{"loggedIn":true}' }, { output: jsonl(menu) },
+    { output: jsonl(
+      { type: 'system', subtype: 'init', session_id: uuid, model: 'claude-fable-5-1', tools: ['WebFetch', 'WebSearch'], mcp_servers: [], permissionMode: 'plan' },
+      { type: 'assistant', session_id: uuid, message: { content: [{ type: 'text', text: '先检索。' }, { type: 'tool_use', name: 'WebSearch', input: { query: 'transformer survey 2026' } }] } },
+      { type: 'assistant', session_id: uuid, message: { content: [{ type: 'tool_use', name: 'WebFetch', input: { url: 'https://example.org/a' } }] } },
+      { type: 'result', subtype: 'success', result: 'answer', session_id: uuid },
+    ) },
+  ]);
+  const runtime = createClaudeRuntime({ spawnImpl: fake.spawnImpl });
+  const probed = await runtime.probe();
+  assert.deepEqual(probed.selfCheck, { checked: 16, warnings: [] });
+  assert.equal(probed.web, true);
+  assert.deepEqual(probed.models.map(model => [model.id, model.isDefault, model.efforts]), [['default', true, ['low', 'high', 'max']], ['claude-fable-5-1[1m]', false, ['low', 'xhigh']], ['sonnet', false, []]]);
+  const menuCall = fake.calls[3];
+  assert.match(menuCall.input, /"subtype":"initialize"/);
+  assert.equal(menuCall.args[menuCall.args.indexOf('--tools') + 1], '');
+  await runtime.run({ prompt: 'question', cwd: '/tmp/supplied-materials', model: 'claude-fable-5-1[1m]', effort: 'xhigh', plan: true, web: true, onEvent: event => events.push(event) });
+  const run = fake.calls.at(-1);
+  assert.equal(run.args[run.args.indexOf('--tools') + 1], 'WebSearch,WebFetch');
+  assert.equal(run.args[run.args.indexOf('--allowedTools') + 1], 'WebSearch,WebFetch');
+  assert.equal(run.args[run.args.indexOf('--permission-mode') + 1], 'plan');
+  assert.equal(run.args[run.args.indexOf('--model') + 1], 'claude-fable-5-1[1m]');
+  assert.equal(run.args[run.args.indexOf('--effort') + 1], 'xhigh');
+  assert.ok(run.args.includes('--safe-mode') && run.args.includes('--strict-mcp-config'));
+  assert.deepEqual(events.filter(event => event.kind === 'web').map(event => event.text), ['联网检索：transformer survey 2026', '读取网页：https://example.org/a']);
+  assert.equal(events.some(event => event.kind === 'compat'), false, 'the init event matched what was asked for');
+  await assert.rejects(runtime.run({ prompt: 'q', cwd: '/tmp/x', model: 'opus; rm -rf' }), /模型选择无效/);
+  const plain = fakeProcesses([{ output: jsonl({ type: 'result', subtype: 'success', result: 'answer', session_id: uuid }) }]);
+  await createClaudeRuntime({ spawnImpl: plain.spawnImpl }).run({ prompt: 'question', cwd: '/tmp/x', model: 'default' });
+  const args = plain.calls[0].args;
+  assert.equal(args[args.indexOf('--tools') + 1], '');
+  assert.equal(args.includes('--allowedTools') || args.includes('--model') || args.includes('--effort'), false);
+  assert.equal(args[args.indexOf('--permission-mode') + 1], 'dontAsk');
+});
+
+test('Claude self-check: a missing optional flag hides only its menu entry and says why; a missing required one blocks', async () => {
+  const older = claudeHelp.replace(' --effort', '').replace(' --allowedTools', '').replace(' --model', '').replace(', "plan"', '');
+  const fake = fakeProcesses([{ output: '2.1.200 (Claude Code)' }, { output: older }, { output: '{"loggedIn":true}' }, { output: '' }]);
+  const runtime = createClaudeRuntime({ spawnImpl: fake.spawnImpl });
+  const probed = await runtime.probe();
+  assert.equal(probed.state, 'ready');
+  assert.deepEqual([probed.web, probed.plan, probed.models], [false, false, []]);
+  assert.deepEqual(probed.selfCheck.warnings.map(text => text.split('：')[0]), ['没有 --model 参数', '没有 --effort 参数', '没有 --allowedTools 参数', '--permission-mode 不再提供 plan']);
+  await assert.rejects(runtime.run({ prompt: 'q', cwd: '/tmp/x', web: true }), /不能只放行联网工具/);
+  await assert.rejects(runtime.run({ prompt: 'q', cwd: '/tmp/x', plan: true }), /不再提供 plan/);
+  await assert.rejects(runtime.run({ prompt: 'q', cwd: '/tmp/x', effort: 'high' }), /不支持所选思考程度/);
+  assert.equal(fake.calls.length, 4, 'no run started for an unsupported setting');
+
+  const unreadable = fakeProcesses([{ output: '2.1.400 (Claude Code)' }, { output: claudeHelp }, { output: '{"loggedIn":true}' }, { output: '{"type":"control_response","response":{"subtype":"success"}}' }]);
+  assert.match((await createClaudeRuntime({ spawnImpl: unreadable.spawnImpl }).probe()).selfCheck.warnings.join(), /读不到 Claude Code 的模型菜单/);
+  for (const [help, missing] of [[claudeHelp.replace(' --disable-slash-commands', ''), '--disable-slash-commands'], [claudeHelp.replace('"dontAsk", ', ''), '--permission-mode dontAsk']]) {
+    const blocked = fakeProcesses([{ output: '2.2.0 (Claude Code)' }, { output: help }]);
+    const state = await createClaudeRuntime({ spawnImpl: blocked.spawnImpl }).probe();
+    assert.equal(state.state, 'error');
+    assert.ok(state.detail.includes(missing) && state.detail.includes('需要更新本应用的适配'));
+  }
+});
+
+test('Claude checks each run against its init event: extra tools stop the run, lost web tools are reported', async () => {
+  const answer = (init) => ({ output: jsonl({ type: 'system', subtype: 'init', session_id: uuid, model: 'claude-sonnet', ...init }, { type: 'result', subtype: 'success', result: 'answer', session_id: uuid }) });
+  for (const init of [{ tools: ['Read'], mcp_servers: [] }, { tools: [], mcp_servers: [{ name: 'github', status: 'connected' }] }]) {
+    const fake = fakeProcesses([answer(init)]);
+    await assert.rejects(createClaudeRuntime({ spawnImpl: fake.spawnImpl }).run({ prompt: 'q', cwd: '/tmp/x' }), error => error.code === 'isolation_failed' && /未请求的能力/.test(error.message));
+  }
+  const events = [];
+  const renamed = fakeProcesses([answer({ tools: ['WebFetch'], mcp_servers: [], permissionMode: 'default' })]);
+  const result = await createClaudeRuntime({ spawnImpl: renamed.spawnImpl }).run({ prompt: 'q', cwd: '/tmp/x', web: true, plan: true, onEvent: event => events.push(event) });
+  assert.equal(result.body, 'answer');
+  const compat = events.filter(event => event.kind === 'compat').map(event => event.text);
+  assert.equal(compat.length, 2);
+  assert.match(compat[0], /没有 WebSearch 工具（可能已改名），本轮联网能力不完整/);
+  assert.match(compat[1], /请求的是 plan 模式，Claude Code 实际为 default/);
 });
 
 test('Claude parses only visible text and resumes real session using fixed safe arguments and stdin', async () => {

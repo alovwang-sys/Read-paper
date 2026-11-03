@@ -1,4 +1,4 @@
-import type { AIConnectionId, AIRequest, Conversation, Draft, ResearchMaterial, ResourceRef, WorkspaceData } from '../domain/types';
+import type { AgentRunMode, AgentRunSettings, AIConnectionId, AIRequest, Conversation, Draft, ResearchMaterial, ResourceRef, WorkspaceData } from '../domain/types';
 import { validateResearchMaterials } from '../domain/research';
 import type { ResearchAgentArtifact, ResearchAgentCapability, ResearchAgentEvent, ResearchAgentInput, ResearchAgentSource } from '../domain/research-agent';
 import { validateResearchLiteratureSearch } from '../domain/research-agent';
@@ -275,6 +275,32 @@ export function changeResearchAgent(researchId: string, connectionId: AIConnecti
   return id;
 }
 
+/** Remembers the model and effort for an assistant, as the CLIs remember `/model`; empty fields follow its native configuration. */
+export function setAgentRunSettings(connectionId: AIConnectionId, settings: AgentRunSettings) {
+  const clean: AgentRunSettings = { ...(settings.model ? { model: settings.model } : {}), ...(settings.effort ? { effort: settings.effort } : {}) };
+  workspace.updateData(data => {
+    if (Object.keys(clean).length) (data.agentRunSettings ??= {})[connectionId] = clean;
+    else if (data.agentRunSettings) { delete data.agentRunSettings[connectionId]; if (!Object.keys(data.agentRunSettings).length) delete data.agentRunSettings; }
+  });
+}
+
+/** The mode belongs to the conversation, like a CLI session's Shift+Tab mode; new conversations start on auto. */
+export function setResearchMode(researchId: string, mode: AgentRunMode) {
+  const conversation = workspace.getActiveConversation(researchId);
+  workspace.updateData(data => { if (mode === 'auto') delete data.conversations[conversation.id].agentMode; else data.conversations[conversation.id].agentMode = mode; });
+}
+
+/** What a turn will actually send: remembered picks this assistant still offers, and a mode it supports. */
+export function effectiveRunSettings(data: WorkspaceData, connectionId: AIConnectionId, conversation: Conversation | undefined, capability: ResearchAgentCapability | undefined) {
+  const saved = ['codex', 'claude'].includes(connectionId) ? data.agentRunSettings?.[connectionId] ?? {} : {};
+  const models = capability?.models ?? [];
+  const model = saved.model && models.some(item => item.id === saved.model && !item.isDefault) ? saved.model : undefined;
+  const target = models.find(item => item.id === model) ?? models.find(item => item.isDefault);
+  const effort = saved.effort && target?.efforts.includes(saved.effort) ? saved.effort : undefined;
+  const mode: AgentRunMode = conversation?.agentMode && (capability?.modes ?? ['auto']).includes(conversation.agentMode) ? conversation.agentMode : 'auto';
+  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}), mode, target };
+}
+
 export function focusResearchResource(researchId: string, ref: ResourceRef) {
   const conversation = workspace.getActiveConversation(researchId);
   workspace.updateData(data => {
@@ -416,6 +442,9 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
     const capability = capabilities.find(item => item.id === connectionId);
     if (!capability?.research) throw Object.assign(new Error(capability ? `${capability.detail}${capability.hint ? ` ${capability.hint}` : ''}` : '研究服务没有返回这个连接的状态，请稍后重试。'), { kind: capability?.kind ?? 'unknown' });
     if ((chatImages.length || drawingQuestion?.mode === 'image') && capability.images !== true) throw new Error('这个连接未确认支持图片，附件和输入已保留。请选择支持图片的助手，或移除普通图片、明确选择绘图仅发送文字和结构。');
+    const { target: runModel, ...runSettings } = effectiveRunSettings(workspace.getState().data, connectionId, workspace.getState().data.conversations[conversation.id], capability);
+    if ((chatImages.length || drawingQuestion?.mode === 'image') && runModel?.images === false) throw new Error(`所选模型 ${runModel.name} 不支持图片，附件和输入已保留。请换用支持图片的模型。`);
+    if (current()) workspace.updateData(data => { data.requests[id].runSettings = runSettings; });
     const images: NonNullable<ResearchAgentInput['images']> = [];
     for (const image of imageMetadata) {
       const blob = await loadChatImage(image); aborted(signal);
@@ -450,7 +479,7 @@ export async function submitResearchRun(researchId: string, prompt: string, retr
       }
     });
     let artifact: ResearchAgentArtifact | undefined, completed: Extract<ResearchAgentEvent, { type: 'done' }> | undefined;
-    await streamResearchRun({ requestId: id, researchId, connectionId, prompt: request.prompt, sources, history, ...(focus ? { focus } : {}), ...(drawing ? { drawing } : {}), ...(images.length ? { images } : {}), ...(carried.length ? { materials: carried } : {}) }, signal, event => {
+    await streamResearchRun({ requestId: id, researchId, connectionId, prompt: request.prompt, sources, history, ...(focus ? { focus } : {}), ...(drawing ? { drawing } : {}), ...(images.length ? { images } : {}), ...(carried.length ? { materials: carried } : {}), settings: runSettings }, signal, event => {
       if (!current() || signal.aborted) return;
       if (event.type === 'error') throw Object.assign(new Error(event.error), { kind: event.code, detail: event.detail });
       if (event.type === 'literature') {

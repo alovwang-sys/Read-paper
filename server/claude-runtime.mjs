@@ -5,12 +5,34 @@ import { lstat, open, readdir, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { readPaperHistoryMessage } from './codex-runtime.mjs';
+import { CLAUDE_WEB_TOOLS, checkClaudeHelp, checkClaudeInit } from './agent-selfcheck.mjs';
 
 export const runtimeError = (message, code = 'agent_failed') => Object.assign(new Error(message), { code });
 const stopped = () => runtimeError('生成已停止。', 'stopped');
 const MAX_OUTPUT = 8_000_000;
 const SESSION = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const status = (value) => ({ ...value, capabilities: { images: false, tools: false, resume: true, permissions: 'read-only' } });
+const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:[\]-]{0,99}$/;
+const EFFORT = /^[a-z][a-z0-9_-]{0,39}$/;
+// Read-only network tools: they reach the web through Anthropic's servers and never touch local files or commands.
+const WEB_TOOLS = CLAUDE_WEB_TOOLS.join(',');
+const INITIALIZE = `${JSON.stringify({ type: 'control_request', request_id: 'read-paper-models', request: { subtype: 'initialize' } })}\n`;
+
+/** The CLI's own model menu (the one `/model` shows), read through its SDK handshake; no prompt is sent. */
+function nativeModels(output) {
+  for (const line of output.split('\n')) {
+    let event;
+    try { event = JSON.parse(line); } catch { continue; }
+    const models = event?.type === 'control_response' && event.response?.request_id === 'read-paper-models' ? event.response.response?.models : undefined;
+    if (!Array.isArray(models)) continue;
+    return models.filter(model => typeof model?.value === 'string' && MODEL_ID.test(model.value) && typeof model.displayName === 'string').slice(0, 30).map(model => ({
+      id: model.value, name: model.displayName.slice(0, 80), isDefault: model.value === 'default',
+      ...(typeof model.description === 'string' ? { description: model.description.slice(0, 300) } : {}),
+      efforts: model.supportsEffort && Array.isArray(model.supportedEffortLevels) ? model.supportedEffortLevels.filter(effort => typeof effort === 'string' && EFFORT.test(effort)).slice(0, 10) : [],
+    }));
+  }
+  return [];
+}
 
 // Cancellation targets this CLI process group; never a user's shared daemon.
 export function runNativeProcess({ executable, args, cwd, env, input = '', signal, spawnImpl = spawn, timeoutMs = 180_000, killAfterMs = 750, onLine }) {
@@ -172,7 +194,7 @@ async function claudeTranscript({ cwd, path, sessionId, signal }) {
 export function createClaudeRuntime({ executable, spawnImpl = spawn, env = process.env, timeoutMs = 180_000, killAfterMs = 750 } = {}) {
   executable ||= executablePath(env);
   const invoke = (args, options = {}) => runNativeProcess({ executable, spawnImpl, env, timeoutMs, killAfterMs, args, ...options });
-  let permissionPrompts;
+  let permissionPrompts, effortFlag, modelFlag, webFlag, planMode;
   async function applyActivity(sessions, cwd, signal) {
     try {
       const response = await invoke(['agents', '--json', '--cwd', cwd], { cwd, signal, timeoutMs: 10_000 });
@@ -220,30 +242,42 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
         if (installed.code !== 0) throw runtimeError('Claude Code 版本检测失败。');
         version = installed.output.trim().slice(0, 100);
         const help = await invoke(['--help'], { signal, timeoutMs: 10_000 });
-        const missing = ['--safe-mode', '--tools', '--strict-mcp-config', '--permission-mode', '--include-partial-messages'].filter((flag) => !help.output.includes(flag));
-        if (help.code !== 0 || missing.length) {
-          return status({ state: 'error', version, detail: `此 Claude Code（${version}）缺少安全隔离或流式协议参数 ${missing.join(' ') || '--help'}，请升级后重新检测。` });
+        const check = checkClaudeHelp(help.output);
+        if (help.code !== 0 || check.missing.length) {
+          return status({ state: 'error', version, detail: `此 Claude Code（${version}）缺少运行所需参数 ${check.missing.join(' ') || '--help'}。版本较旧请升级；若已是新版本，说明参数有变，需要更新本应用的适配。` });
         }
         // Some releases dropped --permission-prompts; with every tool disabled in --print mode it is only a belt-and-braces flag.
-        permissionPrompts = help.output.includes('--permission-prompts');
+        ({ permissionPrompts, effort: effortFlag, model: modelFlag, web: webFlag, plan: planMode } = check.flags);
         const auth = await invoke(['auth', 'status', '--json'], { signal, timeoutMs: 10_000 });
         if (JSON.parse(auth.output).loggedIn !== true) return status({ state: 'needs-auth', version, detail: '请在本机终端完成 claude auth login 后重新检测；平台不会读取或代管登录凭据。' });
-        return status({ state: 'ready', version, detail: '使用本机认证，仅处理显式提供的文字；工具、MCP、插件、交互权限和图片均未开放。' });
+        const menu = await invoke(['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--safe-mode', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}'], { signal, timeoutMs: 10_000, input: INITIALIZE }).catch(() => undefined);
+        const models = menu && modelFlag ? nativeModels(menu.output).map(model => effortFlag ? model : { ...model, efforts: [] }) : [];
+        const warnings = [...check.warnings, ...(modelFlag && !models.length ? ['读不到 Claude Code 的模型菜单（握手格式可能已变）：模型按钮已隐藏，按 CLI 默认模型运行。'] : [])];
+        return status({ state: 'ready', version, models, web: webFlag, plan: planMode, selfCheck: { checked: check.checked + 1, warnings },
+          detail: '使用本机认证，仅处理显式提供的文字；工具、MCP、插件、交互权限和图片均未开放。' });
       } catch (error) {
         return status({ state: error.code === 'not-installed' ? 'not-installed' : 'error', ...(version ? { version } : {}), detail: error.code === 'not-installed' ? '未安装 Claude Code CLI。' : '无法检测 Claude Code，请检查本机 CLI 配置后重试。' });
       }
     },
-    async run({ prompt, cwd, nativeSessionId, signal, onEvent = () => {} }) {
+    /** `web` opens only WebSearch/WebFetch; `plan` uses the CLI's own plan mode. Everything else stays text-only. */
+    async run({ prompt, cwd, nativeSessionId, model: chosenModel, effort, plan = false, web = false, signal, onEvent = () => {} }) {
       if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 2_000_000) throw runtimeError('发送给 Claude Code 的文字无效。', 'invalid_input');
       if (nativeSessionId && !SESSION.test(nativeSessionId)) throw runtimeError('Claude Code 会话标识无效。', 'invalid_session');
+      if (chosenModel !== undefined && (typeof chosenModel !== 'string' || !MODEL_ID.test(chosenModel))) throw runtimeError('Claude Code 模型选择无效。', 'invalid_model');
+      if (effort !== undefined && (typeof effort !== 'string' || !EFFORT.test(effort) || effortFlag === false)) throw runtimeError('此 Claude Code 版本不支持所选思考程度。', 'invalid_effort');
+      if (chosenModel !== undefined && chosenModel !== 'default' && modelFlag === false) throw runtimeError('此 Claude Code 版本不支持选择模型。', 'invalid_model');
+      if (web && webFlag === false) throw runtimeError('此 Claude Code 版本不能只放行联网工具，联网检索已关闭。', 'invalid_input');
+      if (plan && planMode === false) throw runtimeError('此 Claude Code 版本不再提供 plan 模式。', 'invalid_input');
       let sessionId = nativeSessionId;
       let announcedSession = false;
       let body = '';
       let streamed = '';
       let model;
       let result;
-      // Restricted mode ignores native connection settings; safe mode and empty tools/MCP retain the text-only boundary.
-      const args = ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--safe-mode', '--disable-slash-commands', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--permission-mode', 'dontAsk', ...(permissionPrompts === false ? [] : ['--permission-prompts', 'none'])];
+      // Safe mode and an explicit tool list keep the boundary: no files, commands, MCP or plugins; web tools only when asked for.
+      const args = ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--safe-mode', '--disable-slash-commands', '--tools', web ? WEB_TOOLS : '', ...(web ? ['--allowedTools', WEB_TOOLS] : []), '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--permission-mode', plan ? 'plan' : 'dontAsk', ...(permissionPrompts === false ? [] : ['--permission-prompts', 'none'])];
+      if (chosenModel && chosenModel !== 'default') args.push('--model', chosenModel);
+      if (effort) args.push('--effort', effort);
       if (nativeSessionId) args.push('--resume', nativeSessionId);
       const response = await invoke(args, { cwd, input: prompt, signal, onLine(line) {
         const event = JSON.parse(line);
@@ -254,12 +288,22 @@ export function createClaudeRuntime({ executable, spawnImpl = spawn, env = proce
         }
         if (event.type === 'system' && event.subtype === 'init') {
           model = event.model;
+          // The init event lists what this run really opened; anything beyond the request stops the run before a model answers.
+          const opened = checkClaudeInit(event, { web, plan });
+          if (opened.extra.length) throw runtimeError(`Claude Code 实际开放了未请求的能力（${opened.extra.join('、')}），已停止本轮以保持隔离；多半是新版本改了参数，需要更新本应用的适配。`, 'isolation_failed');
+          for (const text of opened.warnings) onEvent({ type: 'progress', kind: 'compat', text });
           onEvent({ type: 'progress', kind: 'status', text: 'Claude Code 正在阅读已发送的文字' });
         } else if (event.type === 'stream_event' && event.event?.delta?.type === 'text_delta') {
           const text = event.event.delta.text;
           if (typeof text === 'string') { streamed += text; onEvent({ type: 'delta', text }); }
         } else if (event.type === 'assistant' && !event.parent_tool_use_id) {
-          body = (event.message?.content || []).filter((part) => part.type === 'text').map((part) => part.text).join('');
+          const content = Array.isArray(event.message?.content) ? event.message.content : [];
+          for (const part of content) {
+            if (part?.type !== 'tool_use' || !['WebSearch', 'WebFetch'].includes(part.name)) continue;
+            const target = part.name === 'WebSearch' ? part.input?.query : part.input?.url;
+            if (typeof target === 'string' && target.trim()) onEvent({ type: 'progress', kind: 'web', text: `${part.name === 'WebSearch' ? '联网检索' : '读取网页'}：${target.trim().slice(0, 300)}` });
+          }
+          body = content.filter((part) => part.type === 'text').map((part) => part.text).join('');
         } else if (event.type === 'system' && event.subtype === 'permission_denied') {
           onEvent({ type: 'progress', kind: 'permission', text: 'Claude Code 的工具或交互请求已拒绝；当前仅支持文字问答。' });
         } else if (event.type === 'result') result = event;

@@ -1,4 +1,4 @@
-import type { AIConnectionId, ChatImageAttachment, DrawingQuestion, LiteratureSearch, ResearchMaterial, ResourceRef } from './types';
+import type { AgentRunMode, AIConnectionId, ChatImageAttachment, DrawingQuestion, LiteratureSearch, ResearchMaterial, ResourceRef } from './types';
 import { validateLiteratureCandidate } from './research';
 
 export type ResearchLiteratureSearch = Pick<LiteratureSearch, 'id' | 'query' | 'yearFrom' | 'yearTo' | 'createdAt' | 'status' | 'candidates' | 'error' | 'errorCode' | 'warnings' | 'partial'>;
@@ -39,6 +39,7 @@ export type ResearchAgentInput = {
   drawing?: DrawingQuestion & { imageDataUrl?: string };
   images?: (ChatImageAttachment & { dataUrl: string })[];
   materials?: ResearchMaterial[];
+  settings?: { model?: string; effort?: string; mode?: AgentRunMode };
 };
 export type ResearchAgentEvent =
   | { type: 'literature'; search: ResearchLiteratureSearch }
@@ -47,8 +48,13 @@ export type ResearchAgentEvent =
   | { type: 'artifact'; artifact: ResearchAgentArtifact }
   | { type: 'done'; model?: string; nativeSessionId?: string; readPages: { documentId: string; pageIndex: number }[] }
   | { type: 'error'; error: string; code?: string; detail?: string };
+/** One entry of an assistant's own model menu, with the efforts that model accepts. */
+export type AgentModelOption = { id: string; name: string; isDefault?: boolean; description?: string; efforts: string[]; defaultEffort?: string; images?: boolean };
+/** The adapter's self-check against the installed CLI: `warnings` name what a changed CLI costs; `skipped` says a check could not run. */
+export type AgentSelfCheck = { checked: number; warnings: string[]; skipped?: string };
 /** `kind` and `hint` explain a connection that is not ready, classified from the CLI's own output. */
-export type ResearchAgentCapability = { id: AIConnectionId; research: boolean; images?: boolean; detail: string; state?: string; version?: string; kind?: string; hint?: string };
+export type ResearchAgentCapability = { id: AIConnectionId; research: boolean; images?: boolean; detail: string; state?: string; version?: string; kind?: string; hint?: string;
+  models?: AgentModelOption[]; modes?: AgentRunMode[]; web?: boolean; configuredEffort?: string; selfCheck?: AgentSelfCheck };
 export type AgentInstall = { path: string; version?: string };
 export type AgentDiagnostics = {
   agents: { id: 'codex' | 'claude' | 'opencode'; used?: AgentInstall; others: AgentInstall[] }[];

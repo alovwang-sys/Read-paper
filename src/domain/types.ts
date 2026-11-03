@@ -443,6 +443,10 @@ export type DrawingQuestion = { snapshot: DrawingSnapshot; mode: 'image' | 'text
 export type AgentSkill = { id: string; name: string; description: string; enabled: boolean; disabledReason?: string };
 export type CodexAccess = 'read-only' | 'workspace-write' | 'full-access';
 export type CodexSettings = { model?: string; mode?: 'chat' | 'plan'; effort?: string; access?: CodexAccess };
+/** How much a research assistant may do on its own this turn: auto may search the web, plan only proposes, offline stays with the papers. */
+export type AgentRunMode = 'auto' | 'plan' | 'offline';
+/** A model and effort picked from the assistant's own menu; absent fields follow the assistant's native configuration. */
+export type AgentRunSettings = { model?: string; effort?: string };
 export type CodexCapabilities = {
   skills: AgentSkill[];
   models: { id: string; name: string; isDefault?: boolean; inputModalities?: ('text' | 'image' | 'audio')[]; reasoningEfforts?: { effort: string; description: string }[]; defaultReasoningEffort?: string }[];
@@ -537,6 +541,8 @@ export type AIRequest = {
   events?: AgentEvent[];
   skills?: AgentSkill[];
   codex?: CodexSettings;
+  /** Research turns: the model, effort and mode this turn was sent with. */
+  runSettings?: AgentRunSettings & { mode?: AgentRunMode };
   interactions?: AgentInteraction[];
   supplementalInputs?: NativeUserInput[];
   boardContext?: BoardContext;
@@ -606,11 +612,15 @@ export type Conversation = {
   carried?: ResearchMaterial[];
   boardSuggestionRequestId?: string;
   boardSuggestionDismissed?: boolean;
+  /** Research mode for this conversation's next turns; absent means auto. */
+  agentMode?: AgentRunMode;
 };
 export type WorkspaceData = {
   schemaVersion: 3;
   agentWorkspaceId?: string;
   agentWorkbench?: boolean;
+  /** Last model and effort picked per assistant, remembered like the CLIs remember `/model`. */
+  agentRunSettings?: Partial<Record<AIConnectionId, AgentRunSettings>>;
   researches: Record<string, Research>;
   documents: Record<string, PaperDocument>;
   evidence: Record<string, Evidence>;

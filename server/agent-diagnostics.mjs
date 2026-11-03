@@ -60,8 +60,10 @@ export function classifyAgentFailure(id, { code, message = '', detail = '' } = {
     return { kind: 'network', hint: `${label} 连不上服务。终端能用而应用不行，多半是终端里的代理变量（https_proxy 等）没有传给应用；应用已自动从登录 shell 导入，修改后需重启应用。` };
   if (code === 'timeout' || /timed? ?out|超时/i.test(text))
     return { kind: 'timeout', hint: `${label} 长时间没有返回。可能是网络慢或任务过大，可稍后重试或缩小范围。` };
+  if (code === 'isolation_failed')
+    return { kind: 'version', hint: `${label} 实际开放的能力超出本轮请求，已停止以保持隔离。多半是 CLI 新版本改了参数，需要更新本应用的适配；可先改用其他已就绪的助手。` };
   if (code === 'sandbox_unavailable' || /upgrade|升级|版本|缺少|不能隔离|v2/i.test(text))
-    return { kind: 'version', hint: `${label} 版本与应用适配要求不符。注意应用调用的可能不是终端里那一份：请对照下方“实际调用”的路径与版本。` };
+    return { kind: 'version', hint: `${label} 版本与应用适配要求不符。注意应用调用的可能不是终端里那一份：请对照下方“实际调用”的路径与版本；若刚升级过 CLI，可能是新版本改了参数，需要更新本应用的适配。` };
   return { kind: 'unknown', hint: `${label} 返回了未识别的错误。可在终端用同一命令确认，或改用其他已就绪的助手。` };
 }
 

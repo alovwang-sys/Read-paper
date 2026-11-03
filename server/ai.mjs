@@ -253,7 +253,7 @@ export function createAIHandler({ env = process.env, fetchImpl = fetch, timeoutM
     await runPiCompletion({ model: config.model, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], images: false, signal, onDelta, streamCompletion });
     return config.model;
   };
-  const research = createResearchHandler({ env, runtimes: agentRuntimes, ports: [...config.ports], searchLiterature: literature.search, runModel, modelConfigured: Boolean(config.key) });
+  const research = createResearchHandler({ env, runtimes: agentRuntimes, ports: [...config.ports], searchLiterature: literature.search, runModel, modelConfigured: Boolean(config.key), modelName: config.model });
   const active = new Set();
   const controllers = new Set();
   const pending = new Set();
